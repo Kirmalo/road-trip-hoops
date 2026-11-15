@@ -342,6 +342,18 @@ before the next starts. If the owner answers late, wave 1 still finishes; nothin
 
 ## Review
 
+- P2-11 CPU retune (`worktree-agent-a0ab513e1e0ae8ed8`, 617c4b6): CHANGES. Parses on 4.3, 0 shot-clock violations.
+  Lead's 6 autoplay: 36-24, 20-30, 20-34, 30-26, 36-26, 33-31 OT (5 of 12 team scores over 30; mean 28.8);
+  jumpers 14/game; `late_closeouts` 75 of 84 jumpers (89%); alley-oop catches 2-6 (mean 4); rim contested ~77%;
+  blocks 5.8, steals 10.7, intercepts 3.8. Humantest 22-35. Fixes: (1) the late-closeout test needs
+  `shot_contest_t >= CLOSEOUT_GRACE` (0.35 s) but a CPU windup is 0.3-0.45 s, so even a defender glued from the start
+  is often "late", and a human closeout on a CPU jumper almost never counts in full. Count the defender as close
+  from the start (seed `shot_contest_t` at `start_shot`) or cap the grace by the windup, e.g. `minf(CLOSEOUT_GRACE,
+  0.5 * cpu_shot_time)`. (2) Get scores back to 15-30 per team (P2-11's done-when) after (1), with 10 games; alley-oops
+  can move to P2-13 if they stay near 4. The call hold is fine: the handler keeps driving and sidestepping, only shots
+  and passes wait, at most CALL_WINDOW 1.5 s, and the shot-clock exit works. More timeouts are expected: calls whose
+  lane never clears now run the full window instead of ending with the handler's own shot or pass.
+
 - P2-09 alley-oop (`worktree-agent-a6f6286e12d331c4a`) + P2-10 call for the ball (`worktree-agent-a88cb4ada7618ca1b`),
   trial merge `trial-w3`: CHANGES (one small fix). Lob API matches what P2-10 calls; parses; autoplay in range.
   Fix before merge (P2-10 owns `human_input.gd`): `defense_action()` returns BLOCK while `game.ball.is_lob()` and the
