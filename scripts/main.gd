@@ -14,6 +14,7 @@ const CourtScript = preload("res://scripts/court.gd")
 const ControlsScript = preload("res://scripts/touch_controls.gd")
 const AudioScript = preload("res://scripts/audio.gd")
 const FxScript = preload("res://scripts/fx.gd")
+const HumanInputScript = preload("res://scripts/human_input.gd")
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
@@ -41,6 +42,21 @@ const FIRE_MISSES := 2               # misses or blocks by the on-fire player th
 const FIRE_COLOR := Color(1.0, 0.45, 0.1)   # "ON FIRE!" popup and the ball trail
 const FIRE_POPUP_SIZE := 52
 
+# --humantest scripted thumb (developer testing only): drives the real touch joystick with synthetic touch events
+const HT_FINGER_POS := Vector2(260, 460)   # where the scripted thumb touches down (left half of the screen)
+const HT_STEER_RATE := 450.0         # degrees per second the thumb turns while steering (a flick needs 100 in 0.12 s)
+const HT_SNAP_EVERY := 3.0           # seconds of ball time between 120-degree snaps (should each be one flick)
+const HT_SNAP_DEG := 120.0
+const HT_SNAP_FRAMES := 3
+const HT_TURN_EVERY := 5.0           # seconds of ball time between a smooth 180-degree turn + a radial pull (no flicks)
+const HT_TURN_TIME := 0.4
+const HT_PULL_FROM := 0.8            # radial pull: finger distance in ring radii, from ...
+const HT_PULL_TO := 1.6              # ... to (past touch_controls.TURBO_PULL, so turbo comes on)
+const HT_PULL_TIME := 0.3
+const HT_PULL_HOLD := 0.3
+const HT_TAP_EVERY := 4.0            # seconds of ball time between short A taps (pump fake input) outside the rim range
+const HT_TAP_FRAMES := 5
+
 var hoops := [Vector2(5.25 * FT, COURT_H / 2), Vector2(COURT_W - 5.25 * FT, COURT_H / 2)]
 
 var rng := RandomNumberGenerator.new()
@@ -51,6 +67,7 @@ var controls
 var camera: Camera2D
 var audio                           # sound effects: audio.play("swish")
 var fx                              # shake, popups, ball trail: fx.shake(6.0, 0.3)
+var input                           # human_input.gd: buttons, pass target, switch, flick and tap detection
 var rims                            # court instance that draws rims and nets: rims.swish(hoop_index)
 var score := [0, 0]
 var quarter := 1
@@ -68,6 +85,17 @@ var chasers := []
 var key_a_down := false
 var stats := {}
 var _trail_on := false              # fire trail currently shown behind the ball
+var humantest := false
+# humantest scripted thumb state
+var ht_angle := 0.0
+var ht_dist := 1.0
+var ht_mode := ""                   # "", "snap", "turn", "pull", "tap"
+var ht_t := 0.0
+var ht_frames := 0
+var ht_ok := true                   # the human could flick on every frame of the current snap
+var ht_snap_clock := 0.0
+var ht_turn_clock := 0.0
+var ht_tap_clock := 0.0
 
 func stat(k: String) -> void:
 	stats[k] = stats.get(k, 0) + 1
@@ -84,6 +112,7 @@ var msg_age := 0.0
 func _ready() -> void:
 	rng.randomize()
 	autoplay = OS.get_cmdline_user_args().has("--autoplay")
+	humantest = OS.get_cmdline_user_args().has("--humantest")
 
 	audio = AudioScript.new()
 	audio.game = self
@@ -127,6 +156,10 @@ func _ready() -> void:
 	fx = FxScript.new()
 	fx.game = self
 	add_child(fx)
+
+	input = HumanInputScript.new()
+	input.game = self
+	add_child(input)
 
 	_build_hud()
 	start_period()
@@ -430,53 +463,13 @@ func _inbound(team: int) -> void:
 # ---------------- input ----------------
 
 func _on_a_pressed() -> void:
-	if game_over:
-		get_tree().reload_current_scene()
-		return
-	if human_player == null:
-		return
-	if human_player.has_ball():
-		human_player.start_shot()
-	elif possession != HUMAN_TEAM or ball.state == ball.SHOT:
-		attempt_steal(human_player, 0.28)
+	input.a_pressed()
 
 func _on_a_released() -> void:
-	if human_player != null and human_player.shooting:
-		human_player.release_shot()
+	input.a_released()
 
 func _on_b_pressed() -> void:
-	if human_player == null or game_over:
-		return
-	if human_player.has_ball():
-		var dir: Vector2 = _input_vector()
-		var best = null
-		var best_score := -INF
-		for mate in teams[HUMAN_TEAM]:
-			if mate == human_player:
-				continue
-			var to: Vector2 = mate.position - human_player.position
-			var s: float = openness(mate) - to.length() / FT * 0.3
-			if dir.length() > 0.3:
-				s += dir.normalized().dot(to.normalized()) * 30.0
-			if s > best_score:
-				best_score = s
-				best = mate
-		do_pass(human_player, best)
-	elif possession != HUMAN_TEAM:
-		_switch_player()
-
-func _switch_player() -> void:
-	var best = null
-	var best_d := INF
-	for p in teams[HUMAN_TEAM]:
-		if p == human_player:
-			continue
-		var d: float = p.position.distance_to(ball.position)
-		if d < best_d:
-			best_d = d
-			best = p
-	if best != null:
-		human_player = best
+	input.b_pressed()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and not event.echo:
@@ -491,11 +484,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_b_pressed()
 
 func _input_vector() -> Vector2:
-	var v: Vector2 = controls.joystick()
-	if OS.get_cmdline_user_args().has("--humantest") and human_player != null:
-		# developer testing only: a simple scripted "thumb" exercising every control
-		var goal: Vector2 = attack_hoop(HUMAN_TEAM) if possession == HUMAN_TEAM else ball.position
-		v = (goal - human_player.position).normalized()
+	var v: Vector2 = controls.joystick()   # in --humantest the scripted thumb drives this too
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT): v.x -= 1
 	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT): v.x += 1
 	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP): v.y -= 1
@@ -565,19 +554,102 @@ func _physics_process(delta: float) -> void:
 			if human_player != mine and human_player.position.distance_to(ball.position) > mine.position.distance_to(ball.position) + 60.0:
 				human_player = mine
 
-	if OS.get_cmdline_user_args().has("--humantest") and human_player != null:
+	if humantest and human_player != null:
 		if _frame % 97 == 0: _on_a_pressed()
 		if _frame % 97 == 50: _on_a_released()
 		if _frame % 211 == 0: _on_b_pressed()
-	var input := _input_vector()
+		_humantest_thumb(delta)
+	var stick := _input_vector()
+	input.update(delta, stick)
 	for p in players:
-		p.update(delta, is_human(p), input)
+		p.update(delta, is_human(p), stick)
 	_separate_players()
 	ball.update(delta)
 	_update_fire_trail()
 
 	camera.position = ball.position
 	_update_hud()
+
+# ---------------- humantest scripted thumb ----------------
+
+# developer testing only: a scripted thumb on the real touch joystick. It steers toward the hoop (or the ball on
+# defense) turning at most HT_STEER_RATE, and while the human holds the ball it injects gestures: 120-degree snaps
+# (flicks), smooth 180-degree turns and radial turbo pulls (not flicks), and short A taps.
+func _humantest_thumb(delta: float) -> void:
+	if controls.joy_index < 0:
+		var down := InputEventScreenTouch.new()
+		down.index = 0
+		down.pressed = true
+		down.position = HT_FINGER_POS
+		controls._input(down)
+	var goal: Vector2 = attack_hoop(HUMAN_TEAM) if possession == HUMAN_TEAM else ball.position
+	var goal_angle: float = (goal - human_player.position).angle()
+	var can_flick: bool = input.flick_ready()
+	if can_flick:
+		ht_snap_clock += delta
+		ht_turn_clock += delta
+		ht_tap_clock += delta
+	ht_t += delta
+	ht_frames += 1
+	match ht_mode:
+		"snap":
+			ht_ok = ht_ok and can_flick
+			ht_angle += deg_to_rad(HT_SNAP_DEG / HT_SNAP_FRAMES)
+			if ht_frames >= HT_SNAP_FRAMES:
+				ht_mode = ""
+				if ht_ok:
+					stat("humantest_snaps")   # the detector sees this frame after this function: same state
+				else:
+					stat("humantest_snaps_interrupted")
+		"turn":
+			ht_angle += deg_to_rad(180.0) * delta / HT_TURN_TIME
+			if ht_t >= HT_TURN_TIME:
+				stat("humantest_smooth_turns")
+				_ht_start("pull")
+				stat("humantest_pulls")
+		"pull":
+			ht_dist = lerpf(HT_PULL_FROM, HT_PULL_TO, minf(ht_t / HT_PULL_TIME, 1.0))
+			if controls.turbo_pull():
+				stat("humantest_pull_turbo_frames")
+			if ht_t >= HT_PULL_TIME + HT_PULL_HOLD:
+				ht_dist = 1.0
+				ht_mode = ""
+		"tap":
+			if ht_frames >= HT_TAP_FRAMES:
+				_on_a_released()
+				ht_mode = ""
+		_:
+			var diff: float = wrapf(goal_angle - ht_angle, -PI, PI)
+			var step: float = deg_to_rad(HT_STEER_RATE) * delta
+			ht_angle += clampf(diff, -step, step)
+			if can_flick:
+				var far: bool = human_player.position.distance_to(attack_hoop(HUMAN_TEAM)) / FT \
+						> PlayerScript.LAYUP_RANGE + 1.0
+				if ht_snap_clock >= HT_SNAP_EVERY:
+					ht_snap_clock = 0.0
+					ht_ok = true
+					_ht_start("snap")
+				elif ht_turn_clock >= HT_TURN_EVERY:
+					ht_turn_clock = 0.0
+					_ht_start("turn")
+				elif ht_tap_clock >= HT_TAP_EVERY and far:
+					ht_tap_clock = 0.0
+					_on_a_pressed()
+					if human_player.shooting and human_player.rim_kind == "":
+						stat("humantest_taps")
+						_ht_start("tap")
+	ht_angle = wrapf(ht_angle, -PI, PI)
+	var drag := InputEventScreenDrag.new()
+	drag.index = 0
+	drag.position = controls.joy_center + Vector2.from_angle(ht_angle) * ht_dist * controls.JOY_RADIUS
+	controls._input(drag)
+
+func _ht_start(mode: String) -> void:
+	ht_mode = mode
+	ht_t = 0.0
+	ht_frames = 0
+	if mode == "pull":
+		ht_dist = HT_PULL_FROM
 
 func _separate_players() -> void:
 	var min_d := 24.0
@@ -609,7 +681,7 @@ func _end_period() -> void:
 		var winner := "BLUE" if score[0] > score[1] else "RED"
 		audio.play("whistle", 3.0, 0.0)   # second, louder whistle: game over
 		show_message("FINAL  %d - %d\n%s WINS!  Tap to play again" % [score[0], score[1], winner], 9999.0)
-		if autoplay or OS.get_cmdline_user_args().has("--humantest"):
+		if autoplay or humantest:
 			print("FINAL BLUE %d - RED %d" % [score[0], score[1]])
 			print(stats)
 			get_tree().quit()
