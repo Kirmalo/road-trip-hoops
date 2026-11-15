@@ -23,6 +23,16 @@ var vel := Vector2.ZERO
 var intercept_checked := {}
 var sprite: Sprite2D
 var anim_time := 0.0
+var next_shot_kind := ""   # set by the shooter just before release: "dunk", "layup" or "" (jump shot)
+var shot_kind := ""
+var shot_z0 := 26.0        # height the shot leaves the hand
+
+# ---- dunk and layup flight (tuning) ----
+const DUNK_FLIGHT := 0.12      # seconds from the hand to the rim on a dunk (a quick slam)
+const LAYUP_FLIGHT := 0.4      # seconds for a layup's short soft arc
+const LAYUP_PEAK := 26.0       # extra arc height of a layup in pixels
+const HAND_Z := 22.0           # ball height above a jumping player's jump height
+const SLAM_COLOR := Color(1.0, 0.55, 0.1)
 
 const PASS_SPEED := 720.0
 const GRAVITY := 900.0
@@ -58,9 +68,18 @@ func shoot(p, hoop: Vector2, made: bool, points: int) -> void:
 	shot_start = position
 	shot_hoop = hoop
 	shot_t = 0.0
+	shot_kind = next_shot_kind
+	next_shot_kind = ""
+	shot_z0 = z if shot_kind != "" else 26.0
 	var dist := position.distance_to(hoop)
 	shot_time = 0.55 + dist / 900.0
 	shot_peak = 40.0 + dist * 0.22
+	if shot_kind == "dunk":
+		shot_time = DUNK_FLIGHT
+		shot_peak = 0.0
+	elif shot_kind == "layup":
+		shot_time = LAYUP_FLIGHT
+		shot_peak = LAYUP_PEAK
 	shot_made = made
 	shot_points = points
 	blocked_checked = false
@@ -87,7 +106,9 @@ func update(delta: float) -> void:
 				return
 			var dir := Vector2.from_angle(holder.facing)
 			position = holder.position + dir * 15.0
-			if holder.shooting:
+			if holder.rim_kind != "":
+				z = holder.jump_z + HAND_Z  # carried up in the jump
+			elif holder.shooting:
 				z = 26.0
 			else:
 				z = 4.0 + abs(sin(anim_time * 9.0)) * 16.0
@@ -119,6 +140,10 @@ func update(delta: float) -> void:
 				z = 0.0
 				if shot_made:
 					make_dead()
+					if shot_kind != "":
+						game.stat(shot_kind + "_makes")
+					if shot_kind == "dunk":
+						slam_feedback()
 					game.on_shot_made(shooter, shot_points)
 				else:
 					# rim out: bounce back toward the court
@@ -129,7 +154,7 @@ func update(delta: float) -> void:
 					game.on_shot_missed(shooter)
 				return
 			position = shot_start.lerp(shot_hoop, shot_t)
-			z = 26.0 * (1.0 - shot_t) + 4.0 * shot_peak * shot_t * (1.0 - shot_t)
+			z = shot_z0 * (1.0 - shot_t) + 4.0 * shot_peak * shot_t * (1.0 - shot_t)
 		LOOSE:
 			position += vel * delta
 			vel *= pow(0.35, delta)
@@ -163,6 +188,13 @@ func update(delta: float) -> void:
 	var s := 1.1 + z / 160.0
 	sprite.scale = Vector2(s, s)
 	queue_redraw()
+
+func slam_feedback() -> void:
+	if game.fx:
+		game.fx.popup("SLAM!", shot_hoop + Vector2(0, -56), SLAM_COLOR, 48)
+		game.fx.shake(8.0, 0.35)
+	if game.audio:
+		game.audio.play("dunk")
 
 func _draw() -> void:
 	# shadow on the floor

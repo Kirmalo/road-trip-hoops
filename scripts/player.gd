@@ -43,6 +43,36 @@ var refill_wait := 0.0
 var since_turbo := 99.0           # seconds since this player last sprinted
 var humantest := false
 
+# ---- dunks and layups (tuning) ----
+const DUNK_RANGE := 6.0           # feet from the rim: a dunk is possible inside this
+const LAYUP_RANGE := 9.0          # feet from the rim: Shoot inside this is a layup (or dunk), no shot meter
+const DUNK_SPEED_FRAC := 0.7      # dunk needs at least this fraction of top speed (or turbo)
+const DUNK_TIME := 0.55           # seconds in the air for a dunk
+const LAYUP_TIME := 0.45          # seconds in the air for a layup
+const DUNK_JUMP_PX := 30.0        # jump height in pixels (drawn as an upward offset)
+const LAYUP_JUMP_PX := 20.0
+const DUNK_RELEASE := 0.55        # fraction of the jump when the ball leaves the hand
+const LAYUP_RELEASE := 0.5
+const RIM_GLIDE := 0.45           # fraction of top speed the jumper keeps drifting toward the rim
+const DUNK_OPEN_PCT := 0.85       # make chance of an open dunk
+const LAYUP_OPEN_PCT := 0.65      # make chance of an open layup
+const CONTEST_FT := 4.0           # nearest defender inside this contests the take-off
+const DUNK_BLOCK_CHANCE := 0.18   # block chance with a defender right on you (less further away)
+const LAYUP_BLOCK_CHANCE := 0.12
+const CONTEST_MAKE_MULT := 0.9    # extra make-odds multiplier with a defender right on you (eases off with distance)
+const CPU_FINISH_FT := 4.5        # CPU handler finishes at the rim inside this (any speed)
+const CPU_LAYUP_CHANCE := 0.45    # CPU entering LAYUP_RANGE with a defender close: chance it pulls up for a layup
+const CPU_LAYUP_OPEN_CHANCE := 0.15  # same with nobody close (otherwise it keeps going for the dunk)
+
+var rim_kind := ""                # "dunk" or "layup" while in the air, "" otherwise
+var jump_t := 0.0                 # seconds since take-off
+var jump_time := 0.0
+var jump_z := 0.0                 # current height of the jump in pixels
+var jump_released := false
+var rim_quality := 1.0
+var rim_blocker = null            # defender who will block this one (decided at take-off)
+var cpu_rim_rolled := false       # CPU already decided layup-or-keep-going on this drive
+
 # Offensive spots, in feet: (distance out from the baseline side of the hoop, sideways offset)
 const SPOTS := [
 	Vector2(24, 0),    # top of the key
@@ -79,7 +109,9 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		game.stat("frames")
 	var desired := Vector2.ZERO
 	var want_turbo := false
-	if shooting:
+	if rim_kind != "":
+		desired = update_rim_move(delta)
+	elif shooting:
 		if not has_ball():
 			shooting = false
 		elif is_human:
@@ -105,6 +137,9 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	velocity = velocity.move_toward(desired, 1600.0 * delta)
 	position += velocity * delta
 	position = game.clamp_to_court(position)
+	var lift := jump_z / DUNK_JUMP_PX
+	sprite.position = Vector2(0, -jump_z)
+	sprite.scale = Vector2(1.75, 1.75) * (1.0 + 0.15 * lift)
 	# face where we are going, or the ball when standing still
 	var look := velocity
 	if look.length() < 15.0:
@@ -171,14 +206,18 @@ func seek(t: Vector2, mult: float) -> Vector2:
 # ---------------- shooting ----------------
 
 func start_shot() -> void:
-	if has_ball() and not shooting:
+	if has_ball() and not shooting and rim_kind == "":
+		var d_ft: float = position.distance_to(game.attack_hoop(team)) / game.FT
+		if d_ft <= LAYUP_RANGE:
+			start_rim_move(d_ft)
+			return
 		shooting = true
 		shot_charge = 0.0
 		cpu_shot_time = game.rng.randf_range(0.3, 0.45)
 
 func release_shot() -> void:
-	if not shooting:
-		return
+	if not shooting or rim_kind != "":
+		return  # dunks and layups release on their own
 	shooting = false
 	var quality := 1.0
 	if game.is_human(self):
@@ -198,6 +237,84 @@ func release_shot() -> void:
 		quality *= TURBO_SHOT_PENALTY
 		game.stat("turbo_jumpers")
 	game.release_shot(self, quality)
+
+# ---------------- dunks and layups ----------------
+
+func is_dunk_speed() -> bool:
+	return turbo or since_turbo < 0.2 or velocity.length() >= DUNK_SPEED_FRAC * speed
+
+# Shoot near the rim: take off for a dunk (very close and fast) or a layup. No shot meter.
+func start_rim_move(d_ft: float) -> void:
+	var dunk := d_ft <= DUNK_RANGE and is_dunk_speed()
+	rim_kind = "dunk" if dunk else "layup"
+	jump_time = DUNK_TIME if dunk else LAYUP_TIME
+	jump_t = 0.0
+	jump_z = 0.0
+	jump_released = false
+	shooting = true
+	game.stat(rim_kind + "s")
+	game.stat("%ss_t%d" % [rim_kind, team])
+	if game.is_human(self):
+		game.stat("human_" + rim_kind + "s")
+	# contest check at take-off (make odds are set at release, see release_rim_shot)
+	rim_quality = 1.0
+	rim_blocker = null
+	var def = game.nearest_opponent(self)
+	if def != null:
+		var c_ft: float = def.position.distance_to(position) / game.FT
+		if c_ft < CONTEST_FT:
+			var close := clampf(1.5 * (1.0 - c_ft / CONTEST_FT), 0.0, 1.0)
+			rim_quality *= lerpf(1.0, CONTEST_MAKE_MULT, close)
+			game.stat("rim_contested")
+			var chance := (DUNK_BLOCK_CHANCE if dunk else LAYUP_BLOCK_CHANCE) * close
+			if game.rng.randf() < chance:
+				rim_blocker = def
+
+# Runs every frame while in the air; returns the desired velocity (a glide toward the rim).
+func update_rim_move(delta: float) -> Vector2:
+	jump_t += delta
+	var f := clampf(jump_t / jump_time, 0.0, 1.0)
+	var peak := DUNK_JUMP_PX if rim_kind == "dunk" else LAYUP_JUMP_PX
+	jump_z = peak * sin(PI * f)
+	var release_at := DUNK_RELEASE if rim_kind == "dunk" else LAYUP_RELEASE
+	if not jump_released and f >= release_at:
+		jump_released = true
+		shooting = false
+		if has_ball():
+			release_rim_shot()
+	elif not jump_released and not has_ball():
+		jump_released = true  # stripped or the period ended: just land
+		shooting = false
+	if f >= 1.0:
+		rim_kind = ""
+		jump_z = 0.0
+		shooting = false
+		return Vector2.ZERO
+	var hoop: Vector2 = game.attack_hoop(team)
+	var under: Vector2 = hoop + Vector2(game.inward(hoop) * 1.5 * game.FT, 0)
+	return seek(under, RIM_GLIDE)
+
+func release_rim_shot() -> void:
+	var ball = game.ball
+	ball.next_shot_kind = rim_kind
+	if rim_blocker != null:
+		# blocked at the rim: the shot goes up (counts as a shot) and gets swatted
+		game.release_shot(self, 0.0)
+		if ball.state == ball.SHOT:
+			ball.shot_made = false
+			game.block_shot(rim_blocker)
+			game.stat("rim_blocks")
+			if game.fx:
+				game.fx.shake(4.0, 0.2)
+		return
+	# aim the open make chance at DUNK_OPEN_PCT / LAYUP_OPEN_PCT; shot_probability() then applies its own
+	# openness penalty (about x0.55 with a defender on you)
+	var d_ft: float = position.distance_to(game.attack_hoop(team)) / game.FT
+	var base := 0.66 if d_ft < 5.0 else maxf(0.02, 0.52 - (d_ft - 5.0) * 0.0075)  # mirrors main.shot_probability
+	var target := DUNK_OPEN_PCT if rim_kind == "dunk" else LAYUP_OPEN_PCT
+	game.release_shot(self, target / base * rim_quality)
+	if ball.state == ball.SHOT:
+		ball.blocked_checked = true  # the take-off contest replaces the CPU jump-shot contest
 
 # ---------------- CPU brain ----------------
 
@@ -286,12 +403,23 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 	# sprint on a fast break, or when the lane to the rim is open
 	if fast_break or (open_ft > 6.0 and dist_ft > 8.0 and lane_open(hoop)):
 		cpu_turbo_want = true
+	# attack the rim: once per drive, maybe pull up early for a layup; at full speed close in, dunk
+	if dist_ft > LAYUP_RANGE + 2.0:
+		cpu_rim_rolled = false
+	elif dist_ft <= LAYUP_RANGE and dist_ft > DUNK_RANGE and not cpu_rim_rolled:
+		cpu_rim_rolled = true
+		if game.rng.randf() < (CPU_LAYUP_CHANCE if open_ft < CONTEST_FT else CPU_LAYUP_OPEN_CHANCE):
+			start_shot()
+			return
+	if dist_ft <= DUNK_RANGE and is_dunk_speed():
+		start_shot()
+		return
 	decision_timer -= delta
 	if decision_timer > 0.0:
 		return
 	decision_timer = game.rng.randf_range(0.3, 0.5)
 	var p: float = game.shot_probability(self, 1.0)
-	if dist_ft < 4.5:
+	if dist_ft < CPU_FINISH_FT:
 		start_shot()
 	elif game.shot_clock < 4.0 and dist_ft < 32.0:
 		start_shot()
@@ -359,6 +487,12 @@ func defense_ai(delta: float) -> void:
 			game.block_shot(self)
 
 func _draw() -> void:
+	if jump_z > 0.5:
+		# shadow on the floor under a jumping player
+		var sr := 16.0 - jump_z * 0.15
+		draw_set_transform(Vector2(0, 4), 0, Vector2(1, 0.55))
+		draw_circle(Vector2.ZERO, sr, Color(0, 0, 0, 0.3))
+		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 	if turbo and velocity.length() > 20.0:
 		# dust puffs behind a sprinting player
 		var back := -velocity.normalized()
