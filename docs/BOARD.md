@@ -326,3 +326,13 @@ before the next starts. If the owner answers late, wave 1 still finishes; nothin
   humantest score out of range, steal timing window). See the P2-04 review notes.
 
 ## Done
+- P2-01 defense split, ratings, block jump, stumble, close-guard slow, B1 fix (approved after one fix; merged 8b7d552).
+  Ratings by roster slot, both teams: steal/block 75/40, 40/75, 35/35.
+- P2-02 CPU pull-up jumpers (merged). ~10.6 jumpers/game (18%), jumper FG ~22%, threes 2/9: retune in P2-11.
+- P2-03 human_input.gd, flick/tap detection (approved; merged 4e15617). 0 false flicks from turns/turbo pulls.
+- P2-04 skill-based steals (approved after changes; merged). Owner: no stumble on a miss; every steal attempt freezes
+  the defender for STEAL_POKE_FREEZE 0.3 s (`poke_t`). Timing = a window around each dribble floor touch:
+  STEAL_GRACE 0.05 s (human), STEAL_CPU_GRACE 0.02 s until P2-08 times CPU pokes (then make it equal).
+  STEAL button turns solid yellow with a pulsing ring while a poke would be well timed.
+  Merged check: 26-12, 12-22, 18-17, 20-16; 49-57 shots; 9-15 steals; 2-3 intercepts.
+- Watch in P2-13: RED scored lower than BLUE in several runs since P2-01/P2-02; recheck team balance over 20+ games.
