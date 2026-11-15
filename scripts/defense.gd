@@ -9,8 +9,26 @@ const WAIT_PAST_HALF_FT := 6.0    # no full-court press: wait this far past half
 const HELP_SIDE := 0.15           # off-ball: lean this fraction toward the ball
 const DEF_SPEED_MULT := 0.9       # normal defensive speed
 const POKE_RANGE_PX := 34.0       # poke at the ball handler inside this distance
-const POKE_EVERY := 2.0           # seconds between pokes
-const POKE_CHANCE := 0.06         # legacy flat steal chance (main.attempt_steal may ignore it)
+
+# ---- CPU defense reads the moves (P2-08) ----
+# pokes: only at an exposed ball, timed on the dribble's floor touch (main.steal_timing) when he's sharp enough
+const CPU_POKE_EXPOSURE := 0.5    # pokes only when main.steal_exposure() is at least this
+const CPU_POKE_GAP := 2.0         # seconds between his pokes at most
+const CPU_POKE_CROSS_GAP := 0.6   # ... against a handler in a crossover (the ball crosses in front: poke more)
+const CPU_POKE_RECHECK := 0.25    # ball shielded (or he passed on it): look again this soon
+const CPU_POKE_CHANCE := 0.3      # when the ball is exposed and the gap is up: chance he goes for it now
+const CPU_POKE_ON_TIME := 0.11    # chance he times a poke on the dribble's floor touch, at steal 50; otherwise he
+                                  # mistimes it (pokes while the ball is up). This sets how many CPU steals there are
+const CPU_POKE_RATING_SPAN := 0.3 # on-time chance x(1 -/+ this) across steal ratings 0..100
+const CPU_POKE_WAIT_MAX := 0.4    # he waits at most this long for his moment, then pokes anyway
+# crossovers: a reaction time; too slow and the crossover beats him (P2-05 asks beaten_by_cross())
+const CPU_CROSS_REACT_MIN := 0.2  # seconds he keeps going the old way after a crossover starts, random between these
+const CPU_CROSS_REACT_MAX := 0.4
+const CPU_CROSS_BEAT_REACT := 0.33  # a reaction slower than this: beaten (about 35% of crossovers)
+const CPU_RECOVER_TIME := 1.2     # after being beaten he sprints this long to recover
+# close guarding: on the ball he stays in front of the way the handler is going, so the handler is slowed
+const CPU_GUARD_LEAD := 0.6       # how much the handler's movement turns the "in front" spot (0 = hoop side only)
+const CPU_ON_BALL_SPEED := 1.0    # speed multiplier while guarding the ball (others use DEF_SPEED_MULT)
 
 # ---- blocks on jump timing (P2-07). A block needs a defender in a block jump (player.start_block_jump), close
 # enough and high enough. Timing decides a good or a bad try; player.block_chance(good) scales a good one by the
@@ -43,6 +61,16 @@ var _jump_wait := -1.0       # seconds until my block jump (< 0 = none planned)
 var _was_air := false
 var _air_saw_release := false  # a shot left the hand during my current block jump (else it was an early jump)
 
+# poke and crossover state (P2-08)
+var _poke_gap := 0.0         # seconds until he may poke again
+var _poke_wait := -1.0       # waiting for his moment to poke (seconds left; < 0 = not waiting)
+var _poke_on_time := false   # this poke waits for the floor touch (else for the ball to be up: a mistimed poke)
+var _cross_seen := false     # reacting to the current crossover
+var _cross_react := 0.0      # seconds left of his reaction to it
+var _cross_beat := false     # this crossover beats him
+var _cross_target := Vector2.ZERO   # where he was heading when the crossover started (he keeps going there)
+var _recover_t := 0.0        # seconds left of a recovery sprint
+
 func _init(player, g) -> void:
 	p = player
 	game = g
@@ -57,26 +85,108 @@ func cpu_update(delta: float) -> void:
 	if ball.holder == man:
 		gap = GAP_BALL_FT * FT
 	var to_hoop: Vector2 = guard_hoop - man.position
-	p.target = man.position + to_hoop.normalized() * minf(gap, to_hoop.length() * 0.5)
+	var front: Vector2 = to_hoop.normalized()
+	if ball.holder == man and man.velocity.length() > 20.0:
+		# close guarding: stay in front of where he's going (that's what slows a driver), still on the hoop side
+		front = (front + man.velocity / man.speed * CPU_GUARD_LEAD).normalized()
+		if front.dot(to_hoop) <= 0.0:
+			front = to_hoop.normalized()
+	p.target = man.position + front * minf(gap, to_hoop.length() * 0.5)
 	if not game.in_frontcourt(man.position, man.team):
 		# no full-court press: wait just past half court
 		var toward: float = -game.inward(guard_hoop)
 		p.target = Vector2(game.COURT_W / 2 + toward * WAIT_PAST_HALF_FT * FT, lerpf(man.position.y, game.COURT_H / 2, 0.3))
 	if ball.holder != man and ball.state != ball.DEAD:
 		p.target = p.target.lerp(ball.position, HELP_SIDE)  # help side
-	p.speed_mult = DEF_SPEED_MULT
+	p.speed_mult = CPU_ON_BALL_SPEED if ball.holder == man else DEF_SPEED_MULT
 	# beaten by my man: sprint to recover
 	var beaten: float = (p.position.distance_to(guard_hoop) - man.position.distance_to(guard_hoop)) / FT
 	if beaten > p.CPU_BEATEN_FT and game.in_frontcourt(man.position, man.team):
 		p.cpu_turbo_want = true
 		p.speed_mult = 1.0
-	# poke at the ball now and then (not while off balance)
-	if ball.holder == man and p.position.distance_to(man.position) < POKE_RANGE_PX and p.stumble_t <= 0.0:
-		p.steal_timer -= delta
-		if p.steal_timer <= 0.0:
-			p.steal_timer = POKE_EVERY
-			game.attempt_steal(p, POKE_CHANCE)
+	_update_crossover(delta, man)
+	_update_pokes(delta, man)
 	_update_block_jump(delta)
+
+# Called by player.gd (P2-05) when a crossover starts near this CPU defender: true if it beats him (he stumbles).
+# Picks his reaction time for this crossover (beaten if slower than CPU_CROSS_BEAT_REACT, about 35%);
+# cpu_update keeps him going the old way while he reacts.
+func beaten_by_cross(_handler, _dir: Vector2 = Vector2.ZERO) -> bool:
+	_start_cross_read()
+	return _cross_beat
+
+# Called by player.gd (P2-06) when a pump fake starts. Nothing to do here: _update_block_jump reads the faker's
+# fake_t every frame (a human fake has shooting false and fake_t > 0) and rolls CPU_FAKE_BITE once per fake.
+func on_pump_fake(_faker) -> void:
+	pass
+
+func _start_cross_read() -> void:
+	_cross_seen = true
+	_cross_react = game.rng.randf_range(CPU_CROSS_REACT_MIN, CPU_CROSS_REACT_MAX)
+	_cross_beat = _cross_react > CPU_CROSS_BEAT_REACT
+	_cross_target = p.target
+	if not _cross_beat:
+		_poke_gap = 0.0   # he read it: the ball is crossing in front of him, go for it
+
+func _update_crossover(delta: float, man) -> void:
+	var h = game.ball.holder
+	var crossing: bool = h == man and "cross_t" in h and h.cross_t > 0.0
+	if crossing and not _cross_seen:
+		_start_cross_read()
+	if _cross_seen:
+		if _cross_react > 0.0:
+			_cross_react -= delta
+			p.target = _cross_target   # still reacting: keeps going the old way
+			if _cross_react <= 0.0:
+				if p.stumble_t > 0.0:
+					_recover_t = CPU_RECOVER_TIME   # beaten: sprint back once he has his balance
+					game.stat("recover_sprints")
+				else:
+					game.stat("cpu_cross_reads")    # inside his reaction window, but it didn't beat him
+		elif not crossing:
+			_cross_seen = false
+	if _recover_t > 0.0:
+		_recover_t -= delta
+		p.cpu_turbo_want = true
+		p.speed_mult = 1.0
+
+# Pokes at an exposed ball, timed on the dribble's floor touch when he's sharp enough.
+func _update_pokes(delta: float, man) -> void:
+	_poke_gap -= delta
+	var h = game.ball.holder
+	if h != man or p.position.distance_to(man.position) >= POKE_RANGE_PX or p.stumble_t > 0.0 \
+			or p.poke_t > 0.0 or p.steal_cooldown > 0.0 or p.is_airborne():
+		_poke_wait = -1.0
+		return
+	var exposed: bool = game.steal_exposure(p, h) >= CPU_POKE_EXPOSURE
+	if _poke_wait >= 0.0:
+		_poke_wait -= delta
+		var touch: bool = game.steal_timing(h, game.STEAL_CPU_GRACE) > 0.0
+		if exposed and touch == _poke_on_time:
+			if touch:
+				game.stat("cpu_pokes_timed")
+			_poke(h)
+		elif _poke_wait < 0.0:
+			_poke(h)   # waited too long: pokes anyway
+		return
+	if _poke_gap > 0.0:
+		return
+	if not exposed:
+		game.stat("cpu_poke_skipped_shielded")
+		_poke_gap = CPU_POKE_RECHECK
+		return
+	if game.rng.randf() >= CPU_POKE_CHANCE:
+		_poke_gap = CPU_POKE_RECHECK
+		return
+	_poke_on_time = game.rng.randf() < CPU_POKE_ON_TIME * (1.0 + CPU_POKE_RATING_SPAN * p.rating_frac("steal"))
+	_poke_wait = CPU_POKE_WAIT_MAX
+
+func _poke(h) -> void:
+	_poke_wait = -1.0
+	var crossing: bool = "cross_t" in h and h.cross_t > 0.0
+	_poke_gap = CPU_POKE_CROSS_GAP if crossing else CPU_POKE_GAP
+	game.stat("cpu_pokes")
+	game.attempt_steal(p)
 
 # The other team's shooter worth jumping at: the handler, or the shooter of a ball still in its block window.
 func _shot_threat():

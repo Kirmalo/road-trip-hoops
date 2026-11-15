@@ -71,8 +71,7 @@ const DRIBBLE_PERIOD := PI / 9.0     # seconds between floor touches; must match
 const STEAL_GRACE := 0.05            # seconds either side of a floor touch that count as a well-timed poke (human).
                                      # The dribble touches the floor every 0.35 s, so 0.05 is 29% of the cycle; the
                                      # STEAL button stays lit about 6 frames per bounce. 0.1 would be 57% (mashing works)
-const STEAL_CPU_GRACE := 0.02        # CPU pokes (interim): defense.gd still pokes on a blind 2 s timer, so a wide window
-                                     # gave 46-51 steals a game. Set to STEAL_GRACE once P2-08 times the CPU's pokes
+const STEAL_CPU_GRACE := STEAL_GRACE # CPU pokes: same window as the human (defense.gd times them on the floor touch)
 const STEAL_HELD_TIMING := 0.25      # timing factor when the ball is held up (gathering a shot, pump fake, at the rim)
 
 # --humantest scripted thumb (developer testing only): drives the real touch joystick with synthetic touch events
