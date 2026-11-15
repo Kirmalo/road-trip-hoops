@@ -49,7 +49,7 @@ const CPU_JUMP_REACT_MAX := 0.3
 const CPU_JUMP_CHANCE := 0.5      # chance he jumps at a dunk/layup (at block rating 50)
 const CPU_JUMPER_JUMP_CHANCE := 0.2  # chance he jumps at a jump shot (P2-11: was CPU_JUMP_CHANCE 0.5; ~1 in 4 jumpers got blocked)
 const CPU_JUMP_RATING_SPAN := 0.3 # jump chance x(1 -/+ this) across block ratings 0..100: shot-blockers jump more
-const CPU_FAKE_BITE := 0.4        # chance he jumps at a pump fake (bites; at block rating 50; P2-11: was 0.45)
+const CPU_FAKE_BITE := 0.35       # chance he jumps at a pump fake (bites; at block rating 50; P2-11: was 0.45, P2-13: 0.4)
 const CPU_JUMP_CHARGE := 0.65     # human shooter: he waits until the shot meter is this full (the shooter's rhythm)
 
 var p        # the player this brain belongs to
