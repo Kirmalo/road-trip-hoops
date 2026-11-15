@@ -20,7 +20,7 @@ var shot_charge := 0.0
 var cpu_shot_time := 0.0
 
 # ---- turbo and stamina (tuning) ----
-const TURBO_EDGE := 0.9           # joystick push (0..1) that counts as "at the edge" = sprint
+# (how far to pull the joystick to sprint is TURBO_PULL in touch_controls.gd)
 const TURBO_SPEED_MULT := 1.35    # speed multiplier while sprinting
 const TURBO_BALL_MULT := 0.95     # ball handler sprints at this fraction of the turbo speed
 const STAMINA_DRAIN := 0.4        # stamina per second while sprinting (1.0 = full bar, 2.5 s of sprint)
@@ -171,8 +171,7 @@ func human_turbo_input() -> bool:
 		return true  # developer testing: the scripted thumb is always pushed to the edge
 	if Input.is_key_pressed(KEY_SHIFT):
 		return true  # desktop testing only
-	var j: Vector2 = game.controls.joystick()
-	return j.length() >= TURBO_EDGE
+	return game.controls.turbo_pull()   # thumb pulled past the joystick ring (touch_controls.TURBO_PULL)
 
 # Drains or refills stamina and returns true if this player sprints this frame.
 func update_turbo(delta: float, want: bool, is_human: bool) -> bool:

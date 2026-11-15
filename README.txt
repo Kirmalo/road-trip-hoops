@@ -21,7 +21,8 @@ You are BLUE (the player with the yellow ring). BLUE shoots at the RIGHT hoop.
 - 4 quarters of 2 minutes, 24 second shot clock, overtime if tied.
 
 TURBO
-- Push the joystick all the way to the edge to sprint.
+- Moving the joystick normally never sprints. To sprint, pull your thumb past the joystick ring, out to the
+  faint orange outer ring. The knob turns orange while you sprint.
 - The bar under your player is your stamina. Sprinting drains it; ease off and it refills after a moment.
   If it runs empty you can't sprint until it has refilled a bit.
 - You sprint slightly slower with the ball.
@@ -40,6 +41,7 @@ ON FIRE
 
 SOUND
 The game now has sound effects (swish, rim, bounce, dunk, block, crowd, whistle, fire). Credits are in CREDITS.md.
+No sound in the browser? Make sure the tablet's media volume is up (not just the ringer), then tap the screen once.
 
 EASY THINGS TO CHANGE (at the top of each file)
 scripts/main.gd:
@@ -48,6 +50,7 @@ scripts/main.gd:
 - FIRE_STREAK: makes in a row to catch fire (3)
 - FIRE_MISSES: misses that put the fire out (2)
 scripts/player.gd:
+- TURBO_PULL (touch_controls.gd): how far past the joystick ring you pull to sprint (1.5 = 1.5x the ring size)
 - TURBO_SPEED_MULT: sprint speed (1.35 = 35% faster)
 - TURBO_BALL_MULT: sprint speed with the ball (0.95)
 - STAMINA_DRAIN / STAMINA_REFILL: how fast the stamina bar empties and fills (per second, 1.0 = full bar)

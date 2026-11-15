@@ -9,6 +9,8 @@ var joy_index := -1
 var joy_center := Vector2.ZERO
 var joy_knob := Vector2.ZERO
 const JOY_RADIUS := 80.0
+const TURBO_PULL := 1.5            # sprint only when the finger is this many joystick radii from the center (past the ring)
+var joy_finger := Vector2.ZERO     # where the joystick finger really is (the knob stops at the ring)
 
 var a_index := -1
 var b_index := -1
@@ -24,6 +26,10 @@ func joystick() -> Vector2:
 		return Vector2.ZERO
 	var v := (joy_knob - joy_center) / JOY_RADIUS
 	return v if v.length() > 0.15 else Vector2.ZERO
+
+# true while the joystick finger is pulled well past the ring: that's the sprint (turbo) gesture
+func turbo_pull() -> bool:
+	return joy_index >= 0 and joy_finger.distance_to(joy_center) >= JOY_RADIUS * TURBO_PULL
 
 func a_center() -> Vector2:
 	return Vector2(size.x - 120, size.y - 130)
@@ -44,6 +50,7 @@ func _input(event: InputEvent) -> void:
 				joy_index = event.index
 				joy_center = event.position
 				joy_knob = event.position
+				joy_finger = event.position
 		else:
 			if event.index == joy_index:
 				joy_index = -1
@@ -54,6 +61,7 @@ func _input(event: InputEvent) -> void:
 				b_index = -1
 	elif event is InputEventScreenDrag:
 		if event.index == joy_index:
+			joy_finger = event.position
 			joy_knob = joy_center + (event.position - joy_center).limit_length(JOY_RADIUS)
 
 func _process(_delta: float) -> void:
@@ -64,7 +72,10 @@ func _draw() -> void:
 	if joy_index >= 0:
 		draw_circle(joy_center, JOY_RADIUS, Color(1, 1, 1, 0.15))
 		draw_arc(joy_center, JOY_RADIUS, 0, TAU, 48, Color(1, 1, 1, 0.5), 3.0)
-		draw_circle(joy_knob, 34.0, Color(1, 1, 1, 0.55))
+		# faint outer ring: pull your thumb past it to sprint; the knob turns orange while sprinting
+		var sprint := turbo_pull()
+		draw_arc(joy_center, JOY_RADIUS * TURBO_PULL, 0, TAU, 64, Color(1.0, 0.6, 0.2, 0.55 if sprint else 0.22), 2.0)
+		draw_circle(joy_knob, 34.0, Color(1.0, 0.6, 0.2, 0.8) if sprint else Color(1, 1, 1, 0.55))
 	else:
 		var hint := Vector2(150, size.y - 150)
 		draw_arc(hint, JOY_RADIUS, 0, TAU, 48, Color(1, 1, 1, 0.25), 3.0)

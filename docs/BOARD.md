@@ -1,6 +1,12 @@
 # Task Board
 
-Current phase: **Phase 1: feel** (all tasks done; waiting for the owner's tablet check-in) (planned 2026-11-15 by `lead-producer`)
+Current phase: **Phase 1: feel** (done). Owner check-in (2026-11-15), played the web build on the tablet:
+- Turbo: too easy to trigger by accident. Fixed: sprint needs the thumb pulled past the ring (`TURBO_PULL` 1.5 in
+  `touch_controls.gd`, orange outer ring and knob as the cue).
+- Dunks: good as is. CPU jump shots: teach it to pull up (Phase 2, R1).
+- No sound heard. Chromium plays the sounds; added a script to the web page that resumes audio on tap/lift
+  (Android Chrome only unlocks audio on a finger lift). Owner to recheck, and check media volume.
+- Dribble sound: not judged yet (no sound). (planned 2026-11-15 by `lead-producer`)
 
 Scope (from `docs/VISION.md`): turbo with a stamina bar (human and CPU); auto-dunk or layup near the rim with a jump
 animation and contest check; "on fire" after 3 makes in a row; feedback (sound effects swish/rim/bounce/crowd/whistle,

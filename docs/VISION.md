@@ -23,7 +23,7 @@ tablet with a joystick and two buttons.
 | Main mode | Road Trip campaign |
 | Game format | Full court (as built now), first to 21 |
 | Scoring | Streetball: 1 point inside the arc, 2 beyond |
-| Turbo | Push the joystick to its edge to sprint; drains a stamina bar, refills when you ease off |
+| Turbo | Pull the thumb past the joystick ring (to a faint outer ring) to sprint; a normal full push never sprints (owner, Phase 1 check-in: sprinting was too easy to trigger). Drains a stamina bar, refills when you ease off |
 | Offense moves | Auto-dunk or layup on Shoot near the rim; alley-oop (Pass to a teammate cutting to the rim); pump fake (very short tap of Shoot); crossover or spin (quick flick of the stick while dribbling) |
 | Defense | Skill-based: steals depend on timing and the handler's exposure, blocks on jump timing, close guarding slows a driver |
 | Teammates | Smart automatic movement; the human can call for the ball or switch player |
@@ -40,6 +40,7 @@ tablet with a joystick and two buttons.
 | Dunk or layup | Decided by distance and speed: very close and moving fast (or on turbo) dunks, otherwise a layup. Player ratings may add to this in the campaign |
 | Turbo with the ball | Slightly slower than without the ball; a jump shot right after sprinting is less accurate (dunks and layups aren't affected) |
 | On fire: streak | One player, 3 makes in a row (dunks and layups count). CPU players can catch fire. The first miss or block shows "He's cooling down." and a make resets it; a second miss or block ends it. The other team scoring does not end it (changed after test games showed fire lasting 0-2 shots) |
+| Phase 1 check-in | Dunks and layups feel good as is. CPU should learn pull-up jump shots (Phase 2). Owner heard no sound in the browser: audio unlock fix added, to recheck |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
