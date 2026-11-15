@@ -167,6 +167,30 @@ const CPU_THREE_MAX_FT := 28.0    # deep pull-up: beyond the arc but inside this
 const CPU_THREE_OPEN_FT := 4.0    # and the defender at least this far off
 const CPU_THREE_CHANCE := 0.25    # chance per decision
 
+# ---- alley-oop (P2-09; owner Q5: automatic. The lob rule itself is ball.is_lob_target) ----
+const ALLEY_JUMP_TIME := 0.6      # seconds in the air for an alley-oop dunk
+const ALLEY_JUMP_PX := 36.0       # its jump height (a normal dunk is DUNK_JUMP_PX)
+const ALLEY_CATCH_F := 0.4        # fraction of the jump when the lob reaches his hands (release is at DUNK_RELEASE)
+const ALLEY_MAKE_MULT := 1.3      # make-odds bonus: he catches it above the rim (a contested one is still ~65%)
+const ALLEY_REACH_FT := 7.0       # the receiver only goes up for the lob this close to the rim (else a floor catch)
+const ALLEY_SPOT_FT := 3.0        # a cutter heads for this spot, this far out from the rim
+const ALLEY_SPOT_SIDE_FT := 3.0   # ... and at most this far to the side of it
+const CPU_CUT_CHANCE := 0.08      # CPU off-ball: chance that a spot change is a cut to the rim instead
+const CPU_CUT_TIME := 1.5         # seconds a cut lasts (alley_cut stays on; P2-10 cuts get the same)
+const CPU_CUT_MIN_FT := 14.0      # a cut starts at least this far from the rim (time to throw the lob)
+const CPU_CUT_MAN_FT := 3.0       # ... and only if my man isn't this close (tight on me: no back-door)
+const CPU_LOB_CHANCE := 0.25      # CPU handler: chance per decision to lob to a teammate the lob rule allows
+const CPU_LOB_READ_FT := 10.0     # CPU defenders this close to the receiver or the rim read a lob in the air ...
+const CPU_LOB_JUMP_CHANCE := 0.45 # ... and jump to block the dunk with this chance (x CPU_LOB_RATING_SPAN)
+const CPU_LOB_RATING_SPAN := 0.3  # that chance x(1 -/+ this) across block ratings 0..100
+const CPU_LOB_JUMP_JITTER := 0.12 # +/- seconds of error on the timing of that jump
+
+var alley_oop := false            # this rim move is an alley-oop (catching a lob in the air)
+var alley_cut_t := 0.0            # seconds left in the current cut (alley_cut)
+var _cut_on := false
+var lob_jump_wait := -1.0         # CPU defender: seconds until he jumps at a lob's dunk (< 0 = none planned)
+var lob_read_target = null        # CPU defender: the lob receiver he is running at
+
 var rim_kind := ""                # "dunk" or "layup" while in the air, "" otherwise
 var jump_t := 0.0                 # seconds since take-off
 var jump_time := 0.0
@@ -228,6 +252,7 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	cpu_side_t = maxf(0.0, cpu_side_t - delta)
 	cpu_drive_t = maxf(0.0, cpu_drive_t - delta)
 	update_pump_fake(delta)
+	update_alley(delta)
 	if cross_t > 0.0:
 		cross_t = maxf(0.0, cross_t - delta)
 		if not has_ball() or shooting or is_airborne():
@@ -255,7 +280,7 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		desired = input_vec.limit_length(1.0) * speed * (0.94 if has_ball() else 1.0)
 		var ball = game.ball
 		if desired.length() < 1.0 and ball.state == ball.PASS and ball.receiver == self:
-			desired = seek(ball.position, 1.0)
+			desired = seek(alley_spot() if ball.lob else ball.position, 1.0)
 		want_turbo = human_turbo_input() and desired.length() > 1.0
 		if fake_t > 0.0:
 			desired *= PUMP_MOVE_MULT     # pump fake: ball up, only a slow shuffle
@@ -675,6 +700,7 @@ func is_dunk_speed() -> bool:
 # Shoot near the rim: take off for a dunk (very close and fast) or a layup. No shot meter.
 func start_rim_move(d_ft: float) -> void:
 	var dunk := d_ft <= DUNK_RANGE and is_dunk_speed()
+	alley_oop = false
 	rim_kind = "dunk" if dunk else "layup"
 	jump_time = DUNK_TIME if dunk else LAYUP_TIME
 	jump_t = 0.0
@@ -685,7 +711,10 @@ func start_rim_move(d_ft: float) -> void:
 	game.stat("%ss_t%d" % [rim_kind, team])
 	if game.is_human(self):
 		game.stat("human_" + rim_kind + "s")
-	# make-odds contest at take-off (the block is asked at release, see release_rim_shot)
+	rim_contest()
+
+# make-odds contest at take-off (the block is asked at release, see release_rim_shot)
+func rim_contest() -> void:
 	rim_quality = 1.0
 	var d = game.nearest_opponent(self)
 	if d != null:
@@ -700,6 +729,8 @@ func update_rim_move(delta: float) -> Vector2:
 	jump_t += delta
 	var f := clampf(jump_t / jump_time, 0.0, 1.0)
 	var peak := DUNK_JUMP_PX if rim_kind == "dunk" else LAYUP_JUMP_PX
+	if alley_oop:
+		peak = ALLEY_JUMP_PX
 	jump_z = peak * sin(PI * f)
 	var release_at := DUNK_RELEASE if rim_kind == "dunk" else LAYUP_RELEASE
 	if not jump_released and f >= release_at:
@@ -707,11 +738,12 @@ func update_rim_move(delta: float) -> Vector2:
 		shooting = false
 		if has_ball():
 			release_rim_shot()
-	elif not jump_released and not has_ball():
-		jump_released = true  # stripped or the period ended: just land
+	elif not jump_released and not has_ball() and not lob_coming():
+		jump_released = true  # stripped or the period ended (or the lob never came): just land
 		shooting = false
 	if f >= 1.0:
 		rim_kind = ""
+		alley_oop = false
 		jump_z = 0.0
 		shooting = false
 		return Vector2.ZERO
@@ -722,10 +754,14 @@ func update_rim_move(delta: float) -> Vector2:
 func release_rim_shot() -> void:
 	var ball = game.ball
 	ball.next_shot_kind = rim_kind
+	ball.next_alley = alley_oop
 	var blocker = Defense.rim_blocker(game, self, rim_kind)
 	if blocker != null:
 		# blocked at the rim: swatted out of the hands (counts as a missed shot, never as a make)
 		ball.next_shot_kind = ""
+		ball.next_alley = false
+		if alley_oop:
+			game.stat("alleyoop_blocks")
 		game.rim_shot_blocked(self, blocker)
 		game.stat("rim_blocks")
 		return
@@ -735,7 +771,8 @@ func release_rim_shot() -> void:
 	var base := 0.66 if d_ft < 5.0 else maxf(0.02, 0.52 - (d_ft - 5.0) * 0.0075)  # mirrors main.shot_probability
 	var target := DUNK_OPEN_PCT if rim_kind == "dunk" else LAYUP_OPEN_PCT
 	var fire_mult := FIRE_SHOT_BONUS if on_fire else 1.0
-	game.release_shot(self, target / base * rim_quality * fire_mult)
+	var alley_mult := ALLEY_MAKE_MULT if alley_oop else 1.0
+	game.release_shot(self, target / base * rim_quality * fire_mult * alley_mult)
 	count_pump_and_score()
 	if ball.state == ball.SHOT:
 		ball.blocked_checked = true  # the take-off contest replaces the CPU jump-shot contest
@@ -760,6 +797,9 @@ func ai(delta: float) -> void:
 		return
 	if ball.state == ball.PASS and ball.receiver == self:
 		target = ball.position
+		if ball.lob:
+			target = alley_spot()   # go to the rim for the lob
+			cpu_turbo_want = true
 		return
 
 	if game.possession == team:
@@ -769,6 +809,7 @@ func ai(delta: float) -> void:
 			offball_ai(delta, my_hoop)
 	else:
 		defense_ai(delta)
+		lob_defense()
 
 func spot_pos(hoop: Vector2, i: int) -> Vector2:
 	var s: Vector2 = SPOTS[i]
@@ -776,8 +817,14 @@ func spot_pos(hoop: Vector2, i: int) -> Vector2:
 
 func offball_ai(delta: float, hoop: Vector2) -> void:
 	spot_timer -= delta
+	if alley_cut:
+		target = alley_spot()     # cutting to the rim for a lob
+		cpu_turbo_want = true
+		return
 	if spot_timer <= 0.0:
 		spot_timer = game.rng.randf_range(2.5, 5.0)
+		if try_cpu_cut(hoop):
+			return
 		# cut to a spot no teammate is using
 		var used := []
 		for p in game.teams[team]:
@@ -858,6 +905,8 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		start_shot()
 	elif game.shot_clock < CPU_CLOCK_SHOOT and dist_ft < CPU_CLOCK_SHOOT_FT:
 		start_shot()
+	elif try_cpu_lob():
+		pass   # alley-oop lob to a cutter
 	elif step_side != 0.0 and open_ft < CPU_CROSS_FT and dist_ft > LAYUP_RANGE and cross_cd <= 0.0 \
 			and not lane_open(hoop) and game.rng.randf() < CPU_CROSS_CHANCE:
 		# crossover: cut back the other way, behind a defender sliding with the sidestep
@@ -891,6 +940,136 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 				best = mate
 		if best != null:
 			game.do_pass(self, best)
+
+# ---------------- alley-oop (P2-09) ----------------
+
+# Where a cutter goes to catch a lob: just out from the rim, on the side he comes from.
+func alley_spot() -> Vector2:
+	var hoop: Vector2 = game.attack_hoop(team)
+	var side: float = clampf(position.y - hoop.y, -ALLEY_SPOT_SIDE_FT * game.FT, ALLEY_SPOT_SIDE_FT * game.FT)
+	return hoop + Vector2(game.inward(hoop) * ALLEY_SPOT_FT * game.FT, side)
+
+# A lob is in the air to me
+func lob_coming() -> bool:
+	var ball = game.ball
+	return ball.state == ball.PASS and ball.lob and ball.receiver == self
+
+# ball.gd asks: how many seconds before the lob arrives should I take off (the catch is at ALLEY_CATCH_F of the jump)
+func alley_takeoff_lead() -> float:
+	return ALLEY_CATCH_F * ALLEY_JUMP_TIME
+
+func is_alley_jumping() -> bool:
+	return alley_oop and rim_kind != ""
+
+# The lob receiver goes up for it (called by ball.gd just before the lob arrives, for the human and the CPU alike).
+# Reuses the dunk rim move: he catches in the air and dunks at DUNK_RELEASE, blockable through Defense.rim_blocker.
+# Too far from the rim (or off balance): no jump, he catches it on the floor.
+func start_alley_dunk() -> void:
+	if is_airborne() or stumble_t > 0.0 or has_ball():
+		return
+	var d_ft: float = position.distance_to(game.attack_hoop(team)) / game.FT
+	if d_ft > ALLEY_REACH_FT:
+		game.stat("alleyoop_too_far")
+		return
+	if fake_t > 0.0:
+		end_pump_fake()
+	cross_t = 0.0
+	alley_oop = true
+	rim_kind = "dunk"
+	jump_time = ALLEY_JUMP_TIME
+	jump_t = 0.0
+	jump_z = 0.0
+	jump_released = false
+	shooting = true
+	game.stat("dunks")
+	game.stat("dunks_t%d" % team)
+	game.stat("alleyoop_dunks")
+	if game.is_human(self):
+		game.stat("human_dunks")
+	rim_contest()
+
+# Runs every frame: the cut's timer (CPU cuts and P2-10's human cuts alike) and a CPU defender's planned lob jump.
+func update_alley(delta: float) -> void:
+	if alley_cut:
+		if not _cut_on:
+			_cut_on = true
+			if alley_cut_t <= 0.0:
+				alley_cut_t = CPU_CUT_TIME   # set from outside (P2-10): same length as a CPU cut
+		if not lob_coming():
+			alley_cut_t -= delta
+		if alley_cut_t <= 0.0 or game.possession != team or has_ball() or is_airborne():
+			alley_cut = false
+	if not alley_cut:
+		_cut_on = false
+		alley_cut_t = 0.0
+	if lob_jump_wait >= 0.0:
+		lob_jump_wait -= delta
+		if lob_jump_wait < 0.0 and start_block_jump():
+			game.stat("cpu_lob_jumps")
+
+# CPU off-ball: a spot change can be a cut to the rim (handler in the frontcourt, me far enough out, my man not tight)
+func try_cpu_cut(hoop: Vector2) -> bool:
+	var ball = game.ball
+	if ball.state != ball.HELD or ball.holder == null or ball.holder == self or ball.holder.team != team:
+		return false
+	if not game.in_frontcourt(ball.holder.position, team) or not game.in_frontcourt(position, team):
+		return false
+	if position.distance_to(hoop) < CPU_CUT_MIN_FT * game.FT:
+		return false
+	var man = game.teams[1 - team][index]
+	if man.position.distance_to(position) < CPU_CUT_MAN_FT * game.FT:
+		return false
+	if game.rng.randf() >= CPU_CUT_CHANCE:
+		return false
+	alley_cut_t = CPU_CUT_TIME
+	alley_cut = true
+	game.stat("rim_cuts_t%d" % team)
+	target = alley_spot()
+	cpu_turbo_want = true
+	return true
+
+# CPU handler: lob to a teammate the alley-oop rule allows (the human too, when he cuts)
+func try_cpu_lob() -> bool:
+	var ball = game.ball
+	for mate in game.teams[team]:
+		if mate == self or not ball.is_lob_target(mate, self):
+			continue
+		if game.rng.randf() < CPU_LOB_CHANCE:
+			game.stat("cpu_lobs")
+			game.do_pass(self, mate)
+			return true
+	return false
+
+# ball.gd calls this on the passer when a lob is thrown: CPU defenders near the receiver or the rim read it and
+# may time a block jump at the dunk (on block rating; their timing has some error, so it can come too early or late).
+func on_lob_thrown(to_p, flight: float) -> void:
+	var hoop: Vector2 = game.attack_hoop(team)
+	var reach: float = CPU_LOB_READ_FT * game.FT
+	var release_in: float = flight + (DUNK_RELEASE - ALLEY_CATCH_F) * ALLEY_JUMP_TIME
+	for o in game.teams[1 - team]:
+		if game.is_human(o):
+			continue
+		if o.position.distance_to(to_p.position) > reach and o.position.distance_to(hoop) > reach:
+			continue
+		var chance: float = CPU_LOB_JUMP_CHANCE * (1.0 + CPU_LOB_RATING_SPAN * o.rating_frac("block"))
+		if game.rng.randf() < chance:
+			o.lob_read_target = to_p
+			game.stat("cpu_lob_reads")
+			var wait: float = release_in - BLOCK_JUMP_TIME * 0.5 \
+					+ game.rng.randf_range(-CPU_LOB_JUMP_JITTER, CPU_LOB_JUMP_JITTER)
+			o.lob_jump_wait = maxf(0.0, wait)
+
+# CPU defender who read a lob: run at the receiver while it's in the air and he goes up for it
+func lob_defense() -> void:
+	if lob_read_target == null:
+		return
+	var r = lob_read_target
+	if not (r.lob_coming() or r.is_alley_jumping()):
+		lob_read_target = null
+		return
+	target = r.position
+	speed_mult = 1.0
+	cpu_turbo_want = true
 
 # no opponent in a corridor between me and the hoop
 func lane_open(hoop: Vector2) -> bool:

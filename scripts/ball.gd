@@ -29,6 +29,13 @@ var shot_z0 := 26.0        # height the shot leaves the hand
 var bounce_cooldown := 0.0
 var dribble_count := 0
 var dribble_phase := 0     # which half-cycle of the dribble the ball is in; a change means a floor touch
+var lob := false           # the current PASS is an alley-oop lob (P2-09)
+var lob_t := 0.0           # 0..1 along the lob's flight
+var lob_time := 0.6        # seconds of the lob's flight
+var lob_start := Vector2.ZERO
+var lob_takeoff_sent := false
+var next_alley := false    # set by the alley-oop dunker just before release (like next_shot_kind)
+var shot_alley := false    # the shot in flight is an alley-oop dunk
 
 # ---- dunk and layup flight (tuning) ----
 const DUNK_FLIGHT := 0.12      # seconds from the hand to the rim on a dunk (a quick slam)
@@ -55,6 +62,22 @@ const DUNK_NET := 1.6             # dunks yank the net harder (the dunk sound it
 const DRIBBLE_DB := -8.0          # soft dribble for the human's handler only (owner: -18 was inaudible on the tablet)
 const DRIBBLE_EVERY := 2          # play the dribble sound on every Nth floor touch
 
+# ---- alley-oop lob (P2-09; owner Q5: automatic, a pass to a cutter is a lob he dunks in the air) ----
+const ALLEY_FT := 12.0            # the receiver must be this close to the rim he attacks
+const ALLEY_MIN_FT := 2.0         # ... and not already under it
+const ALLEY_CUT_SPEED := 0.6      # "cutting" without alley_cut: moving toward the rim at this fraction of top speed
+const ALLEY_FRONT_FT := 4.0       # no defender in front of the receiver (toward the rim) within this
+const ALLEY_FRONT_CONE := 60.0    # degrees either side of the receiver-to-rim line that count as "in front"
+const ALLEY_PASS_MIN_FT := 8.0    # passer at least this far from the receiver (no lob to the man next to you)
+const ALLEY_PASS_MAX_FT := 45.0   # ... and at most this far
+const LOB_SPEED := 480.0          # px/s along the floor (a normal pass is PASS_SPEED)
+const LOB_TIME_MIN := 0.45        # seconds of flight, clamped to these
+const LOB_TIME_MAX := 1.0
+const LOB_PEAK := 70.0            # extra arc height in pixels
+const LOB_CATCH_Z := 50.0         # height where the jumping receiver catches it
+const LOB_PICK_FRAC := 0.4        # only the first 40% of the flight can be picked off (then it's over everyone)
+const ALLEY_POPUP_COLOR := Color(0.35, 0.85, 1.0)
+
 const PASS_SPEED := 720.0
 const GRAVITY := 900.0
 
@@ -70,17 +93,79 @@ func hold(p) -> void:
 	state = HELD
 	holder = p
 	receiver = null
+	lob = false
 	shooter = null
 	vel = Vector2.ZERO
 	game.on_ball_held(p)
 
-func pass_to(from_p, to_p) -> void:
+# lob: -1 = decide by the alley-oop rule (is_lob_target), 0 = never a lob, 1 = always a lob.
+# game.do_pass (the human's PASS, the CPU, P2-10's call) goes through here, so every pass to a cutter is a lob.
+func pass_to(from_p, to_p, lob_mode := -1) -> void:
+	var make_lob := lob_mode == 1 or (lob_mode < 0 and is_lob_target(to_p, from_p))
 	state = PASS
 	passer = from_p
 	receiver = to_p
 	holder = null
 	intercept_checked = {}
 	z = 18.0
+	lob = false
+	if make_lob and to_p != null:
+		throw_lob(from_p, to_p)
+
+# The alley-oop rule (board "Touch gestures"): the receiver is cutting (alley_cut, or running at the rim at
+# ALLEY_CUT_SPEED of top speed), within ALLEY_FT of the rim he attacks, on the floor, with no defender in front of
+# him toward the rim within ALLEY_FRONT_FT. from_p (optional) must be a teammate between ALLEY_PASS_MIN_FT and
+# ALLEY_PASS_MAX_FT away.
+func is_lob_target(p, from_p = null) -> bool:
+	if p == null or game == null:
+		return false
+	if p.is_airborne() or p.stumble_t > 0.0 or p.has_ball():
+		return false
+	var FT: float = game.FT
+	if from_p != null:
+		if from_p.team != p.team or from_p == p:
+			return false
+		var pd: float = from_p.position.distance_to(p.position) / FT
+		if pd < ALLEY_PASS_MIN_FT or pd > ALLEY_PASS_MAX_FT:
+			return false
+	var hoop: Vector2 = game.attack_hoop(p.team)
+	var to_hoop: Vector2 = hoop - p.position
+	var d_ft := to_hoop.length() / FT
+	if d_ft > ALLEY_FT or d_ft < ALLEY_MIN_FT:
+		return false
+	var dir := to_hoop.normalized()
+	var cutting: bool = p.alley_cut or p.velocity.dot(dir) >= ALLEY_CUT_SPEED * p.speed
+	if not cutting:
+		return false
+	var cos_cone := cos(deg_to_rad(ALLEY_FRONT_CONE))
+	for o in game.teams[1 - p.team]:
+		var r: Vector2 = o.position - p.position
+		var rd := r.length()
+		if rd < ALLEY_FRONT_FT * FT and (rd < 0.1 or dir.dot(r / rd) >= cos_cone):
+			return false
+	return true
+
+# The pass in flight is an alley-oop lob (the receiver will jump for it)
+func is_lob() -> bool:
+	return state == PASS and lob
+
+# Seconds until a lob in flight reaches its receiver (0 if there is none)
+func lob_time_left() -> float:
+	return (1.0 - lob_t) * lob_time if is_lob() else 0.0
+
+func throw_lob(from_p, to_p) -> void:
+	lob = true
+	lob_t = 0.0
+	lob_start = position
+	lob_takeoff_sent = false
+	lob_time = clampf(position.distance_to(to_p.position) / LOB_SPEED, LOB_TIME_MIN, LOB_TIME_MAX)
+	game.stat("alleyoops_t%d" % from_p.team)
+	if game.is_human(from_p):
+		game.stat("human_alleyoop_lobs")
+	if game.is_human(to_p):
+		game.stat("human_alleyoop_targets")
+	if from_p.has_method("on_lob_thrown"):
+		from_p.on_lob_thrown(to_p, lob_time)
 
 func shoot(p, hoop: Vector2, made: bool, points: int) -> void:
 	state = SHOT
@@ -91,6 +176,8 @@ func shoot(p, hoop: Vector2, made: bool, points: int) -> void:
 	shot_t = 0.0
 	shot_kind = next_shot_kind
 	next_shot_kind = ""
+	shot_alley = next_alley and shot_kind == "dunk"
+	next_alley = false
 	shot_z0 = z if shot_kind != "" else 26.0
 	var dist := position.distance_to(hoop)
 	shot_time = 0.55 + dist / 900.0
@@ -109,6 +196,7 @@ func make_loose(from: Vector2, v: Vector2, height := 20.0, up := 150.0) -> void:
 	state = LOOSE
 	holder = null
 	receiver = null
+	lob = false
 	position = from
 	vel = v
 	z = height
@@ -118,6 +206,7 @@ func make_dead() -> void:
 	state = DEAD
 	holder = null
 	receiver = null
+	lob = false
 
 func update(delta: float) -> void:
 	anim_time += delta
@@ -147,12 +236,16 @@ func update(delta: float) -> void:
 				return
 			var to: Vector2 = receiver.position - position
 			var step := PASS_SPEED * delta
-			if to.length() <= max(step, 16.0):
+			var lobbed := lob
+			if lobbed:
+				_update_lob(delta)   # its own catch and pick-off rules
+			elif to.length() <= max(step, 16.0):
 				hold(receiver)
 				return
-			position += to.normalized() * step
+			else:
+				position += to.normalized() * step
 			# defenders near the passing lane may pick it off
-			for p in game.players:
+			for p in ([] if lobbed else game.players):
 				if p.team == passer.team or intercept_checked.has(p):
 					continue
 				if p.position.distance_to(position) < 20.0 and passer.position.distance_to(position) > 60.0:
@@ -174,6 +267,10 @@ func update(delta: float) -> void:
 						game.stat(shot_kind + "_makes")
 					if shot_kind == "dunk":
 						slam_feedback()
+					if shot_alley:
+						game.stat("alleyoop_makes")
+						if game.fx:
+							game.fx.popup("ALLEY-OOP!", shot_hoop + Vector2(0, -100), ALLEY_POPUP_COLOR, 40)
 					game.on_shot_made(shooter, shot_points)
 				else:
 					# rim out: bounce back toward the court
@@ -220,6 +317,42 @@ func update(delta: float) -> void:
 	var s := 1.1 + z / 160.0
 	sprite.scale = Vector2(s, s)
 	queue_redraw()
+
+# The lob's flight: a high, slow arc that homes on the receiver. Only the first LOB_PICK_FRAC can be picked off.
+# Near the end the receiver is told to take off (player.start_alley_dunk) so he catches it in the air.
+func _update_lob(delta: float) -> void:
+	lob_t = minf(1.0, lob_t + delta / lob_time)
+	var aim: Vector2 = receiver.position
+	position = lob_start.lerp(aim, lob_t)
+	var end_z: float = LOB_CATCH_Z if receiver.is_airborne() else 26.0
+	z = 18.0 * (1.0 - lob_t) + end_z * lob_t + 4.0 * LOB_PEAK * lob_t * (1.0 - lob_t)
+	if not lob_takeoff_sent and receiver.has_method("alley_takeoff_lead") \
+			and lob_time_left() <= receiver.alley_takeoff_lead():
+		lob_takeoff_sent = true
+		receiver.start_alley_dunk()
+	if lob_t >= 1.0:
+		var r = receiver
+		var in_air: bool = r.has_method("is_alley_jumping") and r.is_alley_jumping()
+		if in_air:
+			game.stat("alleyoop_catches")
+			if game.is_human(r):
+				game.stat("human_alleyoop_catches")
+		else:
+			game.stat("alleyoop_floor_catches")   # he wasn't near enough the rim to go up for it
+		hold(r)
+		return
+	if lob_t < LOB_PICK_FRAC:
+		for p in game.players:
+			if p.team == passer.team or intercept_checked.has(p):
+				continue
+			if p.position.distance_to(position) < 20.0 and passer.position.distance_to(position) > 60.0:
+				intercept_checked[p] = true
+				if game.rng.randf() < 0.15:
+					game.show_message("PICKED OFF!")
+					game.stat("intercepts")
+					game.stat("alleyoop_picks")
+					hold(p)
+					return
 
 func _hoop_index() -> int:
 	return 0 if shot_hoop.x < game.COURT_W / 2 else 1
