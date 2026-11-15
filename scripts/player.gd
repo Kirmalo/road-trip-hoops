@@ -531,9 +531,9 @@ func _draw() -> void:
 		var tri := PackedVector2Array([Vector2(-7, -44), Vector2(7, -44), Vector2(0, -34)])
 		draw_colored_polygon(tri, Color(1, 0.9, 0.2))
 		# stamina bar under the ring
-		var bw := 44.0
+		var bw := 48.0
 		var bo := Vector2(-bw / 2, 27)
-		draw_rect(Rect2(bo - Vector2(2, 2), Vector2(bw + 4, 11)), Color(0, 0, 0, 0.75))
+		draw_rect(Rect2(bo - Vector2(2, 2), Vector2(bw + 4, 14)), Color(0, 0, 0, 0.75))
 		var col := Color(0.25, 0.9, 0.35)
 		if turbo_locked:
 			col = Color(0.55, 0.55, 0.55)
@@ -541,9 +541,9 @@ func _draw() -> void:
 			col = Color(0.95, 0.25, 0.2)
 		elif stamina < 0.6:
 			col = Color(1.0, 0.8, 0.2)
-		draw_rect(Rect2(bo, Vector2(bw * stamina, 7)), col)
+		draw_rect(Rect2(bo, Vector2(bw * stamina, 10)), col)
 		var mark := bo.x + bw * TURBO_MIN_RESTART
-		draw_line(Vector2(mark, bo.y), Vector2(mark, bo.y + 7), Color(1, 1, 1, 0.5), 1.0)
+		draw_line(Vector2(mark, bo.y), Vector2(mark, bo.y + 10), Color(1, 1, 1, 0.5), 1.0)
 	if shooting and game.is_human(self):
 		var w := 56.0
 		var o := Vector2(-w / 2, -58)

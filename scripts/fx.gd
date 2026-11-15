@@ -12,8 +12,8 @@ const POPUP_RISE := 46.0          # pixels a popup floats up over its life
 const POPUP_POP_TIME := 0.12      # quick scale-in at the start
 const POPUP_POP_SCALE := 1.5      # start scale of the scale-in
 const POPUP_OUTLINE := 6          # outline thickness in pixels
-const TRAIL_LENGTH := 14          # number of remembered ball positions
-const TRAIL_RADIUS := 6.0         # radius of the newest trail puff (the ball is about 7)
+const TRAIL_LENGTH := 20          # number of remembered ball positions
+const TRAIL_RADIUS := 8.5         # radius of the newest trail puff (the ball is about 7)
 const TRAIL_HOT := Color(1.0, 0.92, 0.35)   # color near the ball; set_trail's color fades in behind it
 const SHAKE_HZ := 30.0            # how often the shake changes direction per second
 

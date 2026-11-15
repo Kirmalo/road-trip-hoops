@@ -1,6 +1,6 @@
 # Task Board
 
-Current phase: **Phase 1: feel** (planned 2026-11-15 by `lead-producer`)
+Current phase: **Phase 1: feel** (all tasks done; waiting for the owner's tablet check-in) (planned 2026-11-15 by `lead-producer`)
 
 Scope (from `docs/VISION.md`): turbo with a stamina bar (human and CPU); auto-dunk or layup near the rim with a jump
 animation and contest check; "on fire" after 3 makes in a row; feedback (sound effects swish/rim/bounce/crowd/whistle,
@@ -185,8 +185,6 @@ editing each other's files. Each wave merges and gets a quick QA run before the 
 5. **Sound:** pending; the coordinator is asking the owner to allow the hosts.
 
 ## Doing
-- P1-09 Phase 1 QA and balance pass
-- P1-10 README how-to-play update
 
 ## Review
 
@@ -212,6 +210,19 @@ editing each other's files. Each wave merges and gets a quick QA run before the 
   "He's cooling down.", a make resets; the other team scoring no longer ends it; carries over quarter breaks; ends at
   game over. Also: no "+2" on dunks; blocked shots no longer counted as makes. Merged check: 14-24, 14-16, 12-20,
   humantest 11-24; makes = sfx_crowd.
+
+- P1-09 QA and balance (merged; report `docs/qa/phase1.md`). Tuned DUNK_OPEN_PCT 0.92, LAYUP_OPEN_PCT 0.75,
+  CONTEST_MAKE_MULT 1.0. 80 games: 21.8 / 22.9 points per team, 53.5 shots, FG 41.7%, dunks 46%, layups 39%.
+  Fails only on CPU jump shots (about 1 per game).
+- P1-10 README how to play (merged).
+- Coordinator polish from QA: stamina bar 48x10 px (R3), stronger fire trail (R4), lighter BLUE popup (R5),
+  test commands use `--quit-after 60000` (B2). Recheck: 28-26, 22-20, 14-24, humantest 13-26; no errors.
+
+### Carried to Phase 2 (from P1-09)
+- R1: CPU pull-up jump shots (needs logic in `handler_ai`; about 1 jumper per game now).
+- R2: lower `CONTEST_FT` with Phase 2 defense (99% of rim attempts count as contested).
+- B1: a blocked dunk/layup counts two `shakes` in stats (players see one).
+- Team balance: BLUE 34 - RED 46 over 80 games, likely chance; recheck after Phase 2.
 
 ### Follow-ups for P1-07 (from the P1-05 review, done)
 - A blocked rim attempt is released at 2% and then blocked, so `makes` can count it. When the contest roll is a

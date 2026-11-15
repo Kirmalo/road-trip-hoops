@@ -23,7 +23,7 @@ const OVERTIME_LENGTH := 60.0
 const SHOT_CLOCK_LENGTH := 24.0
 const HUMAN_TEAM := 0
 const TEAM_NAMES := ["BLUE", "RED"]
-const TEAM_COLORS := [Color(0.45, 0.7, 1.0), Color(1.0, 0.42, 0.38)]   # popups and score messages
+const TEAM_COLORS := [Color(0.7, 0.88, 1.0), Color(1.0, 0.42, 0.38)]   # popups and score messages
 
 # game-event feedback (P1-06)
 const SCORE_POPUP_SIZE := 64         # font size of the "+2"/"+3" popup at the hoop

@@ -28,9 +28,9 @@ Download a Godot 4 Linux editor binary from the GitHub releases, then:
 ```
 godot --headless --path . --import
 # full CPU vs CPU game, prints quarter scores, final score and stats
-godot --headless --path . --fixed-fps 60 --quit-after 40000 -- --autoplay
+godot --headless --path . --fixed-fps 60 --quit-after 60000 -- --autoplay
 # scripted human inputs, exercises shoot/pass/steal/switch code paths
-godot --headless --path . --fixed-fps 60 --quit-after 40000 -- --humantest
+godot --headless --path . --fixed-fps 60 --quit-after 60000 -- --humantest
 # screenshots to /tmp/hoops_*.png (needs xvfb)
 xvfb-run -a -s "-screen 0 1280x720x24" godot --path . --rendering-driver opengl3 --fixed-fps 60 -- --shots
 ```
