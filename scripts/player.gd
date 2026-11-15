@@ -41,6 +41,20 @@ var dribble_side := 1.0           # +1 right hand, -1 left hand (P2-05)
 var fake_t := 0.0                 # seconds left in a pump fake (P2-06)
 var alley_cut := false            # cutting to the rim for a lob (P2-09)
 
+# ---- player ratings (0-100, 50 = average). Read them with rating("steal") / rating("block"). ----
+# Per roster slot (index 0-2), the same for both teams so they stay balanced (each column sums to 150).
+const RATINGS_BY_INDEX := [
+	{"steal": 75, "block": 40},   # quick hands
+	{"steal": 40, "block": 75},   # shot-blocker
+	{"steal": 35, "block": 35},
+]
+const BLOCK_GOOD_BASE := 0.7      # well-timed block jump at block rating 50: success chance
+const BLOCK_RATING_SPAN := 0.2    # +/- this across ratings 0..100 (0.5 at 0, 0.9 at 100)
+const BLOCK_BAD_CHANCE := 0.03    # badly timed block jump: success chance (any rating)
+const RIM_BLOCK_RATING_SPAN := 0.5  # rim-block dice (defense.rim_blocker) x0.5 at rating 0, x1.5 at 100
+
+var ratings := {"steal": 50, "block": 50}
+
 # ---- turbo and stamina (tuning) ----
 # (how far to pull the joystick to sprint is TURBO_PULL in touch_controls.gd)
 const TURBO_SPEED_MULT := 1.35    # speed multiplier while sprinting
@@ -133,6 +147,7 @@ func setup(g, t: int, i: int, tex: Texture2D) -> void:
 	sprite.rotation = facing
 	humantest = OS.get_cmdline_user_args().has("--humantest")
 	def = Defense.new(self, g)
+	ratings = (RATINGS_BY_INDEX[i] as Dictionary).duplicate()
 
 func has_ball() -> bool:
 	return game.ball.state == game.ball.HELD and game.ball.holder == self
@@ -195,6 +210,19 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	queue_redraw()
 
 # ---------------- shared moves: stumble, block jump, close guarding ----------------
+
+func rating(key: String) -> int:
+	return int(ratings.get(key, 50))
+
+# -1..+1 for ratings 0..100
+func rating_frac(key: String) -> float:
+	return clampf((float(rating(key)) - 50.0) / 50.0, -1.0, 1.0)
+
+# Success chance of a block jump: timing decides good vs bad, the block rating scales a good one.
+func block_chance(good_timing: bool) -> float:
+	if not good_timing:
+		return BLOCK_BAD_CHANCE
+	return clampf(BLOCK_GOOD_BASE + BLOCK_RATING_SPAN * rating_frac("block"), 0.0, 1.0)
 
 # Knocked off balance for `time` seconds (slow, no turbo, can't steal or jump).
 func stumble(time: float) -> void:

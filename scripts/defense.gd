@@ -73,10 +73,12 @@ static func rim_blocker(g, shooter, kind: String):
 		return null
 	var close := clampf(1.5 * (1.0 - c_ft / RIM_CONTEST_FT), 0.0, 1.0)
 	var chance := (DUNK_BLOCK_CHANCE if kind == "dunk" else LAYUP_BLOCK_CHANCE) * close
+	chance *= 1.0 + d.RIM_BLOCK_RATING_SPAN * d.rating_frac("block")   # shot-blockers block more
 	if g.rng.randf() < chance:
 		return d
 	return null
 
 # Jump-shot blocks on timing (P2-07 fills this in; called every frame from main.gd).
+# Use defender.block_chance(good_timing) for the odds so the block rating counts.
 static func check_jump_shot_block(_g) -> void:
 	pass
