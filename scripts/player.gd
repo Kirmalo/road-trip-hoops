@@ -83,6 +83,7 @@ const FIRE_RING_COLOR := Color(1.0, 0.45, 0.1)
 
 var make_streak := 0              # makes in a row by this player
 var on_fire := false
+var fire_misses := 0              # misses/blocks while on fire (main.FIRE_MISSES puts it out)
 var fire_anim := 0.0
 
 # Offensive spots, in feet: (distance out from the baseline side of the hoop, sideways offset)
