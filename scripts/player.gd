@@ -379,6 +379,8 @@ func defense_assist(delta: float, stick: Vector2, desired: Vector2, sprinting: b
 		return desired
 	if assist_off_t > 0.0 or stumble_t > 0.0 or poke_t > 0.0 or is_airborne():
 		return desired   # just pressed STEAL/BLOCK, beaten by a crossover, reaching or in the air: you're on your own
+	if not guarding_handler(h):
+		return desired   # helping on someone else (a cutter, your own man): no pull toward the ball
 	var FT: float = game.FT
 	var to_h: Vector2 = h.position - position
 	var d_ft: float = to_h.length() / FT
@@ -395,6 +397,16 @@ func defense_assist(delta: float, stick: Vector2, desired: Vector2, sprinting: b
 	assist_on = true
 	game.stat("human_assist_frames")
 	return desired.lerp(help, k)
+
+# true when this player is the one guarding the handler: the handler is his man, or he's his team's closest defender
+func guarding_handler(h) -> bool:
+	if game.teams[1 - team][index] == h:
+		return true
+	var mine: float = position.distance_squared_to(h.position)
+	for mate in game.teams[team]:
+		if mate != self and mate.position.distance_squared_to(h.position) < mine:
+			return false
+	return true
 
 # where the assist slides the defender: a few feet in front of the handler on his line to the basket, led by his move
 func assist_spot(h) -> Vector2:
