@@ -35,6 +35,12 @@ const MSG_FONT_SIZE := 56            # center message font size
 const MSG_POP_TIME := 0.15           # center message scale-in time in seconds
 const MSG_POP_SCALE := 1.35          # center message start scale
 
+# on fire (P1-07)
+const FIRE_STREAK := 3               # makes in a row by one player (dunks and layups count) to catch fire
+const FIRE_MISSES := 2               # misses or blocks by the on-fire player that put the fire out (a make resets)
+const FIRE_COLOR := Color(1.0, 0.45, 0.1)   # "ON FIRE!" popup and the ball trail
+const FIRE_POPUP_SIZE := 52
+
 var hoops := [Vector2(5.25 * FT, COURT_H / 2), Vector2(COURT_W - 5.25 * FT, COURT_H / 2)]
 
 var rng := RandomNumberGenerator.new()
@@ -61,6 +67,7 @@ var autoplay := false
 var chasers := []
 var key_a_down := false
 var stats := {}
+var _trail_on := false              # fire trail currently shown behind the ball
 
 func stat(k: String) -> void:
 	stats[k] = stats.get(k, 0) + 1
@@ -286,28 +293,91 @@ func release_shot(p, quality: float) -> void:
 	stat("shots")
 	stat("shot_d%d" % int(p.position.distance_to(hoop) / FT / 5) )
 	if made: stat("makes")
+	if p.on_fire:
+		stat("fire_shots")
+		if made: stat("fire_makes")
 	ball.shoot(p, hoop, made, pts)
 
+# a dunk or layup blocked at take-off: counts as a missed shot, the ball is swatted out of the shooter's hands
+func rim_shot_blocked(p, defender) -> void:
+	shot_clock_running = false
+	stat("shots")
+	if p.on_fire:
+		stat("fire_shots")
+	block_shot(defender)
+	on_shot_missed(p)
+
 func block_shot(defender) -> void:
+	var missed_shooter = null
+	if ball.state == ball.SHOT:
+		# a jump shot swatted in the air: it was rolled at release, so take a rolled make back off the books
+		if ball.shot_made:
+			stats["makes"] = stats.get("makes", 1) - 1
+			if ball.shooter != null and ball.shooter.on_fire:
+				stats["fire_makes"] = stats.get("fire_makes", 1) - 1
+		missed_shooter = ball.shooter
 	var away: Vector2 = (ball.position - defender.position).normalized()
 	ball.make_loose(ball.position, away * rng.randf_range(200.0, 300.0), ball.z, 80.0)
 	show_message("BLOCKED!")
 	stat("blocks")
 	fx.shake(BLOCK_SHAKE, BLOCK_SHAKE_TIME)
 	audio.play("block")
+	if missed_shooter != null:
+		on_shot_missed(missed_shooter)   # after "BLOCKED!" so a "cooling down" message wins
 
 func on_shot_made(shooter, pts: int) -> void:
 	score[shooter.team] += pts
 	show_message("%s %s!" % [TEAM_NAMES[shooter.team], "THREE" if pts == 3 else "SCORES"], SCORE_MSG_TIME,
 			TEAM_COLORS[shooter.team])
 	var hoop := attack_hoop(shooter.team)
-	fx.popup("+%d" % pts, hoop + Vector2(0, -SCORE_POPUP_RISE), TEAM_COLORS[shooter.team], SCORE_POPUP_SIZE)
+	if ball.shot_kind != "dunk":   # a dunk already shows "SLAM!"
+		fx.popup("+%d" % pts, hoop + Vector2(0, -SCORE_POPUP_RISE), TEAM_COLORS[shooter.team], SCORE_POPUP_SIZE)
 	audio.play("crowd")
+	_update_fire_on_make(shooter)
 	possession = 1 - shooter.team
 	_dead_ball(1 - shooter.team, 1.0)
 
-func on_shot_missed(_shooter) -> void:
-	pass
+func on_shot_missed(shooter) -> void:
+	if shooter == null:
+		return
+	shooter.make_streak = 0
+	if shooter.on_fire:
+		shooter.fire_misses += 1
+		if shooter.fire_misses >= FIRE_MISSES:
+			_end_fire(shooter)
+		else:
+			show_message("He's cooling down.")
+			stat("fire_cooldowns")
+
+# ---------------- on fire ----------------
+
+func _update_fire_on_make(shooter) -> void:
+	shooter.make_streak += 1
+	shooter.fire_misses = 0   # a make while cooling down makes him fully hot again
+	if shooter.make_streak >= FIRE_STREAK and not shooter.on_fire:
+		shooter.on_fire = true
+		stat("fire_starts_t%d" % shooter.team)
+		fx.popup("ON FIRE!", shooter.position + Vector2(0, -5.0 * FT), FIRE_COLOR, FIRE_POPUP_SIZE)
+		audio.play("fire")
+
+func _end_fire(p) -> void:
+	p.on_fire = false
+	p.make_streak = 0
+	p.fire_misses = 0
+	stat("fire_ends")
+	p.queue_redraw()   # drop the flame ring even when the player stops updating (game over)
+
+# flaming trail while an on-fire player holds or shoots the ball
+func _update_fire_trail() -> void:
+	var p = null
+	if ball.state == ball.HELD:
+		p = ball.holder
+	elif ball.state == ball.SHOT:
+		p = ball.shooter
+	var want: bool = p != null and p.on_fire
+	if want != _trail_on:
+		_trail_on = want
+		fx.set_trail(want, FIRE_COLOR)
 
 func do_pass(from_p, to_p) -> void:
 	if not from_p.has_ball() or to_p == from_p:
@@ -504,6 +574,7 @@ func _physics_process(delta: float) -> void:
 		p.update(delta, is_human(p), input)
 	_separate_players()
 	ball.update(delta)
+	_update_fire_trail()
 
 	camera.position = ball.position
 	_update_hud()
@@ -529,6 +600,12 @@ func _end_period() -> void:
 	if quarter >= 4 and score[0] != score[1]:
 		game_over = true
 		ball.make_dead()
+		# _physics_process stops updating after game over: put out the fire and the trail now
+		for p in players:
+			if p.on_fire:
+				_end_fire(p)
+		_trail_on = false
+		fx.set_trail(false)
 		var winner := "BLUE" if score[0] > score[1] else "RED"
 		audio.play("whistle", 3.0, 0.0)   # second, louder whistle: game over
 		show_message("FINAL  %d - %d\n%s WINS!  Tap to play again" % [score[0], score[1], winner], 9999.0)
