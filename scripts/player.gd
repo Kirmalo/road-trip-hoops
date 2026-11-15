@@ -56,6 +56,51 @@ const RIM_BLOCK_RATING_SPAN := 0.5  # rim-block dice (defense.rim_blocker) x0.5 
 
 var ratings := {"steal": 50, "block": 50}
 
+# ---- crossover and the dribble hand (P2-05; owner Q1: crossover only, a "spin" flick is a crossover too) ----
+const CROSS_TIME := 0.3           # seconds of the crossover burst
+const CROSS_SPEED_MULT := 1.25    # speed multiplier during the burst
+const CROSS_ACCEL := 3200.0       # px/s^2 during the burst (normal 1600): the cut is sharp
+const CROSS_COOLDOWN := 0.6       # seconds from the start of one crossover to the next
+const CROSS_BEAT_FT := 5.0        # a defender this close in front of the handler can be beaten
+const CROSS_BEAT_CONE := 75.0     # degrees either side of the handler's facing that count as "in front"
+const CROSS_STUN := 0.45          # seconds a beaten defender stumbles
+const CROSS_BEAT_CHANCE := 0.5    # CPU defender not moving the wrong way: chance he is beaten (until def decides)
+const CROSS_WRONG_WAY_SPEED := 40.0  # px/s: a defender moving at least this fast away from the cut is beaten
+const CROSS_HAND_RATE := 13.0     # dribble hand travel per second during a crossover (2.0 = one hand to the other)
+const HAND_SWITCH_RATE := 4.0     # same for the slow switch away from a defender
+const HAND_SWITCH_FT := 8.0       # the nearest defender inside this, on the ball side ...
+const HAND_SWITCH_DELAY := 0.5    # ... for this long: the handler moves the ball to the other hand
+const CPU_CROSS_CHANCE := 0.04    # CPU handler, defender close in front and the lane shut: chance per decision
+const CPU_CROSS_FT := 5.0         # "close" for that decision
+const CPU_CROSS_COMMIT := 0.7     # seconds the CPU keeps going the new way after a crossover
+const BEAT_POPUP_COLOR := Color(1.0, 0.95, 0.3)
+
+var cross_cd := 0.0               # seconds until the next crossover is allowed
+var cross_dir := Vector2.ZERO     # direction of the current crossover burst
+var hand_x := 1.0                 # where the ball is drawn sideways, -1 left hand .. +1 right hand (follows dribble_side)
+var hand_switch_t := 0.0          # seconds the nearest defender has been on the ball side
+var cpu_side := 0.0               # CPU: sidestep side committed to after a crossover
+var cpu_side_t := 0.0
+
+# ---- pump fake (P2-06; owner Q2: only away from the rim, where the shot meter shows) ----
+const PUMP_TAP_MAX := 0.15        # human: A released this soon after the meter started = pump fake (human_input.SHORT_TAP_MAX)
+const PUMP_TIME := 0.3            # seconds the fake lasts (ball raised, small hop)
+const PUMP_HOP_PX := 7.0          # height of the little hop
+const PUMP_MOVE_MULT := 0.35      # human can move slowly during the fake
+const PUMP_BITE_WINDOW := 0.4     # a defender starting a block jump this soon after the fake "bit"
+const PUMP_SCORE_WINDOW := 2.5    # a make this soon after a fake counts as pump_and_score
+const CPU_PUMP_CHANCE := 0.04     # CPU handler, defender close in front, outside the rim range: chance per decision
+const CPU_PUMP_FT := 5.0          # "close" for that decision
+const CPU_PUMP_MAX_FT := 24.0     # CPU only fakes inside this distance from the rim (a believable shot)
+const CPU_BITE_SHOOT_CHANCE := 0.5  # after a bite: chance to step in for the shot (else drive past on turbo)
+const CPU_BITE_SHOOT_FT := 20.0   # shoot after a bite only inside this
+const CPU_BITE_DRIVE := 0.8       # seconds the CPU sprints to the rim after a bite
+
+var cpu_faking := false           # CPU fake in progress (shooting is true for the fake's time)
+var since_fake := 99.0            # seconds since this player's last pump fake started
+var fake_bit := false             # a defender bit on the current/last fake
+var cpu_drive_t := 0.0            # CPU: seconds left driving to the rim after a bite
+
 # ---- turbo and stamina (tuning) ----
 # (how far to pull the joystick to sprint is TURBO_PULL in touch_controls.gd)
 const TURBO_SPEED_MULT := 1.35    # speed multiplier while sprinting
@@ -179,6 +224,14 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	steal_cooldown = max(0.0, steal_cooldown - delta)
 	stumble_t = maxf(0.0, stumble_t - delta)
 	poke_t = maxf(0.0, poke_t - delta)
+	cross_cd = maxf(0.0, cross_cd - delta)
+	cpu_side_t = maxf(0.0, cpu_side_t - delta)
+	cpu_drive_t = maxf(0.0, cpu_drive_t - delta)
+	update_pump_fake(delta)
+	if cross_t > 0.0:
+		cross_t = maxf(0.0, cross_t - delta)
+		if not has_ball() or shooting or is_airborne():
+			cross_t = 0.0
 	if team == 0 and index == 0:
 		game.stat("frames")
 	var desired := Vector2.ZERO
@@ -194,7 +247,7 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 			shot_charge += delta / 0.9
 			if shot_charge >= 1.2:
 				release_shot()
-		else:
+		elif not cpu_faking:          # a CPU pump fake ends in update_pump_fake, not with a shot
 			cpu_shot_time -= delta
 			if cpu_shot_time <= 0.0:
 				release_shot()
@@ -204,10 +257,17 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		if desired.length() < 1.0 and ball.state == ball.PASS and ball.receiver == self:
 			desired = seek(ball.position, 1.0)
 		want_turbo = human_turbo_input() and desired.length() > 1.0
+		if fake_t > 0.0:
+			desired *= PUMP_MOVE_MULT     # pump fake: ball up, only a slow shuffle
+			want_turbo = false
 	else:
 		ai(delta)
 		desired = seek(target, speed_mult)
 		want_turbo = cpu_turbo_want and desired.length() > 1.0
+	var accel := 1600.0
+	if cross_t > 0.0:
+		desired = cross_dir * speed * CROSS_SPEED_MULT   # the burst: a sharp cut the new way
+		accel = CROSS_ACCEL
 	if poke_t > 0.0 and rim_kind == "" and block_jump_t < 0.0:
 		desired = Vector2.ZERO        # reaching for the ball: stands still, hit or miss
 		want_turbo = false
@@ -215,12 +275,13 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	elif stumble_t > 0.0:
 		desired *= STUMBLE_SPEED_MULT
 		want_turbo = false
-	elif has_ball() and not is_airborne() and is_guarded(desired):
+	elif has_ball() and not is_airborne() and cross_t <= 0.0 and is_guarded(desired):
 		desired *= GUARD_SLOW
 		game.stat("guard_slow_frames_t%d" % team)
 	if update_turbo(delta, want_turbo, is_human):
 		desired *= TURBO_SPEED_MULT * (TURBO_BALL_MULT if has_ball() else 1.0)
-	velocity = velocity.move_toward(desired, 1600.0 * delta)
+	update_dribble_hand(delta)
+	velocity = velocity.move_toward(desired, accel * delta)
 	position += velocity * delta
 	position = game.clamp_to_court(position)
 	var lift := jump_z / DUNK_JUMP_PX
@@ -303,6 +364,190 @@ func is_guarded(move: Vector2) -> bool:
 			return true
 	return false
 
+# ---------------- crossover and the dribble hand (P2-05) ----------------
+
+# A quick cut toward `dir` with the ball switching hands in front of the body. Called by human_input.gd on a flick
+# and by the CPU handler. Owner (Q1): crossover only, so every kind (including "spin") is a crossover.
+func start_crossover(dir: Vector2, kind: String) -> void:
+	if not has_ball() or shooting or is_airborne() or stumble_t > 0.0:
+		return
+	if cross_cd > 0.0 or cross_t > 0.0:
+		if game.is_human(self):
+			game.stat("human_cross_cooldown")   # a flick that came too soon after the last crossover
+		return
+	if dir.length() < 0.01:
+		dir = Vector2.from_angle(facing + PI / 2.0 * dribble_side)
+	if kind != "cross":
+		game.stat("cross_from_" + kind)   # the detector called it a spin: played as a crossover (Q1)
+	if fake_t > 0.0:
+		end_pump_fake()   # out of a pump fake into a crossover
+	move_kind = "cross"
+	cross_dir = dir.normalized()
+	cross_t = CROSS_TIME
+	cross_cd = CROSS_COOLDOWN
+	dribble_side = -dribble_side
+	hand_switch_t = 0.0
+	game.stat("crossovers_t%d" % team)
+	if game.is_human(self):
+		game.stat("human_crossovers")
+	else:
+		game.stat("cpu_crossovers")
+	cross_beat_check()
+
+# The defender close in front can be beaten: he stumbles if he was moving the wrong way, or (CPU) if he is still
+# inside his reaction time. Until defense.gd decides that (P2-08 hook `def.beaten_by_cross(handler, dir)`), a flat
+# CROSS_BEAT_CHANCE. Only the closest defender in front can be beaten.
+func cross_beat_check() -> void:
+	var look := Vector2.from_angle(facing)
+	var cos_cone := cos(deg_to_rad(CROSS_BEAT_CONE))
+	var best = null
+	var best_d: float = CROSS_BEAT_FT * game.FT
+	for o in game.teams[1 - team]:
+		var r: Vector2 = o.position - position
+		var d := r.length()
+		if d < best_d and d > 0.1 and look.dot(r / d) >= cos_cone and o.stumble_t <= 0.0 and not o.is_airborne():
+			best_d = d
+			best = o
+	if best == null:
+		return
+	var beaten := false
+	var ov: Vector2 = best.velocity
+	if ov.length() >= CROSS_WRONG_WAY_SPEED and ov.normalized().dot(cross_dir) < -0.3:
+		beaten = true   # leaning the wrong way: the cut goes behind him
+	elif not game.is_human(best):
+		if best.def != null and best.def.has_method("beaten_by_cross"):
+			beaten = best.def.beaten_by_cross(self, cross_dir)
+		else:
+			beaten = game.rng.randf() < CROSS_BEAT_CHANCE
+	if not beaten:
+		return
+	best.stumble(CROSS_STUN)
+	game.stat("cross_beats_t%d" % team)
+	if game.is_human(self):
+		game.stat("human_cross_beats")
+	if game.fx:
+		game.fx.popup("SHOOK!", best.position + Vector2(0, -40), BEAT_POPUP_COLOR, 30)
+
+# Moves the drawn dribble hand (hand_x) toward dribble_side; the ball is centered while shooting or in the air.
+# Out of a move, the handler slowly switches hands away from the nearest defender.
+func update_dribble_hand(delta: float) -> void:
+	if not has_ball():
+		hand_switch_t = 0.0
+		return
+	var goal := dribble_side
+	if shooting or is_airborne() or fake_t > 0.0:
+		goal = 0.0
+	elif cross_t <= 0.0:
+		var o = game.nearest_opponent(self)
+		var right := Vector2.from_angle(facing + PI / 2.0)
+		if o != null and o.position.distance_to(position) < HAND_SWITCH_FT * game.FT \
+				and right.dot(o.position - position) * dribble_side > 0.0:
+			hand_switch_t += delta
+			if hand_switch_t >= HAND_SWITCH_DELAY:
+				hand_switch_t = 0.0
+				dribble_side = -dribble_side
+				game.stat("hand_switches")
+		else:
+			hand_switch_t = 0.0
+	var rate := CROSS_HAND_RATE if cross_t > 0.0 else HAND_SWITCH_RATE
+	hand_x = move_toward(hand_x, goal, rate * delta)
+
+# ---------------- pump fake (P2-06) ----------------
+
+# The human's A release ended the meter this quickly: a pump fake. Uses human_input's short-tap flag when it is
+# there, and always checks the meter time itself (the meter's auto-release at full charge is never a tap).
+func is_pump_tap() -> bool:
+	if shot_charge * 0.9 > PUMP_TAP_MAX + 0.02:
+		return false
+	var inp = game.input
+	if inp != null and "last_a_short" in inp:
+		return inp.last_a_short
+	return true
+
+# Human: the shot meter was started and A released at once. Keeps the ball; A again shoots right away.
+func start_pump_fake() -> void:
+	shooting = false
+	shot_charge = 0.0
+	_begin_fake()
+	if game.is_human(self):
+		game.stat("human_pump_fakes")
+
+# CPU: a fake looks like a real shot start (`shooting` is true for the fake's time) so defenders that react to
+# shots can bite. It ends in update_pump_fake().
+func start_cpu_pump_fake() -> void:
+	if not has_ball() or shooting or rim_kind != "":
+		return
+	shooting = true
+	cpu_faking = true
+	_begin_fake()
+	game.stat("cpu_pump_fakes")
+
+func _begin_fake() -> void:
+	fake_t = PUMP_TIME
+	since_fake = 0.0
+	fake_bit = false
+	game.stat("pump_fakes_t%d" % team)
+	# hook for defense.gd (P2-07/P2-08): a CPU defender may jump at the fake
+	for o in game.teams[1 - team]:
+		if o.def != null and o.def.has_method("on_pump_fake"):
+			o.def.on_pump_fake(self)
+
+func end_pump_fake() -> void:
+	fake_t = 0.0
+	if not is_airborne():
+		jump_z = 0.0
+	if cpu_faking:
+		cpu_faking = false
+		shooting = false
+
+# Runs every frame: the fake's hop, its end, and whether a defender bit (started a block jump right after it).
+func update_pump_fake(delta: float) -> void:
+	since_fake += delta
+	if cpu_faking and not shooting:
+		end_pump_fake()       # main.gd reset the play (new possession, period end)
+	if fake_t > 0.0:
+		if not has_ball() or is_airborne():
+			end_pump_fake()   # stripped, or the ball is gone
+		else:
+			fake_t = maxf(0.0, fake_t - delta)
+			jump_z = PUMP_HOP_PX * sin(PI * (1.0 - fake_t / PUMP_TIME))
+			if fake_t <= 0.0:
+				var was_cpu := cpu_faking
+				end_pump_fake()
+				if was_cpu and fake_bit:
+					cpu_punish_bite()
+	if not fake_bit and since_fake <= PUMP_BITE_WINDOW:
+		for o in game.teams[1 - team]:
+			if o.block_jump_t >= 0.0 and o.block_jump_t <= since_fake + 0.001:
+				fake_bit = true
+				game.stat("pump_bites_t%d" % team)
+				if game.is_human(self):
+					game.stat("human_pump_bites")
+				if fake_t <= 0.0 and not game.is_human(self):
+					cpu_punish_bite()
+				break
+
+# CPU after a defender bit: step in for the shot, or drive past him on turbo.
+func cpu_punish_bite() -> void:
+	if not has_ball() or shooting or rim_kind != "":
+		return
+	var d_ft: float = position.distance_to(game.attack_hoop(team)) / game.FT
+	if d_ft <= CPU_BITE_SHOOT_FT and game.rng.randf() < CPU_BITE_SHOOT_CHANCE:
+		game.stat("pump_bite_shots")
+		start_shot()
+	else:
+		game.stat("pump_bite_drives")
+		cpu_drive_t = CPU_BITE_DRIVE
+
+# Counts a make shortly after this player's pump fake (call right after game.release_shot).
+func count_pump_and_score() -> void:
+	if since_fake > PUMP_SCORE_WINDOW:
+		return
+	var ball = game.ball
+	game.stat("pump_then_shots")
+	if ball.state == ball.SHOT and ball.shot_made and ball.shooter == self:
+		game.stat("pump_and_score")
+
 # ---------------- turbo ----------------
 
 func human_turbo_input() -> bool:
@@ -363,6 +608,9 @@ func seek(t: Vector2, mult: float) -> Vector2:
 
 func start_shot() -> void:
 	if has_ball() and not shooting and rim_kind == "":
+		if fake_t > 0.0:
+			end_pump_fake()   # out of a pump fake straight into the real shot
+			game.stat("pump_then_shoot_t%d" % team)
 		var d_ft: float = position.distance_to(game.attack_hoop(team)) / game.FT
 		if d_ft <= LAYUP_RANGE:
 			start_rim_move(d_ft)
@@ -374,6 +622,9 @@ func start_shot() -> void:
 func release_shot() -> void:
 	if not shooting or rim_kind != "":
 		return  # dunks and layups release on their own
+	if game.is_human(self) and is_pump_tap():
+		start_pump_fake()     # a short tap of SHOOT: pump fake instead of a near-useless 0.6 shot (owner Q2)
+		return
 	shooting = false
 	var quality := 1.0
 	if game.is_human(self):
@@ -404,6 +655,7 @@ func release_shot() -> void:
 			game.stat("jumper_threes_t%d" % team)
 	game.release_shot(self, quality)
 	var ball = game.ball
+	count_pump_and_score()
 	if counted and ball.state == ball.SHOT and ball.shot_made:
 		game.stat("jumper_makes_t%d" % team)
 		if three:
@@ -484,6 +736,7 @@ func release_rim_shot() -> void:
 	var target := DUNK_OPEN_PCT if rim_kind == "dunk" else LAYUP_OPEN_PCT
 	var fire_mult := FIRE_SHOT_BONUS if on_fire else 1.0
 	game.release_shot(self, target / base * rim_quality * fire_mult)
+	count_pump_and_score()
 	if ball.state == ball.SHOT:
 		ball.blocked_checked = true  # the take-off contest replaces the CPU jump-shot contest
 
@@ -566,13 +819,21 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 	var guard = game.nearest_opponent(self)
 	var open_ft := 99.0
 	var guard_behind := false         # nearest defender is not between me and the hoop
+	var step_side := 0.0              # which way the sidestep goes (0 = no sidestep)
 	if guard != null:
 		var r: Vector2 = guard.position - position
 		open_ft = r.length() / FT
 		guard_behind = r.dot(d) <= 0.0
 		if open_ft < 5.0 and r.dot(d) > 0.0:
 			var side := 1.0 if d.cross(r) > 0.0 else -1.0
+			if cpu_side_t > 0.0:
+				side = cpu_side   # keep going the way the crossover went
+			step_side = side
 			target = position + (d * 0.4 - d.orthogonal() * side) * 120.0
+	# a defender bit on my pump fake: drive past him
+	if cpu_drive_t > 0.0:
+		target = hoop + Vector2(game.inward(hoop) * 3.0 * FT, 0)
+		cpu_turbo_want = true
 	# sprint on a fast break, or when the lane to the rim is open
 	if fast_break or (open_ft > 6.0 and dist_ft > 8.0 and lane_open(hoop)):
 		cpu_turbo_want = true
@@ -597,6 +858,15 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		start_shot()
 	elif game.shot_clock < CPU_CLOCK_SHOOT and dist_ft < CPU_CLOCK_SHOOT_FT:
 		start_shot()
+	elif step_side != 0.0 and open_ft < CPU_CROSS_FT and dist_ft > LAYUP_RANGE and cross_cd <= 0.0 \
+			and not lane_open(hoop) and game.rng.randf() < CPU_CROSS_CHANCE:
+		# crossover: cut back the other way, behind a defender sliding with the sidestep
+		cpu_side = -step_side
+		cpu_side_t = CPU_CROSS_COMMIT
+		start_crossover((d * 0.4 - d.orthogonal() * cpu_side).normalized(), "cross")
+	elif step_side != 0.0 and open_ft < CPU_PUMP_FT and dist_ft > LAYUP_RANGE + 1.0 and dist_ft <= CPU_PUMP_MAX_FT \
+			and since_fake > 2.0 * PUMP_SCORE_WINDOW and game.rng.randf() < CPU_PUMP_CHANCE:
+		start_cpu_pump_fake()   # sell the shot to a defender right in front
 	elif dist_ft >= CPU_PULLUP_MIN_FT and dist_ft <= CPU_PULLUP_MAX_FT and not three \
 			and (open_ft >= CPU_PULLUP_ROOM_FT or guard_behind) and game.rng.randf() < CPU_PULLUP_CHANCE:
 		game.stat("pullups_t%d" % team)
@@ -652,6 +922,14 @@ func _draw() -> void:
 		draw_circle(back * 18.0, 6.0, Color(1, 1, 1, 0.35))
 		draw_circle(back * 30.0 + back.orthogonal() * 4.0, 4.5, Color(1, 1, 1, 0.22))
 		draw_circle(back * 40.0 - back.orthogonal() * 3.0, 3.0, Color(1, 1, 1, 0.12))
+	if cross_t > 0.0 and cross_dir.length() > 0.1:
+		# crossover: speed lines behind the cut
+		var a := cross_t / CROSS_TIME
+		var bk := -cross_dir
+		var sd := bk.orthogonal()
+		for k in 3:
+			var off := sd * (float(k) - 1.0) * 9.0
+			draw_line(bk * 16.0 + off, bk * (38.0 + 10.0 * float(k % 2)) + off, Color(1, 1, 1, 0.9 * a), 4.0)
 	if game.is_human(self):
 		draw_arc(Vector2.ZERO, 22.0, 0, TAU, 32, Color(1, 0.9, 0.2), 3.0)
 		var tri := PackedVector2Array([Vector2(-7, -44), Vector2(7, -44), Vector2(0, -34)])

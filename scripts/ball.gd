@@ -37,6 +37,12 @@ const LAYUP_PEAK := 26.0       # extra arc height of a layup in pixels
 const HAND_Z := 22.0           # ball height above a jumping player's jump height
 const SLAM_COLOR := Color(1.0, 0.55, 0.1)
 
+# ---- held ball and the dribble hand (P2-05; player.hand_x is -1 left hand .. +1 right hand) ----
+const HAND_FORWARD_PX := 13.0  # ball this far in front of the handler (main.STEAL_BALL_PX is 15 with no hand)
+const HAND_SIDE_PX := 9.0      # and this far to the side of the dribbling hand
+const CROSS_FRONT_PX := 6.0    # extra reach in front of the body while the ball crosses between the hands
+const PUMP_BALL_LIFT := 1.6     # pump fake: the ball rises this many times the hop height (P2-06)
+
 # ---- ball and rim sounds (tuning) ----
 const BOUNCE_MIN_SPEED := 120.0   # a loose ball must hit the floor at least this fast (px/s down) to make a sound
 const BOUNCE_LOUD_SPEED := 380.0  # impact speed that plays at full volume
@@ -121,9 +127,15 @@ func update(delta: float) -> void:
 			if holder == null:
 				return
 			var dir := Vector2.from_angle(holder.facing)
-			position = holder.position + dir * 15.0
+			# dribble hand (P2-05): off to the side of the body, crossing in front of it when switching hands
+			var hx: float = holder.hand_x if "hand_x" in holder else 0.0
+			var right := Vector2.from_angle(holder.facing + PI / 2.0)
+			position = holder.position + dir * (HAND_FORWARD_PX + CROSS_FRONT_PX * (1.0 - hx * hx)) \
+					+ right * HAND_SIDE_PX * hx
 			if holder.rim_kind != "":
 				z = holder.jump_z + HAND_Z  # carried up in the jump
+			elif "fake_t" in holder and holder.fake_t > 0.0:
+				z = 26.0 + holder.jump_z * PUMP_BALL_LIFT   # pump fake: ball up as if shooting, with the hop
 			elif holder.shooting:
 				z = 26.0
 			else:
