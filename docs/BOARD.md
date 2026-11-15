@@ -87,50 +87,22 @@ and B do nothing** (the HUD shows "-").
 - **Defense button (P2-07).** A on defense today pokes for a steal and, in the first 0.3 s of a jump shot, can block
   at 30%. With jump-timing blocks, A needs to mean "poke" or "jump": Q3.
 
-## Questions for owner (asked by the coordinator; recommended option first)
-
-**Q1. Crossover or spin: which dribble moves?** (blocks P2-05)
-1. Crossover only. Any quick flick of the stick while dribbling is a crossover: a fast side-step, the ball switches
-   hands, and a defender who is too close can stumble. A spin can come later.
-2. Both. A quick flick to the side is a crossover; a quick flick back (away from where you were going) is a spin move,
-   which protects the ball better but is a bit slower.
-3. Spin only. Any quick flick is a spin move.
-
-**Q2. Pump fake near the rim?** (blocks P2-06)
-1. Pump fakes only work away from the rim (where the shot meter appears). Near the rim SHOOT always dunks or lays up
-   right away, as now.
-2. Near the rim too: SHOOT waits a split second (about 0.12 s) to see if it's a quick tap, so dunks and layups start a
-   little later.
-3. Near the rim, a quick tap while standing still is a fake; while moving, SHOOT dunks or lays up right away.
-
-**Q3. On defense, how does the orange button choose between a steal and a block jump?** (blocks P2-07)
-1. Automatically: when the player you guard starts a shot (or is close to the rim) and you're near him, the button
-   says BLOCK and makes you jump; otherwise it says STEAL and pokes at the ball. Jumping at a pump fake leaves you in
-   the air for a moment.
-2. Orange always jumps (BLOCK). Blue pokes for a steal when you're next to the ball handler, and switches player
-   when you're far from him.
-3. One button does both at once: a press pokes and also hops, so it can steal or block (simpler, less control).
-
-**Q4. Calling for the ball** (blocks P2-10)
-1. Without the ball on offense, the blue button becomes CALL. Your teammate passes to you as soon as the passing
-   lane is clear (within about 1.5 s). If you're cutting to the rim, it's a lob for an alley-oop.
-2. CALL makes your teammate pass right away, even into traffic (more passes get picked off).
-3. Two calls: blue = "pass it to me", orange = "throw me a lob" (alley-oop request).
-
-**Q5. Alley-oops** (blocks P2-09, part of P2-10)
-1. Automatic. PASS to a teammate who is cutting to the rim throws a lob and he dunks it in the air. When a teammate
-   lobs to you, your player dunks it automatically too.
-2. Automatic lob, but when you catch one you press SHOOT in the air to finish (good timing = better odds).
-3. A lob only when you push the stick toward the cutter while pressing PASS; a plain PASS stays a normal pass.
-
-**Q6. How much luck is left in steals and blocks?** (constants in P2-04 and P2-07; work can start before the answer)
-1. Mostly skill: good timing and position work most of the time (about 7 in 10), bad timing almost never. A missed
-   steal makes you stumble for a moment.
-2. Pure skill: a well-timed steal or block always works; a bad one never does.
-3. Like 1, but a missed steal costs nothing.
-
-Coordinator: record the answers in `docs/VISION.md` (decisions table) and here, and copy any still-open ones to its
-"Open questions".
+## Owner answers (2026-11-15, also in docs/VISION.md)
+- **Q1 dribble moves:** crossover only. Any quick flick while dribbling is a crossover (fast side-step, ball switches
+  hands, a defender too close can stumble). No spin for now.
+- **Q2 pump fake:** only away from the rim, where the meter shows. Near the rim SHOOT dunks or lays up right away.
+- **Q3 defense button:** automatic. Orange says BLOCK and jumps when your man starts a shot or is near the rim and
+  you're close; otherwise STEAL. Jumping at a fake leaves you in the air.
+- **Q4 call for the ball:** blue becomes CALL on offense without the ball; the teammate passes as soon as the lane is
+  clear (about 1.5 s); if you're cutting to the rim it's a lob.
+- **Q5 alley-oops:** automatic. PASS to a teammate cutting to the rim throws a lob and he dunks it in the air; same
+  when a teammate lobs to you.
+- **Q6 luck:** owner's own answer: "timing based but also depend on the traits of the specific player since players
+  will have attributes". Implemented as: timing/exposure decides a good vs bad try; a good try succeeds with a chance
+  set by the player's rating (`ratings` {"steal", "block"} 0-100 on each player, `rating(key)` in player.gd; about
+  70% at 50, about +/-20% across 0-100); bad timing almost never works. Updated in VISION (6486a45): no stumble
+  after a missed steal; instead the defender stands still while attempting a steal (hit or miss), so poking has a cost. Ratings are varied per player with equal team totals. They are the start of the
+  player attributes the campaign (Phase 5) will grow.
 
 ## Todo
 
@@ -198,6 +170,13 @@ Coordinator: record the answers in `docs/VISION.md` (decisions table) and here, 
 - Done when: autoplay steals stay about 5-10 per game (the CPU pokes on a timer until P2-08, so expect fewer: report
   it), humantest steals drop from ~35 to a believable number, both teams have steals, scores in range.
 - Depends on: P2-03 (same file). Q6 only changes constants.
+- Review notes (lead, trial merge `trial-p2b`): the miss stumble now resolves to the real `stumble()` (~95/game) and
+  contradicts the updated VISION; replace it with a stand-still poke freeze (needs a `poke_t` in player.gd movement;
+  file owner to be set by the coordinator). Timing window is too narrow for a human, see "Steal timing" below.
+- **Steal timing (later task, P2-07/P2-08 or P2-13):** the dribble is `4 + |sin(9t)| * 16` px, so z under 8 px is
+  ~55 ms per bounce (~16% of the time) and z under 5 is ~14 ms (under one frame). Minimal readable cue: flash or
+  enlarge the STEAL button (or a small ring under the ball) while `steal_timing(handler) > 0`, and/or measure timing
+  as time to the nearest floor touch with a ~0.1 s grace. The dribble sound only plays every 2nd floor touch.
 
 ### Wave 2: needs Q1, Q2, Q3 (Q6 for constants)
 
@@ -216,6 +195,9 @@ Coordinator: record the answers in `docs/VISION.md` (decisions table) and here, 
 - Done when: autoplay shows about 4-12 crossovers per team per game and some beats; humantest `human_crossovers` =
   `human_flicks` (minus ones during cooldown); scores in range; screenshot of the ball on the left hand.
 - Depends on: P2-01, P2-02 (`player.gd`), P2-03 (detector), P2-04 (exposure uses `cross_t`), Q1.
+- Note (lead): Q1 = crossover only. P2-03 still reports `kind` "spin" for turns over 150 degrees; `start_crossover`
+  must treat "spin" exactly like "cross" (no spin move, no `spins_*` stats, `move_kind` always "cross"), so
+  `STEAL_SPIN_MULT` in main.gd never applies.
 
 **P2-06 | Pump fake | gameplay (A, after P2-05) | `scripts/player.gd`**
 - Human: release of A within `PUMP_TAP_MAX` 0.15 s of starting the meter = pump fake (no shot, keeps the ball,
@@ -312,7 +294,9 @@ Coordinator: record the answers in `docs/VISION.md` (decisions table) and here, 
   blocks are not flat (well-timed vs early jumps, exposure 0 pokes almost never work); scores, shots, FG%, OT rate;
   BLUE vs RED; no script errors; B1 fixed (`shakes` = `blocks + dunk_makes`).
 - Test the web build in Chromium with Playwright touch emulation: a flick while holding the stick, a short tap of
-  SHOOT, CALL, BLOCK. Report whether a flick can be triggered by accident during normal steering.
+  SHOOT, CALL, BLOCK. Report whether a flick can be triggered by accident during normal steering, and by lifting
+  and re-touching the thumb (P2-03 saw 1 re-touch false flick in 3 browser runs at 15 fps). If it recurs at 60 fps,
+  don't record stick samples while `_touch_age < FLICK_TOUCH_IGNORE` (today they are recorded, only firing waits).
 - Done when: report with a table per game and a pass/fail line per feature; tuning changes listed with before/after.
 - Depends on: P2-11 (P2-12 optional).
 
@@ -337,5 +321,8 @@ before the next starts. If the owner answers late, wave 1 still finishes; nothin
 ## Doing
 
 ## Review
+
+- P2-03 + P2-04 (`worktree-agent-a7352f0fb16833d4f`, trial merge `trial-p2b`): CHANGES (miss stumble vs VISION,
+  humantest score out of range, steal timing window). See the P2-04 review notes.
 
 ## Done

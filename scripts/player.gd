@@ -1,5 +1,8 @@
 extends Node2D
 # One basketball player. Either driven by the touch controls (the human) or by the CPU brain below.
+# CPU defense lives in defense.gd (one instance per player, `def`).
+
+const Defense = preload("res://scripts/defense.gd")
 
 var game
 var team := 0
@@ -18,6 +21,39 @@ var steal_timer := 0.0
 var shooting := false
 var shot_charge := 0.0
 var cpu_shot_time := 0.0
+var def                           # defense brain (defense.gd), created in setup()
+
+# ---- shared move state (Phase 2 contract; later tasks fill these in) ----
+const BLOCK_JUMP_TIME := 0.5      # seconds in the air for a defender's block jump
+const BLOCK_JUMP_PX := 26.0       # block jump height in pixels (drawn through jump_z)
+const BLOCK_JUMP_MOMENTUM := 0.4  # fraction of the take-off velocity kept while airborne (no steering)
+const STUMBLE_SPEED_MULT := 0.35  # speed multiplier while off balance (no turbo either)
+const GUARD_FT := 4.0             # close guarding: a defender this close in front of the handler slows him
+const GUARD_CONE := 50.0          # degrees either side of the handler's movement direction that count as "in front"
+const GUARD_SLOW := 0.82          # handler speed multiplier while closely guarded (turbo still applies on top)
+
+var stumble_t := 0.0              # seconds left off balance (slow, can't steal or jump)
+var block_jump_t := -1.0          # seconds since a block jump started (< 0 = not jumping)
+var block_jump_vel := Vector2.ZERO
+var cross_t := 0.0                # seconds left in a crossover/spin (P2-05)
+var move_kind := ""               # "cross" or "spin" (P2-05)
+var dribble_side := 1.0           # +1 right hand, -1 left hand (P2-05)
+var fake_t := 0.0                 # seconds left in a pump fake (P2-06)
+var alley_cut := false            # cutting to the rim for a lob (P2-09)
+
+# ---- player ratings (0-100, 50 = average). Read them with rating("steal") / rating("block"). ----
+# Per roster slot (index 0-2), the same for both teams so they stay balanced (each column sums to 150).
+const RATINGS_BY_INDEX := [
+	{"steal": 75, "block": 40},   # quick hands
+	{"steal": 40, "block": 75},   # shot-blocker
+	{"steal": 35, "block": 35},
+]
+const BLOCK_GOOD_BASE := 0.7      # well-timed block jump at block rating 50: success chance
+const BLOCK_RATING_SPAN := 0.2    # +/- this across ratings 0..100 (0.5 at 0, 0.9 at 100)
+const BLOCK_BAD_CHANCE := 0.03    # badly timed block jump: success chance (any rating)
+const RIM_BLOCK_RATING_SPAN := 0.5  # rim-block dice (defense.rim_blocker) x0.5 at rating 0, x1.5 at 100
+
+var ratings := {"steal": 50, "block": 50}
 
 # ---- turbo and stamina (tuning) ----
 # (how far to pull the joystick to sprint is TURBO_PULL in touch_controls.gd)
@@ -57,12 +93,33 @@ const RIM_GLIDE := 0.45           # fraction of top speed the jumper keeps drift
 const DUNK_OPEN_PCT := 0.92       # make chance of an open dunk (P1-09: was 0.85; keeps dunks ahead of layups after the layup change)
 const LAYUP_OPEN_PCT := 0.75      # make chance of an open layup (P1-09: was 0.65; contested layups made less than 15 ft jumpers)
 const CONTEST_FT := 4.0           # nearest defender inside this contests the take-off
-const DUNK_BLOCK_CHANCE := 0.18   # block chance with a defender right on you (less further away)
-const LAYUP_BLOCK_CHANCE := 0.12
+# (rim block chances live in defense.gd: DUNK_BLOCK_CHANCE, LAYUP_BLOCK_CHANCE, RIM_CONTEST_FT)
 const CONTEST_MAKE_MULT := 1.0    # extra make-odds multiplier with a defender right on you (eases off with distance). P1-09: was 0.9; shot_probability() already applies the openness penalty, so 1.0 avoids counting it twice
 const CPU_FINISH_FT := 4.5        # CPU handler finishes at the rim inside this (any speed)
 const CPU_LAYUP_CHANCE := 0.45    # CPU entering LAYUP_RANGE with a defender close: chance it pulls up for a layup
 const CPU_LAYUP_OPEN_CHANCE := 0.15  # same with nobody close (otherwise it keeps going for the dunk)
+
+# ---- CPU ball handler decisions (tuning; one roll per decision, every CPU_DECIDE_MIN..MAX s) ----
+const CPU_DECIDE_MIN := 0.3       # seconds between handler decisions
+const CPU_DECIDE_MAX := 0.5
+const CPU_CLOCK_SHOOT := 4.0      # shot clock under this: shoot from anywhere inside CPU_CLOCK_SHOOT_FT
+const CPU_CLOCK_SHOOT_FT := 32.0
+const CPU_GOOD_SHOT_P := 0.40     # make chance above this with the defender CPU_GOOD_SHOT_OPEN_FT off: shoot...
+const CPU_GOOD_SHOT_OPEN_FT := 4.0
+const CPU_GOOD_SHOT_CHANCE := 0.5 # ...with this chance
+const CPU_OPEN_SHOT_FT := 6.0     # wide open (defender this far off) inside CPU_OPEN_SHOT_RANGE: shoot...
+const CPU_OPEN_SHOT_RANGE := 26.0
+const CPU_OPEN_SHOT_CHANCE := 0.3 # ...with this chance
+const CPU_PASS_CHANCE := 0.15     # otherwise, chance to look for an open teammate
+const CPU_PASS_OPEN_EDGE := 2.0   # a teammate must be this many feet more open than me
+# pull-up jumpers (R1): mid-range off the dribble when the defender gives room or is beaten
+const CPU_PULLUP_MIN_FT := 12.0   # pull-up range from the rim
+const CPU_PULLUP_MAX_FT := 22.0
+const CPU_PULLUP_ROOM_FT := 3.0   # defender at least this far off (or behind me) to pull up
+const CPU_PULLUP_CHANCE := 0.28   # chance per decision when a pull-up is on
+const CPU_THREE_MAX_FT := 28.0    # deep pull-up: beyond the arc but inside this
+const CPU_THREE_OPEN_FT := 4.0    # and the defender at least this far off
+const CPU_THREE_CHANCE := 0.25    # chance per decision
 
 var rim_kind := ""                # "dunk" or "layup" while in the air, "" otherwise
 var jump_t := 0.0                 # seconds since take-off
@@ -70,7 +127,6 @@ var jump_time := 0.0
 var jump_z := 0.0                 # current height of the jump in pixels
 var jump_released := false
 var rim_quality := 1.0
-var rim_blocker = null            # defender who will block this one (decided at take-off)
 var cpu_rim_rolled := false       # CPU already decided layup-or-keep-going on this drive
 
 # ---- on fire (tuning; streak rules live in main.gd) ----
@@ -112,18 +168,23 @@ func setup(g, t: int, i: int, tex: Texture2D) -> void:
 	facing = 0.0 if team == 0 else PI
 	sprite.rotation = facing
 	humantest = OS.get_cmdline_user_args().has("--humantest")
+	def = Defense.new(self, g)
+	ratings = (RATINGS_BY_INDEX[i] as Dictionary).duplicate()
 
 func has_ball() -> bool:
 	return game.ball.state == game.ball.HELD and game.ball.holder == self
 
 func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	steal_cooldown = max(0.0, steal_cooldown - delta)
+	stumble_t = maxf(0.0, stumble_t - delta)
 	if team == 0 and index == 0:
 		game.stat("frames")
 	var desired := Vector2.ZERO
 	var want_turbo := false
 	if rim_kind != "":
 		desired = update_rim_move(delta)
+	elif block_jump_t >= 0.0:
+		desired = update_block_jump(delta)
 	elif shooting:
 		if not has_ball():
 			shooting = false
@@ -145,6 +206,12 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		ai(delta)
 		desired = seek(target, speed_mult)
 		want_turbo = cpu_turbo_want and desired.length() > 1.0
+	if stumble_t > 0.0:
+		desired *= STUMBLE_SPEED_MULT
+		want_turbo = false
+	elif has_ball() and not is_airborne() and is_guarded(desired):
+		desired *= GUARD_SLOW
+		game.stat("guard_slow_frames_t%d" % team)
 	if update_turbo(delta, want_turbo, is_human):
 		desired *= TURBO_SPEED_MULT * (TURBO_BALL_MULT if has_ball() else 1.0)
 	velocity = velocity.move_toward(desired, 1600.0 * delta)
@@ -163,6 +230,72 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	if on_fire:
 		fire_anim += delta
 	queue_redraw()
+
+# ---------------- shared moves: stumble, block jump, close guarding ----------------
+
+func rating(key: String) -> int:
+	return int(ratings.get(key, 50))
+
+# -1..+1 for ratings 0..100
+func rating_frac(key: String) -> float:
+	return clampf((float(rating(key)) - 50.0) / 50.0, -1.0, 1.0)
+
+# Success chance of a block jump: timing decides good vs bad, the block rating scales a good one.
+func block_chance(good_timing: bool) -> float:
+	if not good_timing:
+		return BLOCK_BAD_CHANCE
+	return clampf(BLOCK_GOOD_BASE + BLOCK_RATING_SPAN * rating_frac("block"), 0.0, 1.0)
+
+# Knocked off balance for `time` seconds (slow, no turbo, can't steal or jump).
+func stumble(time: float) -> void:
+	if time <= 0.0:
+		return
+	stumble_t = maxf(stumble_t, time)
+	game.stat("stumbles")
+
+# A defender jumps to block. False if already airborne, off balance or holding the ball.
+func start_block_jump() -> bool:
+	if is_airborne() or stumble_t > 0.0 or has_ball():
+		return false
+	block_jump_t = 0.0
+	block_jump_vel = velocity * BLOCK_JUMP_MOMENTUM
+	game.stat("block_jumps_t%d" % team)
+	return true
+
+func is_airborne() -> bool:
+	return rim_kind != "" or block_jump_t >= 0.0
+
+# 0 on the floor, 1 at the top of a block jump
+func block_height_frac() -> float:
+	if block_jump_t < 0.0:
+		return 0.0
+	return sin(PI * clampf(block_jump_t / BLOCK_JUMP_TIME, 0.0, 1.0))
+
+# Runs every frame during a block jump; returns the desired velocity (momentum only, no steering).
+func update_block_jump(delta: float) -> Vector2:
+	block_jump_t += delta
+	if block_jump_t >= BLOCK_JUMP_TIME:
+		block_jump_t = -1.0
+		jump_z = 0.0
+		return Vector2.ZERO
+	jump_z = BLOCK_JUMP_PX * block_height_frac()
+	return block_jump_vel
+
+# A defender within GUARD_FT, inside GUARD_CONE of the way I'm heading.
+func is_guarded(move: Vector2) -> bool:
+	if move.length() < 1.0:
+		return false
+	var dir := move.normalized()
+	var reach: float = GUARD_FT * game.FT
+	var cos_cone := cos(deg_to_rad(GUARD_CONE))
+	for o in game.teams[1 - team]:
+		if o.stumble_t > 0.0:
+			continue   # a stumbling defender doesn't slow the driver
+		var r: Vector2 = o.position - position
+		var d := r.length()
+		if d < reach and d > 0.1 and dir.dot(r / d) >= cos_cone:
+			return true
+	return false
 
 # ---------------- turbo ----------------
 
@@ -185,7 +318,7 @@ func update_turbo(delta: float, want: bool, is_human: bool) -> bool:
 			want = false
 	if turbo_locked and stamina >= TURBO_MIN_RESTART:
 		turbo_locked = false
-	turbo = want and not turbo_locked and not shooting
+	turbo = want and not turbo_locked and not shooting and not is_airborne()
 	if turbo:
 		since_turbo = 0.0
 		if on_fire:
@@ -255,7 +388,20 @@ func release_shot() -> void:
 	if since_turbo <= TURBO_SHOT_WINDOW and position.distance_to(hoop) > TURBO_SHOT_EXEMPT_FT * game.FT:
 		quality *= TURBO_SHOT_PENALTY
 		game.stat("turbo_jumpers")
+	# jump-shot counters: attempts per team, 5 ft distance bands, threes, and makes
+	var counted := has_ball()
+	var three: bool = game.is_three(position, hoop)
+	if counted:
+		game.stat("jumpers_t%d" % team)
+		game.stat("jumper_d%d" % int(position.distance_to(hoop) / game.FT / 5.0))
+		if three:
+			game.stat("jumper_threes_t%d" % team)
 	game.release_shot(self, quality)
+	var ball = game.ball
+	if counted and ball.state == ball.SHOT and ball.shot_made:
+		game.stat("jumper_makes_t%d" % team)
+		if three:
+			game.stat("jumper_three_makes_t%d" % team)
 
 func green_lo() -> float:
 	return FIRE_GREEN_LO if on_fire else GREEN_LO
@@ -281,19 +427,15 @@ func start_rim_move(d_ft: float) -> void:
 	game.stat("%ss_t%d" % [rim_kind, team])
 	if game.is_human(self):
 		game.stat("human_" + rim_kind + "s")
-	# contest check at take-off (make odds are set at release, see release_rim_shot)
+	# make-odds contest at take-off (the block is asked at release, see release_rim_shot)
 	rim_quality = 1.0
-	rim_blocker = null
-	var def = game.nearest_opponent(self)
-	if def != null:
-		var c_ft: float = def.position.distance_to(position) / game.FT
+	var d = game.nearest_opponent(self)
+	if d != null:
+		var c_ft: float = d.position.distance_to(position) / game.FT
 		if c_ft < CONTEST_FT:
 			var close := clampf(1.5 * (1.0 - c_ft / CONTEST_FT), 0.0, 1.0)
 			rim_quality *= lerpf(1.0, CONTEST_MAKE_MULT, close)
 			game.stat("rim_contested")
-			var chance := (DUNK_BLOCK_CHANCE if dunk else LAYUP_BLOCK_CHANCE) * close
-			if game.rng.randf() < chance:
-				rim_blocker = def
 
 # Runs every frame while in the air; returns the desired velocity (a glide toward the rim).
 func update_rim_move(delta: float) -> Vector2:
@@ -322,13 +464,12 @@ func update_rim_move(delta: float) -> Vector2:
 func release_rim_shot() -> void:
 	var ball = game.ball
 	ball.next_shot_kind = rim_kind
-	if rim_blocker != null:
+	var blocker = Defense.rim_blocker(game, self, rim_kind)
+	if blocker != null:
 		# blocked at the rim: swatted out of the hands (counts as a missed shot, never as a make)
 		ball.next_shot_kind = ""
-		game.rim_shot_blocked(self, rim_blocker)
+		game.rim_shot_blocked(self, blocker)
 		game.stat("rim_blocks")
-		if game.fx:
-			game.fx.shake(4.0, 0.2)
 		return
 	# aim the open make chance at DUNK_OPEN_PCT / LAYUP_OPEN_PCT; shot_probability() then applies its own
 	# openness penalty (about x0.55 with a defender on you)
@@ -416,11 +557,13 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 	# drive to the rim, sidestepping a defender who is in the way
 	target = hoop + Vector2(game.inward(hoop) * 3.0 * FT, 0)
 	var d: Vector2 = to_hoop.normalized()
-	var def = game.nearest_opponent(self)
+	var guard = game.nearest_opponent(self)
 	var open_ft := 99.0
-	if def != null:
-		var r: Vector2 = def.position - position
+	var guard_behind := false         # nearest defender is not between me and the hoop
+	if guard != null:
+		var r: Vector2 = guard.position - position
 		open_ft = r.length() / FT
+		guard_behind = r.dot(d) <= 0.0
 		if open_ft < 5.0 and r.dot(d) > 0.0:
 			var side := 1.0 if d.cross(r) > 0.0 else -1.0
 			target = position + (d * 0.4 - d.orthogonal() * side) * 120.0
@@ -441,19 +584,28 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 	decision_timer -= delta
 	if decision_timer > 0.0:
 		return
-	decision_timer = game.rng.randf_range(0.3, 0.5)
+	decision_timer = game.rng.randf_range(CPU_DECIDE_MIN, CPU_DECIDE_MAX)
 	var p: float = game.shot_probability(self, 1.0)
+	var three: bool = game.is_three(position, hoop)
 	if dist_ft < CPU_FINISH_FT:
 		start_shot()
-	elif game.shot_clock < 4.0 and dist_ft < 32.0:
+	elif game.shot_clock < CPU_CLOCK_SHOOT and dist_ft < CPU_CLOCK_SHOOT_FT:
 		start_shot()
-	elif p > 0.40 and open_ft > 4.0 and game.rng.randf() < 0.5:
+	elif dist_ft >= CPU_PULLUP_MIN_FT and dist_ft <= CPU_PULLUP_MAX_FT and not three \
+			and (open_ft >= CPU_PULLUP_ROOM_FT or guard_behind) and game.rng.randf() < CPU_PULLUP_CHANCE:
+		game.stat("pullups_t%d" % team)
 		start_shot()
-	elif open_ft > 6.0 and dist_ft < 26.0 and game.rng.randf() < 0.3:
+	elif three and dist_ft <= CPU_THREE_MAX_FT and open_ft >= CPU_THREE_OPEN_FT \
+			and game.rng.randf() < CPU_THREE_CHANCE:
+		game.stat("cpu_threes")
 		start_shot()
-	elif game.rng.randf() < 0.15:
+	elif p > CPU_GOOD_SHOT_P and open_ft > CPU_GOOD_SHOT_OPEN_FT and game.rng.randf() < CPU_GOOD_SHOT_CHANCE:
+		start_shot()
+	elif open_ft > CPU_OPEN_SHOT_FT and dist_ft < CPU_OPEN_SHOT_RANGE and game.rng.randf() < CPU_OPEN_SHOT_CHANCE:
+		start_shot()
+	elif game.rng.randf() < CPU_PASS_CHANCE:
 		var best = null
-		var best_open := open_ft + 2.0
+		var best_open := open_ft + CPU_PASS_OPEN_EDGE
 		for mate in game.teams[team]:
 			if mate == self or not game.in_frontcourt(mate.position, team):
 				continue
@@ -477,38 +629,7 @@ func lane_open(hoop: Vector2) -> bool:
 	return true
 
 func defense_ai(delta: float) -> void:
-	var FT: float = game.FT
-	var man = game.teams[1 - team][index]
-	var guard_hoop: Vector2 = game.attack_hoop(man.team)
-	var ball = game.ball
-	var gap := 5.5 * FT
-	if ball.holder == man:
-		gap = 2.5 * FT
-	var to_hoop: Vector2 = guard_hoop - man.position
-	target = man.position + to_hoop.normalized() * min(gap, to_hoop.length() * 0.5)
-	if not game.in_frontcourt(man.position, man.team):
-		# no full-court press: wait just past half court
-		var toward: float = -game.inward(guard_hoop)
-		target = Vector2(game.COURT_W / 2 + toward * 6.0 * FT, lerpf(man.position.y, game.COURT_H / 2, 0.3))
-	if ball.holder != man and ball.state != ball.DEAD:
-		target = target.lerp(ball.position, 0.15)  # help side
-	speed_mult = 0.9
-	# beaten by my man: sprint to recover
-	var beaten: float = (position.distance_to(guard_hoop) - man.position.distance_to(guard_hoop)) / FT
-	if beaten > CPU_BEATEN_FT and game.in_frontcourt(man.position, man.team):
-		cpu_turbo_want = true
-		speed_mult = 1.0
-	# poke at the ball now and then
-	if ball.holder == man and position.distance_to(man.position) < 34.0:
-		steal_timer -= delta
-		if steal_timer <= 0.0:
-			steal_timer = 2.0
-			game.attempt_steal(self, 0.06)
-	# contest jump shots
-	if ball.state == ball.SHOT and ball.shooter == man and not ball.blocked_checked:
-		ball.blocked_checked = true
-		if ball.shot_t < 0.3 and position.distance_to(man.position) < 30.0 and game.rng.randf() < 0.12:
-			game.block_shot(self)
+	def.cpu_update(delta)
 
 func _draw() -> void:
 	if jump_z > 0.5:
