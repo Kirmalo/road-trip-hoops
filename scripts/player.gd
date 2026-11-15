@@ -23,6 +23,7 @@ var shot_charge := 0.0
 var cpu_shot_time := 0.0
 var shot_contest_t := 0.0        # seconds a defender has been within CLOSEOUT_FT during this jump shot
 var shot_elapsed := 0.0           # seconds since this jump shot (or meter) started
+var shot_grace := 0.35            # this shot's closeout grace (CLOSEOUT_GRACE, shorter for a CPU windup)
 var def                           # defense brain (defense.gd), created in setup()
 
 # ---- shared move state (Phase 2 contract; later tasks fill these in) ----
@@ -139,14 +140,15 @@ const LAYUP_JUMP_PX := 20.0
 const DUNK_RELEASE := 0.55        # fraction of the jump when the ball leaves the hand
 const LAYUP_RELEASE := 0.5
 const RIM_GLIDE := 0.45           # fraction of top speed the jumper keeps drifting toward the rim
-const DUNK_OPEN_PCT := 0.92       # make chance of an open dunk (P1-09: was 0.85; keeps dunks ahead of layups after the layup change)
-const LAYUP_OPEN_PCT := 0.75      # make chance of an open layup (P1-09: was 0.65; contested layups made less than 15 ft jumpers)
+const DUNK_OPEN_PCT := 0.82       # make chance of an open dunk (P1-09: 0.85 -> 0.92; P2-11: 0.82, scores ran high with better jumpers)
+const LAYUP_OPEN_PCT := 0.65      # make chance of an open layup (P1-09: 0.65 -> 0.75; P2-11: back to 0.65, scores ran high)
 const CONTEST_FT := 3.0           # nearest defender inside this contests the take-off (P2-11: was 4.0; only a defender in the play counts, see contests_me)
 # (rim block chances live in defense.gd: DUNK_BLOCK_CHANCE, LAYUP_BLOCK_CHANCE, RIM_CONTEST_FT)
 const CONTEST_MAKE_MULT := 1.0    # extra make-odds multiplier with a defender right on you (eases off with distance). P1-09: was 0.9; shot_probability() already applies the openness penalty, so 1.0 avoids counting it twice
 const CPU_FINISH_FT := 4.5        # CPU handler finishes at the rim inside this (any speed)
 const CPU_LAYUP_CHANCE := 0.45    # CPU entering LAYUP_RANGE with a defender close: chance it pulls up for a layup
 const CPU_LAYUP_OPEN_CHANCE := 0.15  # same with nobody close (otherwise it keeps going for the dunk)
+const CPU_LAYUP_GUARD_FT := 4.0   # "a defender close" for that roll (was CONTEST_FT before P2-11 lowered it)
 
 # ---- CPU ball handler decisions (tuning; one roll per decision, every CPU_DECIDE_MIN..MAX s) ----
 const CPU_DECIDE_MIN := 0.3       # seconds between handler decisions
@@ -179,7 +181,7 @@ const CPU_WINDUP_MAX := 0.45
 const CLOSEOUT_FT := 3.0          # mirrors the "right on you" distance in main.shot_probability
 const CLOSEOUT_GRACE := 0.35      # seconds a defender must have been that close during the shot for a full contest
 const CLOSEOUT_SOFT_MULT := 0.9 / 0.55  # jumper: turns main's x0.55 (right on you) into x0.9 (a hand late in the face)
-const RIM_SOFT_MULT := 0.8 / 0.55 # dunk/layup: x0.55 becomes x0.8 (main's 3-6 ft contest)
+const RIM_SOFT_MULT := 0.7 / 0.55 # dunk/layup: x0.55 becomes x0.7
 const CLOSEOUT_TRAIL_DOT := -0.3  # a defender further behind me than this (cosine to the hoop direction) is trailing
 # call for the ball (P2-10/P2-11): while the human's call is live, his CPU teammate with the ball waits for it
 const CPU_CALL_HOLD_CLOCK := 5.0  # ... unless the shot clock is under this (then he plays on)
@@ -664,8 +666,10 @@ func start_shot() -> void:
 		shooting = true
 		shot_charge = 0.0
 		cpu_shot_time = game.rng.randf_range(CPU_WINDUP_MIN, CPU_WINDUP_MAX)
-		shot_contest_t = 0.0
 		shot_elapsed = 0.0
+		# a CPU closeout must arrive in the first half of the windup to count fully; a human meter uses CLOSEOUT_GRACE
+		shot_grace = CLOSEOUT_GRACE if game.is_human(self) else minf(CLOSEOUT_GRACE, 0.5 * cpu_shot_time)
+		shot_contest_t = shot_grace if is_closely_contested() else 0.0   # already on me: never a late closeout
 
 func release_shot() -> void:
 	if not shooting or rim_kind != "":
@@ -695,7 +699,7 @@ func release_shot() -> void:
 			quality *= FIRE_SHOT_BONUS
 	# a closeout that only arrived during the shot (or a defender who is beaten, trailing or still up from a bite)
 	# is a lighter contest
-	if game.openness(self) < CLOSEOUT_FT and (shot_contest_t < CLOSEOUT_GRACE or not is_closely_contested()):
+	if game.openness(self) < CLOSEOUT_FT and (shot_contest_t < shot_grace or not is_closely_contested()):
 		quality *= CLOSEOUT_SOFT_MULT
 		game.stat("late_closeouts_t%d" % team)
 	# shaky jumper right after sprinting (not at the rim)
@@ -947,7 +951,7 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		cpu_rim_rolled = false
 	elif dist_ft <= LAYUP_RANGE and dist_ft > DUNK_RANGE and not cpu_rim_rolled:
 		cpu_rim_rolled = true
-		if game.rng.randf() < (CPU_LAYUP_CHANCE if open_ft < CONTEST_FT else CPU_LAYUP_OPEN_CHANCE):
+		if game.rng.randf() < (CPU_LAYUP_CHANCE if open_ft < CPU_LAYUP_GUARD_FT else CPU_LAYUP_OPEN_CHANCE):
 			start_shot()
 			return
 	if dist_ft <= DUNK_RANGE and is_dunk_speed():
