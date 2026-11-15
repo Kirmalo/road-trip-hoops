@@ -17,6 +17,8 @@ var b_index := -1
 var a_text := "SHOOT"
 var b_text := "PASS"
 var a_glow := false                # set by main.gd: STEAL lights up while a poke would be well timed
+var a_block := false               # set by main.gd: the orange button says BLOCK (it jumps); drawn with an up arrow
+const BLOCK_COLOR := Color(0.9, 0.3, 0.12)   # BLOCK is a deeper orange than STEAL, so the switch is noticed
 var _glow_t := 0.0
 
 func _ready() -> void:
@@ -89,6 +91,13 @@ func _draw() -> void:
 		var pulse := 0.5 + 0.5 * sin(_glow_t * 30.0)
 		draw_arc(a_center(), 86.0 + 4.0 * pulse, 0, TAU, 48, Color(1.0, 0.95, 0.4, 0.9), 8.0)
 		_button(a_center(), 75.0, a_text, Color(1.0, 0.85, 0.3, 1.0))
+	elif a_block:
+		var col := BLOCK_COLOR
+		col.a = 0.85 if a_index < 0 else 1.0
+		_button(a_center(), 75.0, a_text, col)
+		# up arrow over the label: this press jumps
+		var c := a_center() + Vector2(0, -36)
+		draw_colored_polygon(PackedVector2Array([c + Vector2(-16, 12), c + Vector2(16, 12), c + Vector2(0, -6)]), Color.WHITE)
 	else:
 		_button(a_center(), 75.0, a_text, Color(0.95, 0.45, 0.1, 0.75 if a_index < 0 else 0.95))
 	_button(b_center(), 58.0, b_text, Color(0.2, 0.5, 0.95, 0.75 if b_index < 0 else 0.95))

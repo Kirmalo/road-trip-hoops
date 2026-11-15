@@ -5,8 +5,9 @@ extends Node2D
 # Touch: drag anywhere on the left half to move.
 #   Offense: hold SHOOT, release in the green zone of the meter. PASS throws to the open teammate
 #            (or the teammate in the direction you are pushing).
-#   Defense: STEAL pokes at the ball (or blocks a shot that was just released): poke when the dribble is low and
-#            the ball is not behind his body. SWITCH changes player.
+#   Defense: the orange button is STEAL or BLOCK (picked for you). STEAL pokes at the ball: poke when the dribble is
+#            low and the ball is not behind his body. BLOCK (your man shoots, or is near the rim, and you're close)
+#            jumps: time it so you're high when the ball leaves his hand. Don't bite on pump fakes. SWITCH changes player.
 # Keyboard (for testing): WASD/arrows move, J = shoot/steal, K = pass/switch.
 
 const PlayerScript = preload("res://scripts/player.gd")
@@ -16,6 +17,7 @@ const ControlsScript = preload("res://scripts/touch_controls.gd")
 const AudioScript = preload("res://scripts/audio.gd")
 const FxScript = preload("res://scripts/fx.gd")
 const HumanInputScript = preload("res://scripts/human_input.gd")
+const DefenseScript = preload("res://scripts/defense.gd")
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
@@ -89,6 +91,7 @@ const HT_TAP_EVERY := 4.0            # seconds of ball time between short A taps
 const HT_TAP_FRAMES := 5
 const HT_SHOOT_MAX_FT := 24.0        # the scripted human only shoots or taps A with the ball inside this distance
 const HT_TIMED_POKE_GAP := 20.0      # seconds between the scripted human's well-timed pokes (low dribble, ball exposed)
+const HT_BLOCK_DELAY := 0.15         # on defense: press BLOCK this long after a CPU shot starts (every 2nd shot; else at once)
 
 var hoops := [Vector2(5.25 * FT, COURT_H / 2), Vector2(COURT_W - 5.25 * FT, COURT_H / 2)]
 
@@ -130,6 +133,11 @@ var ht_snap_clock := 0.0
 var ht_turn_clock := 0.0
 var ht_tap_clock := 0.0
 var ht_poke_wait := 0.0
+var ht_block_wait := -1.0           # seconds until the scripted human presses BLOCK (< 0 = none planned)
+var ht_block_n := 0                 # CPU shots seen by the block script (alternates timed / early)
+var ht_jump_kind := "random"        # what the last scripted press that jumped was: "random", "timed" or "early"
+var ht_threat_shooting := false
+var shot_serial := 0                # counts released shots, so each defender gets one block try per shot (defense.gd)
 
 func stat(k: String) -> void:
 	stats[k] = stats.get(k, 0) + 1
@@ -357,6 +365,7 @@ func release_shot(p, quality: float) -> void:
 	var made := rng.randf() < prob
 	var pts := 3 if is_three(p.position, hoop) else 2
 	shot_clock_running = false
+	shot_serial += 1
 	stat("shots")
 	stat("shot_d%d" % int(p.position.distance_to(hoop) / FT / 5) )
 	if made: stat("makes")
@@ -387,6 +396,11 @@ func block_shot(defender) -> void:
 	ball.make_loose(ball.position, away * rng.randf_range(200.0, 300.0), ball.z, 80.0)
 	show_message("BLOCKED!")
 	stat("blocks")
+	stat("blocks_t%d" % defender.team)
+	if is_human(defender):
+		stat("human_blocks")
+		if humantest:
+			stat("humantest_%s_blocks" % ht_jump_kind)
 	fx.shake(BLOCK_SHAKE, BLOCK_SHAKE_TIME)
 	audio.play("block")
 	if missed_shooter != null:
@@ -524,10 +538,6 @@ func attempt_steal(defender, _legacy := -1.0) -> void:
 	if defender.steal_cooldown > 0.0:
 		return
 	defender.steal_cooldown = STEAL_COOLDOWN
-	if ball.state == ball.SHOT and ball.shot_t < 0.3 and ball.shooter.team != defender.team:
-		if defender.position.distance_to(ball.shooter.position) < 45.0 and rng.randf() < 0.3:
-			block_shot(defender)
-		return
 	var h = ball.holder
 	if ball.state != ball.HELD or h == null or h.team == defender.team:
 		return
@@ -611,6 +621,7 @@ func _input_vector() -> Vector2:
 
 var _frame := 0
 var _cue_shot := false
+var _block_shot := false
 
 func _debug_screenshots() -> void:
 	# developer testing only: run with -- --shots to save a few screenshots to /tmp
@@ -618,6 +629,9 @@ func _debug_screenshots() -> void:
 	if OS.get_cmdline_user_args().has("--shots") and controls.a_glow and not _cue_shot:
 		_cue_shot = true   # first frame with the STEAL button lit (try -- --shots --humantest)
 		get_viewport().get_texture().get_image().save_png("/tmp/hoops_steal_cue.png")
+	if OS.get_cmdline_user_args().has("--shots") and controls.a_block and not _block_shot:
+		_block_shot = true   # first frame the orange button says BLOCK (try -- --shots --humantest)
+		get_viewport().get_texture().get_image().save_png("/tmp/hoops_block_label.png")
 	if OS.get_cmdline_user_args().has("--shots") and _frame in [240, 900, 1800]:
 		get_viewport().get_texture().get_image().save_png("/tmp/hoops_%d.png" % _frame)
 		if _frame == 1800:
@@ -676,17 +690,20 @@ func _physics_process(delta: float) -> void:
 
 	if humantest and human_player != null:
 		if _frame % 97 == 0 and not (human_player.has_ball() and _ht_hoop_ft() > HT_SHOOT_MAX_FT):
+			ht_jump_kind = "random"
 			_ht_poke("random")   # on offense: a shot (meter held 50 frames); on defense: a randomly timed poke
 		if _frame % 97 == 50: _on_a_released()
 		if _frame % 211 == 0: _on_b_pressed()
 		_humantest_thumb(delta)
 		_humantest_timed_poke(delta)
+		_humantest_block(delta)
 	var stick := _input_vector()
 	input.update(delta, stick)
 	for p in players:
 		p.update(delta, is_human(p), stick)
 	_separate_players()
 	ball.update(delta)
+	DefenseScript.check_jump_shot_block(self)
 	_update_fire_trail()
 
 	camera.position = ball.position
@@ -788,6 +805,30 @@ func _humantest_timed_poke(delta: float) -> void:
 		_ht_poke("timed")
 		_on_a_released()
 
+# on defense: when the CPU shooter near the human starts a shot (jumper, pump fake or rim move) and A says BLOCK,
+# press it HT_BLOCK_DELAY later on every 2nd shot ("timed") and at once on the others ("early")
+func _humantest_block(delta: float) -> void:
+	var t = ball.holder if ball.state == ball.HELD else null
+	var shooting: bool = t != null and t.team != HUMAN_TEAM and t.shooting
+	if shooting and not ht_threat_shooting and input.defense_action() == "BLOCK":
+		ht_block_n += 1
+		ht_block_wait = HT_BLOCK_DELAY if ht_block_n % 2 == 0 else 0.0
+		stat("humantest_block_tries")
+	ht_threat_shooting = shooting
+	if ht_block_wait < 0.0:
+		return
+	ht_block_wait -= delta
+	if ht_block_wait > 0.0:
+		return
+	var kind := "timed" if ht_block_n % 2 == 0 else "early"
+	ht_block_wait = -1.0
+	var jumps: int = stats.get("human_block_jumps", 0)
+	ht_jump_kind = kind
+	_on_a_pressed()
+	_on_a_released()
+	if stats.get("human_block_jumps", 0) > jumps:
+		stat("humantest_%s_jumps" % kind)
+
 func _ht_hoop_ft() -> float:
 	return human_player.position.distance_to(attack_hoop(HUMAN_TEAM)) / FT
 
@@ -874,8 +915,11 @@ func _update_hud() -> void:
 		controls.a_text = "-"
 		controls.b_text = "-"
 	else:
-		controls.a_text = "STEAL"
+		controls.a_text = input.defense_action()   # "STEAL" or "BLOCK" (human_input.gd picks)
 		controls.b_text = "SWITCH"
+	controls.a_block = controls.a_text == "BLOCK"
+	if controls.a_block and not autoplay:
+		stat("human_block_label_frames")
 	controls.a_glow = controls.a_text == "STEAL" and not autoplay and human_steal_cue()
 	if controls.a_glow:
 		stat("human_steal_cue_frames")
