@@ -18,6 +18,13 @@ const FLICK_TOUCH_IGNORE := 0.15  # seconds after the thumb touches down that ar
 # ---- short tap of A (pump fake input, used by P2-06) ----
 const SHORT_TAP_MAX := 0.15       # seconds: A released this soon after starting the shot meter is a short tap
 
+# ---- the defense button (P2-07, owner Q3): A picks STEAL or BLOCK automatically ----
+# BLOCK when the opponent with the ball is shooting (or pump faking, or in a rim move), or is within BLOCK_RIM_FT of
+# his rim, and the human is within BLOCK_CLOSE_FT of him. Otherwise STEAL. A jump at a fake leaves you in the air.
+const BLOCK_CLOSE_FT := 6.0       # the human must be this close to the shooter for BLOCK
+const BLOCK_RIM_FT := 9.0         # a handler this close to his rim gets BLOCK even before he shoots (LAYUP_RANGE)
+const BLOCK_SHOT_WINDOW := 0.25   # seconds after a release a jump can still block (defense.JUMPER_BLOCK_WINDOW)
+
 var game
 
 # gesture results other scripts can read
@@ -62,7 +69,45 @@ func a_pressed() -> void:
 		h.start_shot()
 		_a_meter = h.shooting and h.rim_kind == ""
 	elif game.possession != game.HUMAN_TEAM or game.ball.state == game.ball.SHOT:
-		game.attempt_steal(h, 0.28)
+		if defense_action() == "BLOCK":
+			block_jump(h)
+		else:
+			game.attempt_steal(h)
+
+# the opponent the human would jump at: the handler, or the shooter of a ball still in its block window
+func block_threat():
+	var ball = game.ball
+	var h = game.human_player
+	if h == null:
+		return null
+	if ball.state == ball.HELD and ball.holder != null and ball.holder.team != h.team:
+		return ball.holder
+	if ball.state == ball.SHOT and ball.shooter != null and ball.shooter.team != h.team \
+			and ball.shot_t * ball.shot_time < BLOCK_SHOT_WINDOW:
+		return ball.shooter
+	return null
+
+# "BLOCK" or "STEAL": what A does on defense right now (main.gd shows it on the button)
+func defense_action() -> String:
+	var h = game.human_player
+	var t = block_threat()
+	if h == null or t == null or h.position.distance_to(t.position) > BLOCK_CLOSE_FT * game.FT:
+		return "STEAL"
+	var ball = game.ball
+	if ball.state == ball.SHOT or t.shooting or t.rim_kind != "" or ("fake_t" in t and t.fake_t > 0.0):
+		return "BLOCK"
+	if t.position.distance_to(game.attack_hoop(t.team)) <= BLOCK_RIM_FT * game.FT:
+		return "BLOCK"
+	return "STEAL"
+
+func block_jump(h) -> void:
+	if not h.has_method("start_block_jump") or not h.start_block_jump():
+		return   # already in the air (bit on a fake?) or off balance
+	game.stat("human_block_jumps")
+	var t = block_threat()
+	if t != null and "fake_t" in t and t.fake_t > 0.0:
+		game.stat("human_fake_jumps")   # jumped at a pump fake
+	_log("block jump")
 
 func a_released() -> void:
 	var h = game.human_player
