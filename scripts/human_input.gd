@@ -14,6 +14,7 @@ const SPIN_ANGLE := 150.0         # a flick that turns more than this is a "spin
 const FLICK_WINDOW := 0.12        # seconds the turn must happen in (about 7 frames)
 const FLICK_MIN_LEN := 0.6        # stick length (fraction of the ring) needed before and after the turn
 const FLICK_COOLDOWN := 0.5       # seconds after a flick before the next one can fire
+const FLICK_FRAME_GRACE_MAX := 0.15 # at most this much extra window at low frame rates (two frames' time)
 const FLICK_TOUCH_IGNORE := 0.15  # seconds after the thumb touches down that are ignored (new floating center)
 
 # ---- short tap of A (pump fake input, used by P2-06) ----
@@ -52,6 +53,7 @@ var last_a_hold := -1.0           # seconds A was held at the last release (-1 =
 var last_a_short := false         # the last A release was a short tap on the shot meter
 
 var _time := 0.0                  # physics time, so it works the same at --fixed-fps and in the browser
+var _frame_dt := 1.0 / 60.0      # time of the last drawn frame (input arrives once per drawn frame)
 var _samples: Array = []          # Vector2(time, angle) of stick samples pushed past FLICK_MIN_LEN
 var _cooldown := 0.0
 var _touch_age := 99.0            # seconds since the joystick thumb touched down
@@ -64,6 +66,9 @@ var call_t := -1.0                # seconds since the live call started (< 0 = n
 var call_cd := 0.0                # seconds until B can call again
 var _lob_player = null            # human whose alley_cut we set for a called lob (cleared when that pass ends)
 var _debug_log := false           # web build with ?debug_input in the URL: print gestures to the browser console
+
+func _process(delta: float) -> void:
+	_frame_dt = clampf(delta, 0.0, 0.25)
 
 func _ready() -> void:
 	if OS.has_feature("web"):
@@ -347,7 +352,12 @@ func update(delta: float, stick: Vector2) -> void:
 	if not flick_ready():
 		_samples.clear()
 		return
-	while _samples.size() > 0 and _time - _samples[0].x > FLICK_WINDOW:
+	# the window grows by two drawn frames (capped) so a flick spread over several frames at a low frame rate
+	# (slow tablet or browser) still sees the stick direction from just before it. Input arrives once per drawn
+	# frame while this runs every physics tick, so use the drawn frame time, not delta.
+	var frame_time: float = _frame_dt
+	var window: float = FLICK_WINDOW + minf(2.0 * frame_time, FLICK_FRAME_GRACE_MAX)
+	while _samples.size() > 0 and _time - _samples[0].x > window:
 		_samples.pop_front()
 	if stick.length() < FLICK_MIN_LEN:
 		return                    # inside the dead zone or barely pushed: keep the last strong samples

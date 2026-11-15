@@ -394,4 +394,12 @@ before the next starts. If the owner answers late, wave 1 still finishes; nothin
   open layup 0.65. 24 games: 23.8 ppg, jumper FG 38.9%, jumpers 24%, blocks 6.5, steals 8.7.
   BLUE/RED 604/540 over 24 games: P2-13 must check balance over 40+ games.
 - P2-12 README (merged e9911e0).
+- P2-13 QA (merged a4a6676; report docs/qa/phase2.md). 780 autoplay games, all targets pass. Tuned CPU_LOB_CHANCE
+  0.18, CPU_FAKE_BITE 0.35, CPU_SHOT_QUALITY 1.05-1.25. Balance: the team attacking the RIGHT hoop gets about +0.7
+  points per game (53% wins), whichever team it is; likely left/right facing logic mixed with fixed-y spots (bug B1
+  in the report). Phase 3's side switch at 11 cancels it.
+- Coordinator fix for QA's one fail (low-fps flicks in the browser): the flick window grows by up to two drawn
+  frames (FLICK_FRAME_GRACE_MAX 0.15 s; drawn-frame time measured in human_input._process, since input arrives once
+  per drawn frame but detection runs per physics tick). Browser at ~15 fps: 9/10 snaps (was 0/10). Headless 60 fps:
+  flicks = snaps, 0 false flicks from smooth turns.
 - Watch in P2-13: RED scored lower than BLUE in several runs since P2-01/P2-02; recheck team balance over 20+ games.
