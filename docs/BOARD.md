@@ -185,9 +185,7 @@ editing each other's files. Each wave merges and gets a quick QA run before the 
 5. **Sound:** pending; the coordinator is asking the owner to allow the hosts.
 
 ## Doing
-- P1-04 sound effects (art-audio, OpenGameArt only: kenney.nl refuses scripted downloads)
 - P1-05 auto-dunk and layup
-- P1-06 game-event feedback in main
 
 ## Review
 
@@ -199,7 +197,19 @@ editing each other's files. Each wave merges and gets a quick QA run before the 
 - P1-03 FX layer and nets (approved; merged).
 - Combined wave 1 check: 3 autoplay games 14-18, 14-16, 20-16; humantest 14-22; no script errors.
 
+- P1-04 sound effects (merged). 7 from OpenGameArt (5 CC0, swish CC-BY 3.0, crowd CC-BY 4.0), whistle synthesized
+  by `tools/make_whistle.py`. Licenses checked on the source pages. Nobody has listened to them yet: swish and bounce
+  are stand-ins (no basketball recordings on OpenGameArt).
+- P1-06 game-event feedback (approved; merged). Combined check: 3 autoplay 10-8, 20-14, 12-10, no script errors;
+  popups = sfx_crowd = baskets, shakes = blocks.
+
+### Follow-ups for P1-07 (from the P1-06 review)
+- Dunks will show both "SLAM DUNK!" and "+2". In `on_shot_made`, skip the "+2" popup (keep the crowd sound) when the
+  shooter's last shot was a dunk.
+
 ### Follow-ups for P1-09 QA (from reviews)
+- BLUE popup contrast over the blue paint: check in a screenshot.
+- Owner should listen to all sounds at check-in; CC-BY credits must show in the game before release (Phase 7).
 - `turbo_frames_t*` counts player-frames; per-player usage = turbo_frames / (frames x 3). Currently about 6%.
 - CPU turbo (about 6%) may be too rare to see: consider lower `CPU_BREAK_FT` or a wider `lane_open` rule.
 - Stamina bar is 44x7 px: consider 9-10 px tall for the tablet.
