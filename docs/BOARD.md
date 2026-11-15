@@ -352,4 +352,10 @@ before the next starts. If the owner answers late, wave 1 still finishes; nothin
   STEAL_GRACE 0.05 s (human), STEAL_CPU_GRACE 0.02 s until P2-08 times CPU pokes (then make it equal).
   STEAL button turns solid yellow with a pulsing ring while a poke would be well timed.
   Merged check: 26-12, 12-22, 18-17, 20-16; 49-57 shots; 9-15 steals; 2-3 intercepts.
+- P2-05 crossover + dribble hand, P2-06 pump fake (approved; merged 7cf16fe). Spin flicks play as crossovers.
+- P2-07 jump-timing blocks + automatic BLOCK/STEAL button, P2-08 CPU defense reads the moves (approved; merged
+  7cf16fe, plus coordinator fix 76d3dfb: a blocked rim attempt advances `shot_serial`). Layups blockable on the way up
+  for 0.12 s (accepted departure). Combined: blocks ~8/game (top of target), fake bites ~45% of fakes, crossovers beat
+  the defender 33%, steals ~9/game (0-17). BLUE/RED block split was variance (144/127 over 34 games).
+- Follow-ups for P2-11/P2-13: fakes can be chained with no cooldown; flicks below ~10 fps can be missed (tablets fine).
 - Watch in P2-13: RED scored lower than BLUE in several runs since P2-01/P2-02; recheck team balance over 20+ games.
