@@ -99,6 +99,28 @@ const CPU_FINISH_FT := 4.5        # CPU handler finishes at the rim inside this 
 const CPU_LAYUP_CHANCE := 0.45    # CPU entering LAYUP_RANGE with a defender close: chance it pulls up for a layup
 const CPU_LAYUP_OPEN_CHANCE := 0.15  # same with nobody close (otherwise it keeps going for the dunk)
 
+# ---- CPU ball handler decisions (tuning; one roll per decision, every CPU_DECIDE_MIN..MAX s) ----
+const CPU_DECIDE_MIN := 0.3       # seconds between handler decisions
+const CPU_DECIDE_MAX := 0.5
+const CPU_CLOCK_SHOOT := 4.0      # shot clock under this: shoot from anywhere inside CPU_CLOCK_SHOOT_FT
+const CPU_CLOCK_SHOOT_FT := 32.0
+const CPU_GOOD_SHOT_P := 0.40     # make chance above this with the defender CPU_GOOD_SHOT_OPEN_FT off: shoot...
+const CPU_GOOD_SHOT_OPEN_FT := 4.0
+const CPU_GOOD_SHOT_CHANCE := 0.5 # ...with this chance
+const CPU_OPEN_SHOT_FT := 6.0     # wide open (defender this far off) inside CPU_OPEN_SHOT_RANGE: shoot...
+const CPU_OPEN_SHOT_RANGE := 26.0
+const CPU_OPEN_SHOT_CHANCE := 0.3 # ...with this chance
+const CPU_PASS_CHANCE := 0.15     # otherwise, chance to look for an open teammate
+const CPU_PASS_OPEN_EDGE := 2.0   # a teammate must be this many feet more open than me
+# pull-up jumpers (R1): mid-range off the dribble when the defender gives room or is beaten
+const CPU_PULLUP_MIN_FT := 12.0   # pull-up range from the rim
+const CPU_PULLUP_MAX_FT := 22.0
+const CPU_PULLUP_ROOM_FT := 3.0   # defender at least this far off (or behind me) to pull up
+const CPU_PULLUP_CHANCE := 0.28   # chance per decision when a pull-up is on
+const CPU_THREE_MAX_FT := 28.0    # deep pull-up: beyond the arc but inside this
+const CPU_THREE_OPEN_FT := 4.0    # and the defender at least this far off
+const CPU_THREE_CHANCE := 0.25    # chance per decision
+
 var rim_kind := ""                # "dunk" or "layup" while in the air, "" otherwise
 var jump_t := 0.0                 # seconds since take-off
 var jump_time := 0.0
@@ -364,7 +386,20 @@ func release_shot() -> void:
 	if since_turbo <= TURBO_SHOT_WINDOW and position.distance_to(hoop) > TURBO_SHOT_EXEMPT_FT * game.FT:
 		quality *= TURBO_SHOT_PENALTY
 		game.stat("turbo_jumpers")
+	# jump-shot counters: attempts per team, 5 ft distance bands, threes, and makes
+	var counted := has_ball()
+	var three: bool = game.is_three(position, hoop)
+	if counted:
+		game.stat("jumpers_t%d" % team)
+		game.stat("jumper_d%d" % int(position.distance_to(hoop) / game.FT / 5.0))
+		if three:
+			game.stat("jumper_threes_t%d" % team)
 	game.release_shot(self, quality)
+	var ball = game.ball
+	if counted and ball.state == ball.SHOT and ball.shot_made:
+		game.stat("jumper_makes_t%d" % team)
+		if three:
+			game.stat("jumper_three_makes_t%d" % team)
 
 func green_lo() -> float:
 	return FIRE_GREEN_LO if on_fire else GREEN_LO
@@ -520,11 +555,13 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 	# drive to the rim, sidestepping a defender who is in the way
 	target = hoop + Vector2(game.inward(hoop) * 3.0 * FT, 0)
 	var d: Vector2 = to_hoop.normalized()
-	var def = game.nearest_opponent(self)
+	var guard = game.nearest_opponent(self)
 	var open_ft := 99.0
-	if def != null:
-		var r: Vector2 = def.position - position
+	var guard_behind := false         # nearest defender is not between me and the hoop
+	if guard != null:
+		var r: Vector2 = guard.position - position
 		open_ft = r.length() / FT
+		guard_behind = r.dot(d) <= 0.0
 		if open_ft < 5.0 and r.dot(d) > 0.0:
 			var side := 1.0 if d.cross(r) > 0.0 else -1.0
 			target = position + (d * 0.4 - d.orthogonal() * side) * 120.0
@@ -545,19 +582,28 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 	decision_timer -= delta
 	if decision_timer > 0.0:
 		return
-	decision_timer = game.rng.randf_range(0.3, 0.5)
+	decision_timer = game.rng.randf_range(CPU_DECIDE_MIN, CPU_DECIDE_MAX)
 	var p: float = game.shot_probability(self, 1.0)
+	var three: bool = game.is_three(position, hoop)
 	if dist_ft < CPU_FINISH_FT:
 		start_shot()
-	elif game.shot_clock < 4.0 and dist_ft < 32.0:
+	elif game.shot_clock < CPU_CLOCK_SHOOT and dist_ft < CPU_CLOCK_SHOOT_FT:
 		start_shot()
-	elif p > 0.40 and open_ft > 4.0 and game.rng.randf() < 0.5:
+	elif dist_ft >= CPU_PULLUP_MIN_FT and dist_ft <= CPU_PULLUP_MAX_FT and not three \
+			and (open_ft >= CPU_PULLUP_ROOM_FT or guard_behind) and game.rng.randf() < CPU_PULLUP_CHANCE:
+		game.stat("pullups_t%d" % team)
 		start_shot()
-	elif open_ft > 6.0 and dist_ft < 26.0 and game.rng.randf() < 0.3:
+	elif three and dist_ft <= CPU_THREE_MAX_FT and open_ft >= CPU_THREE_OPEN_FT \
+			and game.rng.randf() < CPU_THREE_CHANCE:
+		game.stat("cpu_threes")
 		start_shot()
-	elif game.rng.randf() < 0.15:
+	elif p > CPU_GOOD_SHOT_P and open_ft > CPU_GOOD_SHOT_OPEN_FT and game.rng.randf() < CPU_GOOD_SHOT_CHANCE:
+		start_shot()
+	elif open_ft > CPU_OPEN_SHOT_FT and dist_ft < CPU_OPEN_SHOT_RANGE and game.rng.randf() < CPU_OPEN_SHOT_CHANCE:
+		start_shot()
+	elif game.rng.randf() < CPU_PASS_CHANCE:
 		var best = null
-		var best_open := open_ft + 2.0
+		var best_open := open_ft + CPU_PASS_OPEN_EDGE
 		for mate in game.teams[team]:
 			if mate == self or not game.in_frontcourt(mate.position, team):
 				continue
