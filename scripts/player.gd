@@ -56,6 +56,32 @@ const RIM_BLOCK_RATING_SPAN := 0.5  # rim-block dice (defense.rim_blocker) x0.5 
 
 var ratings := {"steal": 50, "block": 50}
 
+# ---- crossover and the dribble hand (P2-05; owner Q1: crossover only, a "spin" flick is a crossover too) ----
+const CROSS_TIME := 0.3           # seconds of the crossover burst
+const CROSS_SPEED_MULT := 1.25    # speed multiplier during the burst
+const CROSS_ACCEL := 3200.0       # px/s^2 during the burst (normal 1600): the cut is sharp
+const CROSS_COOLDOWN := 0.6       # seconds from the start of one crossover to the next
+const CROSS_BEAT_FT := 5.0        # a defender this close in front of the handler can be beaten
+const CROSS_BEAT_CONE := 75.0     # degrees either side of the handler's facing that count as "in front"
+const CROSS_STUN := 0.45          # seconds a beaten defender stumbles
+const CROSS_BEAT_CHANCE := 0.5    # CPU defender not moving the wrong way: chance he is beaten (until def decides)
+const CROSS_WRONG_WAY_SPEED := 40.0  # px/s: a defender moving at least this fast away from the cut is beaten
+const CROSS_HAND_RATE := 13.0     # dribble hand travel per second during a crossover (2.0 = one hand to the other)
+const HAND_SWITCH_RATE := 4.0     # same for the slow switch away from a defender
+const HAND_SWITCH_FT := 8.0       # the nearest defender inside this, on the ball side ...
+const HAND_SWITCH_DELAY := 0.5    # ... for this long: the handler moves the ball to the other hand
+const CPU_CROSS_CHANCE := 0.04    # CPU handler, defender close in front and the lane shut: chance per decision
+const CPU_CROSS_FT := 5.0         # "close" for that decision
+const CPU_CROSS_COMMIT := 0.7     # seconds the CPU keeps going the new way after a crossover
+const BEAT_POPUP_COLOR := Color(1.0, 0.95, 0.3)
+
+var cross_cd := 0.0               # seconds until the next crossover is allowed
+var cross_dir := Vector2.ZERO     # direction of the current crossover burst
+var hand_x := 1.0                 # where the ball is drawn sideways, -1 left hand .. +1 right hand (follows dribble_side)
+var hand_switch_t := 0.0          # seconds the nearest defender has been on the ball side
+var cpu_side := 0.0               # CPU: sidestep side committed to after a crossover
+var cpu_side_t := 0.0
+
 # ---- turbo and stamina (tuning) ----
 # (how far to pull the joystick to sprint is TURBO_PULL in touch_controls.gd)
 const TURBO_SPEED_MULT := 1.35    # speed multiplier while sprinting
@@ -179,6 +205,12 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	steal_cooldown = max(0.0, steal_cooldown - delta)
 	stumble_t = maxf(0.0, stumble_t - delta)
 	poke_t = maxf(0.0, poke_t - delta)
+	cross_cd = maxf(0.0, cross_cd - delta)
+	cpu_side_t = maxf(0.0, cpu_side_t - delta)
+	if cross_t > 0.0:
+		cross_t = maxf(0.0, cross_t - delta)
+		if not has_ball() or shooting or is_airborne():
+			cross_t = 0.0
 	if team == 0 and index == 0:
 		game.stat("frames")
 	var desired := Vector2.ZERO
@@ -208,6 +240,10 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		ai(delta)
 		desired = seek(target, speed_mult)
 		want_turbo = cpu_turbo_want and desired.length() > 1.0
+	var accel := 1600.0
+	if cross_t > 0.0:
+		desired = cross_dir * speed * CROSS_SPEED_MULT   # the burst: a sharp cut the new way
+		accel = CROSS_ACCEL
 	if poke_t > 0.0 and rim_kind == "" and block_jump_t < 0.0:
 		desired = Vector2.ZERO        # reaching for the ball: stands still, hit or miss
 		want_turbo = false
@@ -215,12 +251,13 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	elif stumble_t > 0.0:
 		desired *= STUMBLE_SPEED_MULT
 		want_turbo = false
-	elif has_ball() and not is_airborne() and is_guarded(desired):
+	elif has_ball() and not is_airborne() and cross_t <= 0.0 and is_guarded(desired):
 		desired *= GUARD_SLOW
 		game.stat("guard_slow_frames_t%d" % team)
 	if update_turbo(delta, want_turbo, is_human):
 		desired *= TURBO_SPEED_MULT * (TURBO_BALL_MULT if has_ball() else 1.0)
-	velocity = velocity.move_toward(desired, 1600.0 * delta)
+	update_dribble_hand(delta)
+	velocity = velocity.move_toward(desired, accel * delta)
 	position += velocity * delta
 	position = game.clamp_to_court(position)
 	var lift := jump_z / DUNK_JUMP_PX
@@ -302,6 +339,92 @@ func is_guarded(move: Vector2) -> bool:
 		if d < reach and d > 0.1 and dir.dot(r / d) >= cos_cone:
 			return true
 	return false
+
+# ---------------- crossover and the dribble hand (P2-05) ----------------
+
+# A quick cut toward `dir` with the ball switching hands in front of the body. Called by human_input.gd on a flick
+# and by the CPU handler. Owner (Q1): crossover only, so every kind (including "spin") is a crossover.
+func start_crossover(dir: Vector2, kind: String) -> void:
+	if not has_ball() or shooting or is_airborne() or stumble_t > 0.0:
+		return
+	if cross_cd > 0.0 or cross_t > 0.0:
+		if game.is_human(self):
+			game.stat("human_cross_cooldown")   # a flick that came too soon after the last crossover
+		return
+	if dir.length() < 0.01:
+		dir = Vector2.from_angle(facing + PI / 2.0 * dribble_side)
+	if kind != "cross":
+		game.stat("cross_from_" + kind)   # the detector called it a spin: played as a crossover (Q1)
+	move_kind = "cross"
+	cross_dir = dir.normalized()
+	cross_t = CROSS_TIME
+	cross_cd = CROSS_COOLDOWN
+	dribble_side = -dribble_side
+	hand_switch_t = 0.0
+	game.stat("crossovers_t%d" % team)
+	if game.is_human(self):
+		game.stat("human_crossovers")
+	else:
+		game.stat("cpu_crossovers")
+	cross_beat_check()
+
+# The defender close in front can be beaten: he stumbles if he was moving the wrong way, or (CPU) if he is still
+# inside his reaction time. Until defense.gd decides that (P2-08 hook `def.beaten_by_cross(handler, dir)`), a flat
+# CROSS_BEAT_CHANCE. Only the closest defender in front can be beaten.
+func cross_beat_check() -> void:
+	var look := Vector2.from_angle(facing)
+	var cos_cone := cos(deg_to_rad(CROSS_BEAT_CONE))
+	var best = null
+	var best_d: float = CROSS_BEAT_FT * game.FT
+	for o in game.teams[1 - team]:
+		var r: Vector2 = o.position - position
+		var d := r.length()
+		if d < best_d and d > 0.1 and look.dot(r / d) >= cos_cone and o.stumble_t <= 0.0 and not o.is_airborne():
+			best_d = d
+			best = o
+	if best == null:
+		return
+	var beaten := false
+	var ov: Vector2 = best.velocity
+	if ov.length() >= CROSS_WRONG_WAY_SPEED and ov.normalized().dot(cross_dir) < -0.3:
+		beaten = true   # leaning the wrong way: the cut goes behind him
+	elif not game.is_human(best):
+		if best.def != null and best.def.has_method("beaten_by_cross"):
+			beaten = best.def.beaten_by_cross(self, cross_dir)
+		else:
+			beaten = game.rng.randf() < CROSS_BEAT_CHANCE
+	if not beaten:
+		return
+	best.stumble(CROSS_STUN)
+	game.stat("cross_beats_t%d" % team)
+	if game.is_human(self):
+		game.stat("human_cross_beats")
+	if game.fx:
+		game.fx.popup("SHOOK!", best.position + Vector2(0, -40), BEAT_POPUP_COLOR, 30)
+
+# Moves the drawn dribble hand (hand_x) toward dribble_side; the ball is centered while shooting or in the air.
+# Out of a move, the handler slowly switches hands away from the nearest defender.
+func update_dribble_hand(delta: float) -> void:
+	if not has_ball():
+		hand_switch_t = 0.0
+		return
+	var goal := dribble_side
+	if shooting or is_airborne():
+		goal = 0.0
+	elif cross_t <= 0.0:
+		var o = game.nearest_opponent(self)
+		var right := Vector2.from_angle(facing + PI / 2.0)
+		if o != null and o.position.distance_to(position) < HAND_SWITCH_FT * game.FT \
+				and right.dot(o.position - position) * dribble_side > 0.0:
+			hand_switch_t += delta
+			if hand_switch_t >= HAND_SWITCH_DELAY:
+				hand_switch_t = 0.0
+				dribble_side = -dribble_side
+				game.stat("hand_switches")
+		else:
+			hand_switch_t = 0.0
+	var rate := CROSS_HAND_RATE if cross_t > 0.0 else HAND_SWITCH_RATE
+	hand_x = move_toward(hand_x, goal, rate * delta)
 
 # ---------------- turbo ----------------
 
@@ -566,12 +689,16 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 	var guard = game.nearest_opponent(self)
 	var open_ft := 99.0
 	var guard_behind := false         # nearest defender is not between me and the hoop
+	var step_side := 0.0              # which way the sidestep goes (0 = no sidestep)
 	if guard != null:
 		var r: Vector2 = guard.position - position
 		open_ft = r.length() / FT
 		guard_behind = r.dot(d) <= 0.0
 		if open_ft < 5.0 and r.dot(d) > 0.0:
 			var side := 1.0 if d.cross(r) > 0.0 else -1.0
+			if cpu_side_t > 0.0:
+				side = cpu_side   # keep going the way the crossover went
+			step_side = side
 			target = position + (d * 0.4 - d.orthogonal() * side) * 120.0
 	# sprint on a fast break, or when the lane to the rim is open
 	if fast_break or (open_ft > 6.0 and dist_ft > 8.0 and lane_open(hoop)):
@@ -597,6 +724,12 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		start_shot()
 	elif game.shot_clock < CPU_CLOCK_SHOOT and dist_ft < CPU_CLOCK_SHOOT_FT:
 		start_shot()
+	elif step_side != 0.0 and open_ft < CPU_CROSS_FT and dist_ft > LAYUP_RANGE and cross_cd <= 0.0 \
+			and not lane_open(hoop) and game.rng.randf() < CPU_CROSS_CHANCE:
+		# crossover: cut back the other way, behind a defender sliding with the sidestep
+		cpu_side = -step_side
+		cpu_side_t = CPU_CROSS_COMMIT
+		start_crossover((d * 0.4 - d.orthogonal() * cpu_side).normalized(), "cross")
 	elif dist_ft >= CPU_PULLUP_MIN_FT and dist_ft <= CPU_PULLUP_MAX_FT and not three \
 			and (open_ft >= CPU_PULLUP_ROOM_FT or guard_behind) and game.rng.randf() < CPU_PULLUP_CHANCE:
 		game.stat("pullups_t%d" % team)
@@ -652,6 +785,14 @@ func _draw() -> void:
 		draw_circle(back * 18.0, 6.0, Color(1, 1, 1, 0.35))
 		draw_circle(back * 30.0 + back.orthogonal() * 4.0, 4.5, Color(1, 1, 1, 0.22))
 		draw_circle(back * 40.0 - back.orthogonal() * 3.0, 3.0, Color(1, 1, 1, 0.12))
+	if cross_t > 0.0 and cross_dir.length() > 0.1:
+		# crossover: speed lines behind the cut
+		var a := cross_t / CROSS_TIME
+		var bk := -cross_dir
+		var sd := bk.orthogonal()
+		for k in 3:
+			var off := sd * (float(k) - 1.0) * 9.0
+			draw_line(bk * 16.0 + off, bk * (38.0 + 10.0 * float(k % 2)) + off, Color(1, 1, 1, 0.9 * a), 4.0)
 	if game.is_human(self):
 		draw_arc(Vector2.ZERO, 22.0, 0, TAU, 32, Color(1, 0.9, 0.2), 3.0)
 		var tri := PackedVector2Array([Vector2(-7, -44), Vector2(7, -44), Vector2(0, -34)])
