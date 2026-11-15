@@ -46,7 +46,7 @@ const RIM_DB := -2.0              # volume of the clank on a missed shot
 const RIM_WIGGLE := 0.3           # net movement on a rim-out (1.0 = full swish)
 const LAYUP_SWISH_DB := -4.0      # a made layup gets a softer swish than a jump shot
 const DUNK_NET := 1.6             # dunks yank the net harder (the dunk sound itself is in slam_feedback)
-const DRIBBLE_DB := -18.0         # very quiet dribble for the human's handler only
+const DRIBBLE_DB := -8.0          # soft dribble for the human's handler only (owner: -18 was inaudible on the tablet)
 const DRIBBLE_EVERY := 2          # play the dribble sound on every Nth floor touch
 
 const PASS_SPEED := 720.0
