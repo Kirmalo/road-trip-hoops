@@ -30,6 +30,9 @@ const TURBO_MIN_RESTART := 0.25   # after running empty, turbo is off until stam
 const CPU_TURBO_RESUME := 0.5     # CPU stops at TURBO_MIN_RESTART and waits for this much before sprinting again
 const CPU_BEATEN_FT := 4.0        # CPU defender sprints when his man is this many feet closer to the hoop
 const CPU_BREAK_FT := 20.0        # CPU fast break: sprint when at least this far from the hoop
+const TURBO_SHOT_WINDOW := 0.6    # seconds after sprinting that a jump shot is still "shaky"
+const TURBO_SHOT_PENALTY := 0.8   # shot quality multiplier for a jumper right after sprinting
+const TURBO_SHOT_EXEMPT_FT := 6.0 # shots this close to the rim (dunks, layups) get no penalty
 
 var stamina := 1.0
 var turbo := false                # sprinting this frame
@@ -37,6 +40,7 @@ var turbo_locked := false         # ran empty, waiting to reach TURBO_MIN_RESTAR
 var cpu_tired := false
 var cpu_turbo_want := false
 var refill_wait := 0.0
+var since_turbo := 99.0           # seconds since this player last sprinted
 var humantest := false
 
 # Offensive spots, in feet: (distance out from the baseline side of the hoop, sideways offset)
@@ -134,6 +138,7 @@ func update_turbo(delta: float, want: bool, is_human: bool) -> bool:
 		turbo_locked = false
 	turbo = want and not turbo_locked and not shooting
 	if turbo:
+		since_turbo = 0.0
 		stamina = maxf(0.0, stamina - STAMINA_DRAIN * delta)
 		refill_wait = REFILL_DELAY
 		game.stat("turbo_frames_t%d" % team)
@@ -141,6 +146,7 @@ func update_turbo(delta: float, want: bool, is_human: bool) -> bool:
 			turbo_locked = true
 			game.stat("stamina_empty")
 	else:
+		since_turbo += delta
 		refill_wait -= delta
 		if refill_wait <= 0.0:
 			stamina = minf(1.0, stamina + STAMINA_REFILL * delta)
@@ -186,6 +192,11 @@ func release_shot() -> void:
 			quality = 0.6
 	else:
 		quality = game.rng.randf_range(0.85, 1.1)
+	# shaky jumper right after sprinting (not at the rim)
+	var hoop: Vector2 = game.attack_hoop(team)
+	if since_turbo <= TURBO_SHOT_WINDOW and position.distance_to(hoop) > TURBO_SHOT_EXEMPT_FT * game.FT:
+		quality *= TURBO_SHOT_PENALTY
+		game.stat("turbo_jumpers")
 	game.release_shot(self, quality)
 
 # ---------------- CPU brain ----------------
