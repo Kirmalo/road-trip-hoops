@@ -185,7 +185,24 @@ editing each other's files. Each wave merges and gets a quick QA run before the 
 5. **Sound:** pending; the coordinator is asking the owner to allow the hosts.
 
 ## Doing
+- P1-04 sound effects (art-audio, OpenGameArt only: kenney.nl refuses scripted downloads)
+- P1-05 auto-dunk and layup
+- P1-06 game-event feedback in main
 
 ## Review
 
 ## Done
+- P1-01 turbo and stamina (approved; merged 2be15df). Includes owner answer 2: handler 0.95x, jumpers within 0.6 s
+  of sprinting x0.8 quality, no penalty inside 6 ft. Also changed: on a fast break the backcourt handler heads for
+  the rim.
+- P1-02 audio manager (approved; merged). Headless runs skip playback but still count `sfx_<name>`.
+- P1-03 FX layer and nets (approved; merged).
+- Combined wave 1 check: 3 autoplay games 14-18, 14-16, 20-16; humantest 14-22; no script errors.
+
+### Follow-ups for P1-09 QA (from reviews)
+- `turbo_frames_t*` counts player-frames; per-player usage = turbo_frames / (frames x 3). Currently about 6%.
+- CPU turbo (about 6%) may be too rare to see: consider lower `CPU_BREAK_FT` or a wider `lane_open` rule.
+- Stamina bar is 44x7 px: consider 9-10 px tall for the tablet.
+- Stamina doesn't reset between quarters (open question for the owner at check-in).
+- Play a real sound once under xvfb after P1-04 lands (headless never plays audio).
+- Check the popup pop-in (1.5x scale) doesn't look jagged with nearest filtering.
