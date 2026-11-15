@@ -12,6 +12,8 @@ const PlayerScript = preload("res://scripts/player.gd")
 const BallScript = preload("res://scripts/ball.gd")
 const CourtScript = preload("res://scripts/court.gd")
 const ControlsScript = preload("res://scripts/touch_controls.gd")
+const AudioScript = preload("res://scripts/audio.gd")
+const FxScript = preload("res://scripts/fx.gd")
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
@@ -30,6 +32,9 @@ var teams := [[], []]
 var ball
 var controls
 var camera: Camera2D
+var audio                           # sound effects: audio.play("swish")
+var fx                              # shake, popups, ball trail: fx.shake(6.0, 0.3)
+var rims                            # court instance that draws rims and nets: rims.swish(hoop_index)
 var score := [0, 0]
 var quarter := 1
 var game_clock := QUARTER_LENGTH
@@ -61,11 +66,15 @@ func _ready() -> void:
 	rng.randomize()
 	autoplay = OS.get_cmdline_user_args().has("--autoplay")
 
+	audio = AudioScript.new()
+	audio.game = self
+	add_child(audio)
+
 	var floor_node = CourtScript.new()
 	floor_node.game = self
 	floor_node.z_index = -10
 	add_child(floor_node)
-	var rims = CourtScript.new()
+	rims = CourtScript.new()
 	rims.game = self
 	rims.draw_rims = true
 	rims.z_index = 15
@@ -95,6 +104,10 @@ func _ready() -> void:
 	camera.limit_bottom = int(COURT_H + 10 * FT)
 	add_child(camera)
 	camera.make_current()
+
+	fx = FxScript.new()
+	fx.game = self
+	add_child(fx)
 
 	_build_hud()
 	start_period()
