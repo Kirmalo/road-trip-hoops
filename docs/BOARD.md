@@ -198,6 +198,9 @@ and B do nothing** (the HUD shows "-").
 - Note (lead): Q1 = crossover only. P2-03 still reports `kind` "spin" for turns over 150 degrees; `start_crossover`
   must treat "spin" exactly like "cross" (no spin move, no `spins_*` stats, `move_kind` always "cross"), so
   `STEAL_SPIN_MULT` in main.gd never applies.
+- Review (lead, 765643e): APPROVE. Godot 4.3 parses clean; every kind plays as "cross"; exposure reads the drawn
+  `ball.position`, so the hand counts in `steal_exposure`. 3 autoplay: crossovers 5-15/team, beats ~55% of them
+  (P2-08 brings that to 25-45% via `def.beaten_by_cross`). Humantest flicks 57 = crossovers 57.
 
 **P2-06 | Pump fake | gameplay (A, after P2-05) | `scripts/player.gd`**
 - Human: release of A within `PUMP_TAP_MAX` 0.15 s of starting the meter = pump fake (no shot, keeps the ball,
@@ -211,6 +214,13 @@ and B do nothing** (the HUD shows "-").
 - Done when: humantest `human_pump_fakes` about equal to `humantest_taps` outside the rim range; autoplay 2-6 pump fakes
   per team per game and some bites once P2-07 lands; scores in range.
 - Depends on: P2-05 (same file), P2-03, Q2. Bites need P2-07 merged (CPU block jumps).
+- Review (lead, daa86b3): APPROVE. A full-length release and dunks/layups are unchanged (no lag). Pressing A again
+  during a fake starts a new meter (it doesn't shoot instantly), and fakes can be chained with no cooldown. 3 autoplay:
+  fakes 3-8/team, bites 0 (as expected until P2-07); humantest taps 22 = fakes 22. For P2-07: a human fake keeps
+  `shooting` true for only about 0.15 s, so CPU jumps at human fakes must come from `def.on_pump_fake(faker)`.
+- Follow-up (not blocking): human_input.gd's flick detector uses real time, but drops samples older than 0.12 s. Below
+  about 10 fps (seen in Chromium software rendering) a whole flick lands between two input events and is missed.
+  Tablets at 30-60 fps are fine. Option: compare with the last strong sample even if it is one frame older than the window.
 
 **P2-07 | Jump-timing blocks and the defense button | gameplay (B) | `scripts/defense.gd`, `scripts/human_input.gd`, `scripts/main.gd`**
 - `Defense.rim_blocker`: a block happens when a defender of the other team is airborne at the dunk/layup release,
