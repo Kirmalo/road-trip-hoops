@@ -21,6 +21,9 @@ var steal_timer := 0.0
 var shooting := false
 var shot_charge := 0.0
 var cpu_shot_time := 0.0
+var shot_contest_t := 0.0        # seconds a defender has been within CLOSEOUT_FT during this jump shot
+var shot_elapsed := 0.0           # seconds since this jump shot (or meter) started
+var shot_grace := 0.35            # this shot's closeout grace (CLOSEOUT_GRACE, shorter for a CPU windup)
 var def                           # defense brain (defense.gd), created in setup()
 
 # ---- shared move state (Phase 2 contract; later tasks fill these in) ----
@@ -81,6 +84,7 @@ var hand_x := 1.0                 # where the ball is drawn sideways, -1 left ha
 var hand_switch_t := 0.0          # seconds the nearest defender has been on the ball side
 var cpu_side := 0.0               # CPU: sidestep side committed to after a crossover
 var cpu_side_t := 0.0
+var _call_held := false           # CPU handler is holding the ball for the human's live call (counted once per call)
 
 # ---- pump fake (P2-06; owner Q2: only away from the rim, where the shot meter shows) ----
 const PUMP_TAP_MAX := 0.15        # human: A released this soon after the meter started = pump fake (human_input.SHORT_TAP_MAX)
@@ -136,14 +140,15 @@ const LAYUP_JUMP_PX := 20.0
 const DUNK_RELEASE := 0.55        # fraction of the jump when the ball leaves the hand
 const LAYUP_RELEASE := 0.5
 const RIM_GLIDE := 0.45           # fraction of top speed the jumper keeps drifting toward the rim
-const DUNK_OPEN_PCT := 0.92       # make chance of an open dunk (P1-09: was 0.85; keeps dunks ahead of layups after the layup change)
-const LAYUP_OPEN_PCT := 0.75      # make chance of an open layup (P1-09: was 0.65; contested layups made less than 15 ft jumpers)
-const CONTEST_FT := 4.0           # nearest defender inside this contests the take-off
+const DUNK_OPEN_PCT := 0.82       # make chance of an open dunk (P1-09: 0.85 -> 0.92; P2-11: 0.82, scores ran high with better jumpers)
+const LAYUP_OPEN_PCT := 0.65      # make chance of an open layup (P1-09: 0.65 -> 0.75; P2-11: back to 0.65, scores ran high)
+const CONTEST_FT := 3.0           # nearest defender inside this contests the take-off (P2-11: was 4.0; only a defender in the play counts, see contests_me)
 # (rim block chances live in defense.gd: DUNK_BLOCK_CHANCE, LAYUP_BLOCK_CHANCE, RIM_CONTEST_FT)
 const CONTEST_MAKE_MULT := 1.0    # extra make-odds multiplier with a defender right on you (eases off with distance). P1-09: was 0.9; shot_probability() already applies the openness penalty, so 1.0 avoids counting it twice
 const CPU_FINISH_FT := 4.5        # CPU handler finishes at the rim inside this (any speed)
 const CPU_LAYUP_CHANCE := 0.45    # CPU entering LAYUP_RANGE with a defender close: chance it pulls up for a layup
 const CPU_LAYUP_OPEN_CHANCE := 0.15  # same with nobody close (otherwise it keeps going for the dunk)
+const CPU_LAYUP_GUARD_FT := 4.0   # "a defender close" for that roll (was CONTEST_FT before P2-11 lowered it)
 
 # ---- CPU ball handler decisions (tuning; one roll per decision, every CPU_DECIDE_MIN..MAX s) ----
 const CPU_DECIDE_MIN := 0.3       # seconds between handler decisions
@@ -162,10 +167,25 @@ const CPU_PASS_OPEN_EDGE := 2.0   # a teammate must be this many feet more open 
 const CPU_PULLUP_MIN_FT := 12.0   # pull-up range from the rim
 const CPU_PULLUP_MAX_FT := 22.0
 const CPU_PULLUP_ROOM_FT := 3.0   # defender at least this far off (or behind me) to pull up
-const CPU_PULLUP_CHANCE := 0.28   # chance per decision when a pull-up is on
-const CPU_THREE_MAX_FT := 28.0    # deep pull-up: beyond the arc but inside this
-const CPU_THREE_OPEN_FT := 4.0    # and the defender at least this far off
-const CPU_THREE_CHANCE := 0.25    # chance per decision
+const CPU_PULLUP_CHANCE := 0.2    # chance per decision when a pull-up is on (P2-11: was 0.28)
+const CPU_THREE_MAX_FT := 28.5    # deep pull-up: beyond the arc but inside this (P2-11: was 28.0)
+const CPU_THREE_OPEN_FT := 3.0    # and the defender at least this far off (P2-11: was 4.0)
+const CPU_THREE_CHANCE := 0.75    # chance per decision (P2-11: was 0.25)
+const CPU_SHOT_QUALITY_MIN := 0.95  # CPU jump-shot quality, random between these (P2-11: was 0.85..1.1; a human's
+const CPU_SHOT_QUALITY_MAX := 1.2   # normal release is 1.0, a perfect one 1.3)
+const CPU_WINDUP_MIN := 0.3       # seconds from a CPU jumper's start to its release, random between these
+const CPU_WINDUP_MAX := 0.45
+# late closeouts (P2-11): main.shot_probability() judges the contest at the release. A defender who only got within
+# CLOSEOUT_FT during the shot itself, or is stumbling (beaten), trailing behind the shooter, or still in the air from
+# biting on a fake, gives a lighter contest (jumpers and dunks/layups).
+const CLOSEOUT_FT := 3.0          # mirrors the "right on you" distance in main.shot_probability
+const CLOSEOUT_GRACE := 0.35      # seconds a defender must have been that close during the shot for a full contest
+const CLOSEOUT_SOFT_MULT := 0.9 / 0.55  # jumper: turns main's x0.55 (right on you) into x0.9 (a hand late in the face)
+const RIM_SOFT_MULT := 0.7 / 0.55 # dunk/layup: x0.55 becomes x0.7
+const CLOSEOUT_TRAIL_DOT := -0.3  # a defender further behind me than this (cosine to the hoop direction) is trailing
+# call for the ball (P2-10/P2-11): while the human's call is live, his CPU teammate with the ball waits for it
+const CPU_CALL_HOLD_CLOCK := 5.0  # ... unless the shot clock is under this (then he plays on)
+const PUMP_COOLDOWN := 0.8        # seconds from one pump fake's start before another fake (a quick tap then does nothing)
 
 # ---- alley-oop (P2-09; owner Q5: automatic. The lob rule itself is ball.is_lob_target) ----
 const ALLEY_JUMP_TIME := 0.6      # seconds in the air for an alley-oop dunk
@@ -266,6 +286,9 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	elif block_jump_t >= 0.0:
 		desired = update_block_jump(delta)
 	elif shooting:
+		shot_elapsed += delta
+		if has_ball() and is_closely_contested():
+			shot_contest_t += delta
 		if not has_ball():
 			shooting = false
 		elif is_human:
@@ -554,7 +577,7 @@ func update_pump_fake(delta: float) -> void:
 
 # CPU after a defender bit: step in for the shot, or drive past him on turbo.
 func cpu_punish_bite() -> void:
-	if not has_ball() or shooting or rim_kind != "":
+	if not has_ball() or shooting or rim_kind != "" or cpu_call_hold():
 		return
 	var d_ft: float = position.distance_to(game.attack_hoop(team)) / game.FT
 	if d_ft <= CPU_BITE_SHOOT_FT and game.rng.randf() < CPU_BITE_SHOOT_CHANCE:
@@ -642,12 +665,21 @@ func start_shot() -> void:
 			return
 		shooting = true
 		shot_charge = 0.0
-		cpu_shot_time = game.rng.randf_range(0.3, 0.45)
+		cpu_shot_time = game.rng.randf_range(CPU_WINDUP_MIN, CPU_WINDUP_MAX)
+		shot_elapsed = 0.0
+		# a CPU closeout must arrive in the first half of the windup to count fully; a human meter uses CLOSEOUT_GRACE
+		shot_grace = CLOSEOUT_GRACE if game.is_human(self) else minf(CLOSEOUT_GRACE, 0.5 * cpu_shot_time)
+		shot_contest_t = shot_grace if is_closely_contested() else 0.0   # already on me: never a late closeout
 
 func release_shot() -> void:
 	if not shooting or rim_kind != "":
 		return  # dunks and layups release on their own
 	if game.is_human(self) and is_pump_tap():
+		if since_fake < PUMP_COOLDOWN:
+			shooting = false      # another fake too soon after the last one: the tap does nothing
+			shot_charge = 0.0
+			game.stat("pump_cooldown_taps")
+			return
 		start_pump_fake()     # a short tap of SHOOT: pump fake instead of a near-useless 0.6 shot (owner Q2)
 		return
 	shooting = false
@@ -662,9 +694,14 @@ func release_shot() -> void:
 		else:
 			quality = 0.6
 	else:
-		quality = game.rng.randf_range(0.85, 1.1)
+		quality = game.rng.randf_range(CPU_SHOT_QUALITY_MIN, CPU_SHOT_QUALITY_MAX)
 		if on_fire:
 			quality *= FIRE_SHOT_BONUS
+	# a closeout that only arrived during the shot (or a defender who is beaten, trailing or still up from a bite)
+	# is a lighter contest
+	if game.openness(self) < CLOSEOUT_FT and (shot_contest_t < shot_grace or not is_closely_contested()):
+		quality *= CLOSEOUT_SOFT_MULT
+		game.stat("late_closeouts_t%d" % team)
 	# shaky jumper right after sprinting (not at the rim)
 	var hoop: Vector2 = game.attack_hoop(team)
 	if since_turbo <= TURBO_SHOT_WINDOW and position.distance_to(hoop) > TURBO_SHOT_EXEMPT_FT * game.FT:
@@ -685,6 +722,24 @@ func release_shot() -> void:
 		game.stat("jumper_makes_t%d" % team)
 		if three:
 			game.stat("jumper_three_makes_t%d" % team)
+
+# the nearest defender is right on me (main.shot_probability's full contest), on balance, not trailing behind me,
+# and not still in the air from biting on an earlier fake
+func is_closely_contested() -> bool:
+	return contests_me(game.nearest_opponent(self), CLOSEOUT_FT, shot_elapsed)
+
+# defender `o` is within `reach_ft` and in the play: on balance, not trailing behind me, and not still in the air
+# from a jump that started more than `since` seconds ago (he bit on a fake or jumped early)
+func contests_me(o, reach_ft: float, since: float) -> bool:
+	if o == null or o.stumble_t > 0.0:
+		return false
+	var r: Vector2 = o.position - position
+	if r.length() >= reach_ft * game.FT:
+		return false
+	if o.block_jump_t > since:
+		return false
+	var to_hoop: Vector2 = (game.attack_hoop(team) - position).normalized()
+	return r.length() < 0.1 or r.normalized().dot(to_hoop) > CLOSEOUT_TRAIL_DOT
 
 func green_lo() -> float:
 	return FIRE_GREEN_LO if on_fire else GREEN_LO
@@ -717,7 +772,7 @@ func start_rim_move(d_ft: float) -> void:
 func rim_contest() -> void:
 	rim_quality = 1.0
 	var d = game.nearest_opponent(self)
-	if d != null:
+	if contests_me(d, CONTEST_FT, 0.0):
 		var c_ft: float = d.position.distance_to(position) / game.FT
 		if c_ft < CONTEST_FT:
 			var close := clampf(1.5 * (1.0 - c_ft / CONTEST_FT), 0.0, 1.0)
@@ -772,7 +827,11 @@ func release_rim_shot() -> void:
 	var target := DUNK_OPEN_PCT if rim_kind == "dunk" else LAYUP_OPEN_PCT
 	var fire_mult := FIRE_SHOT_BONUS if on_fire else 1.0
 	var alley_mult := ALLEY_MAKE_MULT if alley_oop else 1.0
-	game.release_shot(self, target / base * rim_quality * fire_mult * alley_mult)
+	var soft := 1.0
+	if game.openness(self) < CLOSEOUT_FT and not contests_me(game.nearest_opponent(self), CLOSEOUT_FT, jump_t):
+		soft = RIM_SOFT_MULT   # the man on me is beaten (stumbling), trailing, or came down from an early jump
+		game.stat("rim_soft_contests_t%d" % team)
+	game.release_shot(self, target / base * rim_quality * fire_mult * alley_mult * soft)
 	count_pump_and_score()
 	if ball.state == ball.SHOT:
 		ball.blocked_checked = true  # the take-off contest replaces the CPU jump-shot contest
@@ -884,12 +943,15 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 	# sprint on a fast break, or when the lane to the rim is open
 	if fast_break or (open_ft > 6.0 and dist_ft > 8.0 and lane_open(hoop)):
 		cpu_turbo_want = true
+	# the human called for the ball: no new shot, pass or move until the call is answered or ends
+	if cpu_call_hold():
+		return
 	# attack the rim: once per drive, maybe pull up early for a layup; at full speed close in, dunk
 	if dist_ft > LAYUP_RANGE + 2.0:
 		cpu_rim_rolled = false
 	elif dist_ft <= LAYUP_RANGE and dist_ft > DUNK_RANGE and not cpu_rim_rolled:
 		cpu_rim_rolled = true
-		if game.rng.randf() < (CPU_LAYUP_CHANCE if open_ft < CONTEST_FT else CPU_LAYUP_OPEN_CHANCE):
+		if game.rng.randf() < (CPU_LAYUP_CHANCE if open_ft < CPU_LAYUP_GUARD_FT else CPU_LAYUP_OPEN_CHANCE):
 			start_shot()
 			return
 	if dist_ft <= DUNK_RANGE and is_dunk_speed():
@@ -940,6 +1002,23 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 				best = mate
 		if best != null:
 			game.do_pass(self, best)
+
+# True while the human's call for the ball (human_input.gd, P2-10) is live and I'm the teammate who would answer it,
+# unless the shot clock is under CPU_CALL_HOLD_CLOCK. human_input.gd makes the pass itself once the lane is clear.
+func cpu_call_hold() -> bool:
+	var inp = game.input
+	if inp == null or not inp.has_method("call_active") or not inp.call_active() or inp.call_passer() != self:
+		_call_held = false
+		return false
+	if game.shot_clock < CPU_CALL_HOLD_CLOCK:
+		if _call_held:
+			game.stat("cpu_call_late_clock")   # held for the call, then the clock ran low: plays on
+		_call_held = false
+		return false
+	if not _call_held:
+		_call_held = true
+		game.stat("cpu_call_holds")
+	return true
 
 # ---------------- alley-oop (P2-09) ----------------
 
