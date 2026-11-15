@@ -12,6 +12,7 @@ const PlayerScript = preload("res://scripts/player.gd")
 const BallScript = preload("res://scripts/ball.gd")
 const CourtScript = preload("res://scripts/court.gd")
 const ControlsScript = preload("res://scripts/touch_controls.gd")
+const AudioScript = preload("res://scripts/audio.gd")
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
@@ -30,6 +31,7 @@ var teams := [[], []]
 var ball
 var controls
 var camera: Camera2D
+var audio                           # sound effects: audio.play("swish")
 var score := [0, 0]
 var quarter := 1
 var game_clock := QUARTER_LENGTH
@@ -60,6 +62,10 @@ var msg_timer := 0.0
 func _ready() -> void:
 	rng.randomize()
 	autoplay = OS.get_cmdline_user_args().has("--autoplay")
+
+	audio = AudioScript.new()
+	audio.game = self
+	add_child(audio)
 
 	var floor_node = CourtScript.new()
 	floor_node.game = self
