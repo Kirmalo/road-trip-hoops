@@ -80,6 +80,7 @@ body {
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<script>(function(){var cs=window.__hoopsAudio=[];var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;var W=function(){var c=new (Function.prototype.bind.apply(AC,[null].concat([].slice.call(arguments))))();cs.push(c);return c;};W.prototype=AC.prototype;window.AudioContext=W;if(window.webkitAudioContext)window.webkitAudioContext=W;var un=function(){cs.forEach(function(c){if(c.state!=='running'){c.resume();}});};['touchend','pointerup','click','keydown'].forEach(function(e){window.addEventListener(e,un,true);});})();</script>
 	</head>
 	<body>
 		<canvas id="canvas">
@@ -98,7 +99,7 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":172288,"index.wasm":35376909},"focusCanvas":true,"gdextensionLibs":[]};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":172416,"index.wasm":35376909},"focusCanvas":true,"gdextensionLibs":[]};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
