@@ -21,8 +21,9 @@ Subagents can't start other subagents, so the main session coordinates and the l
 4. **Review.** `lead-producer` reviews the diff and the QA report: APPROVE or CHANGES.
 5. **Merge.** The coordinator merges approved work onto the development branch and re-runs a quick QA pass on the
    combined result.
-6. **Check-in.** At the end of the phase the coordinator pushes, and the lead's summary goes to the owner with
-   multiple-choice questions. The owner downloads the ZIP, plays on the tablet, and answers. Answers go into
+6. **Check-in.** At the end of the phase the coordinator pushes, publishes the web build
+   (`tools/build_web.sh --publish`), and the lead's summary goes to the owner with multiple-choice questions. The
+   owner plays at https://kirmalo.github.io/road-trip-hoops/ (or from a ZIP in the Godot editor) and answers. Answers go into
    `docs/VISION.md` before the next phase starts.
 
 ## Rules for every agent
@@ -38,7 +39,15 @@ Subagents can't start other subagents, so the main session coordinates and the l
   curl -sSLO https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
   unzip -o Godot_v4.3-stable_linux.x86_64.zip && ln -sf ~/godot/Godot_v4.3-stable_linux.x86_64 /usr/local/bin/godot
   ```
-- `xvfb-run` and Python 3 with Pillow are installed.
-- **Network:** as of 2026-11-15, opengameart.org, kenney.nl, itch.io and freesound.org are blocked by this
-  environment's network policy. Before an asset task, the coordinator asks the owner to allow the needed hosts, or
-  the owner downloads the packs and adds them to the repo.
+- **Web export templates** (needed for `tools/build_web.sh`): only the web ones are needed, but GitHub serves the
+  1 GB template archive without partial downloads, so download it once, extract two files, delete it:
+  ```
+  mkdir -p ~/.local/share/godot/export_templates/4.3.stable && cd /tmp
+  curl -sSLo tpl.tpz https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
+  unzip -oj tpl.tpz templates/web_nothreads_release.zip templates/version.txt -d ~/.local/share/godot/export_templates/4.3.stable/
+  rm tpl.tpz
+  ```
+- `xvfb-run` and Python 3 with Pillow are installed. Chromium and Playwright are preinstalled for testing the web build.
+- **Network:** the `road-trip-hoops` cloud environment allows opengameart.org (works) and kenney.nl (the site refuses
+  scripted downloads; don't work around it). itch.io and freesound.org are blocked. For another host, the coordinator
+  asks the owner, or the owner downloads the packs and adds them to the repo.

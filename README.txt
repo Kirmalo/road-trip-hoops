@@ -1,5 +1,10 @@
 ROAD TRIP HOOPS - 3v3 full court basketball (Godot 4)
 
+PLAY IT IN THE BROWSER (easiest, always the latest build)
+Open https://kirmalo.github.io/road-trip-hoops/ in Chrome on the tablet. Tap once to start (browsers keep sound off
+until you touch the screen). Chrome menu > Add to Home screen gives you an app-style icon. If an update doesn't show,
+pull down to refresh.
+
 OPEN IT ON THE TABLET
 1. Extract this zip (keep the RoadTripHoops folder together).
 2. Open Godot, tap Import, and pick the project.godot file inside RoadTripHoops.

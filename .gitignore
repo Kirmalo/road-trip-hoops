@@ -2,3 +2,4 @@
 *.import
 *.uid
 .claude/worktrees/
+build/

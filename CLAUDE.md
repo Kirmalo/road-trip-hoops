@@ -38,6 +38,13 @@ After gameplay changes, run several `--autoplay` games and check the stats look 
 45-70 shots, roughly 15-30 points per team over 4 x 2 minute quarters, and few interceptions or shot-clock violations.
 Look at a screenshot after visual changes.
 
+## Web build (how the owner plays)
+The owner plays the web version at https://kirmalo.github.io/road-trip-hoops/ (GitHub Pages, served from the
+`gh-pages` branch, which holds only build output). `tools/build_web.sh` builds `build/web/` (ignored by git);
+`tools/build_web.sh --publish` also commits it to `gh-pages` and pushes. The `Web` preset is in `export_presets.cfg`
+(threads off, so no special server headers are needed). Publish after each merged phase, or when the coordinator asks.
+Test a web build in Chromium with Playwright (touch emulation) before publishing.
+
 ## Vision and team
 - `docs/VISION.md`: the design decisions and roadmap (Road Trip campaign, first to 21, pixel art, phases 1-7).
   Read it before any gameplay or content work. Don't decide design it leaves open; ask the owner.
