@@ -87,50 +87,22 @@ and B do nothing** (the HUD shows "-").
 - **Defense button (P2-07).** A on defense today pokes for a steal and, in the first 0.3 s of a jump shot, can block
   at 30%. With jump-timing blocks, A needs to mean "poke" or "jump": Q3.
 
-## Questions for owner (asked by the coordinator; recommended option first)
-
-**Q1. Crossover or spin: which dribble moves?** (blocks P2-05)
-1. Crossover only. Any quick flick of the stick while dribbling is a crossover: a fast side-step, the ball switches
-   hands, and a defender who is too close can stumble. A spin can come later.
-2. Both. A quick flick to the side is a crossover; a quick flick back (away from where you were going) is a spin move,
-   which protects the ball better but is a bit slower.
-3. Spin only. Any quick flick is a spin move.
-
-**Q2. Pump fake near the rim?** (blocks P2-06)
-1. Pump fakes only work away from the rim (where the shot meter appears). Near the rim SHOOT always dunks or lays up
-   right away, as now.
-2. Near the rim too: SHOOT waits a split second (about 0.12 s) to see if it's a quick tap, so dunks and layups start a
-   little later.
-3. Near the rim, a quick tap while standing still is a fake; while moving, SHOOT dunks or lays up right away.
-
-**Q3. On defense, how does the orange button choose between a steal and a block jump?** (blocks P2-07)
-1. Automatically: when the player you guard starts a shot (or is close to the rim) and you're near him, the button
-   says BLOCK and makes you jump; otherwise it says STEAL and pokes at the ball. Jumping at a pump fake leaves you in
-   the air for a moment.
-2. Orange always jumps (BLOCK). Blue pokes for a steal when you're next to the ball handler, and switches player
-   when you're far from him.
-3. One button does both at once: a press pokes and also hops, so it can steal or block (simpler, less control).
-
-**Q4. Calling for the ball** (blocks P2-10)
-1. Without the ball on offense, the blue button becomes CALL. Your teammate passes to you as soon as the passing
-   lane is clear (within about 1.5 s). If you're cutting to the rim, it's a lob for an alley-oop.
-2. CALL makes your teammate pass right away, even into traffic (more passes get picked off).
-3. Two calls: blue = "pass it to me", orange = "throw me a lob" (alley-oop request).
-
-**Q5. Alley-oops** (blocks P2-09, part of P2-10)
-1. Automatic. PASS to a teammate who is cutting to the rim throws a lob and he dunks it in the air. When a teammate
-   lobs to you, your player dunks it automatically too.
-2. Automatic lob, but when you catch one you press SHOOT in the air to finish (good timing = better odds).
-3. A lob only when you push the stick toward the cutter while pressing PASS; a plain PASS stays a normal pass.
-
-**Q6. How much luck is left in steals and blocks?** (constants in P2-04 and P2-07; work can start before the answer)
-1. Mostly skill: good timing and position work most of the time (about 7 in 10), bad timing almost never. A missed
-   steal makes you stumble for a moment.
-2. Pure skill: a well-timed steal or block always works; a bad one never does.
-3. Like 1, but a missed steal costs nothing.
-
-Coordinator: record the answers in `docs/VISION.md` (decisions table) and here, and copy any still-open ones to its
-"Open questions".
+## Owner answers (2026-11-15, also in docs/VISION.md)
+- **Q1 dribble moves:** crossover only. Any quick flick while dribbling is a crossover (fast side-step, ball switches
+  hands, a defender too close can stumble). No spin for now.
+- **Q2 pump fake:** only away from the rim, where the meter shows. Near the rim SHOOT dunks or lays up right away.
+- **Q3 defense button:** automatic. Orange says BLOCK and jumps when your man starts a shot or is near the rim and
+  you're close; otherwise STEAL. Jumping at a fake leaves you in the air.
+- **Q4 call for the ball:** blue becomes CALL on offense without the ball; the teammate passes as soon as the lane is
+  clear (about 1.5 s); if you're cutting to the rim it's a lob.
+- **Q5 alley-oops:** automatic. PASS to a teammate cutting to the rim throws a lob and he dunks it in the air; same
+  when a teammate lobs to you.
+- **Q6 luck:** owner's own answer: "timing based but also depend on the traits of the specific player since players
+  will have attributes". Implemented as: timing/exposure decides a good vs bad try; a good try succeeds with a chance
+  set by the player's rating (`ratings` {"steal", "block"} 0-100 on each player, `rating(key)` in player.gd; about
+  70% at 50, about +/-20% across 0-100); bad timing almost never works; a missed steal causes a brief stumble
+  (default, owner can change). Ratings are varied per player with equal team totals. They are the start of the
+  player attributes the campaign (Phase 5) will grow.
 
 ## Todo
 
