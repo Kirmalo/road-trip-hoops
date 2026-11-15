@@ -55,6 +55,7 @@ const RATINGS_BY_INDEX := [
 const BLOCK_GOOD_BASE := 0.7      # well-timed block jump at block rating 50: success chance
 const BLOCK_RATING_SPAN := 0.2    # +/- this across ratings 0..100 (0.5 at 0, 0.9 at 100)
 const BLOCK_BAD_CHANCE := 0.03    # badly timed block jump: success chance (any rating)
+const BLOCK_HUMAN_GOOD_BONUS := 0.1   # human (P2.5): a well-timed block jump's chance + this (rating 50: 0.7 -> 0.8)
 const RIM_BLOCK_RATING_SPAN := 0.5  # rim-block dice (defense.rim_blocker) x0.5 at rating 0, x1.5 at 100
 
 var ratings := {"steal": 50, "block": 50}
@@ -359,7 +360,8 @@ func rating_frac(key: String) -> float:
 func block_chance(good_timing: bool) -> float:
 	if not good_timing:
 		return BLOCK_BAD_CHANCE
-	return clampf(BLOCK_GOOD_BASE + BLOCK_RATING_SPAN * rating_frac("block"), 0.0, 1.0)
+	var bonus: float = BLOCK_HUMAN_GOOD_BONUS if game.is_human(self) else 0.0
+	return clampf(BLOCK_GOOD_BASE + bonus + BLOCK_RATING_SPAN * rating_frac("block"), 0.0, 1.0)
 
 # Knocked off balance for `time` seconds (slow, no turbo, can't steal or jump).
 func stumble(time: float) -> void:

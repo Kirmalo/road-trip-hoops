@@ -69,10 +69,15 @@ const STEAL_COOLDOWN := 0.7          # seconds between pokes by one defender
 # Set STEAL_TIMING false to judge pokes by exposure only.
 const STEAL_TIMING := true
 const DRIBBLE_PERIOD := PI / 9.0     # seconds between floor touches; must match ball.gd (z = 4 + |sin(anim_time * 9)| * 16)
-const STEAL_GRACE := 0.05            # seconds either side of a floor touch that count as a well-timed poke (human).
-                                     # The dribble touches the floor every 0.35 s, so 0.05 is 29% of the cycle; the
-                                     # STEAL button stays lit about 6 frames per bounce. 0.1 would be 57% (mashing works)
-const STEAL_CPU_GRACE := STEAL_GRACE # CPU pokes: same window as the human (defense.gd times them on the floor touch)
+const STEAL_GRACE := 0.05            # human: seconds before a floor touch that count as a well-timed poke
+const STEAL_HUMAN_LATE := 0.12       # human: seconds after a floor touch that still count (P2.5: was 0.05; a thumb
+                                     # reacts to the lit button a little late). Window 0.17 s = 49% of the 0.35 s
+                                     # dribble (was 29%); the STEAL button and the ring under the ball stay lit ~10 frames
+const STEAL_CPU_GRACE := 0.05        # CPU pokes: seconds either side of a floor touch (unchanged; defense.gd times them)
+const STEAL_HUMAN_BONUS := 0.12      # human (P2.5): a well-timed poke's success chance + this (rating 50: 0.7 -> 0.82)
+const STEAL_HUMAN_LUCK := 0.5        # human (P2.5): STEAL_LUCK for the human's pokes; a good poke depends less on how
+                                     # exposed the ball is (CPU keeps STEAL_LUCK)
+const STEAL_CUE_RING_COLOR := Color(1.0, 0.95, 0.4, 0.9)   # ring on the floor under the ball while STEAL is lit
 const STEAL_HELD_TIMING := 0.25      # timing factor when the ball is held up (gathering a shot, pump fake, at the rim)
 
 # call for the ball (P2-10). human_input.gd has the call rules; main.gd decides who the human controls and draws the cue
@@ -102,6 +107,10 @@ const HT_CALL_EVERY := 3.0           # on offense without the ball: press CALL e
 const HT_LOB_GAP := 6.0              # with the ball: pass to a teammate near the rim at most this often (alley-oop try)
 const HT_LOB_FT := 12.0              # "near the rim" for that pass
 const HT_BLOCK_DELAY := 0.15         # on defense: press BLOCK this long after a CPU shot starts (every 2nd shot; else at once)
+const HT_EARLY_DRIVE_SPEED := 0.4    # "early" block turn: a CPU handler driving at his rim at this fraction of top speed
+const HT_EARLY_HOLD := 1.0           # ... after that early jump, his take-off within this many seconds isn't a new try
+const HT_GUARD_FT := 8.0             # stay-in-front metric: a CPU handler (frontcourt) this close to the human is "guarded"
+const HT_BEAT_MARGIN_FT := 1.0       # ... and he is past the human once he is this much closer to the rim (hysteresis)
 
 var hoops := [Vector2(5.25 * FT, COURT_H / 2), Vector2(COURT_W - 5.25 * FT, COURT_H / 2)]
 
@@ -147,8 +156,13 @@ var ht_block_wait := -1.0           # seconds until the scripted human presses B
 var ht_block_n := 0                 # CPU shots seen by the block script (alternates timed / early)
 var ht_jump_kind := "random"        # what the last scripted press that jumped was: "random", "timed" or "early"
 var ht_threat_shooting := false
+var ht_pre_t := 0.0                 # an early jump at a drive was just scripted: don't count his take-off as a new try
+var ht_jump_phase := ""             # what the shooter was doing at the scripted block press: "shot", "fake", "rim"
 var ht_call_clock := 0.0
 var ht_lob_wait := 0.0
+var ht_guard_on := false            # stay-in-front metric: guarding a handler this frame
+var ht_guard_front := true          # ... and the human is between him and the rim
+var ht_guard_holder = null
 var _call_node: Node2D               # draws the "!" over the human while his call is live
 var shot_serial := 0                # counts released shots, so each defender gets one block try per shot (defense.gd)
 
@@ -422,6 +436,8 @@ func block_shot(defender) -> void:
 		stat("human_blocks")
 		if humantest:
 			stat("humantest_%s_blocks" % ht_jump_kind)
+			if ht_jump_kind != "random":
+				stat("humantest_%s_blocks_%s" % [ht_jump_kind, ht_jump_phase])
 	fx.shake(BLOCK_SHAKE, BLOCK_SHAKE_TIME)
 	audio.play("block")
 	if missed_shooter != null:
@@ -506,8 +522,9 @@ func steal_exposure(defender, handler) -> float:
 	return clampf((STEAL_SHIELD_DEG - ang) / (STEAL_SHIELD_DEG - STEAL_OPEN_DEG), 0.0, 1.0)
 
 # how well a poke at this handler's ball is timed right now: 1 within `grace` s of a dribble floor touch, else 0
-# (STEAL_HELD_TIMING while the ball is held up). grace < 0 means STEAL_GRACE.
-func steal_timing(handler, grace := -1.0) -> float:
+# (STEAL_HELD_TIMING while the ball is held up). grace < 0 means STEAL_GRACE. late >= 0: the window after the floor
+# touch is `late` s instead of `grace` (the human's reaction allowance).
+func steal_timing(handler, grace := -1.0, late := -1.0) -> float:
 	if not STEAL_TIMING:
 		return 1.0
 	if handler == null or not (ball.state == ball.HELD and ball.holder == handler):
@@ -515,13 +532,15 @@ func steal_timing(handler, grace := -1.0) -> float:
 	if handler.shooting or handler.rim_kind != "" or ("fake_t" in handler and handler.fake_t > 0.0):
 		return STEAL_HELD_TIMING
 	var g: float = STEAL_GRACE if grace < 0.0 else grace
-	var ph: float = fposmod(ball.anim_time, DRIBBLE_PERIOD)
-	return 1.0 if minf(ph, DRIBBLE_PERIOD - ph) <= g else 0.0
+	var after: float = g if late < 0.0 else late
+	var ph: float = fposmod(ball.anim_time, DRIBBLE_PERIOD)   # seconds since the last floor touch
+	return 1.0 if ph <= after or DRIBBLE_PERIOD - ph <= g else 0.0
 
 # 0..1: exposure x timing. At or over STEAL_GOOD_EXPOSURE it's a good poke.
 func steal_quality(defender, handler) -> float:
-	var grace: float = STEAL_GRACE if is_human(defender) else STEAL_CPU_GRACE
-	return steal_exposure(defender, handler) * steal_timing(handler, grace)
+	if is_human(defender):
+		return steal_exposure(defender, handler) * steal_timing(handler, STEAL_GRACE, STEAL_HUMAN_LATE)
+	return steal_exposure(defender, handler) * steal_timing(handler, STEAL_CPU_GRACE)
 
 # true while a poke by the human would be a good one: drives the lit STEAL button
 func human_steal_cue() -> bool:
@@ -537,13 +556,15 @@ func human_steal_cue() -> bool:
 func steal_chance(defender, handler) -> float:
 	var q: float = steal_quality(defender, handler)
 	var good: float = 1.0 if q >= STEAL_GOOD_EXPOSURE else 0.0
-	var k: float = lerpf(good, q, STEAL_LUCK)
+	var human: bool = is_human(defender)
+	var k: float = lerpf(good, q, STEAL_HUMAN_LUCK if human else STEAL_LUCK)
 	if k <= 0.0:
 		return 0.0
 	var r: float = 50.0
 	if defender.has_method("rating"):
 		r = float(defender.rating("steal"))
-	var c: float = (STEAL_BASE + (clampf(r, 0.0, 100.0) / 50.0 - 1.0) * STEAL_RATING_SPAN) * k
+	var base: float = STEAL_BASE + (STEAL_HUMAN_BONUS * good if human else 0.0)
+	var c: float = (base + (clampf(r, 0.0, 100.0) / 50.0 - 1.0) * STEAL_RATING_SPAN) * k
 	if "cross_t" in handler and handler.cross_t > 0.0:
 		c *= STEAL_SPIN_MULT if handler.move_kind == "spin" else STEAL_CROSS_MULT
 	if handler.turbo:
@@ -719,6 +740,7 @@ func _physics_process(delta: float) -> void:
 		_humantest_timed_poke(delta)
 		_humantest_block(delta)
 		_humantest_call(delta)
+		_humantest_guard_metric()
 	var stick := _input_vector()
 	input.update(delta, stick)
 	for p in players:
@@ -834,7 +856,17 @@ func _humantest_timed_poke(delta: float) -> void:
 func _humantest_block(delta: float) -> void:
 	var t = ball.holder if ball.state == ball.HELD else null
 	var shooting: bool = t != null and t.team != HUMAN_TEAM and t.shooting
-	if shooting and not ht_threat_shooting and input.defense_action() == "BLOCK":
+	ht_pre_t -= delta
+	# an "early" turn on a drive: jump as soon as A says BLOCK (handler driving inside BLOCK_RIM_FT), before he takes
+	# off. That is the earliest a thumb can jump at a rim move; on a take-off right there it is on time anyway
+	if ht_block_n % 2 == 0 and ht_block_wait < 0.0 and ht_pre_t <= 0.0 and t != null and t.team != HUMAN_TEAM \
+			and not shooting and not t.is_airborne() and input.defense_action() == "BLOCK" \
+			and t.velocity.dot((attack_hoop(t.team) - t.position).normalized()) > HT_EARLY_DRIVE_SPEED * t.speed:
+		ht_block_n += 1
+		ht_block_wait = 0.0
+		ht_pre_t = HT_EARLY_HOLD
+		stat("humantest_block_tries")
+	elif shooting and not ht_threat_shooting and input.defense_action() == "BLOCK" and ht_pre_t <= 0.0:
 		ht_block_n += 1
 		ht_block_wait = HT_BLOCK_DELAY if ht_block_n % 2 == 0 else 0.0
 		stat("humantest_block_tries")
@@ -852,6 +884,11 @@ func _humantest_block(delta: float) -> void:
 	_on_a_released()
 	if stats.get("human_block_jumps", 0) > jumps:
 		stat("humantest_%s_jumps" % kind)
+		var th = input.block_threat()
+		ht_jump_phase = "none"
+		if th != null:
+			ht_jump_phase = "rim" if th.rim_kind != "" else ("fake" if th.fake_t > 0.0 else ("shot" if th.shooting else "drive"))
+		stat("humantest_%s_jumps_%s" % [kind, ht_jump_phase])
 
 # on offense without the ball: CALL every HT_CALL_EVERY s (the thumb runs at the rim, so some calls are lobs).
 # With the ball: now and then PASS when a teammate is near the rim (an alley-oop try once P2-09 lands).
@@ -878,6 +915,43 @@ func _humantest_call(delta: float) -> void:
 		_on_b_pressed()
 		if stats.get("human_calls", 0) > calls:
 			stat("humantest_calls")
+
+# stay-in-front metric: while a CPU handler in his frontcourt is within HT_GUARD_FT of the human, count the frames
+# the human is between him and the rim, and each time the handler gets past him (closer to the rim by the margin)
+func _humantest_guard_metric() -> void:
+	var h = ball.holder if ball.state == ball.HELD else null
+	var d = human_player
+	var on: bool = h != null and h.team != HUMAN_TEAM and in_frontcourt(h.position, h.team) \
+			and not h.is_airborne() and d.position.distance_to(h.position) <= HT_GUARD_FT * FT
+	if not on:
+		ht_guard_on = false
+		return
+	var hoop: Vector2 = attack_hoop(h.team)
+	var lead_ft: float = (h.position.distance_to(hoop) - d.position.distance_to(hoop)) / FT
+	if not ht_guard_on or h != ht_guard_holder:
+		stat("humantest_guard_spells")
+		ht_guard_holder = h
+		ht_guard_front = lead_ft > 0.0
+	elif ht_guard_front and lead_ft < -HT_BEAT_MARGIN_FT:
+		ht_guard_front = false
+		stat("humantest_guard_beaten")   # was in front, now the handler is past him
+	elif not ht_guard_front and lead_ft > HT_BEAT_MARGIN_FT:
+		ht_guard_front = true
+	ht_guard_on = true
+	stat("humantest_guard_frames")
+	if ht_guard_front:
+		stat("humantest_guard_front_frames")
+
+func _ht_summary() -> String:
+	var f := func(a: String, b: String) -> String:
+		return "%d/%d" % [stats.get(a, 0), stats.get(b, 0)]
+	var gf: int = stats.get("humantest_guard_frames", 0)
+	var front_pct: float = 100.0 * float(stats.get("humantest_guard_front_frames", 0)) / float(maxi(gf, 1))
+	return "HUMANTEST steals timed %s random %s | blocks timed %s early %s | in front %.0f%% beaten %d in %d spells | assist %d" % [
+		f.call("humantest_timed_steals", "humantest_timed_pokes"), f.call("humantest_random_steals", "humantest_random_pokes"),
+		f.call("humantest_timed_blocks", "humantest_timed_jumps"), f.call("humantest_early_blocks", "humantest_early_jumps"),
+		front_pct, stats.get("humantest_guard_beaten", 0), stats.get("humantest_guard_spells", 0),
+		stats.get("human_assist_frames", 0)]
 
 func _ht_hoop_ft() -> float:
 	return human_player.position.distance_to(attack_hoop(HUMAN_TEAM)) / FT
@@ -922,6 +996,8 @@ func _end_period() -> void:
 		if autoplay or humantest:
 			print("FINAL BLUE %d - RED %d" % [score[0], score[1]])
 			print(stats)
+			if humantest:
+				print(_ht_summary())
 			get_tree().quit()
 		return
 	quarter += 1
@@ -934,6 +1010,10 @@ func _end_period() -> void:
 
 # the call was heard: a "!" speech bubble over the caller, plus a faint line from the teammate with the ball
 func _draw_call_cue() -> void:
+	if controls.a_glow and ball.state == ball.HELD and ball.holder != null:
+		# lit STEAL: a pulsing ring on the floor where the dribble bounces (P2.5), next to where the eyes are
+		var pulse: float = 0.5 + 0.5 * sin(float(_frame) * 0.5)
+		_call_node.draw_arc(ball.position, 9.0 + 2.0 * pulse, 0, TAU, 24, STEAL_CUE_RING_COLOR, 2.5)
 	if autoplay or not input.call_active() or human_player == null:
 		return
 	var h = human_player
