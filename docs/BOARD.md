@@ -185,7 +185,8 @@ editing each other's files. Each wave merges and gets a quick QA run before the 
 5. **Sound:** pending; the coordinator is asking the owner to allow the hosts.
 
 ## Doing
-- P1-05 auto-dunk and layup
+- P1-07 on fire (+ dunk double-popup fix + blocked rim shot counted as a make)
+- P1-08 ball and rim feedback
 
 ## Review
 
@@ -203,11 +204,20 @@ editing each other's files. Each wave merges and gets a quick QA run before the 
 - P1-06 game-event feedback (approved; merged). Combined check: 3 autoplay 10-8, 20-14, 12-10, no script errors;
   popups = sfx_crowd = baskets, shakes = blocks.
 
+- P1-05 auto-dunk and layup (approved; merged). Merged check: 20-16, 20-16, 20-26; scores now inside the target.
+
+### Follow-ups for P1-07 (from the P1-05 review)
+- A blocked rim attempt is released at 2% and then blocked, so `makes` can count it. When the contest roll is a
+  block, call `game.block_shot()` while the ball is still held and skip `release_shot`.
+
 ### Follow-ups for P1-07 (from the P1-06 review)
 - Dunks will show both "SLAM DUNK!" and "+2". In `on_shot_made`, skip the "+2" popup (keep the crowd sound) when the
   shooter's last shot was a dunk.
 
 ### Follow-ups for P1-09 QA (from reviews)
+- Dunks make less often than layups (~40% vs ~45%) because a defender is within 3 ft on almost every drive. Tune
+  `CONTEST_MAKE_MULT`, the target make rates, or the 3 ft openness threshold. Ask the owner how dunks feel.
+- Almost no jump shots (0-2 from 15 ft+ per game). CPU shot selection needs a look.
 - BLUE popup contrast over the blue paint: check in a screenshot.
 - Owner should listen to all sounds at check-in; CC-BY credits must show in the game before release (Phase 7).
 - `turbo_frames_t*` counts player-frames; per-player usage = turbo_frames / (frames x 3). Currently about 6%.
