@@ -289,6 +289,8 @@ func is_guarded(move: Vector2) -> bool:
 	var reach: float = GUARD_FT * game.FT
 	var cos_cone := cos(deg_to_rad(GUARD_CONE))
 	for o in game.teams[1 - team]:
+		if o.stumble_t > 0.0:
+			continue   # a stumbling defender doesn't slow the driver
 		var r: Vector2 = o.position - position
 		var d := r.length()
 		if d < reach and d > 0.1 and dir.dot(r / d) >= cos_cone:
