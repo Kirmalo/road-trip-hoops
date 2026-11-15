@@ -46,7 +46,7 @@ tablet with a joystick and two buttons.
 | Defense button | Orange picks STEAL or BLOCK automatically (BLOCK when your man shoots or is near the rim and you're close) |
 | Call for the ball | Blue becomes CALL on offense without the ball; teammate passes when the lane is clear (~1.5 s); a lob if you're cutting |
 | Alley-oops | Automatic: a pass to a teammate cutting to the rim is a lob he dunks in the air |
-| Steals and blocks | Timing based and dependent on each player's attributes (steal and block ratings, 0-100). Player attributes start here and grow in the campaign 
+| Steals and blocks | Timing based and dependent on each player's attributes (steal and block ratings, 0-100). Player attributes start here and grow in the campaign. No stumble after a missed steal: instead a defender stands still while attempting a steal (hit or miss), so poking has a cost |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
