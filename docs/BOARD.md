@@ -388,4 +388,10 @@ before the next starts. If the owner answers late, wave 1 still finishes; nothin
   (its own man in the lane); open callers get the ball at once.
 - For P2-11: while a call is live the CPU handler shouldn't start a new shot or pass elsewhere (except late in the
   shot clock); about a third of calls end that way. Fakes have no cooldown (consider a small one).
+- P2-11 CPU retune (approved after changes; merged). Late-closeout rule (contests_me) with the "already close =
+  never late" fix; CONTEST_FT 3.0; CPU jumper quality up; threes; CPU_JUMPER_JUMP_CHANCE 0.2; CPU_FAKE_BITE 0.4;
+  call hold (CPU passer waits on a live human CALL unless shot clock < 5 s); PUMP_COOLDOWN 0.8 s; open dunk 0.82,
+  open layup 0.65. 24 games: 23.8 ppg, jumper FG 38.9%, jumpers 24%, blocks 6.5, steals 8.7.
+  BLUE/RED 604/540 over 24 games: P2-13 must check balance over 40+ games.
+- P2-12 README (merged e9911e0).
 - Watch in P2-13: RED scored lower than BLUE in several runs since P2-01/P2-02; recheck team balance over 20+ games.
