@@ -240,6 +240,11 @@ and B do nothing** (the HUD shows "-").
 - Done when: autoplay blocks about 3-8 per game for both teams, `rim_blocks` lower than Phase 1's 4.4 is fine;
   humantest has human blocks > 0 and well-timed jumps block more often than early ones; scores in range.
 - Depends on: P2-01, P2-03, P2-04 (`main.gd`), Q3. Q6 for constants.
+- Review (lead, f5399ce on trial-w2): APPROVE. 34 autoplay games: blocks 8.0/game (top of range; layup-on-the-way-up
+  departure adds ~2.3/game, accepted), blocks_t0/t1 144/127: the coordinator's 9/1-style splits were variance, the code
+  paths are symmetric. Follow-up: `rim_blocker` sets `rolled_shot = shot_serial + 1` before rolling, but a successful
+  rim block never increments `shot_serial`, so that blocker gets no try on the next released shot (set it only on a
+  miss, or bump the serial in `rim_shot_blocked`). Humantest: timed jumps blocked 1/6, early 0/10 (thin but right way).
 
 **P2-08 | CPU defense reads the moves | gameplay (B, after P2-07) | `scripts/defense.gd`**
 - Pokes: the CPU pokes only when `game.steal_exposure()` is above `CPU_POKE_EXPOSURE` 0.5, at most every
@@ -251,6 +256,8 @@ and B do nothing** (the HUD shows "-").
 - Done when: autoplay steals about 5-10 per game, `cross_beats` a minority of crossovers (about 25-45%),
   `guard_slow_frames` up from P2-01, scores in range.
 - Depends on: P2-07 (same file), P2-05 for `cross_t`.
+- Review (lead, 9c62941 on trial-w2): APPROVE. Cross beats 87/267 = 33%; fake bites ~5/game (`cpu_fake_bites`,
+  `pump_bites_t*`), ~45% of fakes; steals avg ~9 (0-17). `CPU_POKE_GAP` is 2.0 (board said 1.2), fine with steals in range.
 
 ### Wave 3: needs Q4, Q5
 
