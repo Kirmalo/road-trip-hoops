@@ -23,6 +23,17 @@ const OVERTIME_LENGTH := 60.0
 const SHOT_CLOCK_LENGTH := 24.0
 const HUMAN_TEAM := 0
 const TEAM_NAMES := ["BLUE", "RED"]
+const TEAM_COLORS := [Color(0.45, 0.7, 1.0), Color(1.0, 0.42, 0.38)]   # popups and score messages
+
+# game-event feedback (P1-06)
+const SCORE_POPUP_SIZE := 64         # font size of the "+2"/"+3" popup at the hoop
+const SCORE_POPUP_RISE := 3.0 * FT   # popup starts this far above the rim
+const SCORE_MSG_TIME := 0.8          # the center "BLUE SCORES" message is short, the popup carries it
+const BLOCK_SHAKE := 6.0             # screen shake on a block: strength in pixels
+const BLOCK_SHAKE_TIME := 0.25       # and how long it lasts
+const MSG_FONT_SIZE := 56            # center message font size
+const MSG_POP_TIME := 0.15           # center message scale-in time in seconds
+const MSG_POP_SCALE := 1.35          # center message start scale
 
 var hoops := [Vector2(5.25 * FT, COURT_H / 2), Vector2(COURT_W - 5.25 * FT, COURT_H / 2)]
 
@@ -59,6 +70,7 @@ var clock_label: Label
 var shot_label: Label
 var msg_label: Label
 var msg_timer := 0.0
+var msg_age := 0.0
 
 # ---------------- setup ----------------
 
@@ -137,7 +149,7 @@ func _build_hud() -> void:
 	shot_label.offset_left = -260
 	shot_label.offset_right = -20
 	shot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	msg_label = _make_label(root, 44, Control.PRESET_CENTER, 0)
+	msg_label = _make_label(root, MSG_FONT_SIZE, Control.PRESET_CENTER, 0)
 	msg_label.offset_left = -500
 	msg_label.offset_right = 500
 	msg_label.offset_top = -160
@@ -281,10 +293,16 @@ func block_shot(defender) -> void:
 	ball.make_loose(ball.position, away * rng.randf_range(200.0, 300.0), ball.z, 80.0)
 	show_message("BLOCKED!")
 	stat("blocks")
+	fx.shake(BLOCK_SHAKE, BLOCK_SHAKE_TIME)
+	audio.play("block")
 
 func on_shot_made(shooter, pts: int) -> void:
 	score[shooter.team] += pts
-	show_message("%s %s!" % [TEAM_NAMES[shooter.team], "THREE" if pts == 3 else "SCORES"], 1.2)
+	show_message("%s %s!" % [TEAM_NAMES[shooter.team], "THREE" if pts == 3 else "SCORES"], SCORE_MSG_TIME,
+			TEAM_COLORS[shooter.team])
+	var hoop := attack_hoop(shooter.team)
+	fx.popup("+%d" % pts, hoop + Vector2(0, -SCORE_POPUP_RISE), TEAM_COLORS[shooter.team], SCORE_POPUP_SIZE)
+	audio.play("crowd")
 	possession = 1 - shooter.team
 	_dead_ball(1 - shooter.team, 1.0)
 
@@ -448,6 +466,7 @@ func _physics_process(delta: float) -> void:
 			if shot_clock <= 0.0:
 				show_message("SHOT CLOCK!")
 				stat("shotclock")
+				audio.play("whistle")
 				var p = ball.holder if ball.holder != null else ball.passer
 				var next_team: int = 1 - (p.team if p != null else possession)
 				_dead_ball(next_team, 1.0)
@@ -504,12 +523,14 @@ func _separate_players() -> void:
 
 func _end_period() -> void:
 	game_clock = 0.0
+	audio.play("whistle")
 	if autoplay:
 		print("End of period %d: BLUE %d - RED %d" % [quarter, score[0], score[1]])
 	if quarter >= 4 and score[0] != score[1]:
 		game_over = true
 		ball.make_dead()
 		var winner := "BLUE" if score[0] > score[1] else "RED"
+		audio.play("whistle", 3.0, 0.0)   # second, louder whistle: game over
 		show_message("FINAL  %d - %d\n%s WINS!  Tap to play again" % [score[0], score[1], winner], 9999.0)
 		if autoplay or OS.get_cmdline_user_args().has("--humantest"):
 			print("FINAL BLUE %d - RED %d" % [score[0], score[1]])
@@ -524,16 +545,25 @@ func _end_period() -> void:
 
 # ---------------- HUD ----------------
 
-func show_message(text: String, time := 1.2) -> void:
+func show_message(text: String, time := 1.2, color := Color.WHITE) -> void:
 	msg_label.text = text
+	msg_label.modulate = color
 	msg_label.modulate.a = 1.0
 	msg_timer = time
+	msg_age = 0.0
+	msg_label.pivot_offset = msg_label.size / 2.0
+	msg_label.scale = Vector2(MSG_POP_SCALE, MSG_POP_SCALE)
 
 func _update_message(delta: float) -> void:
 	if msg_timer > 0.0:
 		msg_timer -= delta
+		msg_age += delta
+		var k: float = minf(msg_age / MSG_POP_TIME, 1.0)
+		var sc: float = lerpf(MSG_POP_SCALE, 1.0, 1.0 - (1.0 - k) * (1.0 - k))   # ease out
+		msg_label.pivot_offset = msg_label.size / 2.0
+		msg_label.scale = Vector2(sc, sc)
 		if msg_timer < 0.4:
-			msg_label.modulate.a = max(0.0, msg_timer / 0.4)
+			msg_label.modulate.a = maxf(0.0, msg_timer / 0.4)
 
 func _update_hud() -> void:
 	score_label.text = "BLUE  %d   -   %d  RED" % [score[0], score[1]]
