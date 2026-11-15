@@ -186,7 +186,6 @@ editing each other's files. Each wave merges and gets a quick QA run before the 
 
 ## Doing
 - P1-07 on fire (+ dunk double-popup fix + blocked rim shot counted as a make)
-- P1-08 ball and rim feedback
 
 ## Review
 
@@ -206,6 +205,8 @@ editing each other's files. Each wave merges and gets a quick QA run before the 
 
 - P1-05 auto-dunk and layup (approved; merged). Merged check: 20-16, 20-16, 20-26; scores now inside the target.
 
+- P1-08 ball and rim feedback (approved; merged). swish = makes - dunk makes; rim = shots - makes - blocks.
+
 ### Follow-ups for P1-07 (from the P1-05 review)
 - A blocked rim attempt is released at 2% and then blocked, so `makes` can count it. When the contest roll is a
   block, call `game.block_shot()` while the ball is still held and skip `release_shot`.
@@ -215,6 +216,8 @@ editing each other's files. Each wave merges and gets a quick QA run before the 
   shooter's last shot was a dunk.
 
 ### Follow-ups for P1-09 QA (from reviews)
+- Net animation not yet confirmed in a screenshot (no --shots frame lands on a make): time one to a make.
+- Owner check-in: the human dribble sound plays ~1.4 times a second at -18 dB. Keep, quieter, or drop?
 - Dunks make less often than layups (~40% vs ~45%) because a defender is within 3 ft on almost every drive. Tune
   `CONTEST_MAKE_MULT`, the target make rates, or the 3 ft openness threshold. Ask the owner how dunks feel.
 - Almost no jump shots (0-2 from 15 ft+ per game). CPU shot selection needs a look.
