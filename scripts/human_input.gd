@@ -26,6 +26,8 @@ const SHORT_TAP_MAX := 0.15       # seconds: A released this soon after starting
 const BLOCK_CLOSE_FT := 6.0       # the human must be this close to the shooter for BLOCK
 const BLOCK_RIM_FT := 9.0         # a handler this close to his rim gets BLOCK even before he shoots (LAYUP_RANGE)
 const BLOCK_SHOT_WINDOW := 0.25   # seconds after a release a jump can still block (defense.JUMPER_BLOCK_WINDOW)
+# (the defensive assist, P2.5-02, lives in player.gd defense_assist(); a STEAL/BLOCK press turns it off for
+# player.ASSIST_PRESS_OFF seconds)
 
 # ---- call for the ball (P2-10, owner Q4): B on offense without the ball = CALL ----
 # The CPU teammate with the ball passes to the human as soon as the lane is clear, within CALL_WINDOW. Calling while
@@ -92,6 +94,8 @@ func a_pressed() -> void:
 		h.start_shot()
 		_a_meter = h.shooting and h.rim_kind == ""
 	elif game.possession != game.HUMAN_TEAM or game.ball.state == game.ball.SHOT:
+		if "assist_off_t" in h:
+			h.assist_off_t = h.ASSIST_PRESS_OFF   # STEAL/BLOCK takes over from the defensive assist (player.gd)
 		if defense_action() == "BLOCK":
 			block_jump(h)
 		else:

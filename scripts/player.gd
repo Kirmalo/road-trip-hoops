@@ -106,6 +106,24 @@ var since_fake := 99.0            # seconds since this player's last pump fake s
 var fake_bit := false             # a defender bit on the current/last fake
 var cpu_drive_t := 0.0            # CPU: seconds left driving to the rim after a bite
 
+# ---- defensive assist (P2.5-02, owner: hard to stay in front of the ball handler). Human only. While you guard
+# the ball handler and steer roughly toward him (or toward the spot between him and the basket), your defender
+# slides to that spot and matches his sideways moves. You still steer: pulling clearly away, sprinting off, pressing
+# STEAL/BLOCK, or being off balance (a crossover that beat you) turns it off. ----
+const ASSIST_RANGE_FT := 8.0      # the handler must be this close (no assist from further away)
+const ASSIST_FULL_FT := 6.0       # full strength inside this, fading to 0 at ASSIST_RANGE_FT
+const ASSIST_STRENGTH := 0.6      # 0 = none, 1 = the assist alone decides the direction (autopilot)
+const ASSIST_GAP_FT := 3.0        # the spot: this far in front of the handler, on the line to the basket
+const ASSIST_LEAD := 0.15         # seconds of the handler's movement the spot leads by (matches his sideways moves)
+const ASSIST_GAIN := 4.0          # 1/s: how hard the assist pulls toward the spot (closing speed per pixel off it)
+const ASSIST_ANGLE := 75.0        # degrees: the stick must point within this of the handler or of the spot
+const ASSIST_TURBO_ANGLE := 55.0  # ... and within this while sprinting (a sprint elsewhere turns it off)
+const ASSIST_MIN_STICK := 0.3     # the stick must be pushed at least this far (no assist while you stand still)
+const ASSIST_PRESS_OFF := 0.4     # seconds without assist after STEAL/BLOCK is pressed (human_input.gd sets it)
+
+var assist_off_t := 0.0           # seconds left with the assist off (after a button press)
+var assist_on := false            # the assist steered this frame (drawn / counted)
+
 # ---- turbo and stamina (tuning) ----
 # (how far to pull the joystick to sprint is TURBO_PULL in touch_controls.gd)
 const TURBO_SPEED_MULT := 1.35    # speed multiplier while sprinting
@@ -309,6 +327,7 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		if fake_t > 0.0:
 			desired *= PUMP_MOVE_MULT     # pump fake: ball up, only a slow shuffle
 			want_turbo = false
+		desired = defense_assist(delta, input_vec, desired, want_turbo)
 	else:
 		ai(delta)
 		desired = seek(target, speed_mult)
@@ -346,6 +365,54 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	if on_fire:
 		fire_anim += delta
 	queue_redraw()
+
+# ---------------- defensive assist (P2.5-02) ----------------
+
+# The human's desired velocity on defense, blended toward the spot between the ball handler and the basket when the
+# stick points roughly that way. Returns `desired` unchanged when the assist doesn't apply.
+func defense_assist(delta: float, stick: Vector2, desired: Vector2, sprinting: bool) -> Vector2:
+	assist_off_t = maxf(0.0, assist_off_t - delta)
+	assist_on = false
+	var ball = game.ball
+	var h = ball.holder
+	if ball.state != ball.HELD or h == null or h.team == team or has_ball():
+		return desired
+	if assist_off_t > 0.0 or stumble_t > 0.0 or poke_t > 0.0 or is_airborne():
+		return desired   # just pressed STEAL/BLOCK, beaten by a crossover, reaching or in the air: you're on your own
+	var FT: float = game.FT
+	var to_h: Vector2 = h.position - position
+	var d_ft: float = to_h.length() / FT
+	if d_ft > ASSIST_RANGE_FT or stick.length() < ASSIST_MIN_STICK:
+		return desired
+	var spot: Vector2 = assist_spot(h)
+	var to_spot: Vector2 = spot - position
+	if not assist_aim_ok(stick, h, sprinting):
+		game.stat("human_assist_pulled_away")   # in range but steering elsewhere: no assist
+		return desired
+	var k: float = ASSIST_STRENGTH * clampf((ASSIST_RANGE_FT - d_ft) / (ASSIST_RANGE_FT - ASSIST_FULL_FT), 0.0, 1.0)
+	var top: float = desired.length()
+	var help: Vector2 = (to_spot * ASSIST_GAIN + h.velocity).limit_length(top)
+	assist_on = true
+	game.stat("human_assist_frames")
+	return desired.lerp(help, k)
+
+# where the assist slides the defender: a few feet in front of the handler on his line to the basket, led by his move
+func assist_spot(h) -> Vector2:
+	var line: Vector2 = game.attack_hoop(h.team) - h.position
+	var gap: float = minf(ASSIST_GAP_FT * game.FT, line.length() * 0.5)
+	return h.position + h.velocity * ASSIST_LEAD + (line.normalized() * gap if line.length() > 1.0 else Vector2.ZERO)
+
+# the stick points roughly at the handler or at the assist spot (a tighter aim while sprinting)
+func assist_aim_ok(stick: Vector2, h, sprinting: bool) -> bool:
+	if stick.length() < ASSIST_MIN_STICK:
+		return false
+	var cone: float = deg_to_rad(ASSIST_TURBO_ANGLE if sprinting else ASSIST_ANGLE)
+	var sdir: Vector2 = stick.normalized()
+	var to_h: Vector2 = h.position - position
+	var to_spot: Vector2 = assist_spot(h) - position
+	var aim_h: float = absf(sdir.angle_to(to_h)) if to_h.length() > 1.0 else 0.0
+	var aim_s: float = absf(sdir.angle_to(to_spot)) if to_spot.length() > 4.0 else 0.0
+	return minf(aim_h, aim_s) <= cone
 
 # ---------------- shared moves: stumble, block jump, close guarding ----------------
 
@@ -460,6 +527,8 @@ func cross_beat_check() -> void:
 			best = o
 	if best == null:
 		return
+	if game.is_human(best):
+		game.stat("human_cross_faced")   # a crossover at the human defender (human_cross_beaten: how many beat him)
 	var beaten := false
 	var ov: Vector2 = best.velocity
 	if ov.length() >= CROSS_WRONG_WAY_SPEED and ov.normalized().dot(cross_dir) < -0.3:
@@ -473,6 +542,10 @@ func cross_beat_check() -> void:
 		return
 	best.stumble(CROSS_STUN)
 	game.stat("cross_beats_t%d" % team)
+	if game.is_human(best):
+		game.stat("human_cross_beaten")
+		if best.assist_on:
+			game.stat("human_cross_beaten_assisted")   # the assist was steering him when the crossover came
 	if game.is_human(self):
 		game.stat("human_cross_beats")
 	if game.fx:

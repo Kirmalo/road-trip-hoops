@@ -69,10 +69,11 @@ const STEAL_COOLDOWN := 0.7          # seconds between pokes by one defender
 # Set STEAL_TIMING false to judge pokes by exposure only.
 const STEAL_TIMING := true
 const DRIBBLE_PERIOD := PI / 9.0     # seconds between floor touches; must match ball.gd (z = 4 + |sin(anim_time * 9)| * 16)
-const STEAL_GRACE := 0.05            # human: seconds before a floor touch that count as a well-timed poke
-const STEAL_HUMAN_LATE := 0.12       # human: seconds after a floor touch that still count (P2.5: was 0.05; a thumb
-                                     # reacts to the lit button a little late). Window 0.17 s = 49% of the 0.35 s
-                                     # dribble (was 29%); the STEAL button and the ring under the ball stay lit ~10 frames
+const STEAL_GRACE := 0.04            # human: seconds before a floor touch that count as a well-timed poke (P2.5: was 0.05)
+const STEAL_HUMAN_LATE := 0.10       # human: seconds after a floor touch that still count (P2.5: was 0.05; a thumb
+                                     # reacts to the lit button a little late). Window 0.14 s = 40% of the 0.35 s
+                                     # dribble (was 0.10 s, 29%); the STEAL button and the ring under the ball stay lit
+                                     # ~8 frames per bounce instead of ~6
 const STEAL_CPU_GRACE := 0.05        # CPU pokes: seconds either side of a floor touch (unchanged; defense.gd times them)
 const STEAL_HUMAN_BONUS := 0.12      # human (P2.5): a well-timed poke's success chance + this (rating 50: 0.7 -> 0.82)
 const STEAL_HUMAN_LUCK := 0.5        # human (P2.5): STEAL_LUCK for the human's pokes; a good poke depends less on how
@@ -109,6 +110,8 @@ const HT_LOB_FT := 12.0              # "near the rim" for that pass
 const HT_BLOCK_DELAY := 0.15         # on defense: press BLOCK this long after a CPU shot starts (every 2nd shot; else at once)
 const HT_EARLY_DRIVE_SPEED := 0.4    # "early" block turn: a CPU handler driving at his rim at this fraction of top speed
 const HT_EARLY_HOLD := 1.0           # ... after that early jump, his take-off within this many seconds isn't a new try
+const HT_AWAY_EVERY := 6.0           # on defense: every this many seconds, steer away from the handler ...
+const HT_AWAY_TIME := 0.7            # ... for this long (the defensive assist must not hold him)
 const HT_GUARD_FT := 8.0             # stay-in-front metric: a CPU handler (frontcourt) this close to the human is "guarded"
 const HT_BEAT_MARGIN_FT := 1.0       # ... and he is past the human once he is this much closer to the rim (hysteresis)
 
@@ -160,6 +163,8 @@ var ht_pre_t := 0.0                 # an early jump at a drive was just scripted
 var ht_jump_phase := ""             # what the shooter was doing at the scripted block press: "shot", "fake", "rim"
 var ht_call_clock := 0.0
 var ht_lob_wait := 0.0
+var ht_away_clock := 0.0
+var ht_away_t := 0.0
 var ht_guard_on := false            # stay-in-front metric: guarding a handler this frame
 var ht_guard_front := true          # ... and the human is between him and the rim
 var ht_guard_holder = null
@@ -769,6 +774,21 @@ func _humantest_thumb(delta: float) -> void:
 		controls._input(down)
 	var goal: Vector2 = attack_hoop(HUMAN_TEAM) if possession == HUMAN_TEAM else ball.position
 	var goal_angle: float = (goal - human_player.position).angle()
+	# on defense, now and then pull the stick away from the handler: the defensive assist must let go
+	if possession != HUMAN_TEAM and ball.state == ball.HELD:
+		ht_away_clock += delta
+		if ht_away_clock >= HT_AWAY_EVERY:
+			ht_away_clock = 0.0
+			ht_away_t = HT_AWAY_TIME
+			stat("humantest_pull_aways")
+	if ht_away_t > 0.0:
+		ht_away_t -= delta
+		goal_angle += PI
+		# last frame's stick (assist_on is from last frame's update): aimed away from the handler and his spot?
+		if ball.holder != null and not human_player.assist_aim_ok(controls.joystick(), ball.holder, false):
+			stat("humantest_away_frames")
+			if human_player.assist_on:
+				stat("humantest_away_assist_frames")   # should stay 0: pulling away turns the assist off
 	var can_flick: bool = input.flick_ready()
 	if can_flick:
 		ht_snap_clock += delta
@@ -947,11 +967,12 @@ func _ht_summary() -> String:
 		return "%d/%d" % [stats.get(a, 0), stats.get(b, 0)]
 	var gf: int = stats.get("humantest_guard_frames", 0)
 	var front_pct: float = 100.0 * float(stats.get("humantest_guard_front_frames", 0)) / float(maxi(gf, 1))
-	return "HUMANTEST steals timed %s random %s | blocks timed %s early %s | in front %.0f%% beaten %d in %d spells | assist %d" % [
+	return "HUMANTEST steals timed %s random %s | blocks timed %s early %s | in front %.0f%% beaten %d in %d spells | assist %d frames, %d while pulling away, crossovers beat him %s" % [
 		f.call("humantest_timed_steals", "humantest_timed_pokes"), f.call("humantest_random_steals", "humantest_random_pokes"),
 		f.call("humantest_timed_blocks", "humantest_timed_jumps"), f.call("humantest_early_blocks", "humantest_early_jumps"),
 		front_pct, stats.get("humantest_guard_beaten", 0), stats.get("humantest_guard_spells", 0),
-		stats.get("human_assist_frames", 0)]
+		stats.get("human_assist_frames", 0), stats.get("humantest_away_assist_frames", 0),
+		f.call("human_cross_beaten", "human_cross_faced")]
 
 func _ht_hoop_ft() -> float:
 	return human_player.position.distance_to(attack_hoop(HUMAN_TEAM)) / FT
