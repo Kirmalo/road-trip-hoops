@@ -174,17 +174,15 @@ Why this order: `player.gd` is serial P1-01 -> P1-05 -> P1-07; `main.gd` is seri
 `ball.gd` is serial P1-05 -> P1-08. New `audio.gd`/`fx.gd` with fixed APIs let feature tasks call feedback without
 editing each other's files. Each wave merges and gets a quick QA run before the next starts.
 
-## Questions for owner
-1. **Dunk or layup:** what decides which one happens on Shoot near the rim? (a) automatic by distance and speed,
-   (b) dunk only while on turbo, (c) later by player rating. Should either one use the shot meter, or are both fully
-   automatic?
-2. **Turbo with the ball:** can the ball handler turbo at full speed, and should shooting right after sprinting be less
-   accurate?
-3. **On fire, who:** does the streak belong to one player or to the whole team? Do dunks and layups count toward the 3?
-4. **On fire, what and until when:** what does it give (better shooting, more stamina, just looks), and what ends it
-   (a miss, the other team scoring, a time limit)? Can CPU players go on fire?
-5. **Sound:** can you allow `kenney.nl` and `opengameart.org` for this environment, or would you rather download a CC0
-   sound pack yourself and add it to `assets/sfx/`?
+## Owner answers (2026-11-15, also in docs/VISION.md)
+1. **Dunk or layup:** automatic by distance and speed (very close + fast or turbo = dunk, otherwise layup). No shot
+   meter for either. Player ratings may add to this in the campaign.
+2. **Turbo with the ball:** handler sprints slightly slower (0.95x); jump shots right after sprinting are less
+   accurate; dunks and layups are not penalized. (Added to P1-01 as a follow-up.)
+3. **On fire, who:** one player, 3 makes in a row, dunks and layups count.
+4. **On fire, what and until when:** bigger green zone on the meter, stamina doesn't drain, flaming trail. Ends on that
+   player's miss or when the other team scores. CPU players can catch fire.
+5. **Sound:** pending; the coordinator is asking the owner to allow the hosts.
 
 ## Doing
 

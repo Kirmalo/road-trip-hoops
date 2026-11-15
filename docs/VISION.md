@@ -37,6 +37,10 @@ tablet with a joystick and two buttons.
 | Art | Pixel art from free CC0 packs, recolored and assembled by agents |
 | Music and sound | CC0 or royalty-free tracks, a style per city; CC0 sound effects |
 | Check-ins | The owner plays a ZIP build on the tablet after each phase |
+| Dunk or layup | Decided by distance and speed: very close and moving fast (or on turbo) dunks, otherwise a layup. Player ratings may add to this in the campaign |
+| Turbo with the ball | Slightly slower than without the ball; a jump shot right after sprinting is less accurate (dunks and layups aren't affected) |
+| On fire: streak | One player, 3 makes in a row (dunks and layups count). Ends when they miss or the other team scores. CPU players can catch fire |
+| On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
 - Godot 4.3+ (GDScript), GL Compatibility renderer, 1280x720 landscape. See `CLAUDE.md` for code conventions.
