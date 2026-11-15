@@ -13,12 +13,49 @@ OPEN IT ON THE TABLET
 HOW TO PLAY
 You are BLUE (the player with the yellow ring). BLUE shoots at the RIGHT hoop.
 - Move: put your thumb anywhere on the left half of the screen and drag.
+- Orange button: SHOOT on offense, STEAL or BLOCK on defense. Blue button: PASS with the ball, CALL without it,
+  SWITCH on defense.
 - SHOOT: hold it down and let go when the white marker is in the green zone. Perfect timing = much better odds.
   Shots beyond the arc count 3. Defenders nearby lower your odds.
 - PASS: throws to your most open teammate, or to the teammate in the direction you are pushing.
-- On defense the buttons become STEAL (poke the ball, or block a shot right as it goes up) and SWITCH (take over the
-  teammate closest to the ball).
 - 4 quarters of 2 minutes, 24 second shot clock, overtime if tied.
+
+WITH THE BALL
+- Crossover: a quick flick of the stick to a new direction while dribbling. You cut sharply and the ball switches
+  hands. A defender close in front of you can stumble and get left behind. Smooth turns don't trigger it.
+  The ball crosses in front of you, so it is easier to steal during a crossover.
+- Pump fake: a quick tap of SHOOT (away from the rim, where the meter shows). He raises the ball and hops.
+  Press SHOOT again to shoot for real. A defender who jumps at the fake is stuck in the air: shoot or drive past.
+  Near the rim SHOOT always dunks or lays up right away (no fake there).
+- Alley-oop: PASS to a teammate cutting to the rim and you throw a lob that he dunks in the air.
+- Close guarding: a defender right in front of you slows you down. Beat him with a crossover or a fake.
+- Keep your body between the ball and the defender: a shielded ball is very hard to steal.
+
+WITHOUT THE BALL
+- Who you control: after you pass, you take over the player who caught it. When a teammate gets the ball any other
+  way (rebound, steal, inbound, a pass from a teammate), he plays it and you keep your player.
+- CALL (blue button): ask for the ball. A "!" shows over you and the button lights up; your teammate passes as soon
+  as the lane is clear. If nothing opens up the call ends after a moment.
+- Call while cutting hard to the rim and you get a lob: you go up and dunk it (alley-oop).
+
+DEFENSE
+- The orange button switches between STEAL and BLOCK by itself. It says BLOCK (deeper orange, up arrow) when your man
+  starts a shot, or is near the rim with you close. Otherwise it says STEAL.
+- STEAL: poke at the ball. It works best just as the dribble hits the floor (the button lights up yellow then), and
+  when the ball is on your side of the handler, not behind his body. Every steal try freezes you for a moment, hit
+  or miss, so don't spam it.
+- BLOCK: a timed jump. Jump as he goes up; too early or too late and you miss. Jumping at a pump fake leaves you
+  in the air while he shoots or drives past.
+- SWITCH (blue button): take over the teammate closest to the ball.
+
+PLAYER RATINGS
+Each player has a steal rating and a block rating. Good timing is what makes a steal or block possible; better
+players turn good timing into a steal or block more often. Badly timed tries almost never work.
+Each team has a quick-hands guard, a shot-blocker and an all-round player, with the same totals for both teams.
+
+THE CPU
+CPU players use everything you can: pull-up jump shots and threes, crossovers, pump fakes, cuts and alley-oop lobs.
+CPU defenders poke at exposed balls, jump at shots (and sometimes bite on fakes) and get beaten by crossovers.
 
 TURBO
 - Moving the joystick normally never sprints. To sprint, pull your thumb past the joystick ring, out to the
@@ -49,25 +86,50 @@ scripts/main.gd:
 - SHOT_CLOCK_LENGTH
 - FIRE_STREAK: makes in a row to catch fire (3)
 - FIRE_MISSES: misses that put the fire out (2)
-scripts/player.gd:
-- TURBO_PULL (touch_controls.gd): how far past the joystick ring you pull to sprint (1.5 = 1.5x the ring size)
-- TURBO_SPEED_MULT: sprint speed (1.35 = 35% faster)
-- TURBO_BALL_MULT: sprint speed with the ball (0.95)
+- STEAL_POKE_FREEZE: seconds you stand still after every steal try (0.3)
+- STEAL_GRACE: how close to the dribble's floor touch a poke must be to count as well timed (0.05 s either side)
+- STEAL_BASE / STEAL_RATING_SPAN: chance of a good poke at rating 50, and how much the rating moves it
+- STEAL_REACH_FT: how close to the ball you must be to poke it (2.5)
+- STEAL_COOLDOWN: seconds between pokes (0.7)
+scripts/touch_controls.gd:
+- TURBO_PULL: how far past the joystick ring you pull to sprint (1.5 = 1.5x the ring size)
+scripts/human_input.gd:
+- FLICK_ANGLE / FLICK_WINDOW: how far (100 degrees) and how fast (0.12 s) the stick must turn for a crossover
+- SHORT_TAP_MAX: a SHOOT tap shorter than this is a pump fake (0.15 s)
+- BLOCK_CLOSE_FT: how close you must be to the shooter for the button to say BLOCK (6)
+- BLOCK_RIM_FT: a handler this close to the rim gets BLOCK even before he shoots (9)
+- CALL_WINDOW: seconds a CALL stays alive before it times out (1.5)
+- CALL_COOLDOWN: seconds before you can call again (0.75)
+scripts/player.gd (values are being tuned, so check the file for the current numbers):
+- RATINGS_BY_INDEX: the steal and block rating of each of the 3 players (0-100, 50 = average)
+- BLOCK_GOOD_BASE / BLOCK_RATING_SPAN: chance of a well-timed block, and how much the rating moves it
+- CROSS_STUN: how long a beaten defender stumbles after a crossover
+- GUARD_FT / GUARD_SLOW: how close a defender slows the handler, and by how much
+- PUMP_TIME: how long a pump fake lasts
+- CPU_PULLUP_CHANCE / CPU_THREE_CHANCE / CPU_CROSS_CHANCE / CPU_PUMP_CHANCE / CPU_LOB_CHANCE: how often the CPU
+  pulls up, shoots threes, crosses over, fakes and throws lobs
+- TURBO_SPEED_MULT / TURBO_BALL_MULT: sprint speed without and with the ball
 - STAMINA_DRAIN / STAMINA_REFILL: how fast the stamina bar empties and fills (per second, 1.0 = full bar)
-- TURBO_SHOT_PENALTY: jump shot quality right after sprinting (0.8)
-- LAYUP_RANGE: feet from the rim where SHOOT becomes a layup or dunk (9)
-- DUNK_RANGE: feet from the rim where a dunk is possible (6)
+- TURBO_SHOT_PENALTY: jump shot quality right after sprinting
+- LAYUP_RANGE: feet from the rim where SHOOT becomes a layup or dunk
+- DUNK_RANGE: feet from the rim where a dunk is possible
 - DUNK_OPEN_PCT / LAYUP_OPEN_PCT: make chance when nobody is near you
-- DUNK_BLOCK_CHANCE / LAYUP_BLOCK_CHANCE: block chance with a defender right on you
 - FIRE_GREEN_LO / FIRE_GREEN_HI: green zone while on fire (normal is GREEN_LO / GREEN_HI)
 - FIRE_SHOT_BONUS: extra make odds while on fire
+scripts/defense.gd (CPU defense, also being tuned):
+- CPU_JUMP_CHANCE: how often a CPU defender jumps at a shot
+- CPU_FAKE_BITE: how often he bites on a pump fake
+- CPU_POKE_CHANCE / CPU_POKE_ON_TIME: how often he pokes at the ball, and how often his poke is well timed
+- BLOCK_HEIGHT_MIN: how high in the jump a block has to be to count as well timed
 scripts/audio.gd:
 - MASTER_DB: sound volume (lower = quieter, e.g. -6.0)
-Shooting odds are in shot_probability() in main.gd. CPU behavior is in scripts/player.gd.
+Shooting odds are in shot_probability() in main.gd. CPU behavior is in scripts/player.gd and scripts/defense.gd.
 
 FILES
-- main.gd: rules, scoring, clocks, HUD, your controls, on fire
-- player.gd: movement, turbo, dunks and layups, and the CPU brain (offense spots, driving, passing, man-to-man defense)
+- main.gd: rules, scoring, clocks, HUD, steals, on fire
+- human_input.gd: your controls (crossover flicks, pump fake taps, CALL, STEAL/BLOCK button)
+- player.gd: movement, turbo, crossovers, pump fakes, dunks, layups, alley-oops, ratings, CPU offense
+- defense.gd: CPU defense (man-to-man, pokes, block jumps) and block rules
 - ball.gd: dribbling, passes, shot arcs, rebounds
 - court.gd: draws the court, rims and nets
 - touch_controls.gd: joystick and buttons
