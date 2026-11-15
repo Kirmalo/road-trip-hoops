@@ -1,7 +1,8 @@
 extends Node
 # Human input: what the A (orange) and B (blue) buttons do, the pass target, switching player, and the stick
-# gestures (crossover / spin flick, short tap of A). Created by main.gd as `game.input`; main.gd keeps the signal
-# connections, the keyboard handler and the humantest script, and forwards to a_pressed / a_released / b_pressed.
+# gestures (crossover / spin flick, short tap of A), and CALL for the ball (B on offense without it). Created by
+# main.gd as `game.input`; main.gd keeps the signal connections, the keyboard handler and the humantest script,
+# and forwards to a_pressed / a_released / b_pressed.
 # update(delta, stick) runs every physics frame with the same stick vector the human player gets.
 
 # ---- flick (crossover / spin) detection (tuning) ----
@@ -25,6 +26,20 @@ const BLOCK_CLOSE_FT := 6.0       # the human must be this close to the shooter 
 const BLOCK_RIM_FT := 9.0         # a handler this close to his rim gets BLOCK even before he shoots (LAYUP_RANGE)
 const BLOCK_SHOT_WINDOW := 0.25   # seconds after a release a jump can still block (defense.JUMPER_BLOCK_WINDOW)
 
+# ---- call for the ball (P2-10, owner Q4): B on offense without the ball = CALL ----
+# The CPU teammate with the ball passes to the human as soon as the lane is clear, within CALL_WINDOW. Calling while
+# cutting to the rim sets the human's `alley_cut`, so ball.gd (P2-09) throws it as a lob.
+const CALL_WINDOW := 1.5          # seconds a call stays alive; no clear lane by then and it's cancelled
+const CALL_LANE_FT := 3.0         # the lane is clear when no defender is within this many feet of the pass line
+const CALL_PASSER_FT := 5.0       # the first feet of the line are left out: the passer throws around his own man
+                                  # (ball.gd can't pick off a pass this close to the passer either)
+const CALL_CALLER_FT := 3.0       # and the last feet: a man glued to the caller is beaten by the pass (or picks it off)
+const CALL_REACT := 0.15          # seconds the passer takes to turn and throw after hearing the call
+const CALL_COOLDOWN := 0.75       # seconds after a call ends before B can call again (no spamming)
+const CALL_CUT_FT := 12.0         # within this many feet of the rim ... (ball.gd ALLEY_FT)
+const CALL_CUT_SPEED := 0.6       # ... and moving toward it at this fraction of top speed = cutting: the pass is a lob
+const CALL_TURN_RATE := 14.0      # how fast the passer turns to face the caller while the call is live
+
 var game
 
 # gesture results other scripts can read
@@ -45,6 +60,9 @@ var _last_joy_center := Vector2.ZERO
 var _a_down_at := -1.0
 var _a_meter := false             # the last A press started the jump-shot meter
 var _turbo_was := false
+var call_t := -1.0                # seconds since the live call started (< 0 = no call)
+var call_cd := 0.0                # seconds until B can call again
+var _lob_player = null            # human whose alley_cut we set for a called lob (cleared when that pass ends)
 var _debug_log := false           # web build with ?debug_input in the URL: print gestures to the browser console
 
 func _ready() -> void:
@@ -127,9 +145,14 @@ func b_pressed() -> void:
 	if h == null or game.game_over:
 		return
 	if h.has_ball():
-		game.do_pass(h, pass_target(game._input_vector()))
+		var to = pass_target(game._input_vector())
+		game.do_pass(h, to)
+		if to != null and pass_is_lob():
+			game.stat("human_alley_lobs")   # PASS to a teammate cutting to the rim (P2-09 decides the lob)
 	elif game.possession != game.HUMAN_TEAM:
 		switch_player()
+	elif game.ball.state != game.ball.DEAD:
+		call_for_ball()
 
 # the open teammate, or the teammate in the direction the stick is pushed
 func pass_target(dir: Vector2):
@@ -161,6 +184,123 @@ func switch_player() -> void:
 			best = p
 	if best != null:
 		game.human_player = best
+
+# ---------------- call for the ball ----------------
+
+func call_active() -> bool:
+	return call_t >= 0.0
+
+func call_for_ball() -> void:
+	var h = game.human_player
+	if h == null or h.has_ball() or call_active() or call_cd > 0.0:
+		return
+	call_t = 0.0
+	game.stat("human_calls")
+	game.fx.popup("BALL!", h.position + Vector2(0, -4.5 * game.FT), game.TEAM_COLORS[h.team], 28)
+	_log("call")
+
+func _end_call(cooldown: bool) -> void:
+	call_t = -1.0
+	if cooldown:
+		call_cd = CALL_COOLDOWN
+
+# the teammate who would answer the call: the one holding the ball
+func call_passer():
+	var h = game.human_player
+	var ball = game.ball
+	if h == null or ball.state != ball.HELD or ball.holder == null or ball.holder == h or ball.holder.team != h.team:
+		return null
+	return ball.holder
+
+# the passer can throw now: on the floor, not shooting, faking, crossing over or in a rim move
+func passer_ready(q) -> bool:
+	if q.shooting or q.rim_kind != "":
+		return false
+	if q.has_method("is_airborne") and q.is_airborne():
+		return false
+	if ("fake_t" in q and q.fake_t > 0.0) or ("cross_t" in q and q.cross_t > 0.0):
+		return false
+	return true
+
+# no defender within CALL_LANE_FT of the line from the passer to the caller (leaving out CALL_PASSER_FT at the
+# passer's end and CALL_CALLER_FT at the caller's)
+func call_lane_clear(q, h) -> bool:
+	var line: Vector2 = h.position - q.position
+	if line.length() <= (CALL_PASSER_FT + CALL_CALLER_FT) * game.FT:
+		return true
+	var dir: Vector2 = line.normalized()
+	var a: Vector2 = q.position + dir * CALL_PASSER_FT * game.FT
+	var b: Vector2 = h.position - dir * CALL_CALLER_FT * game.FT
+	for o in game.teams[1 - h.team]:
+		var c: Vector2 = Geometry2D.get_closest_point_to_segment(o.position, a, b)
+		if o.position.distance_to(c) < CALL_LANE_FT * game.FT:
+			return false
+	return true
+
+# cutting to the rim: close to the hoop he attacks and moving at it fast
+func is_cutting(h) -> bool:
+	var hoop: Vector2 = game.attack_hoop(h.team)
+	var to: Vector2 = hoop - h.position
+	if to.length() > CALL_CUT_FT * game.FT or to.length() < 1.0:
+		return false
+	return h.velocity.dot(to.normalized()) >= CALL_CUT_SPEED * h.speed
+
+# true if ball.gd (P2-09) made the pass in flight a lob; false while P2-09 isn't merged
+func pass_is_lob() -> bool:
+	var ball = game.ball
+	if ball.has_method("is_lob"):
+		return ball.is_lob()
+	for k in ["lob", "is_lob", "pass_lob"]:
+		if k in ball:
+			return bool(ball.get(k))
+	return false
+
+func _update_call(delta: float) -> void:
+	call_cd = maxf(0.0, call_cd - delta)
+	var ball = game.ball
+	if _lob_player != null and not (ball.state == ball.PASS and ball.receiver == _lob_player):
+		if "alley_cut" in _lob_player:
+			_lob_player.alley_cut = false   # the called lob has landed (or was picked off)
+		_lob_player = null
+	if not call_active():
+		return
+	var h = game.human_player
+	if h == null or game.game_over or game.possession != game.HUMAN_TEAM or h.has_ball() or ball.state == ball.DEAD:
+		game.stat("human_calls_cancelled")   # got the ball some other way, or lost it
+		_end_call(false)
+		return
+	call_t += delta
+	var q = call_passer()
+	if q != null and call_t >= CALL_REACT and passer_ready(q) and call_lane_clear(q, h):
+		var lob: bool = is_cutting(h)
+		if lob and "alley_cut" in h:
+			h.alley_cut = true
+			_lob_player = h
+		game.do_pass(q, h)
+		game.stat("human_calls_answered")
+		if lob:
+			game.stat("human_calls_lob")
+		if pass_is_lob():
+			game.stat("human_alley_lobs")
+		_log("call answered%s" % (" (lob)" if lob else ""))
+		_end_call(true)
+	elif call_t >= CALL_WINDOW:
+		game.stat("human_calls_timeout")
+		_log("call timed out")
+		_end_call(true)
+
+# after the players moved: while the call is live the passer turns to face the caller (the call was heard)
+func face_caller(delta: float) -> void:
+	if not call_active():
+		return
+	var q = call_passer()
+	var h = game.human_player
+	if q == null or q.shooting or q.rim_kind != "":
+		return
+	var to: Vector2 = h.position - q.position
+	if to.length() > 1.0:
+		q.facing = lerp_angle(q.facing, to.angle(), minf(1.0, CALL_TURN_RATE * delta))
+		q.sprite.rotation = q.facing
 
 # ---------------- stick gestures ----------------
 
@@ -196,6 +336,8 @@ func update(delta: float, stick: Vector2) -> void:
 	_turbo_was = tp
 	if _debug_log and int(_time / 1.0) != int((_time - delta) / 1.0):
 		_log("status fps %d ball %s stick %.2f" % [Engine.get_frames_per_second(), str(flick_ready()), stick.length()])
+
+	_update_call(delta)
 
 	if not flick_ready():
 		_samples.clear()

@@ -18,6 +18,9 @@ var a_text := "SHOOT"
 var b_text := "PASS"
 var a_glow := false                # set by main.gd: STEAL lights up while a poke would be well timed
 var a_block := false               # set by main.gd: the orange button says BLOCK (it jumps); drawn with an up arrow
+var b_glow := false                # set by main.gd: CALL lights up while the call is live (the teammate heard it)
+var b_dim := false                 # set by main.gd: CALL is cooling down after a call
+const CALL_LIT_COLOR := Color(0.45, 0.8, 1.0)
 const BLOCK_COLOR := Color(0.9, 0.3, 0.12)   # BLOCK is a deeper orange than STEAL, so the switch is noticed
 var _glow_t := 0.0
 
@@ -69,7 +72,7 @@ func _input(event: InputEvent) -> void:
 			joy_knob = joy_center + (event.position - joy_center).limit_length(JOY_RADIUS)
 
 func _process(delta: float) -> void:
-	_glow_t = _glow_t + delta if a_glow else 0.0
+	_glow_t = _glow_t + delta if (a_glow or b_glow) else 0.0
 	queue_redraw()
 
 func _draw() -> void:
@@ -100,7 +103,13 @@ func _draw() -> void:
 		draw_colored_polygon(PackedVector2Array([c + Vector2(-16, 12), c + Vector2(16, 12), c + Vector2(0, -6)]), Color.WHITE)
 	else:
 		_button(a_center(), 75.0, a_text, Color(0.95, 0.45, 0.1, 0.75 if a_index < 0 else 0.95))
-	_button(b_center(), 58.0, b_text, Color(0.2, 0.5, 0.95, 0.75 if b_index < 0 else 0.95))
+	if b_glow:
+		# lit CALL: light blue button and a pulsing ring, the teammate with the ball heard you
+		var bp := 0.5 + 0.5 * sin(_glow_t * 18.0)
+		draw_arc(b_center(), 68.0 + 4.0 * bp, 0, TAU, 48, Color(0.75, 0.92, 1.0, 0.9), 7.0)
+		_button(b_center(), 58.0, b_text, CALL_LIT_COLOR)
+	else:
+		_button(b_center(), 58.0, b_text, Color(0.2, 0.5, 0.95, (0.4 if b_dim else 0.75) if b_index < 0 else 0.95))
 
 func _button(c: Vector2, r: float, text: String, col: Color) -> void:
 	draw_circle(c, r, col)

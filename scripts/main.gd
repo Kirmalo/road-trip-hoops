@@ -4,7 +4,8 @@ extends Node2D
 #
 # Touch: drag anywhere on the left half to move.
 #   Offense: hold SHOOT, release in the green zone of the meter. PASS throws to the open teammate
-#            (or the teammate in the direction you are pushing).
+#            (or the teammate in the direction you are pushing). Without the ball, CALL asks the teammate who has
+#            it for a pass (a lob if you're cutting to the rim).
 #   Defense: the orange button is STEAL or BLOCK (picked for you). STEAL pokes at the ball: poke when the dribble is
 #            low and the ball is not behind his body. BLOCK (your man shoots, or is near the rim, and you're close)
 #            jumps: time it so you're high when the ball leaves his hand. Don't bite on pump fakes. SWITCH changes player.
@@ -74,6 +75,13 @@ const STEAL_GRACE := 0.05            # seconds either side of a floor touch that
 const STEAL_CPU_GRACE := STEAL_GRACE # CPU pokes: same window as the human (defense.gd times them on the floor touch)
 const STEAL_HELD_TIMING := 0.25      # timing factor when the ball is held up (gathering a shot, pump fake, at the rim)
 
+# call for the ball (P2-10). human_input.gd has the call rules; main.gd decides who the human controls and draws the cue
+const CONTROL_FOLLOWS_CATCH := false # false: a teammate who gets the ball (inbound, rebound, steal, CPU pass) runs it
+                                     # and you keep your player and CALL for it; true: you always take over the ball
+                                     # (Phase 1 behavior). Your own PASS always hands control to the receiver.
+const CALL_CUE_RISE := 4.0 * FT      # the "!" bubble floats this far above the caller's feet
+const CALL_CUE_COLOR := Color(1.0, 0.92, 0.3)
+
 # --humantest scripted thumb (developer testing only): drives the real touch joystick with synthetic touch events
 const HT_FINGER_POS := Vector2(260, 460)   # where the scripted thumb touches down (left half of the screen)
 const HT_STEER_RATE := 450.0         # degrees per second the thumb turns while steering (a flick needs 100 in 0.12 s)
@@ -90,6 +98,9 @@ const HT_TAP_EVERY := 4.0            # seconds of ball time between short A taps
 const HT_TAP_FRAMES := 5
 const HT_SHOOT_MAX_FT := 24.0        # the scripted human only shoots or taps A with the ball inside this distance
 const HT_TIMED_POKE_GAP := 20.0      # seconds between the scripted human's well-timed pokes (low dribble, ball exposed)
+const HT_CALL_EVERY := 3.0           # on offense without the ball: press CALL every this many seconds
+const HT_LOB_GAP := 6.0              # with the ball: pass to a teammate near the rim at most this often (alley-oop try)
+const HT_LOB_FT := 12.0              # "near the rim" for that pass
 const HT_BLOCK_DELAY := 0.15         # on defense: press BLOCK this long after a CPU shot starts (every 2nd shot; else at once)
 
 var hoops := [Vector2(5.25 * FT, COURT_H / 2), Vector2(COURT_W - 5.25 * FT, COURT_H / 2)]
@@ -136,6 +147,9 @@ var ht_block_wait := -1.0           # seconds until the scripted human presses B
 var ht_block_n := 0                 # CPU shots seen by the block script (alternates timed / early)
 var ht_jump_kind := "random"        # what the last scripted press that jumped was: "random", "timed" or "early"
 var ht_threat_shooting := false
+var ht_call_clock := 0.0
+var ht_lob_wait := 0.0
+var _call_node: Node2D               # draws the "!" over the human while his call is live
 var shot_serial := 0                # counts released shots, so each defender gets one block try per shot (defense.gd)
 
 func stat(k: String) -> void:
@@ -201,6 +215,12 @@ func _ready() -> void:
 	input = HumanInputScript.new()
 	input.game = self
 	add_child(input)
+
+	_call_node = Node2D.new()
+	_call_node.z_as_relative = false
+	_call_node.z_index = 30            # over the players and the ball, under the fx popups
+	_call_node.draw.connect(_draw_call_cue)
+	add_child(_call_node)
 
 	_build_hud()
 	start_period()
@@ -352,7 +372,8 @@ func on_ball_held(p) -> void:
 	shot_clock_running = true
 	possession = p.team
 	if p.team == HUMAN_TEAM:
-		human_player = p
+		if CONTROL_FOLLOWS_CATCH or human_player == null or human_player.team != HUMAN_TEAM:
+			human_player = p
 	elif human_player == null or human_player.team != HUMAN_TEAM:
 		human_player = teams[HUMAN_TEAM][0]
 
@@ -465,7 +486,7 @@ func do_pass(from_p, to_p) -> void:
 		return
 	ball.pass_to(from_p, to_p)
 	stat("passes")
-	if from_p.team == HUMAN_TEAM:
+	if from_p.team == HUMAN_TEAM and (CONTROL_FOLLOWS_CATCH or from_p == human_player):
 		human_player = to_p
 
 # 0..1: how open the ball is to this defender's poke. 0 when the ball is out of reach or behind the handler's body.
@@ -697,10 +718,13 @@ func _physics_process(delta: float) -> void:
 		_humantest_thumb(delta)
 		_humantest_timed_poke(delta)
 		_humantest_block(delta)
+		_humantest_call(delta)
 	var stick := _input_vector()
 	input.update(delta, stick)
 	for p in players:
 		p.update(delta, is_human(p), stick)
+	input.face_caller(delta)
+	_call_node.queue_redraw()
 	_separate_players()
 	ball.update(delta)
 	DefenseScript.check_jump_shot_block(self)
@@ -829,6 +853,32 @@ func _humantest_block(delta: float) -> void:
 	if stats.get("human_block_jumps", 0) > jumps:
 		stat("humantest_%s_jumps" % kind)
 
+# on offense without the ball: CALL every HT_CALL_EVERY s (the thumb runs at the rim, so some calls are lobs).
+# With the ball: now and then PASS when a teammate is near the rim (an alley-oop try once P2-09 lands).
+func _humantest_call(delta: float) -> void:
+	ht_lob_wait -= delta
+	if possession != HUMAN_TEAM or ball.state == ball.DEAD:
+		return
+	if human_player.has_ball():
+		if ht_lob_wait > 0.0 or human_player.shooting or human_player.rim_kind != "":
+			return
+		for mate in teams[HUMAN_TEAM]:
+			if mate != human_player and mate.position.distance_to(attack_hoop(HUMAN_TEAM)) < HT_LOB_FT * FT:
+				ht_lob_wait = HT_LOB_GAP
+				stat("humantest_rim_passes")
+				_on_b_pressed()
+				return
+		return
+	if ball.state != ball.HELD or ball.holder == null or ball.holder.team != HUMAN_TEAM:
+		return
+	ht_call_clock += delta
+	if ht_call_clock >= HT_CALL_EVERY:
+		ht_call_clock = 0.0
+		var calls: int = stats.get("human_calls", 0)
+		_on_b_pressed()
+		if stats.get("human_calls", 0) > calls:
+			stat("humantest_calls")
+
 func _ht_hoop_ft() -> float:
 	return human_player.position.distance_to(attack_hoop(HUMAN_TEAM)) / FT
 
@@ -882,6 +932,25 @@ func _end_period() -> void:
 
 # ---------------- HUD ----------------
 
+# the call was heard: a "!" speech bubble over the caller, plus a faint line from the teammate with the ball
+func _draw_call_cue() -> void:
+	if autoplay or not input.call_active() or human_player == null:
+		return
+	var h = human_player
+	var pulse: float = 0.5 + 0.5 * sin(input.call_t * 18.0)
+	var c: Vector2 = h.position + Vector2(0, -CALL_CUE_RISE - 3.0 * pulse)
+	var q = input.call_passer()
+	if q != null:
+		_call_node.draw_line(q.position, h.position, Color(CALL_CUE_COLOR, 0.35), 2.0)
+	_call_node.draw_colored_polygon(PackedVector2Array([c + Vector2(-5, 9), c + Vector2(5, 9), h.position + Vector2(0, -CALL_CUE_RISE + 18)]),
+			Color.WHITE)
+	_call_node.draw_circle(c, 12.0, Color.WHITE)
+	_call_node.draw_arc(c, 12.0, 0, TAU, 24, CALL_CUE_COLOR, 2.5)
+	var font := ThemeDB.fallback_font
+	var fs := 20
+	var w: float = font.get_string_size("!", HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
+	_call_node.draw_string(font, c + Vector2(-w / 2.0, fs * 0.36), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.1, 0.2, 0.5))
+
 func show_message(text: String, time := 1.2, color := Color.WHITE) -> void:
 	msg_label.text = text
 	msg_label.modulate = color
@@ -913,10 +982,14 @@ func _update_hud() -> void:
 		controls.b_text = "PASS"
 	elif possession == HUMAN_TEAM and ball.state != ball.DEAD:
 		controls.a_text = "-"
-		controls.b_text = "-"
+		controls.b_text = "CALL"
 	else:
 		controls.a_text = input.defense_action()   # "STEAL" or "BLOCK" (human_input.gd picks)
 		controls.b_text = "SWITCH"
+	controls.b_glow = controls.b_text == "CALL" and not autoplay and input.call_active()
+	controls.b_dim = controls.b_text == "CALL" and input.call_cd > 0.0 and not input.call_active()
+	if controls.b_glow:
+		stat("human_call_cue_frames")
 	controls.a_block = controls.a_text == "BLOCK"
 	if controls.a_block and not autoplay:
 		stat("human_block_label_frames")
