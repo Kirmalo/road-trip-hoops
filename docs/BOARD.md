@@ -185,7 +185,8 @@ editing each other's files. Each wave merges and gets a quick QA run before the 
 5. **Sound:** pending; the coordinator is asking the owner to allow the hosts.
 
 ## Doing
-- P1-07 on fire (+ dunk double-popup fix + blocked rim shot counted as a make)
+- P1-09 Phase 1 QA and balance pass
+- P1-10 README how-to-play update
 
 ## Review
 
@@ -207,11 +208,16 @@ editing each other's files. Each wave merges and gets a quick QA run before the 
 
 - P1-08 ball and rim feedback (approved; merged). swish = makes - dunk makes; rim = shots - makes - blocks.
 
-### Follow-ups for P1-07 (from the P1-05 review)
+- P1-07 on fire (approved after one fix; merged). Owner changed the rule: 2 misses/blocks end it, first shows
+  "He's cooling down.", a make resets; the other team scoring no longer ends it; carries over quarter breaks; ends at
+  game over. Also: no "+2" on dunks; blocked shots no longer counted as makes. Merged check: 14-24, 14-16, 12-20,
+  humantest 11-24; makes = sfx_crowd.
+
+### Follow-ups for P1-07 (from the P1-05 review, done)
 - A blocked rim attempt is released at 2% and then blocked, so `makes` can count it. When the contest roll is a
   block, call `game.block_shot()` while the ball is still held and skip `release_shot`.
 
-### Follow-ups for P1-07 (from the P1-06 review)
+### Follow-ups for P1-07 (from the P1-06 review, done)
 - Dunks will show both "SLAM DUNK!" and "+2". In `on_shot_made`, skip the "+2" popup (keep the crowd sound) when the
   shooter's last shot was a dunk.
 
