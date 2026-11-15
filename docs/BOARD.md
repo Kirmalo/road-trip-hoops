@@ -107,6 +107,27 @@ and B do nothing** (the HUD shows "-").
   over the receiver as before. When a teammate gets the ball any other way (rebound, steal, inbound, CPU pass), that
   teammate plays it and the human keeps his player and presses CALL to get the ball.
 
+## Phase 2 check-in (owner, 2026-11-15) and tuning round P2.5
+Answers: crossover about right; steals AND blocks too hard; CPU too hard mainly because it's hard to stay in front
+of the ball handler, so add a defensive assist; leave the PASS/SHOOT buttons where they are.
+
+**P2.5-01 | Easier steals and blocks | gameplay | `scripts/main.gd` (steal constants), `scripts/defense.gd`,
+`scripts/player.gd` (block constants only)**
+- Steals: widen the human's timing window (STEAL_GRACE), raise the good-timing success, make the yellow cue last
+  longer and easier to read; keep random pokes rare-ish (the poke freeze stays). Blocks: widen the human's good-timing
+  window (e.g. BLOCK_HEIGHT_MIN lower, not higher) and raise good-timing success. Human only unless the CPU must
+  change to keep balance; CPU steals/blocks stay in their target ranges.
+- Done when: humantest timed steals succeed clearly more often (aim ~80% timed, ~10-15% random), timed human blocks
+  ~45-55%, early jumps ~10-15%; autoplay unchanged (CPU vs CPU).
+
+**P2.5-02 | Defensive assist | gameplay | `scripts/player.gd` (human movement), `scripts/human_input.gd`**
+- While the human guards the ball handler (within ~8 ft) and steers roughly toward him or toward the basket line,
+  blend the movement toward the spot between the handler and the basket (a few feet in front of him), matching his
+  lateral moves. The human still steers: pulling clearly away, sprinting off or pressing STEAL/BLOCK overrides it.
+  Tuning constants (assist strength, range, angle) at the top. Crossovers still beat it sometimes (stumble rules stay).
+- Stats: `human_assist_frames`, and a humantest metric for how often the handler gets past the human defender
+  (before/after). Done when: in humantest the human defender stays in front clearly more often; CPU vs CPU unchanged.
+
 ## Todo
 
 ### Wave 1: can start now (no owner answers needed)
