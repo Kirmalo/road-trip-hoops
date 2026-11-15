@@ -363,6 +363,16 @@ before the next starts. If the owner answers late, wave 1 still finishes; nothin
 
 ## Review
 
+- P2.5-01 + P2.5-02 (`worktree-agent-a2c510731ffd68d30`, 00d409c + 121c4a9): CHANGES (one small fix). Parses on 4.3.
+  Lead's 6 autoplay: 23-25, 22-24, 23-12, 26-27, 14-20, 22-31; 56-70 shots, steals 4-11, blocks 4-11 (CPU path
+  unchanged). 2 humantests: timed steals 27/33, random 3/59, in front 72%/46%, assist frames while pulling away 3/1.
+  P2.5-01 is fine. Fix in P2.5-02: `defense_assist()` runs for any human defender within 8 ft of the handler, and the
+  two 75-degree cones (handler or spot) cover most of the half-court toward the ball, so a human helping on a cutter
+  or chasing his own man past the ball gets pulled 60% to the handler's front. Gate it on "guarding the handler":
+  the human is the closest defender to the handler (or `teams[1 - h.team][index] == h`). Not blocking: crossovers beat
+  the assisted human 11/15 (the assist copies the handler's velocity, so a reversal finds him moving the wrong way);
+  random steals 13.5% is inside the 10-15% target. Both go to the owner at the P2.5 check-in.
+
 - P2-11 CPU retune (`worktree-agent-a0ab513e1e0ae8ed8`, 617c4b6): CHANGES. Parses on 4.3, 0 shot-clock violations.
   Lead's 6 autoplay: 36-24, 20-30, 20-34, 30-26, 36-26, 33-31 OT (5 of 12 team scores over 30; mean 28.8);
   jumpers 14/game; `late_closeouts` 75 of 84 jumpers (89%); alley-oop catches 2-6 (mean 4); rim contested ~77%;
@@ -423,4 +433,9 @@ before the next starts. If the owner answers late, wave 1 still finishes; nothin
   frames (FLICK_FRAME_GRACE_MAX 0.15 s; drawn-frame time measured in human_input._process, since input arrives once
   per drawn frame but detection runs per physics tick). Browser at ~15 fps: 9/10 snaps (was 0/10). Headless 60 fps:
   flicks = snaps, 0 false flicks from smooth turns.
+- P2.5-01 easier steals and blocks, P2.5-02 defensive assist (approved after one fix; merged). Human only.
+  Humantest: steals timed/random 66%/5% -> 78%/13.5%; blocks timed/early 18%/17% -> 47%/18%; in front 37% -> 60%,
+  beaten 24% -> 15%. Autoplay unchanged. Coordinator fix: the assist only applies to the defender guarding the
+  handler (his man, or the team's closest defender), so helping on a cutter isn't pulled toward the ball.
+- Ask the owner at the next check-in: crossovers beat the assisted human defender 11 of 15 times. Too punishing?
 - Watch in P2-13: RED scored lower than BLUE in several runs since P2-01/P2-02; recheck team balance over 20+ games.
