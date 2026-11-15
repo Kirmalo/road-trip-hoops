@@ -33,7 +33,12 @@ const CPU_ON_BALL_SPEED := 1.0    # speed multiplier while guarding the ball (ot
 # ---- blocks on jump timing (P2-07). A block needs a defender in a block jump (player.start_block_jump), close
 # enough and high enough. Timing decides a good or a bad try; player.block_chance(good) scales a good one by the
 # defender's block rating (Q6). No airborne defender = no block. ----
-const BLOCK_HEIGHT_MIN := 0.6     # fraction of the block jump's height needed for a well-timed block
+const BLOCK_HEIGHT_MIN := 0.6     # fraction of the block jump's height needed for a well-timed block (CPU)
+# the human's window (P2.5: blocks were too hard): wider on the way up, a little stricter on the way down, so a late
+# jump still counts and a jump that is already coming down when the ball goes up (too early, or at a fake) doesn't
+const BLOCK_HUMAN_RISE_MIN := 0.35  # human, still rising: this fraction of the jump height is enough (was 0.6)
+const BLOCK_HUMAN_FALL_MIN := 0.8   # human, coming down: needs this much (was 0.6)
+const BLOCK_HUMAN_REACH_FT := 0.5  # human: this much more reach on RIM_BLOCK_REACH_FT and JUMPER_BLOCK_REACH_FT
 const RIM_BLOCK_REACH_FT := 4.0   # dunk/layup: an airborne defender this close to the shooter at the release
 const DUNK_BLOCK_MULT := 0.6      # dunks are harder to block than layups (x this on the block chance)
 const JUMPER_BLOCK_WINDOW := 0.25 # seconds after a jump shot (or a layup) leaves the hand that it can still be blocked
@@ -240,11 +245,23 @@ func _update_block_jump(delta: float) -> void:
 
 # "good", "bad" or "wait" (still rising, not high yet): how well timed this defender's block jump is right now
 static func _jump_timing(d) -> String:
-	if d.block_height_frac() >= BLOCK_HEIGHT_MIN:
+	var rising: bool = d.block_jump_t < d.BLOCK_JUMP_TIME * 0.5
+	var need: float = BLOCK_HEIGHT_MIN
+	if d.game.is_human(d):
+		need = BLOCK_HUMAN_RISE_MIN if rising else BLOCK_HUMAN_FALL_MIN
+	if d.block_height_frac() >= need:
 		return "good"
-	if d.block_jump_t < d.BLOCK_JUMP_TIME * 0.5:
+	if rising:
 		return "wait"
 	return "bad"
+
+static func _reach_bonus(g, d) -> float:
+	return BLOCK_HUMAN_REACH_FT if g.is_human(d) else 0.0
+
+static func _count_try(g, d, good: bool) -> void:
+	g.stat("block_tries_good" if good else "block_tries_bad")
+	if g.is_human(d):
+		g.stat("human_block_tries_good" if good else "human_block_tries_bad")
 
 # The defender who blocks this dunk/layup as it leaves the hand, or null. kind is "dunk" or "layup".
 static func rim_blocker(g, shooter, kind: String):
@@ -252,7 +269,7 @@ static func rim_blocker(g, shooter, kind: String):
 	for d in g.teams[1 - shooter.team]:
 		if d.block_jump_t < 0.0 or d.stumble_t > 0.0:
 			continue   # only a defender in a block jump can block (no dice for the ones on the floor)
-		if d.position.distance_to(shooter.position) > RIM_BLOCK_REACH_FT * g.FT:
+		if d.position.distance_to(shooter.position) > (RIM_BLOCK_REACH_FT + _reach_bonus(g, d)) * g.FT:
 			continue
 		var tim := _jump_timing(d)
 		if tim == "wait" and not dunk:
@@ -260,7 +277,7 @@ static func rim_blocker(g, shooter, kind: String):
 		d.def.rolled_shot = g.shot_serial + 1   # the shot about to be released, if this try fails
 		d.def._air_saw_release = true
 		var good := tim == "good"
-		g.stat("block_tries_good" if good else "block_tries_bad")
+		_count_try(g, d, good)
 		var chance: float = d.block_chance(good) * (DUNK_BLOCK_MULT if dunk else 1.0)
 		if g.rng.randf() < chance:
 			return d
@@ -291,14 +308,14 @@ static func check_jump_shot_block(g) -> void:
 	for d in g.teams[1 - ball.shooter.team]:
 		if d.block_jump_t < 0.0 or d.def.rolled_shot == g.shot_serial:
 			continue
-		if d.position.distance_to(ball.position) > JUMPER_BLOCK_REACH_FT * g.FT:
+		if d.position.distance_to(ball.position) > (JUMPER_BLOCK_REACH_FT + _reach_bonus(g, d)) * g.FT:
 			continue
 		var tim := _jump_timing(d)
 		if tim == "wait":
 			continue
 		d.def.rolled_shot = g.shot_serial
 		var good := tim == "good"
-		g.stat("block_tries_good" if good else "block_tries_bad")
+		_count_try(g, d, good)
 		if g.rng.randf() < d.block_chance(good) * (LAYUP_AIR_BLOCK_MULT if layup else 1.0):
 			g.stat("layup_air_blocks" if layup else "jumper_blocks")
 			g.block_shot(d)
