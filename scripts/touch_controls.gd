@@ -16,6 +16,8 @@ var a_index := -1
 var b_index := -1
 var a_text := "SHOOT"
 var b_text := "PASS"
+var a_glow := false                # set by main.gd: STEAL lights up while a poke would be well timed
+var _glow_t := 0.0
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -64,7 +66,8 @@ func _input(event: InputEvent) -> void:
 			joy_finger = event.position
 			joy_knob = joy_center + (event.position - joy_center).limit_length(JOY_RADIUS)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_glow_t = _glow_t + delta if a_glow else 0.0
 	queue_redraw()
 
 func _draw() -> void:
@@ -81,7 +84,13 @@ func _draw() -> void:
 		draw_arc(hint, JOY_RADIUS, 0, TAU, 48, Color(1, 1, 1, 0.25), 3.0)
 		draw_circle(hint, 34.0, Color(1, 1, 1, 0.18))
 	# buttons
-	_button(a_center(), 75.0, a_text, Color(0.95, 0.45, 0.1, 0.75 if a_index < 0 else 0.95))
+	if a_glow:
+		# lit STEAL: bright yellow-white button and a thick pulsing ring around it
+		var pulse := 0.5 + 0.5 * sin(_glow_t * 30.0)
+		draw_arc(a_center(), 86.0 + 4.0 * pulse, 0, TAU, 48, Color(1.0, 0.95, 0.4, 0.9), 8.0)
+		_button(a_center(), 75.0, a_text, Color(1.0, 0.85, 0.3, 1.0))
+	else:
+		_button(a_center(), 75.0, a_text, Color(0.95, 0.45, 0.1, 0.75 if a_index < 0 else 0.95))
 	_button(b_center(), 58.0, b_text, Color(0.2, 0.5, 0.95, 0.75 if b_index < 0 else 0.95))
 
 func _button(c: Vector2, r: float, text: String, col: Color) -> void:

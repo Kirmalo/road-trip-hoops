@@ -33,6 +33,7 @@ const GUARD_CONE := 50.0          # degrees either side of the handler's movemen
 const GUARD_SLOW := 0.82          # handler speed multiplier while closely guarded (turbo still applies on top)
 
 var stumble_t := 0.0              # seconds left off balance (slow, can't steal or jump)
+var poke_t := 0.0                 # seconds left standing still after a steal attempt (main.STEAL_POKE_FREEZE)
 var block_jump_t := -1.0          # seconds since a block jump started (< 0 = not jumping)
 var block_jump_vel := Vector2.ZERO
 var cross_t := 0.0                # seconds left in a crossover/spin (P2-05)
@@ -177,6 +178,7 @@ func has_ball() -> bool:
 func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	steal_cooldown = max(0.0, steal_cooldown - delta)
 	stumble_t = maxf(0.0, stumble_t - delta)
+	poke_t = maxf(0.0, poke_t - delta)
 	if team == 0 and index == 0:
 		game.stat("frames")
 	var desired := Vector2.ZERO
@@ -206,7 +208,11 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		ai(delta)
 		desired = seek(target, speed_mult)
 		want_turbo = cpu_turbo_want and desired.length() > 1.0
-	if stumble_t > 0.0:
+	if poke_t > 0.0 and rim_kind == "" and block_jump_t < 0.0:
+		desired = Vector2.ZERO        # reaching for the ball: stands still, hit or miss
+		want_turbo = false
+		game.stat("poke_freeze_frames_t%d" % team)
+	elif stumble_t > 0.0:
 		desired *= STUMBLE_SPEED_MULT
 		want_turbo = false
 	elif has_ball() and not is_airborne() and is_guarded(desired):
@@ -222,7 +228,7 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	sprite.scale = Vector2(1.75, 1.75) * (1.0 + 0.15 * lift)
 	# face where we are going, or the ball when standing still
 	var look := velocity
-	if look.length() < 15.0:
+	if look.length() < 15.0 or poke_t > 0.0:
 		look = game.ball.position - position
 	if look.length() > 1.0:
 		facing = lerp_angle(facing, look.angle(), min(1.0, 10.0 * delta))

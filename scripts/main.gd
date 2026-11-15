@@ -59,14 +59,18 @@ const STEAL_SPIN_MULT := 0.3         # handler in a spin move: the ball is prote
 const STEAL_TURBO_MULT := 1.3        # handler sprinting
 const STEAL_FAKE_MULT := 1.3         # handler in a pump fake
 const STEAL_MAX_CHANCE := 0.95
-const STEAL_MISS_STUMBLE := 0.35     # seconds a defender stumbles after a missed poke (0 = a miss costs nothing)
+const STEAL_POKE_FREEZE := 0.3      # seconds a defender stands still after every steal attempt, hit or miss (owner)
 const STEAL_COOLDOWN := 0.7          # seconds between pokes by one defender
-# timing: the dribble bounces (ball.gd: height 4..20 px, about 3 bounces a second). A poke is well timed while the
-# ball is low, on its way to or from the floor, and badly timed while it's up in the hand. Set STEAL_TIMING false to
-# judge pokes by exposure only.
+# timing: a poke is well timed within STEAL_GRACE seconds of a floor touch of the dribble (time based, so it doesn't
+# depend on the frame rate). The STEAL button lights up while the human's poke would be well timed.
+# Set STEAL_TIMING false to judge pokes by exposure only.
 const STEAL_TIMING := true
-const STEAL_LOW_Z := 5.0             # dribble height (px) at or under which a poke is perfectly timed
-const STEAL_HIGH_Z := 8.0            # dribble height over which a poke is badly timed (0); linear between
+const DRIBBLE_PERIOD := PI / 9.0     # seconds between floor touches; must match ball.gd (z = 4 + |sin(anim_time * 9)| * 16)
+const STEAL_GRACE := 0.05            # seconds either side of a floor touch that count as a well-timed poke (human).
+                                     # The dribble touches the floor every 0.35 s, so 0.05 is 29% of the cycle; the
+                                     # STEAL button stays lit about 6 frames per bounce. 0.1 would be 57% (mashing works)
+const STEAL_CPU_GRACE := 0.02        # CPU pokes (interim): defense.gd still pokes on a blind 2 s timer, so a wide window
+                                     # gave 46-51 steals a game. Set to STEAL_GRACE once P2-08 times the CPU's pokes
 const STEAL_HELD_TIMING := 0.25      # timing factor when the ball is held up (gathering a shot, pump fake, at the rim)
 
 # --humantest scripted thumb (developer testing only): drives the real touch joystick with synthetic touch events
@@ -83,6 +87,7 @@ const HT_PULL_TIME := 0.3
 const HT_PULL_HOLD := 0.3
 const HT_TAP_EVERY := 4.0            # seconds of ball time between short A taps (pump fake input) outside the rim range
 const HT_TAP_FRAMES := 5
+const HT_SHOOT_MAX_FT := 24.0        # the scripted human only shoots or taps A with the ball inside this distance
 const HT_TIMED_POKE_GAP := 20.0      # seconds between the scripted human's well-timed pokes (low dribble, ball exposed)
 
 var hoops := [Vector2(5.25 * FT, COURT_H / 2), Vector2(COURT_W - 5.25 * FT, COURT_H / 2)]
@@ -465,19 +470,33 @@ func steal_exposure(defender, handler) -> float:
 	var ang: float = rad_to_deg(absf(to_ball.angle_to(to_def)))
 	return clampf((STEAL_SHIELD_DEG - ang) / (STEAL_SHIELD_DEG - STEAL_OPEN_DEG), 0.0, 1.0)
 
-# 0..1: how well a poke at this handler's ball is timed right now (1 = the dribble is low)
-func steal_timing(handler) -> float:
+# how well a poke at this handler's ball is timed right now: 1 within `grace` s of a dribble floor touch, else 0
+# (STEAL_HELD_TIMING while the ball is held up). grace < 0 means STEAL_GRACE.
+func steal_timing(handler, grace := -1.0) -> float:
 	if not STEAL_TIMING:
 		return 1.0
 	if handler == null or not (ball.state == ball.HELD and ball.holder == handler):
 		return 0.0
 	if handler.shooting or handler.rim_kind != "" or ("fake_t" in handler and handler.fake_t > 0.0):
 		return STEAL_HELD_TIMING
-	return clampf((STEAL_HIGH_Z - ball.z) / (STEAL_HIGH_Z - STEAL_LOW_Z), 0.0, 1.0)
+	var g: float = STEAL_GRACE if grace < 0.0 else grace
+	var ph: float = fposmod(ball.anim_time, DRIBBLE_PERIOD)
+	return 1.0 if minf(ph, DRIBBLE_PERIOD - ph) <= g else 0.0
 
 # 0..1: exposure x timing. At or over STEAL_GOOD_EXPOSURE it's a good poke.
 func steal_quality(defender, handler) -> float:
-	return steal_exposure(defender, handler) * steal_timing(handler)
+	var grace: float = STEAL_GRACE if is_human(defender) else STEAL_CPU_GRACE
+	return steal_exposure(defender, handler) * steal_timing(handler, grace)
+
+# true while a poke by the human would be a good one: drives the lit STEAL button
+func human_steal_cue() -> bool:
+	var d = human_player
+	var h = ball.holder
+	if d == null or ball.state != ball.HELD or h == null or h.team == d.team:
+		return false
+	if d.steal_cooldown > 0.0 or ("stumble_t" in d and d.stumble_t > 0.0) or d.position.distance_to(h.position) > STEAL_POKE_PX:
+		return false
+	return steal_quality(d, h) >= STEAL_GOOD_EXPOSURE
 
 # chance that a poke by defender at handler works now: exposure, timing, the defender's steal rating and the move
 func steal_chance(defender, handler) -> float:
@@ -512,14 +531,22 @@ func attempt_steal(defender, _legacy := -1.0) -> void:
 	var h = ball.holder
 	if ball.state != ball.HELD or h == null or h.team == defender.team:
 		return
+	if "poke_t" in defender:
+		defender.poke_t = STEAL_POKE_FREEZE   # stands still while reaching, hit or miss
 	if defender.position.distance_to(h.position) > STEAL_POKE_PX:
 		return
 	stat("steal_pokes_t%d" % defender.team)
+	var good: bool = steal_quality(defender, h) >= STEAL_GOOD_EXPOSURE
+	if is_human(defender):
+		stat("human_steal_pokes")
+		if good:
+			stat("human_pokes_on_cue")   # the STEAL button was lit (well-timed, exposed ball)
 	if steal_exposure(defender, h) <= 0.0:
 		stat("steal_shielded")
-	elif steal_quality(defender, h) >= STEAL_GOOD_EXPOSURE:
+	if good:
 		stat("steal_good_pokes_t%d" % defender.team)
 	if rng.randf() < steal_chance(defender, h):
+		stat("steals_good" if good else "steals_bad")
 		var v: Vector2 = (defender.position - h.position).normalized().rotated(rng.randf_range(-0.8, 0.8)) * 160.0
 		h.shooting = false
 		ball.make_loose(ball.position, v, 8.0, 60.0)
@@ -528,13 +555,6 @@ func attempt_steal(defender, _legacy := -1.0) -> void:
 		stat("steals_t%d" % defender.team)
 		if is_human(defender):
 			stat("human_steals")
-	elif STEAL_MISS_STUMBLE > 0.0:
-		if defender.has_method("stumble"):
-			defender.stumble(STEAL_MISS_STUMBLE)
-			stat("steal_miss_stumbles")
-		elif "stumble_t" in defender:
-			defender.stumble_t = maxf(defender.stumble_t, STEAL_MISS_STUMBLE)
-			stat("steal_miss_stumbles")
 
 func _dead_ball(next_team: int, wait: float) -> void:
 	ball.make_dead()
@@ -590,10 +610,14 @@ func _input_vector() -> Vector2:
 # ---------------- main loop ----------------
 
 var _frame := 0
+var _cue_shot := false
 
 func _debug_screenshots() -> void:
 	# developer testing only: run with -- --shots to save a few screenshots to /tmp
 	_frame += 1
+	if OS.get_cmdline_user_args().has("--shots") and controls.a_glow and not _cue_shot:
+		_cue_shot = true   # first frame with the STEAL button lit (try -- --shots --humantest)
+		get_viewport().get_texture().get_image().save_png("/tmp/hoops_steal_cue.png")
 	if OS.get_cmdline_user_args().has("--shots") and _frame in [240, 900, 1800]:
 		get_viewport().get_texture().get_image().save_png("/tmp/hoops_%d.png" % _frame)
 		if _frame == 1800:
@@ -651,7 +675,8 @@ func _physics_process(delta: float) -> void:
 				human_player = mine
 
 	if humantest and human_player != null:
-		if _frame % 97 == 0: _ht_poke("random")
+		if _frame % 97 == 0 and not (human_player.has_ball() and _ht_hoop_ft() > HT_SHOOT_MAX_FT):
+			_ht_poke("random")   # on offense: a shot (meter held 50 frames); on defense: a randomly timed poke
 		if _frame % 97 == 50: _on_a_released()
 		if _frame % 211 == 0: _on_b_pressed()
 		_humantest_thumb(delta)
@@ -720,8 +745,7 @@ func _humantest_thumb(delta: float) -> void:
 			var step: float = deg_to_rad(HT_STEER_RATE) * delta
 			ht_angle += clampf(diff, -step, step)
 			if can_flick:
-				var far: bool = human_player.position.distance_to(attack_hoop(HUMAN_TEAM)) / FT \
-						> PlayerScript.LAYUP_RANGE + 1.0
+				var far: bool = _ht_hoop_ft() > PlayerScript.LAYUP_RANGE + 1.0 and _ht_hoop_ft() < HT_SHOOT_MAX_FT
 				if ht_snap_clock >= HT_SNAP_EVERY:
 					ht_snap_clock = 0.0
 					ht_ok = true
@@ -759,10 +783,13 @@ func _humantest_timed_poke(delta: float) -> void:
 		return
 	if human_player.steal_cooldown > 0.0 or human_player.position.distance_to(h.position) > STEAL_POKE_PX:
 		return
-	if steal_exposure(human_player, h) > 0.0 and steal_timing(h) >= 1.0:
+	if human_steal_cue():
 		ht_poke_wait = HT_TIMED_POKE_GAP
 		_ht_poke("timed")
 		_on_a_released()
+
+func _ht_hoop_ft() -> float:
+	return human_player.position.distance_to(attack_hoop(HUMAN_TEAM)) / FT
 
 func _ht_start(mode: String) -> void:
 	ht_mode = mode
@@ -849,3 +876,6 @@ func _update_hud() -> void:
 	else:
 		controls.a_text = "STEAL"
 		controls.b_text = "SWITCH"
+	controls.a_glow = controls.a_text == "STEAL" and not autoplay and human_steal_cue()
+	if controls.a_glow:
+		stat("human_steal_cue_frames")
