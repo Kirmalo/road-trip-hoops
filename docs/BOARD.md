@@ -370,4 +370,10 @@ before the next starts. If the owner answers late, wave 1 still finishes; nothin
   for 0.12 s (accepted departure). Combined: blocks ~8/game (top of target), fake bites ~45% of fakes, crossovers beat
   the defender 33%, steals ~9/game (0-17). BLUE/RED block split was variance (144/127 over 34 games).
 - Follow-ups for P2-11/P2-13: fakes can be chained with no cooldown; flicks below ~10 fps can be missed (tablets fine).
+- P2-09 alley-oop, P2-10 call for the ball (approved; merged 4ba2441, plus coordinator fix 49d8a51: A shows BLOCK
+  while a lob is coming to a player within BLOCK_CLOSE_FT). Owner approved CONTROL_FOLLOWS_CATCH := false.
+  Combined: 16-28 points per team, alley-oops 1-10/game. Low call-answer rate in humantest is mostly the script
+  (its own man in the lane); open callers get the ball at once.
+- For P2-11: while a call is live the CPU handler shouldn't start a new shot or pass elsewhere (except late in the
+  shot clock); about a third of calls end that way. Fakes have no cooldown (consider a small one).
 - Watch in P2-13: RED scored lower than BLUE in several runs since P2-01/P2-02; recheck team balance over 20+ games.
