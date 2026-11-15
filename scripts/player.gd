@@ -73,6 +73,18 @@ var rim_quality := 1.0
 var rim_blocker = null            # defender who will block this one (decided at take-off)
 var cpu_rim_rolled := false       # CPU already decided layup-or-keep-going on this drive
 
+# ---- on fire (tuning; streak rules live in main.gd) ----
+const FIRE_GREEN_LO := 0.70       # human shot meter: green ("perfect") zone while on fire (normal 0.78..0.95)
+const FIRE_GREEN_HI := 1.0
+const GREEN_LO := 0.78            # normal green zone
+const GREEN_HI := 0.95
+const FIRE_SHOT_BONUS := 1.15     # make-odds multiplier for CPU jumpers and everyone's dunks/layups while on fire
+const FIRE_RING_COLOR := Color(1.0, 0.45, 0.1)
+
+var make_streak := 0              # makes in a row by this player
+var on_fire := false
+var fire_anim := 0.0
+
 # Offensive spots, in feet: (distance out from the baseline side of the hoop, sideways offset)
 const SPOTS := [
 	Vector2(24, 0),    # top of the key
@@ -147,6 +159,8 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	if look.length() > 1.0:
 		facing = lerp_angle(facing, look.angle(), min(1.0, 10.0 * delta))
 	sprite.rotation = facing
+	if on_fire:
+		fire_anim += delta
 	queue_redraw()
 
 # ---------------- turbo ----------------
@@ -174,7 +188,10 @@ func update_turbo(delta: float, want: bool, is_human: bool) -> bool:
 	turbo = want and not turbo_locked and not shooting
 	if turbo:
 		since_turbo = 0.0
-		stamina = maxf(0.0, stamina - STAMINA_DRAIN * delta)
+		if on_fire:
+			game.stat("fire_turbo_frames")   # on fire: stamina doesn't drain
+		else:
+			stamina = maxf(0.0, stamina - STAMINA_DRAIN * delta)
 		refill_wait = REFILL_DELAY
 		game.stat("turbo_frames_t%d" % team)
 		if stamina <= 0.0:
@@ -222,7 +239,7 @@ func release_shot() -> void:
 	var quality := 1.0
 	if game.is_human(self):
 		var c := shot_charge
-		if c >= 0.78 and c <= 0.95:
+		if c >= green_lo() and c <= green_hi():
 			quality = 1.3
 			game.show_message("PERFECT RELEASE", 0.8)
 		elif c >= 0.6 and c <= 1.05:
@@ -231,12 +248,20 @@ func release_shot() -> void:
 			quality = 0.6
 	else:
 		quality = game.rng.randf_range(0.85, 1.1)
+		if on_fire:
+			quality *= FIRE_SHOT_BONUS
 	# shaky jumper right after sprinting (not at the rim)
 	var hoop: Vector2 = game.attack_hoop(team)
 	if since_turbo <= TURBO_SHOT_WINDOW and position.distance_to(hoop) > TURBO_SHOT_EXEMPT_FT * game.FT:
 		quality *= TURBO_SHOT_PENALTY
 		game.stat("turbo_jumpers")
 	game.release_shot(self, quality)
+
+func green_lo() -> float:
+	return FIRE_GREEN_LO if on_fire else GREEN_LO
+
+func green_hi() -> float:
+	return FIRE_GREEN_HI if on_fire else GREEN_HI
 
 # ---------------- dunks and layups ----------------
 
@@ -298,21 +323,20 @@ func release_rim_shot() -> void:
 	var ball = game.ball
 	ball.next_shot_kind = rim_kind
 	if rim_blocker != null:
-		# blocked at the rim: the shot goes up (counts as a shot) and gets swatted
-		game.release_shot(self, 0.0)
-		if ball.state == ball.SHOT:
-			ball.shot_made = false
-			game.block_shot(rim_blocker)
-			game.stat("rim_blocks")
-			if game.fx:
-				game.fx.shake(4.0, 0.2)
+		# blocked at the rim: swatted out of the hands (counts as a missed shot, never as a make)
+		ball.next_shot_kind = ""
+		game.rim_shot_blocked(self, rim_blocker)
+		game.stat("rim_blocks")
+		if game.fx:
+			game.fx.shake(4.0, 0.2)
 		return
 	# aim the open make chance at DUNK_OPEN_PCT / LAYUP_OPEN_PCT; shot_probability() then applies its own
 	# openness penalty (about x0.55 with a defender on you)
 	var d_ft: float = position.distance_to(game.attack_hoop(team)) / game.FT
 	var base := 0.66 if d_ft < 5.0 else maxf(0.02, 0.52 - (d_ft - 5.0) * 0.0075)  # mirrors main.shot_probability
 	var target := DUNK_OPEN_PCT if rim_kind == "dunk" else LAYUP_OPEN_PCT
-	game.release_shot(self, target / base * rim_quality)
+	var fire_mult := FIRE_SHOT_BONUS if on_fire else 1.0
+	game.release_shot(self, target / base * rim_quality * fire_mult)
 	if ball.state == ball.SHOT:
 		ball.blocked_checked = true  # the take-off contest replaces the CPU jump-shot contest
 
@@ -493,6 +517,8 @@ func _draw() -> void:
 		draw_set_transform(Vector2(0, 4), 0, Vector2(1, 0.55))
 		draw_circle(Vector2.ZERO, sr, Color(0, 0, 0, 0.3))
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+	if on_fire:
+		draw_fire_ring()
 	if turbo and velocity.length() > 20.0:
 		# dust puffs behind a sprinting player
 		var back := -velocity.normalized()
@@ -521,6 +547,25 @@ func _draw() -> void:
 		var w := 56.0
 		var o := Vector2(-w / 2, -58)
 		draw_rect(Rect2(o, Vector2(w, 10)), Color(0, 0, 0, 0.7))
-		draw_rect(Rect2(o + Vector2(w * 0.78 / 1.2, 0), Vector2(w * 0.17 / 1.2, 10)), Color(0.2, 0.9, 0.3))
+		var glo := green_lo()
+		var gcol := Color(1.0, 0.6, 0.15) if on_fire else Color(0.2, 0.9, 0.3)
+		draw_rect(Rect2(o + Vector2(w * glo / 1.2, 0), Vector2(w * (green_hi() - glo) / 1.2, 10)), gcol)
 		var c: float = min(shot_charge, 1.2) / 1.2
 		draw_rect(Rect2(o + Vector2(w * c - 2, -3), Vector2(4, 16)), Color.WHITE)
+
+# flickering flame ring on the floor around an on-fire player (visible without the ball)
+func draw_fire_ring() -> void:
+	var t := fire_anim
+	var r := 26.0 + 1.5 * sin(t * 9.0)
+	draw_arc(Vector2.ZERO, r, 0, TAU, 40, Color(1.0, 0.25, 0.05, 0.85), 4.0)
+	draw_arc(Vector2.ZERO, r - 3.0, 0, TAU, 40, Color(1.0, 0.75, 0.2, 0.9), 2.0)
+	var n := 8
+	for i in n:
+		var a: float = TAU * float(i) / float(n) + t * 1.5
+		var h: float = 9.0 + 4.0 * sin(t * 13.0 + float(i) * 1.7)
+		var dir := Vector2.from_angle(a)
+		var side := dir.orthogonal() * 4.0
+		var base := dir * r
+		var flame := PackedVector2Array([base - side, base + side, base + dir * h])
+		var col := FIRE_RING_COLOR if i % 2 == 0 else Color(1.0, 0.8, 0.2)
+		draw_colored_polygon(flame, col)
