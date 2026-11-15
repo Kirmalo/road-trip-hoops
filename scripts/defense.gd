@@ -46,9 +46,10 @@ const LAYUP_AIR_BLOCK_MULT := 0.5 # block chance x this on a layup already on it
 const CPU_JUMP_FT := 6.0          # the CPU defender jumps at a shooter this close when the shot (or fake) starts
 const CPU_JUMP_REACT_MIN := 0.12  # reaction delay in seconds, random between these
 const CPU_JUMP_REACT_MAX := 0.3
-const CPU_JUMP_CHANCE := 0.5      # chance he jumps at a real shot (at block rating 50)
+const CPU_JUMP_CHANCE := 0.5      # chance he jumps at a dunk/layup (at block rating 50)
+const CPU_JUMPER_JUMP_CHANCE := 0.2  # chance he jumps at a jump shot (P2-11: was CPU_JUMP_CHANCE 0.5; ~1 in 4 jumpers got blocked)
 const CPU_JUMP_RATING_SPAN := 0.3 # jump chance x(1 -/+ this) across block ratings 0..100: shot-blockers jump more
-const CPU_FAKE_BITE := 0.45       # chance he jumps at a pump fake (bites; at block rating 50)
+const CPU_FAKE_BITE := 0.4        # chance he jumps at a pump fake (bites; at block rating 50; P2-11: was 0.45)
 const CPU_JUMP_CHARGE := 0.65     # human shooter: he waits until the shot meter is this full (the shooter's rhythm)
 
 var p        # the player this brain belongs to
@@ -223,7 +224,11 @@ func _update_block_jump(delta: float) -> void:
 	if phase == "shot" and s.shooting and game.is_human(s) and s.shot_charge < CPU_JUMP_CHARGE:
 		return   # a human's meter: wait for his rhythm (a short tap turns into a fake and is judged as one)
 	_jump_wait = -1.0
-	var chance: float = CPU_FAKE_BITE if phase == "fake" else CPU_JUMP_CHANCE
+	var chance: float = CPU_JUMP_CHANCE
+	if phase == "fake":
+		chance = CPU_FAKE_BITE
+	elif phase == "shot":
+		chance = CPU_JUMPER_JUMP_CHANCE
 	chance *= 1.0 + CPU_JUMP_RATING_SPAN * p.rating_frac("block")
 	if game.rng.randf() < chance and p.start_block_jump():
 		game.stat("cpu_block_jumps")
