@@ -100,8 +100,8 @@ and B do nothing** (the HUD shows "-").
 - **Q6 luck:** owner's own answer: "timing based but also depend on the traits of the specific player since players
   will have attributes". Implemented as: timing/exposure decides a good vs bad try; a good try succeeds with a chance
   set by the player's rating (`ratings` {"steal", "block"} 0-100 on each player, `rating(key)` in player.gd; about
-  70% at 50, about +/-20% across 0-100); bad timing almost never works; a missed steal causes a brief stumble
-  (default, owner can change). Ratings are varied per player with equal team totals. They are the start of the
+  70% at 50, about +/-20% across 0-100); bad timing almost never works. Updated in VISION (6486a45): no stumble
+  after a missed steal; instead the defender stands still while attempting a steal (hit or miss), so poking has a cost. Ratings are varied per player with equal team totals. They are the start of the
   player attributes the campaign (Phase 5) will grow.
 
 ## Todo
@@ -170,6 +170,13 @@ and B do nothing** (the HUD shows "-").
 - Done when: autoplay steals stay about 5-10 per game (the CPU pokes on a timer until P2-08, so expect fewer: report
   it), humantest steals drop from ~35 to a believable number, both teams have steals, scores in range.
 - Depends on: P2-03 (same file). Q6 only changes constants.
+- Review notes (lead, trial merge `trial-p2b`): the miss stumble now resolves to the real `stumble()` (~95/game) and
+  contradicts the updated VISION; replace it with a stand-still poke freeze (needs a `poke_t` in player.gd movement;
+  file owner to be set by the coordinator). Timing window is too narrow for a human, see "Steal timing" below.
+- **Steal timing (later task, P2-07/P2-08 or P2-13):** the dribble is `4 + |sin(9t)| * 16` px, so z under 8 px is
+  ~55 ms per bounce (~16% of the time) and z under 5 is ~14 ms (under one frame). Minimal readable cue: flash or
+  enlarge the STEAL button (or a small ring under the ball) while `steal_timing(handler) > 0`, and/or measure timing
+  as time to the nearest floor touch with a ~0.1 s grace. The dribble sound only plays every 2nd floor touch.
 
 ### Wave 2: needs Q1, Q2, Q3 (Q6 for constants)
 
@@ -188,6 +195,9 @@ and B do nothing** (the HUD shows "-").
 - Done when: autoplay shows about 4-12 crossovers per team per game and some beats; humantest `human_crossovers` =
   `human_flicks` (minus ones during cooldown); scores in range; screenshot of the ball on the left hand.
 - Depends on: P2-01, P2-02 (`player.gd`), P2-03 (detector), P2-04 (exposure uses `cross_t`), Q1.
+- Note (lead): Q1 = crossover only. P2-03 still reports `kind` "spin" for turns over 150 degrees; `start_crossover`
+  must treat "spin" exactly like "cross" (no spin move, no `spins_*` stats, `move_kind` always "cross"), so
+  `STEAL_SPIN_MULT` in main.gd never applies.
 
 **P2-06 | Pump fake | gameplay (A, after P2-05) | `scripts/player.gd`**
 - Human: release of A within `PUMP_TAP_MAX` 0.15 s of starting the meter = pump fake (no shot, keeps the ball,
@@ -284,7 +294,9 @@ and B do nothing** (the HUD shows "-").
   blocks are not flat (well-timed vs early jumps, exposure 0 pokes almost never work); scores, shots, FG%, OT rate;
   BLUE vs RED; no script errors; B1 fixed (`shakes` = `blocks + dunk_makes`).
 - Test the web build in Chromium with Playwright touch emulation: a flick while holding the stick, a short tap of
-  SHOOT, CALL, BLOCK. Report whether a flick can be triggered by accident during normal steering.
+  SHOOT, CALL, BLOCK. Report whether a flick can be triggered by accident during normal steering, and by lifting
+  and re-touching the thumb (P2-03 saw 1 re-touch false flick in 3 browser runs at 15 fps). If it recurs at 60 fps,
+  don't record stick samples while `_touch_age < FLICK_TOUCH_IGNORE` (today they are recorded, only firing waits).
 - Done when: report with a table per game and a pass/fail line per feature; tuning changes listed with before/after.
 - Depends on: P2-11 (P2-12 optional).
 
@@ -309,5 +321,8 @@ before the next starts. If the owner answers late, wave 1 still finishes; nothin
 ## Doing
 
 ## Review
+
+- P2-03 + P2-04 (`worktree-agent-a7352f0fb16833d4f`, trial merge `trial-p2b`): CHANGES (miss stumble vs VISION,
+  humantest score out of range, steal timing window). See the P2-04 review notes.
 
 ## Done
