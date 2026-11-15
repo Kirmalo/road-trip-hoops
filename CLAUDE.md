@@ -38,5 +38,8 @@ After gameplay changes, run several `--autoplay` games and check the stats look 
 45-70 shots, roughly 15-30 points per team over 4 x 2 minute quarters, and few interceptions or shot-clock violations.
 Look at a screenshot after visual changes.
 
-## Ideas not done yet
-Sound effects, free throws and fouls, difficulty setting, turbo, out-of-bounds rule, halftime side switch, title menu.
+## Vision and team
+- `docs/VISION.md`: the design decisions and roadmap (Road Trip campaign, first to 21, pixel art, phases 1-7).
+  Read it before any gameplay or content work. Don't decide design it leaves open; ask the owner.
+- `docs/TEAM.md`: how the agent team (`.claude/agents/`) works through a phase. `docs/BOARD.md` is the task board.
+- `CREDITS.md`: every asset with its source and license. Only CC0 or other licenses that allow commercial redistribution.
