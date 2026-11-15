@@ -376,6 +376,7 @@ func release_shot(p, quality: float) -> void:
 # a dunk or layup blocked at take-off: counts as a missed shot, the ball is swatted out of the shooter's hands
 func rim_shot_blocked(p, defender) -> void:
 	shot_clock_running = false
+	shot_serial += 1   # it counts as a shot: lets the blocker (defense.gd rolled_shot) try again on the next one
 	stat("shots")
 	if p.on_fire:
 		stat("fire_shots")
