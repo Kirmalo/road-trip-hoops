@@ -26,6 +26,9 @@ var anim_time := 0.0
 var next_shot_kind := ""   # set by the shooter just before release: "dunk", "layup" or "" (jump shot)
 var shot_kind := ""
 var shot_z0 := 26.0        # height the shot leaves the hand
+var bounce_cooldown := 0.0
+var dribble_count := 0
+var dribble_phase := 0     # which half-cycle of the dribble the ball is in; a change means a floor touch
 
 # ---- dunk and layup flight (tuning) ----
 const DUNK_FLIGHT := 0.12      # seconds from the hand to the rim on a dunk (a quick slam)
@@ -33,6 +36,18 @@ const LAYUP_FLIGHT := 0.4      # seconds for a layup's short soft arc
 const LAYUP_PEAK := 26.0       # extra arc height of a layup in pixels
 const HAND_Z := 22.0           # ball height above a jumping player's jump height
 const SLAM_COLOR := Color(1.0, 0.55, 0.1)
+
+# ---- ball and rim sounds (tuning) ----
+const BOUNCE_MIN_SPEED := 120.0   # a loose ball must hit the floor at least this fast (px/s down) to make a sound
+const BOUNCE_LOUD_SPEED := 380.0  # impact speed that plays at full volume
+const BOUNCE_QUIET_DB := -14.0    # volume of the softest audible bounce
+const BOUNCE_GAP := 0.15          # seconds between bounce sounds, so a rolling ball can't spam them
+const RIM_DB := -2.0              # volume of the clank on a missed shot
+const RIM_WIGGLE := 0.3           # net movement on a rim-out (1.0 = full swish)
+const LAYUP_SWISH_DB := -4.0      # a made layup gets a softer swish than a jump shot
+const DUNK_NET := 1.6             # dunks yank the net harder (the dunk sound itself is in slam_feedback)
+const DRIBBLE_DB := -18.0         # very quiet dribble for the human's handler only
+const DRIBBLE_EVERY := 2          # play the dribble sound on every Nth floor touch
 
 const PASS_SPEED := 720.0
 const GRAVITY := 900.0
@@ -100,6 +115,7 @@ func make_dead() -> void:
 
 func update(delta: float) -> void:
 	anim_time += delta
+	bounce_cooldown = maxf(0.0, bounce_cooldown - delta)
 	match state:
 		HELD:
 			if holder == null:
@@ -112,6 +128,7 @@ func update(delta: float) -> void:
 				z = 26.0
 			else:
 				z = 4.0 + abs(sin(anim_time * 9.0)) * 16.0
+				_dribble_sound()
 		PASS:
 			if receiver == null:
 				make_loose(position, Vector2.ZERO)
@@ -140,6 +157,7 @@ func update(delta: float) -> void:
 				z = 0.0
 				if shot_made:
 					make_dead()
+					_make_feedback()
 					if shot_kind != "":
 						game.stat(shot_kind + "_makes")
 					if shot_kind == "dunk":
@@ -151,6 +169,7 @@ func update(delta: float) -> void:
 					var ang: float = game.rng.randf_range(-1.2, 1.2)
 					var v: Vector2 = Vector2(inward, 0).rotated(ang) * game.rng.randf_range(140.0, 280.0)
 					make_loose(shot_hoop + v.normalized() * 10.0, v, 30.0, 220.0)
+					_rim_feedback()
 					game.on_shot_missed(shooter)
 				return
 			position = shot_start.lerp(shot_hoop, shot_t)
@@ -162,6 +181,7 @@ func update(delta: float) -> void:
 			z += vz * delta
 			if z <= 0.0:
 				z = 0.0
+				_bounce_sound(abs(vz))
 				vz = abs(vz) * 0.55
 				if vz < 40.0:
 					vz = 0.0
@@ -188,6 +208,44 @@ func update(delta: float) -> void:
 	var s := 1.1 + z / 160.0
 	sprite.scale = Vector2(s, s)
 	queue_redraw()
+
+func _hoop_index() -> int:
+	return 0 if shot_hoop.x < game.COURT_W / 2 else 1
+
+func _make_feedback() -> void:
+	# made basket: net swish for every make; the swish sound only for jump shots and layups (dunks have their own)
+	if game.rims:
+		game.rims.swish(_hoop_index(), DUNK_NET if shot_kind == "dunk" else 1.0)
+	if game.audio and shot_kind != "dunk":
+		game.audio.play("swish", LAYUP_SWISH_DB if shot_kind == "layup" else 0.0)
+
+func _rim_feedback() -> void:
+	# missed shot off the rim: clank plus a small net wiggle
+	if game.rims:
+		game.rims.swish(_hoop_index(), RIM_WIGGLE)
+	if game.audio:
+		game.audio.play("rim", RIM_DB, 0.08)
+	bounce_cooldown = BOUNCE_GAP
+
+func _bounce_sound(impact: float) -> void:
+	if impact < BOUNCE_MIN_SPEED or bounce_cooldown > 0.0 or not game.audio:
+		return
+	bounce_cooldown = BOUNCE_GAP
+	var k := clampf((impact - BOUNCE_MIN_SPEED) / (BOUNCE_LOUD_SPEED - BOUNCE_MIN_SPEED), 0.0, 1.0)
+	game.audio.play("bounce", lerpf(BOUNCE_QUIET_DB, 0.0, k), 0.08)
+
+func _dribble_sound() -> void:
+	# soft dribble, only for the ball handler the human controls, on every DRIBBLE_EVERY-th floor touch
+	var phase := int(anim_time * 9.0 / PI)
+	if phase == dribble_phase:
+		return
+	dribble_phase = phase
+	if not game.is_human(holder) or not game.audio:
+		return
+	dribble_count += 1
+	if dribble_count % DRIBBLE_EVERY == 0:
+		game.stat("dribble_sounds")
+		game.audio.play("bounce", DRIBBLE_DB, 0.1)
 
 func slam_feedback() -> void:
 	if game.fx:
