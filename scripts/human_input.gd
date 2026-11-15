@@ -108,6 +108,11 @@ func block_threat():
 # "BLOCK" or "STEAL": what A does on defense right now (main.gd shows it on the button)
 func defense_action() -> String:
 	var h = game.human_player
+	# a lob (alley-oop) coming to a player you're close to: BLOCK, so you can jump to meet the catch
+	var b = game.ball
+	if h != null and b.has_method("is_lob") and b.is_lob() and b.receiver != null and b.receiver.team != h.team:
+		if h.position.distance_to(b.receiver.position) <= BLOCK_CLOSE_FT * game.FT:
+			return "BLOCK"
 	var t = block_threat()
 	if h == null or t == null or h.position.distance_to(t.position) > BLOCK_CLOSE_FT * game.FT:
 		return "STEAL"
