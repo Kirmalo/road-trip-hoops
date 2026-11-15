@@ -103,6 +103,9 @@ and B do nothing** (the HUD shows "-").
   70% at 50, about +/-20% across 0-100); bad timing almost never works. Updated in VISION (6486a45): no stumble
   after a missed steal; instead the defender stands still while attempting a steal (hit or miss), so poking has a cost. Ratings are varied per player with equal team totals. They are the start of the
   player attributes the campaign (Phase 5) will grow.
+- **P2-10 control (owner approved, 2026-11-15):** `CONTROL_FOLLOWS_CATCH := false`. When the human passes, he takes
+  over the receiver as before. When a teammate gets the ball any other way (rebound, steal, inbound, CPU pass), that
+  teammate plays it and the human keeps his player and presses CALL to get the ball.
 
 ## Todo
 
@@ -338,6 +341,15 @@ before the next starts. If the owner answers late, wave 1 still finishes; nothin
 ## Doing
 
 ## Review
+
+- P2-09 alley-oop (`worktree-agent-a6f6286e12d331c4a`) + P2-10 call for the ball (`worktree-agent-a88cb4ada7618ca1b`),
+  trial merge `trial-w3`: CHANGES (one small fix). Lob API matches what P2-10 calls; parses; autoplay in range.
+  Fix before merge (P2-10 owns `human_input.gd`): `defense_action()` returns BLOCK while `game.ball.is_lob()` and the
+  human is within BLOCK_CLOSE_FT of the receiver (owner Q3: "near the rim and you're close"); today it says STEAL
+  until ~0.09 s before the dunk. Call answer rate (instrumented copy, 3 humantests): answered calls go at once
+  (< 0.25 s); timeouts are almost all "lane blocked by the caller's own man" with the scripted thumb parked within
+  5 ft of the rim, so it is mostly the test. Follow-up for P2-11 (`player.gd`): while a call is live the CPU handler
+  should not start a new shot or pass elsewhere (except late shot clock); about a third of calls end that way.
 
 - P2-03 + P2-04 (`worktree-agent-a7352f0fb16833d4f`, trial merge `trial-p2b`): CHANGES (miss stumble vs VISION,
   humantest score out of range, steal timing window). See the P2-04 review notes.
