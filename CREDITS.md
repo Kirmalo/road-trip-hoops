@@ -1,0 +1,14 @@
+# Credits
+
+| Files | Title | Author | Source | License | Changes |
+|---|---|---|---|---|---|
+| `assets/*.png` | Sports Pack | Kenney | https://www.kenney.nl | CC0 1.0 | Selected player and ball sprites |
+| `assets/sfx/swish.ogg` | Cloth swing sounds (`cloth_sounds.ogg`) | Vinrax (https://opengameart.org/users/vinrax) | https://opengameart.org/content/cloth-swing-sounds | CC-BY 3.0 | Cut one swing (8.95-9.50 s), 400 Hz high-pass, mono, fades, peak-normalized, Ogg Vorbis |
+| `assets/sfx/rim.ogg` | Metal Impact Sounds (`bing1.wav`) | BMacZero | https://opengameart.org/content/metal-impact-sounds | CC0 | Trimmed to 0.7 s, mono, fade-out, peak-normalized, Ogg Vorbis |
+| `assets/sfx/bounce.ogg` | Thwack Sounds (`thwack-06.wav`) | Jordan Irwin (AntumDeluge) | https://opengameart.org/content/thwack-sounds | CC0 | Trimmed to 0.3 s, mono, fade-out, peak-normalized, Ogg Vorbis |
+| `assets/sfx/crowd.ogg` | Free Crowd Cheering Sounds (`03 - Strong cheering - I`) | Gregor Quendel (www.gregorquendel.com) | https://opengameart.org/content/free-crowd-cheering-sounds | CC-BY 4.0 | Cut 5.5-10.5 s, crossfaded into a 4.5 s seamless loop, mono, peak-normalized, Ogg Vorbis |
+| `assets/sfx/dunk.ogg` | 100 CC0 metal and wood SFX (`metal_slam_01.ogg`) | rubberduck | https://opengameart.org/content/100-cc0-metal-and-wood-sfx | CC0 | Mono, fade-out, peak-normalized, re-encoded |
+| `assets/sfx/block.ogg` | 10 Impact/Shield Blocks (`impact.7.ogg`) | StarNinjas | https://opengameart.org/content/10-impactshield-blocks | CC0 | Cut 0.26-0.60 s, mono, fade-out, peak-normalized, re-encoded |
+| `assets/sfx/fire.ogg` | Catching fire (`flame_0.ogg`, derived from qubodup's freesound #159725) | themightyglider | https://opengameart.org/content/catching-fire | CC0 | Mono, fade-out, peak-normalized, re-encoded |
+
+Sound effects were processed with `tools/make_sfx.py` (commands in `tools/make_sfx.sh`).
