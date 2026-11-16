@@ -330,6 +330,7 @@ func _switch_sides() -> void:
 	game.audio.play("whistle")
 	game.show_message("SWITCH SIDES", SWITCH_PAUSE)
 	var team: int = pending_inbound if pending_inbound >= 0 else game.possession
+	pending_spot = Vector2.INF   # a spot from before the switch (e.g. out of bounds) is on the wrong half now
 	game.reset_positions(team)
 	game.ball.position = Vector2(game.COURT_W / 2, game.COURT_H / 2)   # the camera follows the ball: show both halves
 	game.ball.z = 0.0
