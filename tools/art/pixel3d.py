@@ -640,6 +640,8 @@ def face_features(l, expr, p):
     x, y, z = l
     if z < 1.2:
         return None
+    if expr in ("happy", "smug"):
+        return face_features_story(l, expr, p)
     ax = abs(x)
     sx = 1.0 if x > 0 else -1.0
     # brows
@@ -693,6 +695,70 @@ def face_features(l, expr, p):
             return "mouth_in"
         if d < 1.35 and dy < -0.3:
             return "lip"
+    return None
+
+
+def face_features_story(l, expr, p):
+    """Story-portrait faces (make_portraits.py): "happy" (warm grin) and "smug" (one brow up, half-lidded, smirk).
+    Same head-local units as face_features; x = the player's own left."""
+    x, y, z = l
+    ax = abs(x)
+    sx = 1.0 if x > 0 else -1.0
+    ex, ey = 1.42, 0.12
+    if expr == "happy":
+        by = 1.30 + 0.06 * (ax - 0.5) - 0.12 * (ax - 1.5) ** 2      # relaxed, lifted
+        bth = 0.42
+    else:
+        if sx < 0:   # the player's right brow cocked up
+            by = 1.55 + 0.10 * (ax - 0.5) - 0.18 * (ax - 1.5) ** 2
+        else:        # the other one low and flat
+            by = 0.85 + 0.20 * (ax - 0.55)
+        bth = 0.46
+    if 0.45 < ax < 2.55 and abs(y - by) < bth / 2:
+        return "brow"
+    ew, eh = 0.82, 0.40
+    dx, dy = (ax - ex) / ew, (y - ey) / eh
+    if dx * dx + dy * dy < 1.0:
+        if expr == "happy":
+            if dy < -0.30:
+                return "skin-1"        # cheeks push the lower lid up: smiling eyes
+            if dy > 0.55:
+                return "lid"
+        else:
+            if dy > -0.05:
+                return "lid"           # half-shut, unimpressed
+        look = 0.10 if expr == "happy" else -0.18
+        ix, iy = (x - sx * (ex - 0.12) - look), (y - ey + (0.02 if expr == "happy" else 0.14))
+        if ix * ix + iy * iy < 0.09:
+            return "pupil"
+        if ix * ix + iy * iy < 0.17:
+            return "iris"
+        return "eye_white"
+    if expr == "happy" and abs(dx) < 1.0 and -0.55 < dy * eh / 0.40 < -0.25 and ax > 1.0:
+        return "skin-1"
+    # nostrils
+    if 0.25 < ax < 0.6 and -1.05 < y < -0.8 and z > 3.0:
+        return "skin+2"
+    if expr == "happy":
+        top = -1.92 + 0.16 * ax * ax
+        bot = -2.55 + 0.34 * ax * ax
+        if ax < 1.30 and bot < y < top:
+            if y > top - 0.28:
+                return "teeth"
+            return "mouth_in"
+        if 1.20 < ax < 1.55 and abs(y - (top + 0.10)) < 0.16:
+            return "mouth_line"       # upturned corners
+        if ax < 0.8 and bot - 0.30 < y <= bot:
+            return "lip"
+        return None
+    # smug: a closed smirk, rising toward the player's right (the raised-brow side)
+    my = -2.10 + 0.06 * x * x + 0.24 * max(0.0, -x)
+    if -0.95 < x < 1.25 and abs(y - my) < 0.16:
+        return "mouth_line"
+    if -1.40 < x <= -1.25 + 0.01 and abs(y - (my + 0.12)) < 0.20:
+        return "mouth_line"           # the dimple at the raised corner
+    if abs(x) < 0.6 and my - 0.42 < y < my - 0.16:
+        return "skin-1"
     return None
 
 
