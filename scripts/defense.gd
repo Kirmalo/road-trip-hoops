@@ -373,6 +373,13 @@ static func clear_pending_fouls(g, shooter) -> void:
 # kind: "shooting" or "reach"; why: a FOUL_REASONS key.
 static func commit_foul(g, d, fouled, kind: String, why: String) -> void:
 	var human: bool = g.is_human(d)
+	if g.rules != null and g.rules.has_method("call_foul"):
+		if not g.rules.call_foul(d, fouled, kind):
+			return   # the call was ignored (dead ball, free throws, a foul already pending): no popup, no stats
+	else:
+		g.stat("fouls_uncalled")   # rules.call_foul missing: counted, play goes on
+		if human:
+			g.stat("human_fouls")
 	if kind == "reach":
 		g.stat("fouls_shield_poke")
 		g.stat("fouls_shield_poke_t%d" % d.team)
@@ -389,12 +396,6 @@ static func commit_foul(g, d, fouled, kind: String, why: String) -> void:
 		var col: Color = FOUL_POPUP_COLOR if human else g.TEAM_COLORS[d.team]
 		g.fx.popup(String(FOUL_REASONS.get(why, "FOUL")), d.position + Vector2(0, -FOUL_POPUP_RISE_FT * g.FT), col,
 				FOUL_POPUP_SIZE + (6 if human else 0))
-	if g.rules != null and g.rules.has_method("call_foul"):
-		g.rules.call_foul(d, fouled, kind)
-	else:
-		g.stat("fouls_uncalled")   # rules.call_foul not merged yet (P3-05): counted, play goes on
-		if human:
-			g.stat("human_fouls")  # P3-05's call_foul counts this once merged
 
 # The handler's body is between the defender and the ball: a poke now reaches through him.
 static func is_shielded(g, d, h) -> bool:

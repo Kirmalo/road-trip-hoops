@@ -24,6 +24,7 @@ const FxScript = preload("res://scripts/fx.gd")
 const HumanInputScript = preload("res://scripts/human_input.gd")
 const DefenseScript = preload("res://scripts/defense.gd")
 const RulesScript = preload("res://scripts/rules.gd")
+const MenuScript = preload("res://scripts/menu.gd")
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
@@ -105,6 +106,7 @@ const CONTROL_FOLLOWS_CATCH := false # false: a teammate who gets the ball (inbo
                                      # (Phase 1 behavior). Your own PASS always hands control to the receiver.
 const CALL_CUE_RISE := 4.0 * FT      # the "!" bubble floats this far above the caller's feet
 const CALL_CUE_COLOR := Color(1.0, 0.92, 0.3)
+const MENUSHOT_FRAMES := 40          # test only (--menushot): frames the panel is up before its screenshot
 
 # --humantest scripted thumb (developer testing only): drives the real touch joystick with synthetic touch events
 const HT_FINGER_POS := Vector2(260, 460)   # where the scripted thumb touches down (left half of the screen)
@@ -184,6 +186,10 @@ var ht_guard_front := true          # ... and the human is between him and the r
 var ht_guard_holder = null
 var _call_node: Node2D               # draws the "!" over the human while his call is live
 var shot_serial := 0                # counts released shots, so each defender gets one block try per shot (defense.gd)
+var menu                            # menu.gd: the EASY / NORMAL / HARD panel (launch and game over, P3-08)
+var menu_wait := false              # the launch panel is up: the game waits behind it
+var menushot := false               # test only (-- --menushot): screenshots of both panels, see _debug_screenshots
+var _menu_frames := 0
 var force_fouls := false            # test only: -- --force-fouls fouls some field goals (until P3-06 commits fouls)
 var ht_ft_t := 0.0                  # humantest: seconds the human has had the ball at the line
 var ht_ft_n := 0                    # humantest: free throws the scripted thumb started (every 2nd is "good")
@@ -210,6 +216,8 @@ func _ready() -> void:
 	autoplay = OS.get_cmdline_user_args().has("--autoplay")
 	humantest = OS.get_cmdline_user_args().has("--humantest")
 	force_fouls = OS.get_cmdline_user_args().has("--force-fouls")
+	menushot = OS.get_cmdline_user_args().has("--menushot")
+	MenuScript.prepare_level()   # before the players: first launch = Normal, then the saved level, then --difficulty
 
 	rules = RulesScript.new()
 	rules.game = self
@@ -269,7 +277,29 @@ func _ready() -> void:
 	add_child(_call_node)
 
 	_build_hud()
+	menu = MenuScript.new()
+	menu.game = self
+	add_child(menu)
 	start_game()
+	# the launch panel: once per run, never in the headless tests (or --shots, unless -- --menushot)
+	var tests: bool = autoplay or humantest or (OS.get_cmdline_user_args().has("--shots") and not menushot)
+	if not tests and not MenuScript.start_done:
+		menu_wait = true
+		msg_label.visible = false   # no "FIRST TO 21" under the panel; the reloaded game shows it
+		_menu_input(true)
+		menu.show_start()
+	elif not tests:
+		MenuScript.start_done = true
+
+# the panel is up: the joystick and A/B take no touches (touch_controls reads _input, before the GUI) and are hidden,
+# so the tap on a level can't also move or shoot
+func _menu_input(on: bool) -> void:
+	controls.set_process_input(not on)
+	controls.visible = not on and not autoplay
+	if on:
+		controls.joy_index = -1
+		controls.a_index = -1
+		controls.b_index = -1
 
 func _build_hud() -> void:
 	var hud := CanvasLayer.new()
@@ -704,19 +734,28 @@ func _ft_blocks_buttons() -> bool:
 	return rules.ft_active and not game_over and not (human_player == rules.ft_shooter and human_player.has_ball())
 
 func _on_a_pressed() -> void:
+	if menu.showing:
+		return
 	if _ft_blocks_buttons():
 		return
 	input.a_pressed()
 
 func _on_a_released() -> void:
+	if menu.showing:
+		return
 	input.a_released()
 
 func _on_b_pressed() -> void:
+	if menu.showing:
+		return
 	if rules.ft_active and not game_over:
 		return
 	input.b_pressed()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and menu.showing:
+		menu.key(event)   # desktop: A/D or arrows (or K) move the light, J / Space / Enter plays it
+		return
 	if event is InputEventKey and not event.echo:
 		if event.keycode == KEY_J or event.keycode == KEY_SPACE:
 			if event.pressed:
@@ -746,6 +785,7 @@ var _switch_shot := false
 func _debug_screenshots() -> void:
 	# developer testing only: run with -- --shots to save a few screenshots to /tmp
 	_frame += 1
+	_menushots()
 	if OS.get_cmdline_user_args().has("--shots") and controls.a_glow and not _cue_shot:
 		_cue_shot = true   # first frame with the STEAL button lit (try -- --shots --humantest)
 		get_viewport().get_texture().get_image().save_png("/tmp/hoops_steal_cue.png")
@@ -764,10 +804,25 @@ func _debug_screenshots() -> void:
 		if _frame == 1800 and not OS.get_cmdline_user_args().has("--target"):
 			get_tree().quit()
 
+# test only: -- --menushot (with xvfb, see _debug_screenshots; add --target 3 for a short game): saves the launch
+# panel to /tmp/hoops_menu_start.png, picks the lit level as a tap would, then the game-over panel to
+# /tmp/hoops_menu_over.png once it takes taps, and quits. The human stands still, so RED wins.
+func _menushots() -> void:
+	if not menushot or not menu.showing:
+		_menu_frames = 0
+		return
+	_menu_frames += 1
+	if menu_wait and _menu_frames == MENUSHOT_FRAMES:
+		get_viewport().get_texture().get_image().save_png("/tmp/hoops_menu_start.png")
+		menu._pick(MenuScript.Difficulty.level)
+	elif game_over and _menu_frames == MENUSHOT_FRAMES + int(MenuScript.ARM_TIME_OVER * 60.0):
+		get_viewport().get_texture().get_image().save_png("/tmp/hoops_menu_over.png")
+		get_tree().quit()
+
 func _physics_process(delta: float) -> void:
 	_debug_screenshots()
 	_update_message(delta)
-	if game_over:
+	if game_over or menu_wait:
 		return
 
 	if not rules.update(delta):
@@ -1109,7 +1164,7 @@ func _separate_players() -> void:
 				a.position -= push
 				b.position += push
 
-# the game is won (rules.gd decides when): stop play, show the result, print the test lines. P3-08 adds the panel here
+# the game is won (rules.gd decides when): stop play, show the result and the level panel (P3-08), print the test lines
 func on_game_over(winner: int) -> void:
 	game_over = true
 	audio.play("whistle")
@@ -1121,9 +1176,14 @@ func on_game_over(winner: int) -> void:
 	_trail_on = false
 	fx.set_trail(false)
 	audio.play("whistle", 3.0, 0.0)   # second, louder whistle: game over
-	show_message("FINAL  %d - %d\n%s WINS!  Tap to play again" % [score[0], score[1], TEAM_NAMES[winner]], 9999.0,
-			TEAM_COLORS[winner])
 	_update_hud()
+	if autoplay or humantest:
+		show_message("FINAL  %d - %d\n%s WINS!" % [score[0], score[1], TEAM_NAMES[winner]], 9999.0, TEAM_COLORS[winner])
+	else:
+		# P3-08: the level panel under the final score; a tap on a level plays again
+		msg_label.visible = false
+		_menu_input(true)
+		menu.show_game_over(score, winner, TEAM_COLORS[winner])
 	if autoplay or humantest:
 		var secs: int = int(rules.play_time)
 		print("FINAL BLUE %d - RED %d" % [score[0], score[1]])
