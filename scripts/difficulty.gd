@@ -34,6 +34,7 @@ const SAVE_KEY := "difficulty"
 #   poke_on_time          time the poke on the floor touch (defense.CPU_POKE_ON_TIME)
 #   fake_bite             jump at a pump fake (defense.CPU_FAKE_BITE)
 #   help_side             off-ball lean toward the ball (defense.HELP_SIDE)
+#   cross_beat_human      chance a CPU crossover beats a human defender caught leaning the wrong way (1.0 on Hard)
 #   speed_mult            movement speed multiplier (Q6 b; 1.0 on every level until answered)
 #   stamina_drain         stamina per second while sprinting (player.STAMINA_DRAIN; Q6 b, Hard on every level)
 const LEVELS := {
@@ -51,6 +52,7 @@ const LEVELS := {
 		"poke_on_time": ["mul", 0.75],       # fewer pokes timed on the floor touch
 		"fake_bite": ["mul", 1.4],           # bites on pump fakes more (P3-12: was 1.25; the slower jump_react cancelled it)
 		"help_side": ["mul", 0.75],          # less help defense
+		"cross_beat_human": ["mul", 0.75],   # a CPU crossover beats a wrong-footed human 75% of the time (Hard: always)
 		"speed_mult": ["mul", 1.0],          # owner Q6: less sharp, not slower (Hard on every level)
 		"stamina_drain": ["mul", 1.0],
 	},
@@ -68,6 +70,7 @@ const LEVELS := {
 		"poke_on_time": ["mul", 0.55],
 		"fake_bite": ["mul", 1.8],
 		"help_side": ["mul", 0.5],
+		"cross_beat_human": ["mul", 0.5],
 		"speed_mult": ["mul", 1.0],
 		"stamina_drain": ["mul", 1.0],
 	},

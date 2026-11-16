@@ -592,6 +592,9 @@ func cross_beat_check() -> void:
 	var ov: Vector2 = best.velocity
 	if ov.length() >= CROSS_WRONG_WAY_SPEED and ov.normalized().dot(cross_dir) < -0.3:
 		beaten = true   # leaning the wrong way: the cut goes behind him
+		if game.is_human(best) and not game.is_human(self):
+			# owner (Phase 3 check-in): on Easy/Normal a CPU crossover beats the human less often (always on Hard)
+			beaten = game.rng.randf() < Difficulty.value(team, "cross_beat_human", 1.0)
 	elif not game.is_human(best):
 		if best.def != null and best.def.has_method("beaten_by_cross"):
 			beaten = best.def.beaten_by_cross(self, cross_dir)

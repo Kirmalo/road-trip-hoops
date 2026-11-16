@@ -56,6 +56,7 @@ tablet with a joystick and two buttons.
 | Out of bounds | Simple: only a loose ball crossing a line is out; the ball handler can't step out by accident |
 | Easy / Normal | Today's CPU = Hard. Easy and Normal make the CPU less sharp, not slower: worse shooting, slower reactions, worse steal/block timing, more bites on fakes, less help defense |
 | Picking the level | Big EASY / NORMAL / HARD buttons on a start panel and after each game; the choice is remembered |
+| Phase 3 check-in | Difficulty levels well spaced. Keep games to 21 in the test build. Keep the long rim bounces that go out of bounds. Crossovers beating the assisted defender: fine on Hard, but on Easy/Normal a CPU crossover beats you less often (difficulty knob cross_beat_human: Hard 1.0, Normal 0.75, Easy 0.5) |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints

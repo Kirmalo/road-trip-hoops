@@ -330,6 +330,9 @@ starts before Q3 and Q4.
   - Minor: rebounds and inbounds count as a "catch" too (0.1 s decision, quick windup, cpu_twos_catch).
 
 ## Done
+- Phase 3 check-in (owner): levels well spaced; keep 21; keep long rim bounces; CPU crossovers beat the human less
+  on Easy/Normal: coordinator added the `cross_beat_human` knob (difficulty.gd; player.start_crossover), Hard
+  unchanged. Phase 3 done.
 - P3-09 CPU retune (approved after small fixes; coordinator cleanup e83f419 + 969f3fd). Coordinator decision on the
   2s target: the board's old "2s 8-15% of shots" conflicted with the brief given (20-30% of points from 2s); kept the
   retune (2s ~18% of shots, ~22% of points, 28% made). Lobs are ~3 per 60 shots (per game higher because games are
