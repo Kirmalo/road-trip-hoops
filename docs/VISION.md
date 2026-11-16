@@ -68,6 +68,18 @@ tablet with a joystick and two buttons.
 | Music | Menu music on the panels, the court's track softly during play, MUSIC ON/OFF button on the panels (remembered) |
 | Phase 4 check-in | Camera angle and zoom feel right; runs smoothly on the tablet; keep the camera following the ball on long passes; players, courts and the new swish/bounce are good. Music: wrong style; owner wants **upbeat chiptune** (retro 16-bit synth, high energy) |
 | Music style | Upbeat chiptune for all music (replaces the earlier per-city local styles). Each city's track may still lean toward its city's flavor in chiptune form where good CC0/CC-BY tracks exist |
+| Campaign: city rule | Each city has ONE local crew played 3 times, getting stronger: game 1 = 1 good + 2 average players (for that point of the trip), game 2 = 2 good + 1 average, game 3 = 2 good + the crew's boss. Win all 3 to move on (owner, Phase 5 design) |
+| Campaign: losing | Just retry the game, no penalty |
+| Title screen | Road Trip (start/continue), Quick Game (today's single game with level and court), Settings (music, sound volume, default level, more in Phase 7), Crew / Credits (your crew and stats; art and music credits) |
+| Pause screen | A pause button in a top corner during play. Resume / Restart / Quit (to the title or the trip map), music on/off and sound volume, current score and a few game stats for both teams |
+| Recruiting | After beating a city's crew, pick ONE of its 3 (either good player or the boss) to join your bench |
+| Stat growth | Wins earn stat points; after each city you spend them on Speed, Shooting, Finishing, Defense (steal/block), Stamina for any player |
+| Roster | Your 3 underdogs plus up to one recruit per city (bench grows to about 10); before each game pick 3 starters on a lineup screen |
+| Starting crew | The team proposes 3 original underdogs (names, looks, personalities, hometown backstory) for the owner to approve or tweak |
+| Trip map | Pixel-art USA map with the 8 cities as pins; the van drives along the road; beaten cities get a trophy marker |
+| Story scenes | Fighting-game style: big pixel portraits + text box, tap to advance; before and after each city plus a few key moments |
+| Saving | Auto-save after every game; one trip at a time; "New trip" asks to confirm |
+| Finale | New York tournament: a short knockout bracket (quarterfinal, semifinal, final) against the toughest crews; the final against the champions with a special boss; big ending scene |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
@@ -126,8 +138,7 @@ export and an Android export, store page text and screenshots.
 - Can this environment download from the asset sites (OpenGameArt, itch.io, Kenney)? Check at the start of Phase 1.
   If blocked, the owner allows the hosts or downloads the packs themselves.
 - Names and personalities of the 3 starting underdogs, and the name of the tournament.
-- Do opponent crews get any identity (style of play, a star player) beyond ratings? The owner didn't pick named
-  rivals; for now crews differ only by ratings and play style.
+- Opponent crews: answered in Phase 5 design: each city has one crew with good players and a boss.
 - GAME POINT in the top bar: show it at 20 (a 1 wins; the current build) or already at 19 (a 2 also wins)?
 - Fouled shots: today a fouled layup or dunk goes in as often as an unfouled one, so most shooting fouls are
   and-ones (about 60%; real basketball is nearer 25%). Should a foul make the shot miss more often?
