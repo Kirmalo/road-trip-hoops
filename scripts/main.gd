@@ -1,7 +1,8 @@
 extends Node2D
 # Road Trip Hoops: 3v3 full court basketball.
 # First to 21 (1 inside the arc, 2 beyond), switch sides at 11: the rules are in rules.gd.
-# You control the BLUE team (the player with the yellow ring). BLUE shoots at the RIGHT hoop.
+# You control the BLUE team (the player with the yellow ring). BLUE shoots at the RIGHT hoop until the side switch
+# at 11 (rules.sides_swapped), then at the left one. The arrow next to BLUE in the top bar shows the way.
 #
 # Touch: drag anywhere on the left half to move.
 #   Offense: hold SHOOT, release in the green zone of the meter. PASS throws to the open teammate
@@ -39,6 +40,8 @@ const BLOCK_SHAKE_TIME := 0.25       # and how long it lasts
 const MSG_FONT_SIZE := 56            # center message font size
 const MSG_POP_TIME := 0.15           # center message scale-in time in seconds
 const MSG_POP_SCALE := 1.35          # center message start scale
+const SIDE_ARROW_RIGHT := ">>"       # top bar: next to BLUE, the way BLUE attacks (P3-02)
+const SIDE_ARROW_LEFT := "<<"
 
 # on fire (P1-07)
 const FIRE_STREAK := 3               # makes in a row by one player (dunks and layups count) to catch fire
@@ -304,29 +307,34 @@ func _make_label(parent: Control, size: int, preset: int, top: float) -> Label:
 func start_game() -> void:
 	rules.start_game()
 
+# line both teams up: `team` (which gets the ball) on its own half, the other just past half court. The rows are
+# mirrored by the attack direction (y times dir) so both halves of the court play the same (B1)
 func reset_positions(team: int) -> void:
 	var own: Vector2 = attack_hoop(1 - team)   # the hoop this team defends
 	var dir := inward(own)
 	for i in 3:
+		var row: float = [0.0, -12.0, 12.0][i] * dir * FT
 		var o = teams[team][i]
-		o.position = own + Vector2(dir * (5 + i * 12) * FT, [0.0, -12.0, 12.0][i] * FT)
-		o.velocity = Vector2.ZERO
+		o.position = own + Vector2(dir * (5 + i * 12) * FT, row)
 		var d = teams[1 - team][i]
-		d.position = Vector2(COURT_W / 2 + dir * 10 * FT, COURT_H / 2 + [0.0, -12.0, 12.0][i] * FT)
-		d.velocity = Vector2.ZERO
-		o.shooting = false
-		d.shooting = false
+		d.position = Vector2(COURT_W / 2 + dir * 10 * FT, COURT_H / 2 + row)
+		for p in [o, d]:
+			p.velocity = Vector2.ZERO
+			p.shooting = false
+			p.facing = 0.0 if attack_hoop(p.team).x > COURT_W / 2 else PI   # face the hoop it attacks
 
 # ---------------- court helpers ----------------
 
+# the only place that knows which hoop a team attacks: team 0 attacks the right hoop until the side switch (P3-02)
 func attack_hoop(team: int) -> Vector2:
-	return hoops[1] if team == 0 else hoops[0]
+	var right: bool = (team == 0) != rules.sides_swapped
+	return hoops[1] if right else hoops[0]
 
 func inward(hoop: Vector2) -> float:
 	return 1.0 if hoop.x < COURT_W / 2 else -1.0
 
 func in_frontcourt(pos: Vector2, team: int) -> bool:
-	return pos.x > COURT_W / 2 if team == 0 else pos.x < COURT_W / 2
+	return (pos.x > COURT_W / 2) == (attack_hoop(team).x > COURT_W / 2)
 
 func clamp_to_court(pos: Vector2) -> Vector2:
 	return Vector2(clamp(pos.x, 10.0, COURT_W - 10.0), clamp(pos.y, 10.0, COURT_H - 10.0))
@@ -403,6 +411,7 @@ func release_shot(p, quality: float) -> void:
 	shot_clock_running = false
 	shot_serial += 1
 	stat("shots")
+	stat("shots_half%d_t%d" % [2 if rules.sides_swapped else 1, p.team])
 	stat("shot_d%d" % int(p.position.distance_to(hoop) / FT / 5) )
 	if made: stat("makes")
 	if p.on_fire:
@@ -648,6 +657,7 @@ func _input_vector() -> Vector2:
 var _frame := 0
 var _cue_shot := false
 var _block_shot := false
+var _switch_shot := false
 
 func _debug_screenshots() -> void:
 	# developer testing only: run with -- --shots to save a few screenshots to /tmp
@@ -658,9 +668,16 @@ func _debug_screenshots() -> void:
 	if OS.get_cmdline_user_args().has("--shots") and controls.a_block and not _block_shot:
 		_block_shot = true   # first frame the orange button says BLOCK (try -- --shots --humantest)
 		get_viewport().get_texture().get_image().save_png("/tmp/hoops_block_label.png")
+	# the side switch, 1 s into its pause (try -- --shots --target 3 so it comes early; then it quits after this shot)
+	if OS.get_cmdline_user_args().has("--shots") and rules.sides_swapped and not _switch_shot \
+			and rules.dead_timer > 0.0 and rules.dead_timer < rules.SWITCH_PAUSE - 1.0:
+		_switch_shot = true
+		get_viewport().get_texture().get_image().save_png("/tmp/hoops_switch.png")
+		if OS.get_cmdline_user_args().has("--target"):
+			get_tree().quit()
 	if OS.get_cmdline_user_args().has("--shots") and _frame in [240, 900, 1800]:
 		get_viewport().get_texture().get_image().save_png("/tmp/hoops_%d.png" % _frame)
-		if _frame == 1800:
+		if _frame == 1800 and not OS.get_cmdline_user_args().has("--target"):
 			get_tree().quit()
 
 func _physics_process(delta: float) -> void:
@@ -1035,7 +1052,11 @@ func _update_message(delta: float) -> void:
 			msg_label.modulate.a = maxf(0.0, msg_timer / 0.4)
 
 func _update_hud() -> void:
-	score_label.text = "BLUE  %d   -   %d  RED" % [score[0], score[1]]
+	# the arrow next to BLUE shows which way BLUE attacks; it flips at the side switch
+	if attack_hoop(HUMAN_TEAM).x > COURT_W / 2:
+		score_label.text = "BLUE %s  %d   -   %d  RED" % [SIDE_ARROW_RIGHT, score[0], score[1]]
+	else:
+		score_label.text = "%s BLUE  %d   -   %d  RED" % [SIDE_ARROW_LEFT, score[0], score[1]]
 	var gp := -1
 	for t in 2:
 		if rules.is_game_point(t):

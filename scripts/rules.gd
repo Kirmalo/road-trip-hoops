@@ -11,6 +11,7 @@ const GAME_TIME_CAP := 0.0           # Q1 c: seconds of live play before the tea
                                      # 0 = no time limit (Q1 a, b)
 const SWITCH_AT := 11                # the first basket that brings a team to this switches sides (once per game).
                                      # With --target N it is (N + 1) / 2
+const SWITCH_PAUSE := 2.0            # seconds the game stops for "SWITCH SIDES" (after the made basket's pause)
 const FIRST_BALL_TEAM := 0           # BLUE has the first ball (to confirm at the Phase 3 check-in)
 const POINTS_INSIDE := 1             # streetball scoring: a basket inside the arc ...
 const POINTS_BEYOND := 2             # ... and beyond it (game.is_three() means "beyond the arc")
@@ -18,12 +19,14 @@ const POINTS_FT := 1                 # a free throw (P3-05)
 const MADE_WAIT := 1.0               # dead-ball pause after a made basket
 const START_MSG_TIME := 1.5          # "FIRST TO 21" at tip-off
 const INBOUND_BACK_FT := 3.5         # inbound spot: this far behind the hoop the team defends ...
-const INBOUND_SIDE_FT := 5.0         # ... and this far to one side
+const INBOUND_SIDE_FT := 5.0         # ... and this far to one side (mirrored by attack direction: B1)
 
 var game
 var target := TARGET_SCORE
 var switch_at := SWITCH_AT
 var sides_swapped := false           # false: team 0 attacks the right hoop. Read through game.attack_hoop() only
+var switched := false                # the switch happened (or is pending) this game
+var pending_switch := false          # a basket reached switch_at: switch when the dead ball pause ends
 var dead_timer := 0.0
 var pending_inbound := -1            # team that gets the ball when the dead ball pause ends
 var pending_spot := Vector2.INF
@@ -54,6 +57,10 @@ func add_score(team: int, pts: int, kind: String) -> void:
 		return
 	game.score[team] += pts
 	game.stat("points%d_t%d" % [pts, team])
+	var right: bool = game.attack_hoop(team).x > game.COURT_W / 2
+	game.stat_add("points_%s_hoop" % ("right" if right else "left"), pts)
+	game.stat_add("points_%s_hoop_t%d" % ["right" if right else "left", team], pts)
+	game.stat_add("points_half%d_t%d" % [2 if sides_swapped else 1, team], pts)
 	game.stat_add("points_%s_t%d" % [kind, team], pts)
 	_track_lead()
 	for t in 2:
@@ -65,6 +72,9 @@ func add_score(team: int, pts: int, kind: String) -> void:
 	if w >= 0:
 		_end_game(w)
 		return
+	if not switched and game.score[team] >= switch_at:
+		switched = true
+		pending_switch = true
 
 # one basket (a 2) away from winning
 func is_game_point(team: int) -> bool:
@@ -113,6 +123,9 @@ func update(delta: float) -> bool:
 		dead_time += delta
 		dead_timer -= delta
 		if dead_timer <= 0.0:
+			if pending_switch:
+				_switch_sides()
+				return true
 			if pending_inbound >= 0:
 				inbound(pending_inbound, pending_spot)
 			pending_inbound = -1
@@ -139,12 +152,13 @@ func dead_ball(next_team: int, wait: float, spot := Vector2.INF) -> void:
 	dead_timer = wait
 	game.shot_clock_running = false
 
-# inbound from `spot`, or (Vector2.INF) from the baseline under the hoop this team defends
+# inbound from `spot`, or (Vector2.INF) from the baseline under the hoop this team defends, on the side mirrored by
+# the attack direction so both halves play the same (B1)
 func inbound(team: int, spot := Vector2.INF) -> void:
 	var own: Vector2 = game.attack_hoop(1 - team)
 	var dir: float = game.inward(own)
 	if spot == Vector2.INF:
-		spot = Vector2(own.x - dir * INBOUND_BACK_FT * game.FT, own.y + INBOUND_SIDE_FT * game.FT)
+		spot = Vector2(own.x - dir * INBOUND_BACK_FT * game.FT, own.y + dir * INBOUND_SIDE_FT * game.FT)
 	var best = game.teams[team][0]
 	var best_d := INF
 	for p in game.teams[team]:
@@ -155,9 +169,25 @@ func inbound(team: int, spot := Vector2.INF) -> void:
 	best.position = game.clamp_to_court(spot)
 	game.give_ball(best)
 
-# ---------------- game start ----------------
+# ---------------- game start and the side switch ----------------
 
 func start_game() -> void:
 	game.reset_positions(FIRST_BALL_TEAM)
 	game.give_ball(game.teams[FIRST_BALL_TEAM][0])
 	game.show_message("FIRST TO %d" % target, START_MSG_TIME)
+
+# P3-02: after the made basket's pause, stop SWITCH_PAUSE s, whistle, flip the hoops and line both teams up on their
+# new halves; then the team that was scored on inbounds as usual
+func _switch_sides() -> void:
+	pending_switch = false
+	sides_swapped = not sides_swapped
+	game.stat("side_switches")
+	game.audio.play("whistle")
+	game.show_message("SWITCH SIDES", SWITCH_PAUSE)
+	var team: int = pending_inbound if pending_inbound >= 0 else game.possession
+	game.reset_positions(team)
+	game.ball.position = Vector2(game.COURT_W / 2, game.COURT_H / 2)   # the camera follows the ball: show both halves
+	game.ball.z = 0.0
+	dead_timer = SWITCH_PAUSE
+	if game.autoplay or game.humantest:
+		print("SWITCH SIDES at BLUE %d - RED %d" % [game.score[0], game.score[1]])
