@@ -306,5 +306,14 @@ starts before Q3 and Q4.
     fouls are late jumps at rim shots, hence ~60% and-ones (owner question added to VISION).
   - `--force-fouls` (test only) stays; list it in CLAUDE.md Testing in P3-11.
   - GAME POINT at 20 vs 19: owner question in VISION; one constant (`GAME_POINT_BASKET`).
+- P3-07 + P3-08 + f12978e (trial merge trial-p3w3): lead review CHANGES (one line), then APPROVE.
+  - `rules.SWITCH_SKIPS_FT_REBOUND := true` overrides owner Q4 ("missed last FT = live rebound"). Default it to
+    false until the owner picks; the open question is in VISION.
+  - Unrequested `RIM_LONG_*` / `RIM_WIDE_*` long rebounds: physics and rates look fine (rim_long 2-4, rim_wide 0-2,
+    OOB 2-3 per game, almost all after a rebound, so the defense gets the ball); kept pending the owner (open
+    question in VISION; `RIM_LONG_CHANCE`/`RIM_WIDE_CHANCE` 0 turns them off).
+  - Note: after a ball hits the rim the shot clock resets even when the same team keeps it (the board said "kept
+    otherwise"). Sensible; list it in the README (P3-11).
+  - Lead runs: autoplay 21-14, 19-21 (1 switch each, OOB 2 and 3, fouls 3 and 2); humantest 21-18, OOB 2. No errors.
 
 ## Done

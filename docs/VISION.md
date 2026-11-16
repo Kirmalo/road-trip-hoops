@@ -119,3 +119,9 @@ export and an Android export, store page text and screenshots.
 - GAME POINT in the top bar: show it at 20 (a 1 wins; the current build) or already at 19 (a 2 also wins)?
 - Fouled shots: today a fouled layup or dunk goes in as often as an unfouled one, so most shooting fouls are
   and-ones (about 60%; real basketball is nearer 25%). Should a foul make the shot miss more often?
+- Side switch after a free throw that is missed: when the free throw brings a team to 11 and then the last one misses,
+  (a) live rebound as usual, and the switch waits for the next dead ball (a possession or more later), or (b) no
+  rebound: SWITCH SIDES right away, the defense gets the ball? (`rules.SWITCH_SKIPS_FT_REBOUND`; rare.)
+- Out of bounds is very rare on its own (about 0.15 per game). Phase 3 added rare hard bounces off the back or side
+  of the rim (about 2 per game go out, almost all over the baseline, so the defense gets the ball). Keep them,
+  make them rarer, or remove them? (`ball.RIM_LONG_CHANCE`, `ball.RIM_WIDE_CHANCE`.)
