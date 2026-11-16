@@ -1,0 +1,95 @@
+{
+  "_help": [
+    "Player parts for tools/art/make_players.py. One entry in 'players' = one sprite sheet assets/players/<id>.png.",
+    "Adding a recruit = one more entry. Colors are 4-tone ramps (highlight, base, shadow, deep): a name from",
+    "'palettes' or a list of 4 hex colors. 'skin' is a name from 'skins' (or pixel3d.SKINS).",
+    "body: a name from 'bodies' (leg/torso length, shoulder width, muscle mass), optionally 'body_tweak' to adjust.",
+    "hair: bald | twists | band (headband over short hair) | cap (backwards cap) | buzz | hightop.",
+    "face: beard (full beard), goatee, headband (band over any hair; needs band_pal).",
+    "top: tank | tee | longtee | hoodie (sleeveless). sleeve: arm sleeve on L or R (sleeve_pal). tight: leg sleeve L or R.",
+    "L and R are the player's own left and right. shorts_len 0.6 (short) to 1.12 (past the knee). number: one digit."
+  ],
+  "palettes": {
+    "BLUE": ["#78b8ff", "#2f74e0", "#1f479e", "#172a66"],
+    "NAVY": ["#4a64b0", "#263c84", "#18245a", "#0e1236"],
+    "WHITE": ["#ffffff", "#e4eaf4", "#a9b6d4", "#6c7aa4"],
+    "RED": ["#ff7a6a", "#d8283a", "#951833", "#5a0e2a"],
+    "BLACK": ["#5c5c72", "#34343f", "#1f1e2a", "#121019"],
+    "GREYW": ["#ffffff", "#d8d8e0", "#9a9ab0", "#5e5e78"],
+    "HAIR_BLACK": ["#4a3a3c", "#2a2024", "#19121a", "#0c080e"],
+    "HAIR_BROWN": ["#a8724a", "#7a4c30", "#55321f", "#331c14"],
+    "HAIR_DARK": ["#3a2a26", "#221814", "#140e0e", "#0a0608"],
+    "HAIR_INK": ["#3c3238", "#1e181e", "#120e12", "#08060a"],
+    "HAIR_AUBURN": ["#c8743e", "#9a4a26", "#6c2e1c", "#421a14"]
+  },
+  "skins": {
+    "deep": ["#a86e4c", "#7e4c32", "#573024", "#381c1e"],
+    "light": ["#ffd9b6", "#eeb08a", "#c87c64", "#8c4e4c"],
+    "brown": ["#d9986a", "#b06f48", "#844c38", "#58302c"],
+    "tan": ["#f0c08e", "#cf9564", "#a2684a", "#6c4238"],
+    "umber": ["#c28058", "#985c3a", "#6c3c2a", "#442222"]
+  },
+  "bodies": {
+    "lanky_wing":   {"leg": 1.10, "torso": 1.05, "width": 0.94, "mass": -0.10},
+    "stocky_guard": {"leg": 0.93, "torso": 0.97, "width": 1.10, "mass": 0.32},
+    "stocky_big":   {"leg": 0.97, "torso": 1.02, "width": 1.14, "mass": 0.38},
+    "lanky_guard":  {"leg": 1.08, "torso": 1.04, "width": 0.92, "mass": -0.12},
+    "power_forward": {"leg": 1.03, "torso": 1.03, "width": 1.06, "mass": 0.18},
+    "wiry_center":  {"leg": 1.12, "torso": 1.07, "width": 0.98, "mass": 0.0}
+  },
+  "crews": {
+    "A": {"team": "blue", "ring": [64, 150, 255]},
+    "B": {"team": "red", "ring": [236, 52, 64]}
+  },
+  "players": [
+    {
+      "id": "blue_1", "crew": "A", "number": 7, "role": "lanky wing", "desc": "tank, arm sleeve, long shorts",
+      "body": "lanky_wing", "skin": "deep", "hair": "twists", "hair_pal": "HAIR_BLACK",
+      "top": "tank", "top_pal": "WHITE", "trim_pal": "BLUE",
+      "shorts_pal": "BLUE", "shorts_trim": "WHITE", "shorts_len": 1.12,
+      "sleeve": "R", "sleeve_pal": "NAVY", "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.45, "shoe_pal": "WHITE", "shoe_acc": "BLUE", "sole_pal": "NAVY"
+    },
+    {
+      "id": "blue_2", "crew": "A", "number": 2, "role": "stocky guard", "desc": "tee, headband, short shorts",
+      "body": "stocky_guard", "skin": "light", "hair": "band", "hair_pal": "HAIR_BROWN", "band_pal": "WHITE",
+      "top": "tee", "top_pal": "BLUE", "trim_pal": "WHITE",
+      "shorts_pal": "WHITE", "shorts_trim": "BLUE", "shorts_len": 0.62,
+      "sleeve": null, "tight": null,
+      "sock_pal": "BLUE", "sock_len": 0.16, "shoe_pal": "BLUE", "shoe_acc": "WHITE", "sole_pal": "WHITE"
+    },
+    {
+      "id": "blue_3", "crew": "A", "number": 4, "role": "power forward", "desc": "high-top hair, navy tank, knee-length shorts, leg sleeve",
+      "body": "power_forward", "skin": "umber", "hair": "hightop", "hair_pal": "HAIR_BLACK",
+      "top": "tank", "top_pal": "NAVY", "trim_pal": "WHITE",
+      "shorts_pal": "NAVY", "shorts_trim": "BLUE", "shorts_len": 0.95,
+      "sleeve": null, "tight": "R", "tight_pal": "WHITE",
+      "sock_pal": "BLUE", "sock_len": 0.22, "shoe_pal": "WHITE", "shoe_acc": "NAVY", "sole_pal": "BLUE"
+    },
+    {
+      "id": "red_1", "crew": "B", "number": 5, "role": "stocky big", "desc": "sleeveless hoodie, beard",
+      "body": "stocky_big", "skin": "brown", "hair": "bald", "hair_pal": "HAIR_DARK", "beard": true,
+      "top": "hoodie", "top_pal": "BLACK", "trim_pal": "RED",
+      "shorts_pal": "RED", "shorts_trim": "BLACK", "shorts_len": 0.78,
+      "sleeve": null, "tight": null,
+      "sock_pal": "GREYW", "sock_len": 0.30, "shoe_pal": "BLACK", "shoe_acc": "RED", "sole_pal": "RED"
+    },
+    {
+      "id": "red_2", "crew": "B", "number": 9, "role": "lanky guard", "desc": "long tee, back cap, leg sleeve",
+      "body": "lanky_guard", "skin": "tan", "hair": "cap", "hair_pal": "HAIR_INK", "cap_pal": "BLACK", "brim_pal": "RED",
+      "top": "longtee", "top_pal": "RED", "trim_pal": "BLACK",
+      "shorts_pal": "BLACK", "shorts_trim": "RED", "shorts_len": 1.08,
+      "sleeve": null, "tight": "L", "tight_pal": "BLACK",
+      "sock_pal": "BLACK", "sock_len": 0.25, "shoe_pal": "RED", "shoe_acc": "WHITE", "sole_pal": "WHITE"
+    },
+    {
+      "id": "red_3", "crew": "B", "number": 8, "role": "wiry center", "desc": "buzz cut, goatee, red headband, black tee, arm sleeve",
+      "body": "wiry_center", "skin": "light", "hair": "buzz", "hair_pal": "HAIR_AUBURN", "goatee": true,
+      "headband": true, "band_pal": "RED",
+      "top": "tee", "top_pal": "BLACK", "trim_pal": "RED",
+      "shorts_pal": "RED", "shorts_trim": "WHITE", "shorts_len": 0.9,
+      "sleeve": "L", "sleeve_pal": "RED", "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.38, "shoe_pal": "BLACK", "shoe_acc": "WHITE", "sole_pal": "RED"
+    }
+  ]
+}
