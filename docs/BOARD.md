@@ -1,341 +1,427 @@
 # Task Board
 
-Current phase: **Phase 4: 3/4 view, pixel art and audio** (planned 2026-11-16 by `lead-producer`). The Phase 3 board
-is archived in `docs/board-phase3.md`, Phase 2 in `docs/board-phase2.md`, Phase 1 in `docs/board-phase1.md`.
+Current phase: **Phase 5: campaign framework (plus a pause screen)** (planned 2026-11-16 by `lead-producer`). The
+Phase 4 board is archived in `docs/board-phase4.md` (Phase 3: `docs/board-phase3.md`, Phase 2:
+`docs/board-phase2.md`, Phase 1: `docs/board-phase1.md`).
 
-Scope (from `docs/VISION.md`): (a) switch the camera to the angled 3/4 view (decided by the owner) while the
-simulation stays 2D top-down underneath: one projection function, a foreshortened court, depth-sorted upright
-sprites, hoops with backboards and poles, ball height and shadow, popups and effects placed through the projection,
-the joystick mapped to the view, HUD unchanged. (b) The full player sprite set in the approved style (sample v1),
-made by a generator script so new players (Road Trip recruits, Phase 5) are cheap. (c) Ball and hoop art, two court
-looks set by data (wood gym and an outdoor blacktop; the rest come in Phase 6), effects. (d) Audio: a music player
-with a menu track and 2-3 city tracks (CC0/CC-BY only), synthesized swish and bounce, everything in `CREDITS.md`.
-Not in scope: title screen, trip map, city data beyond the two looks, saving (Phase 5); settings screen and the
-in-game credits line (Phase 7); new gameplay or tuning. **Gameplay must not change in this phase.**
+**STATUS: WAITING FOR THE OWNER.** The owner answers the questions below before anything is built. No task starts
+until the coordinator relays the answers; then the answers go into `docs/VISION.md` and the "Owner answers" section
+here, and the plan is adjusted where an answer is not the recommended option.
 
-Format: `ID | task | owner role | files | done when | depends on`
+Scope (from `docs/VISION.md`, rows "Campaign: city rule" to "Finale", Game length, Difficulty, Phase 5 roadmap):
+- Title screen: Road Trip (start / continue), Quick Game (today's single game with level and court), Settings
+  (music, sound volume, default level), Crew & Credits (your crew and stats; art and music credits).
+- Pause screen: a pause button in a top corner; Resume / Restart / Quit (to the title or the trip map), music on/off,
+  sound volume, current score and a few stats for both teams.
+- Trip map: pixel USA map, 8 city pins, the van drives along the road, trophies on beaten cities.
+- City data: court look, music, game length by trip stage (11 / 15 / 21), the city crew (2 good + 1 boss + average
+  fillers), ratings per trip stage, play style. The 3-game city rule (game 1: 1 good + 2 average; game 2: 2 good +
+  1 average; game 3: 2 good + boss), retry on a loss with no penalty.
+- After a city: stat points (from wins) spent on Speed, Shooting, Finishing, Defense, Stamina for any player;
+  recruit one of the crew's good players or the boss onto the bench.
+- Roster: the 3 underdogs + recruits; a lineup screen picks 3 starters before each game.
+- Auto-save after every game (one trip, `user://`, survives web reloads; "New trip" asks to confirm).
+- Story scenes: big pixel portraits + text box, tap to advance, data-driven; before/after each city and key moments.
+- New York finale: a knockout bracket (quarterfinal, semifinal, final), the final against the champions with a
+  special boss, then an ending scene.
+- **Proven end to end with Hometown and Chicago** and a **stub tournament**. The other 5 cities are pins on the map
+  marked "coming soon" (skipped by the route in this build). Placeholder story text. Phase 6 builds the real content
+  (courts, twists, story, the other crews).
 
-Rules for every task in this phase:
-- Godot 4.3 compatible; no `:=` with an untyped right side (`game.x`, `min`/`max`/`clamp`); use an explicit type or
-  `minf`/`maxf`/`clampf`. Tuning constants go at the top of the script they belong to, with a comment. Touch first:
-  joystick + A (orange) + B (blue) during play, no new in-game buttons. No new `.tscn` scenes: new scripts are built
-  in code (`view.gd`, `court_looks.gd`). Nearest filtering stays on (pixel art).
+Not in scope: new courts (Hometown and Chicago use the existing looks as placeholders: Hometown = blacktop,
+Chicago = gym; the music already exists: `hometown.ogg`, `chicago.ogg`, `newyork.ogg`), city twists, boss special
+moves (Phase 6 if the owner wants them, Q3), left-handed layout and How to Play (Phase 7), new gameplay or tuning of
+Quick Game.
+
+Format: `ID | task | owner role | files | done when | depends on | blocked by owner questions`
+
+## Rules for every task in this phase
+- Godot 4.3 compatible; no `:=` with an untyped right side (`game.x`, `Flow.match.get(...)`, `JSON.parse_string()`,
+  `min`/`max`/`clamp`); use an explicit type or `minf`/`maxf`/`clampf`. Tuning constants at the top of the script they
+  belong to, with a comment.
+- **Touch first.** Every screen is used by tapping big buttons (at least 200 x 110 px at the 1280x720 base, like
+  menu.gd). During play the only new control is the pause button. Keyboard is for desktop tests only.
+- **No new `.tscn` scenes.** `main.tscn` stays the only scene; screens are built in code (see Scene flow).
 - A task touches only the files listed. If it needs another file, stop and tell the coordinator.
-- **Drawing only.** No task may change how the simulation moves, decides or scores: `position`, `velocity`, `z`,
-  `jump_z`, `facing` and every timer keep their meaning and values. Visual-only values (heights, sort keys, frame
-  numbers) are computed from them, never written back.
-- **Two view modes until P4-11.** `View.mode` is `FLAT` (today's top-down look, the identity projection) by default
-  and `ANGLED` with the test flag `--view angled`. Every task must look right in both modes and merge in FLAT, so the
-  dev branch always plays like today. P4-11 makes ANGLED the default.
-- Each design choice the owner hasn't made yet is a **constant** with the recommended option as its default.
-- Assets: CC0 or CC-BY only (no CC-BY-SA, no OGA-BY, no GPL). Every new file in `assets/` gets a `CREDITS.md` row in
-  the same task (generated art: "Original, made for this project", with the generator script). Web build budget:
-  `index.pck` under 12 MB (it is 0.27 MB now; the engine `.wasm` is the other ~35 MB and doesn't change).
-- Tests: `--quit-after 120000` as in CLAUDE.md. Every gameplay task runs 3 `--autoplay` + 1 `--humantest` in FLAT
-  and the same in `--view angled`, all reaching `FINAL` with no script errors, plus screenshots (`--shots`) in both
-  modes. Report final score, shots and `GAME LENGTH` per game.
+- **Quick Game and the tests stay exactly as today.** With no trip match (`Flow.match` empty) the game builds today's
+  BLUE vs RED with today's sheets and ratings; every new rating is 50 there, and rating 50 gives multiplier 1.0
+  exactly. `--autoplay`, `--humantest`, `--shots`, `--menushot` skip the title and play as now. P5-16 checks it
+  against the P5-00 baseline.
+- Data the owner may edit on the tablet (cities, crews, story text) lives in plain GDScript `const` dictionaries with
+  comments, never in code paths.
+- Each design choice the owner hasn't made is a **constant** with the recommended option as its default.
+- Assets: CC0 or CC-BY only; generated art is "Original, made for this project" in `CREDITS.md` with its generator
+  script. Web budget: `index.pck` under 12 MB (4.07 MB now). Player sheets are written as indexed-palette PNGs if
+  that is smaller (P5-A1 measures).
+- Tests: every gameplay task runs 3 `--autoplay` + 1 `--humantest` (all reach `FINAL`, no script errors); every
+  screen task also runs `--trip-test` once it exists (P5-15) and the screenshot mode for its screen.
 
 ## Shared contract (names fixed now so parallel tasks can call each other)
 
-`scripts/view.gd` (new, P4-01; `extends RefCounted`, used through `const View = preload("res://scripts/view.gd")`,
-static functions only, no instance):
-- `const FLAT := 0`, `const ANGLED := 1`, `static var mode := FLAT` (set from `--view flat|angled` by main.gd;
-  P4-11 changes the default). `static func angled() -> bool`.
-- Constants (tuning, top of the file): `TILT_Y` (court depth on screen as a fraction of its true depth, start 0.55),
-  `PERSPECTIVE` (0 = parallel, a small value narrows the far side; start 0.0, P4-11 tries 0.1-0.2),
-  `HEIGHT_SCALE` (screen pixels per sim pixel of height, start 1.0), `RIM_Z := 10.0 * 12` (rim height in sim pixels,
-  10 ft), `SIDE_FLIP := false` (Q2 b: view from the other sideline after the switch).
-- `static func to_screen(p: Vector2, h := 0.0) -> Vector2`: sim floor point `p` (pixels) at height `h` (sim pixels,
-  like `ball.z` and `jump_z`) to canvas pixels. FLAT: `p - Vector2(0, h)` (today's drawing).
-- `static func to_floor(s: Vector2) -> Vector2`: the inverse at `h = 0`.
-- `static func size_at(p: Vector2) -> float`: sprite scale at `p` (1.0 without perspective).
-- `static func stick_to_world(v: Vector2) -> Vector2`: a stick vector in screen terms (up = toward the far sideline
-  as seen on screen) to the sim direction that looks like that on screen, **same length** (so speed and turbo don't
-  change). FLAT: identity. `static func world_to_stick(v: Vector2) -> Vector2`: the inverse (humantest's thumb).
-- `static func screen_angle(p: Vector2, world_angle: float) -> float`: a sim facing angle as seen on screen at `p`
-  (sprite direction choice).
+### Scene flow
+`main.tscn` is still one Node2D with `main.gd`. Moving between screens = `Flow.go(screen)`, which sets
+`Flow.screen` and calls `get_tree().reload_current_scene()` (deferred), the same trick menu.gd uses today. In
+`_ready()`, main.gd checks `Flow.screen` first: `"game"` builds the game as today (with `Flow.match`, see below);
+anything else hands over to `Flow.build_screen(self)`, which adds that screen's node (a CanvasLayer built in code)
+plus its own `audio.gd` instance for the menu music, and returns without building the court.
 
-Layers (created in `main._ready()` by P4-01; all are Node2D children of main):
-- `game.floor_layer` z -10: the court floor instance (court.gd, `draw_rims = false`).
-- `game.decals` z -5: things lying on the floor under everyone: shadows, team rings, fire rings, dust, the steal cue.
-- `game.world` z 0, `y_sort_enabled = true`: every upright thing. Each child's `position` is its **projected floor
-  point** (`View.to_screen(sim_pos, 0)`) and it draws its height offset itself, so Godot's y-sort is the depth sort.
-- `game.overlay` z 30: the CALL cue, the human's arrow, stamina bar and shot meter (always on top, never sorted).
-- `game.fx` z 50 (as today): popups. `fx.popup(text, world_pos, ...)` keeps its signature; fx projects `world_pos`.
-- HUD (CanvasLayer), touch controls and the menu: unchanged.
-- Sim nodes (players, ball) stay where they are and keep `position` as the sim position, but stop drawing in their
-  own transform: each one creates its view node(s) in `game.world` / `game.decals` / `game.overlay` and updates them
-  after its own update each frame.
+```
+title --Road Trip--> (new trip: story "trip_start") --> map
+map --GO--> story "<city>_arrive" (first visit) --> lineup --> game --> result
+result: lost -> lineup (retry the same game)  |  won, games left -> lineup (next game)
+        won game 3 -> story "<city>_won" -> points -> recruit -> map (van drives to the next city)
+map at New York -> story "final_before" -> bracket -> lineup -> game -> result -> bracket ... final won -> story "ending" -> title
+title --Quick Game--> game (today's start panel: level, court, music) ; game-over panel gets a TITLE button
+any game --pause--> Quit -> title (Quick Game) or map (trip)
+```
 
-Hoops (P4-07, `court.gd`): per hoop `i` three nodes in `game.world`: the pole and backboard (sort y = hoop screen y minus 3), the back half of the rim (minus 1), the front half of the
-rim and the net (plus 1). `swish(i, k)` keeps its signature. `func hoop_sort_y(i: int) -> float` returns the hoop's screen y. The ball (P4-10) sets its sort y to
-exactly `hoop_sort_y(i)` while it is within `BALL_RIM_SORT_FT` of the rim in the air, so it draws behind the front of
-the rim and the net and in front of the backboard.
+`scripts/flow.gd` (P5-01; `extends RefCounted`, static only, used through
+`const Flow = preload("res://scripts/flow.gd")`):
+- `static var screen := "title"`; names: `"title"`, `"settings"`, `"crew"`, `"map"`, `"story"`, `"lineup"`,
+  `"game"`, `"result"`, `"points"`, `"recruit"`, `"bracket"`.
+- `const SCREENS := {name: "res://scripts/<file>.gd"}`: title.gd (title, settings, crew), trip_map.gd, story.gd,
+  lineup.gd, after_game.gd (result, points), recruit.gd, bracket.gd. A missing script shows a plain "screen not
+  built yet: BACK" panel, so the flow runs before every screen exists.
+- `static func go(to: String, args := {}) -> void`; `static var args := {}` (e.g. story: `{"scene": "hometown_arrive",
+  "then": "lineup"}`).
+- `static var match := {}`: the next game (format below); `{}` = Quick Game / tests.
+- `static var last_result := {}`: `{"won": bool, "score": [a, b], "stats": {...}}`, set by main.gd at game over in
+  a trip game.
+- `static func game_finished(winner: int, score: Array, stats: Dictionary) -> void`: main.gd calls it
+  `RESULT_DELAY` s (2.5) after a trip game ends; it fills `last_result`, asks Trip to record it and save, then
+  `go("result")`.
+- `static var test := ""`: `"trip"` under `--trip-test`; flow then loads `trip_test.gd` (P5-15) if present.
+- Every screen script implements `func auto_step() -> bool`: take the default choice (first city, first option,
+  keep the lineup, spend points on the lowest stat of the first player, recruit the first candidate, advance the
+  story one line); returns false when there is nothing to do. The trip test calls it; nothing else does.
 
-Heights (visual only): the sim treats the rim as height 0 at the end of a shot and uses small jump heights
-(`DUNK_JUMP_PX` 30). The views map them: `ball.gd` draws a shot rising to `View.RIM_Z` at the hoop and a rim
-rebound falling from there, a made shot dropping through the net; `player.gd` scales a dunk or alley-oop jump so the
-hands reach the rim (constant `DUNK_VIEW_LIFT`). Held ball: drawn at the holder's hand height in screen space.
+### Match config (`Flow.match`, built by `trip.gd`, read by main.gd and player.gd)
+```
+{
+  "mode": "trip",                       # absent or {} = Quick Game
+  "label": "HOMETOWN - GAME 2 OF 3",    # shown at tip-off instead of "FIRST TO 21"
+  "target": 11,                         # rules.target (side switch at (target + 1) / 2, as --target does)
+  "look": "blacktop", "music": "hometown",
+  "level": "normal",                    # Difficulty for team 1 in this game (Q4); "" = the saved level
+  "teams": [
+    {"name": "BARN BURNERS", "style": "", "players": [P, P, P]},   # team 0: your 3 starters, starter 0 = human
+    {"name": "COUNTY LINE", "style": "inside", "players": [P, P, P]}
+  ]
+}
+P = {"id": "ud_deuce", "name": "DEUCE", "sheet": "ud_deuce",
+     "ratings": {"speed": 55, "shooting": 62, "finishing": 50, "defense": 48, "stamina": 50,
+                 "steal": 60, "block": 40}}
+```
+`steal` and `block` are derived by trip.gd: `clampi(defense + steal_bias, 0, 100)` (same for block), where the
+biases are per player in `cities.gd` (Quick Game keeps today's `RATINGS_BY_INDEX` values).
 
-Player sprite sheets (P4-03 makes them, P4-06 plays them; layout fixed here):
-- One PNG per player: `assets/players/<id>.png`, ids `blue_1`, `blue_2`, `blue_3`, `red_1`, `red_2`, `red_3`
-  (index 0-2 in the team = `_1`-`_3`). Frame 40 x 64 px, feet on row 59, character about 24 x 40, no ball and no
-  ring baked in (the ball and the team ring are drawn in code). Drawn at 2x (`PLAYER_SCALE := 2.0` in player.gd).
-- 5 rows = drawn directions: 0 S (facing the camera), 1 SE, 2 E, 3 NE, 4 N (back to the camera). SW, W, NW are
-  rows 1, 2, 3 mirrored (`flip_h`). E = +x on screen.
-- 37 columns, animations in this order (start column, frames): idle 0 (2), run 2 (6), dribble 8 (4), shoot 12 (4),
-  dunk 16 (5), layup 21 (3), block 24 (3), poke 27 (2), stumble 29 (2), pass 31 (2), celebrate 33 (4).
-  Sheet size 1480 x 320. Free throw = shoot; pump fake = shoot frames 0-1 and back; crossover = dribble, faster
-  and leaning; alley-oop = dunk. The 6 VISION animations plus layup, poke, stumble and pass, which the game shows now.
-- A missing sheet must not break the game: player.gd falls back to today's Kenney texture.
+### Ratings and how each stat maps onto the gameplay (`scripts/ratings.gd`, P5-01; static only)
+All ratings 0-100, 50 = average = today's players. `f = (rating - 50) / 50` (-1..+1). Constants at the top of
+ratings.gd (starting values; P5-16 checks the spread, Phase 6 tunes):
+
+| Stat | Where it acts (existing constants) | Formula | Range at 0 / 100 |
+|---|---|---|---|
+| Speed | player `speed` (170 px/s), so turbo, defense and rim moves scale with it | `speed * (1 + SPEED_SPAN * f)`, SPEED_SPAN 0.08 | 156 / 184 px/s |
+| Shooting | jump shots: `main.shot_probability()` result; free throws: `FT_BASE` | `x (1 + SHOOT_SPAN * f)`, SHOOT_SPAN 0.15 | x0.85 / x1.15 |
+| Finishing | `DUNK_OPEN_PCT`, `LAYUP_OPEN_PCT`; and `DUNK_SPEED_FRAC` (good finishers dunk at a lower speed) | `pct x (1 + FINISH_SPAN * f)`, FINISH_SPAN 0.12; `frac - DUNK_EASE * f`, DUNK_EASE 0.05 | x0.88 / x1.12; 0.75 / 0.65 |
+| Defense | the existing `steal` and `block` ratings (steal chance, block chance, CPU poke/jump spans), via the biases | `steal = defense + steal_bias`, `block = defense + block_bias` | as today's rating code |
+| Stamina | `STAMINA_DRAIN`, `STAMINA_REFILL` | `drain x (1 - STAM_SPAN * f)`, `refill x (1 + STAM_SPAN * f)`, STAM_SPAN 0.25 | drain x1.25 / x0.75 |
+
+Functions: `static func mult(stat: String, rating: int) -> float` and the named helpers
+`speed_px(base, r)`, `shot_mult(r)`, `finish_mult(r)`, `dunk_speed_frac(base, r)`, `stamina_drain(base, r)`,
+`stamina_refill(base, r)`. The human's shot meter and timing windows are untouched (skill over dice): ratings only
+move the odds. Ratings act on both teams and **do not depend on the difficulty level**; the level stays what it is
+today (CPU sharpness for team 1 only, `difficulty.gd`).
+
+Play style (team 1 only): `ratings.gd` `const STYLES := {"inside": {...}, "outside": {...}, "balanced": {}}`, each a
+small table of multipliers on CPU tendency keys (`three_chance`, `pullup_chance`, `lob_chance`, `cut_chance`,
+`kick_chance`, `poke_chance`, `help_side`). `Difficulty.value(team, key, hard)` multiplies by
+`Ratings.style_mult(team_style, key)` after the level rule, so every existing call site gets it; P5-03 routes the
+five offense constants (`CPU_THREE_CHANCE`, `CPU_PULLUP_CHANCE`, `CPU_LOB_CHANCE`, `CPU_CUT_CHANCE`,
+`CPU_KICK_CHANCE`) through `Difficulty.value` too (same value with no style, so Quick Game is unchanged).
+
+### City and crew data (`scripts/cities.gd`, P5-04; `const` data only, plus tiny getters)
+```
+const ROUTE := ["hometown", "chicago", "memphis", "new_orleans", "denver", "seattle", "los_angeles", "new_york"]
+const STAGE_AVG := {1: 40, 2: 45, 3: 50, 4: 54, 5: 58, 6: 62, 7: 66, 8: 70}   # average player per stage (Q3)
+const TIER := {"avg": {"all": 0}, "good": {"all": 4, "spec": 12}, "boss": {"all": 20, "spec": 25}}   # Q3
+const CITIES := {
+  "hometown": {"name": "HOMETOWN", "state": "Indiana", "stage": 1, "target": 11, "look": "blacktop",
+               "music": "hometown", "twist": "none", "built": true,
+               "crew": {"name": "COUNTY LINE", "style": "balanced", "colors": "GREEN",
+                        "good": ["ht_g1", "ht_g2"], "boss": "ht_boss", "avg": ["ht_a1", "ht_a2"]},
+               "story": {"arrive": "hometown_arrive", "won": "hometown_won"}},
+  "memphis": {"name": "MEMPHIS", "stage": 3, "built": false, ...},   # pin only in Phase 5
+  "new_york": {... "tournament": true, "rounds": [...]} }
+const PLAYERS := {
+  "ud_deuce": {"name": "DEUCE", "sheet": "ud_deuce", "portrait": "ud_deuce", "role": "shooter",
+               "tier": "start", "ratings": {...}, "steal_bias": 10, "block_bias": -10, "bio": "..."},
+  "ht_g1": {"name": "...", "sheet": "ht_g1", "portrait": "ht_g1", "tier": "good", "spec": ["shooting", "speed"],
+            "steal_bias": 0, "block_bias": 0, "recruitable": true}, ... }
+const START_CREW := ["ud_deuce", "ud_jojo", "ud_tank"]
+const CREW_NAME := "BARN BURNERS"; const VAN_NAME := "OLD BLUE"   # Q2
+```
+City-crew ratings are computed by trip.gd: `STAGE_AVG[stage] + TIER[tier].all` on every stat, plus `spec` on the
+player's specialty stats. A recruit keeps the ratings he had when he joined (stat points raise them later).
+Game lengths are data (`target` per city, Q8). The tournament entry lists its rounds: crew, target, and the final's
+boss (`ny_boss`).
+
+### Save format (`user://trip.json`, `scripts/save.gd`, P5-05)
+```
+{"version": 1, "level": "normal", "city": "chicago", "game": 1, "beaten": ["hometown"],
+ "points": 4, "roster": [{"id": "ud_deuce", "ratings": {...}}, ...], "starters": ["ud_deuce", "ud_jojo", "ud_tank"],
+ "human": "ud_deuce", "bracket": {"round": 0}, "seen": ["trip_start", "hometown_arrive"],
+ "record": {"wins": 5, "losses": 1}, "phase": "map"}   # phase = where Continue resumes: map/points/recruit/bracket
+```
+Written with `FileAccess` + `JSON.stringify` to a temp file, then renamed (no half-written save). Saved after every
+game and after every choice (points spent, recruit, lineup). A game in progress is never saved: Continue after a
+quit or reload starts that game again at 0-0. A missing or broken file = no trip (Continue hidden). Test runs use
+`user://trip_test.json` so they never touch the owner's save. Settings stay in `user://settings.cfg`.
+
+### Story script format (`scripts/story_text.gd`, P5-10; `const` data only)
+```
+const SCENES := {
+  "trip_start": [
+    {"who": "ud_jojo", "side": "left", "text": "Placeholder: Jojo shows the tournament flyer."},
+    {"who": "ud_deuce", "side": "right", "text": "Placeholder: Deuce says yes.", "mood": ""},
+  ],
+  "hometown_arrive": [...], "hometown_won": [...], "chicago_arrive": [...], "chicago_won": [...],
+  "first_loss": [...], "final_before": [...], "ending": [...],
+}
+```
+`who` is a `PLAYERS` id (portrait and name from cities.gd) or `"narrator"` (no portrait). `{crew}`, `{van}`,
+`{city}` in the text are replaced. Tap anywhere = next line (the first tap finishes the typing). A SKIP button skips
+the scene. Seen scenes are remembered in the save (shown once; the "first_loss" scene only the first time).
+
+### Art (art-audio, generated by scripts in `tools/art/`)
+- Player sheets: same layout as Phase 4 (`assets/players/<id>.png`, 1480 x 320, 40 x 64 frames). player.gd loads
+  `assets/players/<P.sheet>.png`, falling back to today's `blue_n`/`red_n` when the file is missing. Ids: `ud_deuce`,
+  `ud_jojo`, `ud_tank`; city crews `<city>_g1`, `<city>_g2`, `<city>_boss`, `<city>_a1`, `<city>_a2` (`ht_`, `chi_`);
+  `ny_boss`. Recruits in your colors (Q11 a): `<id>_crew.png`, used when he plays for you.
+- Portraits: `assets/portraits/<id>.png`, 96 x 112 source px, drawn at 3x, facing right (story.gd mirrors for the
+  right side), large bust in the approved fighting-game style, made from the same crews.json parts. Missing file =
+  a colored silhouette.
+- Map: `assets/map/usa.png` 640 x 360 (drawn 2x), `assets/map/map.json`:
+  `{"cities": {"hometown": [x, y], ...}, "roads": {"hometown>chicago": [[x, y], ...], ...}}` (source px);
+  `van.png` (2 frames x facing left/right, 48 x 32 each), `pin.png`, `pin_done.png` (trophy), `pin_locked.png`.
+  Missing files = drawn shapes (outline rectangle, circles, a box van).
 
 ## Risks and how this plan handles them
-- **Gameplay drift.** All work is drawing; FLAT mode keeps the old look on the dev branch; P4-00 measures a
-  100-game baseline now and P4-12 repeats it on the final build (each stat within 2 standard errors). Autoplay doesn't
-  touch the stick, so a drift there means a drawing task wrote to sim state.
-- **Joystick in a foreshortened view.** One mapping function (`View.stick_to_world`, same length), applied in
-  main.gd before the stick reaches `human_input` and the players; the humantest thumb goes through the inverse.
-  P4-12 compares human steals, blocks, crossovers and defensive-assist use between FLAT and ANGLED humantests and
-  plays it by hand in Chromium with touch emulation.
-- **Depth sorting** of ball vs players vs rims vs backboard: y-sorted `game.world` plus the rim sort rule above.
-  P4-12 screenshots a made shot, a rim-out and a dunk at each hoop.
-- **The far sideline.** Players on the far sideline are small and high on screen, the near sideline is under the
-  thumbs. Camera framing constants (P4-01) plus Q1 and Q3; P4-12 checks 1280x720 and 1280x800 (stretch `expand`
-  shows more court on 16:10) with a player on each sideline and in each corner.
-- **Heights** (rim at 10 ft but the sim's shot ends at height 0): visual-only mapping (see Heights); QA checks
-  shots, rebounds and dunks look like they go through the rim.
-- **Sheet and build size:** 6 sheets of 1480 x 320 (well under the 2048 px WebGL limit), budget 1 MB for all player
-  art; music as mono Ogg Vorbis about q3, 1-2 MB per track; `index.pck` under 12 MB.
-- **Tablet performance:** about 15 sorted nodes; the court floor is drawn once (not every frame), nets redraw only
-  while animating. `--fps` (P4-01) prints the frame rate; P4-12 measures it in Chromium (target 55+ fps at
-  1280x800 with 4x CPU throttle) and reports draw calls from the Godot monitor.
-- **Shimmering pixels** with a non-integer camera zoom (today 1.15) and nearest filtering: P4-11 picks a zoom that
-  keeps 2x sprites crisp, or snaps sprite positions to whole pixels; P4-12 looks at a slow pan.
-- **Web audio:** browsers start sound only after the first touch; music must start (or resume) on the first tap, and
-  never play in headless tests (like audio.gd today).
+- **Quick Game drifts.** Rating 50 = multiplier 1.0, `Flow.match` empty = today's setup; P5-00 baseline (100 games)
+  vs P5-16 (100 games), each stat within 2 standard errors.
+- **Static state across reloads.** Flow/Trip keep state in `static var`s (survive `reload_current_scene`, like
+  `menu.start_done`); the save file is the truth on launch. The trip test runs a whole trip in one process and then
+  again across a restart.
+- **Web saves.** `user://` on the web is IndexedDB; P5-16 checks a save survives a page reload in Chromium, and the
+  owner checks it on the tablet.
+- **Pause with touch.** `get_tree().paused`, pause.gd and audio.gd `PROCESS_MODE_ALWAYS`; the joystick and A/B
+  release on pause, so a held finger doesn't keep running after Resume. The pause button sits outside the joystick
+  half's drag start (Q10) and is ignored during the first 0.5 s after Resume.
+- **Balance of the ramp.** Ratings change shot odds by at most about 15%. `--autoplay --city <id> --cgame N` measures
+  each city game's win share (40 games each); target for Phase 5 only: game 1 easier than game 3, no city game
+  below about 30% for a CPU-controlled BLUE at starting ratings on Normal. Phase 6 balances properly.
+- **Build size.** About 8 sheets per city (5 crew + 3 recruit recolors) at ~100 KB: ~0.9 MB per city, ~7 MB for
+  the whole trip by Phase 6. P5-A1 tries indexed PNGs; P5-16 reports `index.pck`.
+- **Tablet editing.** Data files are `const` dictionaries with comments; a typo shows as a parse error in the
+  Godot editor right away (better than a silent JSON error).
 
-## Owner questions (to ask now; answers go here and in `docs/VISION.md`)
-- **Q1 Camera framing.** (a) Follow the ball left and right, zoomed in so about two thirds of the court length shows
-  and both sidelines are always on screen (recommended: bigger players, classic arcade feel); (b) the whole court
-  always on screen, no camera movement (smaller players); (c) closer still, following the ball both ways (biggest
-  players, the far sideline sometimes off screen). How steep the angle looks is judged at the check-in.
-- **Q2 Side switch at 11.** (a) The camera stays on the same sideline; after the switch BLUE attacks to the left, as
-  today (recommended); (b) the view swings to the other sideline so BLUE always attacks to the right.
-- **Q3 Behind the far sideline.** (a) A strip of scenery that fits the court: bleachers with a crowd in the gym, a
-  fence and street in the blacktop (recommended); (b) a plain dark border, like today.
-- **Q4 Trying the two courts before the trip map exists.** (a) A COURT button on the start and game-over panels
-  switches Gym / Blacktop, and the music follows the court (recommended); (b) the court changes every game by itself;
-  (c) only the gym for now (the blacktop stays in the files for Phase 5).
-- **Q5 Music during games.** (a) Menu music on the panels, the court's track softly during play, and a MUSIC ON/OFF
-  button on the start and game-over panels (recommended); (b) music on the panels only, crowd and effects during play;
-  (c) music everywhere, no on/off button until the Phase 7 settings.
+## Owner questions (to answer now, before anything is built)
+Answer with the letter; (a) is the recommendation each time. Answers go here and into `docs/VISION.md`.
 
-## Owner answers (2026-11-16, also in docs/VISION.md): every question got the recommended option
-- Q1 camera: follow the ball, ~2/3 of the court length, both sidelines always visible.
-- Q2 side switch: the camera stays (BLUE attacks left after the switch).
-- Q3 behind the far sideline: court scenery (gym bleachers + crowd; blacktop fence + street).
-- Q4 trying courts: COURT button on the start/game-over panels (Gym / Blacktop); music follows the court.
-- Q5 music: menu music on the panels, the court's track softly in game, MUSIC ON/OFF on the panels (remembered).
+### Round 1: your crew and the opponents
+- **Q1 The 3 starting underdogs** (all from Hometown, Indiana; team colors blue and gold, VISION art style:
+  muscular arcade builds, bold outlines; your team's ring stays blue):
+  - **Deuce Carter**, #2, shooting wing and leader. Long and lean, deep brown skin, white headband over short
+    hair, blue tank top with gold trim, a navy arm sleeve, knee-length shorts. Calm and proud. *Hometown's old
+    high-school star; a knee injury cost him his college offer, and this trip is his second shot.*
+  - **Jojo Reyes**, #5, quick point guard. Slim, tan skin, backwards gold cap, long blue tee, long shorts, a leg
+    sleeve. Loud, funny, never stops talking. *Works nights at his uncle's gas station, where he found the
+    tournament flyer and talked the others into going.*
+  - **Tobias "Tank" Lind**, #9, big man (finishing and defense). Wide and heavy, light skin, red-brown buzz cut
+    and a short beard, sleeveless navy hoodie, gold shorts. Quiet gentle giant. *A farm kid who learned to play on
+    the barn driveway hoop and fixed up the van in his family's barn.*
+
+  (a) These three as written. (b) These three, but I'll change some names or looks (tell us which).
+  (c) Make it a mixed crew: Jojo becomes a woman guard, "Jo Reyes" (the art tool needs a new body type first).
+  (d) Propose a completely different set.
+- **Q2 Crew name and van name.** (a) The crew is the "Barn Burners", the van is "Old Blue". (b) The crew is the
+  "Cornfield Kings", the van is "The Biscuit". (c) I'll name them myself.
+- **Q3 How good players, average players and bosses differ.** Ratings are 0-100 (today's players are all 50).
+  (a) Average players match the trip stage (about 40 in Hometown, rising to 70 in New York); good players are a
+  little better overall and much better (+12) in two specialties; the boss is much better at everything (+20).
+  No special moves, they are simply better. (b) Like (a), and each boss also gets one special move (for example
+  an unstoppable dunk), built in Phase 6. (c) Bigger gaps: good players +20 in their specialties, bosses +30.
+- **Q4 Easy / Normal / Hard on the trip.** (a) Pick the level when you start a trip; you can change it any time in
+  Settings; it makes the opponents sharper or sloppier on top of the cities getting harder. (b) No level on the
+  trip: the cities alone set the difficulty (the level is for Quick Game only). (c) Pick it when you start a trip,
+  and it can't be changed for that trip.
+
+### Round 2: progress and the trip
+- **Q5 Stat points.** (a) 2 points per win (6 per city; a loss costs nothing); each point adds +3 to one stat of
+  one player; no stat goes above 90. (b) 1 point per win; each point adds +5; cap 90. (c) Like (a), plus 3 bonus
+  points for beating each city's boss.
+- **Q6 How much story per city.** (a) One short scene when you arrive (4-6 lines) and one after you beat the city
+  (3-5 lines), plus the trip start, your first loss, before the final, and the ending. (b) Only the arrival scene,
+  plus the trip start and the ending. (c) Like (a), plus one line from the opponent before every game.
+- **Q7 Moving on the trip map.** (a) The route is fixed; tap GO and the van drives to the next city; beaten cities
+  get a trophy and can't be replayed. (b) Fixed route, but you can also replay a beaten city just for fun (no stat
+  points). (c) You choose the order of the middle cities (Memphis to Los Angeles); the start and New York stay fixed.
+- **Q8 Game lengths and the New York tournament.** (a) Hometown, Chicago and Memphis play to 11; New Orleans and
+  Denver to 15; Seattle, Los Angeles and the tournament to 21. The tournament is 3 games (quarterfinal, semifinal,
+  final); a loss lets you replay that round. (b) Only Hometown and Chicago to 11; Memphis, New Orleans and Denver to
+  15; the rest to 21; same tournament as (a). (c) Lengths as (a), but a tournament loss sends you back to the
+  quarterfinal.
+
+### Round 3: menus and screens
+- **Q9 Quick Game.** (a) Stays as today: BLUE vs RED, pick the level and the court. (b) It also lets you play
+  with your trip crew against any crew you have beaten.
+- **Q10 The pause screen.** (a) A small pause button in the top-right corner (away from the joystick side). The
+  pause screen has a big RESUME, then RESTART and QUIT (to the title, or to the trip map in a trip game; a quit trip
+  game starts again at 0-0), MUSIC ON/OFF and a sound volume slider, and the score with points, shots made/taken,
+  dunks, steals and blocks for both teams. (b) The same, with the button in the top-left corner. (c) The same,
+  but no stats, just the score.
+- **Q11 How opponents look, and names on screen.** (a) Your crew always wears blue and gold; each city crew wears
+  its own colors, but the ring under them is always red so you can tell who's who; a recruit changes into your
+  colors; the top bar shows the crew names instead of BLUE and RED. (b) Opponents always wear red, recruits keep
+  their old colors, and the top bar keeps BLUE and RED.
+
+## Owner answers
+(none yet)
 
 ## Todo
 
-### Wave 1: can start now (no owner answers needed)
+### Wave 1: after the owner's answers
+- **P5-00** | Baseline: 100 `--autoplay` games + 6 `--humantest` on the current dev build (stats table as in
+  `docs/qa/phase4.md` section 2), and `index.pck` size | qa | `docs/qa/phase5-baseline.md` | the table is written
+  and the commit is recorded | - | none
+- **P5-01** | Core contract code: `flow.gd` (screens, `go`, `match`, `last_result`, `game_finished`, `build_screen`
+  with the "not built yet" fallback panel, `--trip-test` loading `trip_test.gd` if present, `auto_step` rule),
+  `ratings.gd` (stat formulas and STYLES as in the contract, `self_test()` printing the table, run with
+  `-- --ratingtest`), `ui_kit.gd` (shared big button, panel, title label, text box and slider styles, taken from
+  menu.gd's look, so all screens match) | gameplay A | `scripts/flow.gd`, `scripts/ratings.gd`, `scripts/ui_kit.gd`
+  (new) | the three files parse in 4.3; `--ratingtest` shows 1.0 at rating 50 for every stat; nothing calls them yet,
+  so autoplay is unchanged | - | none
+- **P5-02** | main.gd hooks (small, early): screen hand-off at the top of `_ready()` (tests skip it); read
+  `Flow.match` (target, look, music, level, team names, per-player sheet and ratings passed to `player.setup()`,
+  the human starts on starter 0, tip-off label); shooting rating in `shot_probability()` and the free-throw chance;
+  per-team counters the pause screen needs (`shots_t`, `makes_t`, `steals_t`); trip game over -> FINAL message, then
+  `Flow.game_finished()` after `RESULT_DELAY`; add `pause.gd` to the HUD if the file exists; `--city <id>
+  --cgame N` test flags (autoplay a trip matchup built by `Trip.match_for()` if trip.gd exists) | gameplay A |
+  `scripts/main.gd` | with `Flow.match` empty: 3 autoplay + 1 humantest look like today; a hand-built test match
+  (constant in the flag code) plays to 11 with the given names and sheets; no title in the test modes | P5-01 | Q11
+  (names in the top bar; (b) = keep BLUE/RED)
+- **P5-03** | player.gd + difficulty.gd: `setup()` takes an optional player dict (sheet path with fallback, ratings
+  incl. speed/finishing/stamina, steal/block); speed, stamina drain/refill, dunk/layup make and dunk speed through
+  `Ratings`; route the 5 CPU offense constants through `Difficulty.value`; `Difficulty.value` applies the team's
+  style; the trip level from `Flow.match.level` | gameplay B | `scripts/player.gd`, `scripts/difficulty.gd` | Quick
+  Game identical (rating 50, no style; 3 autoplay + humantest in range); a test match with all ratings 80 vs 20
+  wins clearly (5 games); no `:=` on untyped values | P5-01 | Q4
+- **P5-04** | City data: the 8-city ROUTE, STAGE_AVG, TIER, Hometown and Chicago complete (crews with names, roles,
+  specialties, style, colors, targets, looks, music, story ids), the other 5 as `built: false` pins, the New York
+  tournament stub (3 rounds: two stub crews reusing existing sheets and the champions with `ny_boss`), START_CREW
+  and the 3 underdogs, CREW_NAME, VAN_NAME; placeholder names marked `# placeholder (Phase 6)` | gameplay B |
+  `scripts/cities.gd` (new) | parses in 4.3; every id it names exists in PLAYERS; the full lineup print comes with
+  P5-05's `--triptest-data` | P5-01 | Q1, Q2, Q3, Q8, Q11
+- **P5-A1** | Player sheets from the generator: 3 underdogs, Hometown crew (5), Chicago crew (5), `ny_boss`, and the
+  `_crew` recolors of the 6 recruitable Hometown/Chicago players (Q11 a); new palettes (GOLD, city colors) in
+  crews.json; indexed PNG output if smaller; previews in `docs/art/`; CREDITS rows | art-audio |
+  `tools/art/crews.json`, `tools/art/make_players.py`, `assets/players/*`, `docs/art/*`, `CREDITS.md` | sheets load in
+  game (test match through `--city hometown --cgame 3 --shots`), look right in a screenshot, size per sheet reported
+  | - | Q1, Q2, Q11
 
-**P4-00 | Gameplay baseline before the view change | qa | `docs/qa/phase4-baseline.md` (report only)**
-- On the current dev branch: 100 `--autoplay` games (Hard) and 3 `--humantest`. Table of means and standard errors:
-  final scores, shots, FG%, 2s, `GAME LENGTH`, steals/blocks per 60 shots, fouls, free throws, OOB, lobs,
-  interceptions, crossover beats, fake bites, shot-clock violations, BLUE win share; human counters from humantest.
-  Also the web build `index.pck` size and an fps reading in Chromium (Playwright, 1280x800, touch emulation).
-- Done when: the report has the table and the exact commands, so P4-12 can repeat them.
-- Depends on: none.
+### Wave 2: after P5-01 and P5-02 are merged
+- **P5-05** | Trip logic and save: `trip.gd` (static state; `new_trip(level)`, `continue_trip()`, `crew_for_game(city,
+  n)` with the 1 good + 2 avg / 2 good + 1 avg / 2 good + boss rule, `match_for()` building `Flow.match`,
+  `record_result()` with retry on a loss, `award_points()`, `spend(player, stat)` with the cap, `recruit(id)`,
+  `next_city()` skipping `built: false` cities, bracket progress, `roster()`, `set_starters()`); `save.gd` (format
+  above, temp-file write, version, broken file = none); `-- --triptest-data` prints every city game's lineup and a
+  save/load round trip | gameplay A | `scripts/trip.gd`, `scripts/save.gd` (new) | the data print is right; a save
+  written, the game restarted, and the same state loaded | P5-01, P5-04 | Q3, Q4, Q5, Q7, Q8
+- **P5-06** | Title screen: ROAD TRIP (NEW TRIP / CONTINUE, "New trip" asks to confirm, level pick if Q4 a/c),
+  QUICK GAME (today's start panel), SETTINGS (music on/off, sound volume, default level), CREW & CREDITS (roster with
+  ratings and record; the CREDITS.md entries as a scrolling list in the game, kept in a const list); menu music;
+  menu.gd: a TITLE button on the Quick Game panels | gameplay B | `scripts/title.gd` (new), `scripts/menu.gd` | every
+  button works by touch in Chromium; settings remembered after a reload; Quick Game plays as today | P5-01, P5-02,
+  P5-07 (volume) | Q4, Q9
+- **P5-07** | Sound volume: `audio.set_sfx_volume(0..1)` and `sfx_volume` saved in `user://settings.cfg`, read once
+  per run | gameplay B | `scripts/audio.gd` | volume 0 silences the effects, music unaffected; remembered | P5-01 | none
+- **P5-08** | Pause screen as in the contract and Q10: button, `get_tree().paused`, RESUME / RESTART / QUIT,
+  MUSIC, volume slider, score and the stats table; releases the joystick and buttons | gameplay B | `scripts/pause.gd`
+  (new) | works in a Quick Game and a trip game; RESTART replays the same matchup; QUIT goes to the right screen; no
+  input leaks into the game while paused | P5-02, P5-07 | Q10
+- **P5-A2** | Portraits: `tools/art/make_portraits.py` (busts from the crews.json parts, approved style); first a
+  sample sheet of the 3 underdogs for the owner (the coordinator shows it; the build doesn't wait), then all
+  Hometown/Chicago crew portraits and `ny_boss` | art-audio | `tools/art/make_portraits.py` (new),
+  `assets/portraits/*`, `docs/art/*`, `CREDITS.md` | portraits load in story.gd (or a screenshot of the sample) | P5-A1
+  | Q1
+- **P5-A3** | Map art: `tools/art/make_map.py`: pixel USA map with roads between the 8 cities, `map.json`, van (with
+  the van name painted on if Q2 gives one), pins, trophy | art-audio | `tools/art/make_map.py` (new),
+  `assets/map/*`, `CREDITS.md` | the map reads at 1280x720 and 1280x800; city points match the pins | - | Q2, Q7
 
-**P4-01 | Projection core, layers, camera, stick mapping | gameplay (A) | new `scripts/view.gd`, `scripts/main.gd`**
-- `view.gd` per the contract (FLAT and ANGLED; ANGLED is a parallel tilt with `PERSPECTIVE` support).
-  `--view flat|angled` and `--fps` (prints `FPS n` every 5 s) parsed in main.gd.
-- main.gd: create `floor_layer`, `decals`, `world` (y-sorted), `overlay`; the floor court instance goes in
-  `floor_layer`, the rims instance stays as today until P4-07 replaces it. Camera follows
-  `View.to_screen(ball.position, 0)` with limits from the projected court corners plus margins; framing constants at
-  the top (`CAM_ZOOM`, `CAM_FOLLOW_X`, `CAM_FOLLOW_Y`, `CAM_MARGIN_FT`) set for Q1 (a). Stick: `_input_vector()`
-  result goes through `View.stick_to_world` before `input.update` and `p.update`; the humantest thumb (world
-  directions) goes through `View.world_to_stick`. The CALL cue and steal cue draw through `View.to_screen` (cue in
-  `overlay`, steal ring in `decals`).
-- A `--viewtest` flag prints `VIEWTEST OK` after checking `to_floor(to_screen(p)) == p` (under 0.5 px) on a grid
-  and `stick_to_world` keeps length, then quits.
-- Done when: FLAT looks like today (screenshots side by side) and 20 autoplay games match P4-00 within noise;
-  `--viewtest` passes; with `--view angled` the game runs to FINAL (players and ball still flat-drawn, that's expected),
-  the camera keeps the ball framed, and humantest's human stats are close to FLAT's.
-- Depends on: none. Merge early: wave 2 needs `view.gd`.
-
-**P4-02 | Music player | gameplay (B) | `scripts/audio.gd`**
-- `func play_music(track: String, fade := 1.0)`, `func stop_music(fade := 1.0)`, `func set_music_on(on: bool)`,
-  `var music_on := true` (saved later by the panel task). Tracks are `res://assets/music/<track>.ogg`, looping; a
-  missing file is skipped with one print (like effects). Crossfade with two players. `MUSIC_DB` (start -14 dB),
-  `MUSIC_DUCK_DB` (lower during play, Q5 a). Never plays in headless runs. Stats `music_<track>`.
-- Done when: with a test ogg the track loops and crossfades (desktop run), headless runs show no errors and no
-  leftover audio at exit; nothing calls it yet (P4-11 wires it).
-- Depends on: none.
-
-**P4-03 | Player sprite generator, part 1 | art-audio | new `tools/art/pixel3d.py`, new `tools/art/make_players.py`, new `tools/art/crews.json`, new `assets/players/*.png`, `CREDITS.md`**
-- Move the renderer of `draw_style_sample.py` (3D primitives, 4-tone shading, outlines, face stamps) into
-  `pixel3d.py` without changing its output (rerun the sample: pixel-identical), or import it from the sample
-  unchanged; `draw_style_sample.py` may only change its imports.
-- `crews.json`: one entry per player: id, crew, body type, skin, hair, face extras, outfit pieces, colors, number.
-  The 4 approved sample players plus one new player per crew built from the same parts (the owner judges them at the
-  check-in). Adding a recruit = one more entry.
-- `make_players.py` writes the 6 sheets in the contract layout: idle, run and dribble in all 5 directions now, the
-  other columns filled with idle frames (layout final, so P4-06 can integrate). A preview sheet goes to
-  `docs/art/players_preview.png` (not exported).
-- Done when: 6 sheets at 1480 x 320, transparent background, feet on row 59, run cycle reads at 2x, all under 1 MB
-  together; CREDITS row added; preview image attached to the report.
-- Depends on: none.
-
-**P4-04 | Synthesized swish and bounce | art-audio | new `tools/make_swish.py`, new `tools/make_bounce.py`, `assets/sfx/swish.ogg`, `assets/sfx/bounce.ogg`, `CREDITS.md`**
-- Like `tools/make_whistle.py`: a net swish (filtered noise burst with a soft rattle) and a basketball bounce (a
-  pitched rubber thump with a short ring), mono Ogg Vorbis, peak-normalized. Same file names, so no code changes.
-  Replace the two CREDITS rows (the Vinrax and AntumDeluge stand-ins leave).
-- Done when: both files play in the game (desktop or web run), the dribble stays soft at the -8 dB the owner set,
-  CREDITS updated, the old source files are gone.
-- Depends on: none.
-
-**P4-05 | Music tracks | art-audio | new `assets/music/*.ogg`, new `tools/make_music.sh`, `CREDITS.md`**
-- From `docs/phase4-asset-scout.md`, CC0 first: menu "Hella Bumps" (cynicmusic, CC0); gym court "Wednesday Night
-  [Funk Fusion]" (Zane Little, CC0; Memphis, the old-school gym); blacktop "Catchy Swing" (Doge, CC0; New Orleans, the
-  bayou blacktop); Hometown "Apple Cider" (Zane Little, CC0) for later. Re-read each license on its page. Mono Ogg
-  Vorbis about q3, trimmed to a clean loop, loudness matched; file names `menu`, `gym`, `blacktop`, `hometown`.
-- Done when: 3-4 tracks, together under 7 MB, loop without a click, CREDITS rows with the exact page and license.
-- Depends on: none (Q5 decides only when they play).
-
-### Wave 2: after P4-01 is merged
-
-**P4-06 | Player rendering in 3/4 | gameplay (A) | `scripts/player.gd`**
-- A view node per player in `game.world` (sprite from the player's sheet; fallback Kenney texture), positioned at
-  `View.to_screen(position, 0)` and scaled by `View.size_at`; the jump drawn as a height offset (dunk lift per
-  Heights). Direction: `View.screen_angle(position, facing)` to 8 directions (rows and `flip_h` per contract).
-  Animation per state: idle, run (speed-scaled fps), dribble (has the ball; crossover faster with lean), shoot (also
-  free throw, pump fake frames 0-1), dunk (also alley-oop), layup, block jump, poke (steal attempt), stumble (beaten,
-  off balance), pass, celebrate (scorer after a make, the winners at game over). Constants for fps per animation.
-- Shadow, team ring (soft, team colored, like the sample), fire ring and dust go to a node in `game.decals`; the
-  human's arrow, stamina bar and shot meter to a node in `game.overlay`, all through `View.to_screen`.
-- Done when: FLAT and ANGLED screenshots of all six players running, dribbling, shooting, dunking, blocking;
-  the sprite direction matches movement in all 8 directions; autoplay stats within noise; nothing in the sim reads the
-  new nodes.
-- Depends on: P4-01; P4-03 for real sheets (the fallback lets it start and merge before).
-
-**P4-07 | Court and hoops in 3/4, court looks by data | gameplay (B) | `scripts/court.gd`, new `scripts/court_looks.gd`**
-- `court_looks.gd`: `const LOOKS := {"gym": {...}, "blacktop": {...}}` with floor texture or colors, line color,
-  paint color, center logo color, apron, backdrop kind (Q3), backboard style (glass / metal), net color. `static var
-  current := "gym"`; a test flag `--court gym|blacktop` (parsed here). Plain dictionaries, easy to edit on the tablet.
-- Floor: the court drawn through `View.to_screen`: floor (texture tiled on a subdivided grid so it foreshortens),
-  lines, keys, arcs, center circle as projected polylines; the apron; the far-side backdrop strip (Q3 a, flat border
-  with Q3 b). Drawn once per look, not every frame.
-- Hoops per the contract: pole, backboard (with the square), rim back half, rim front half and the net, as three
-  y-sorted nodes per hoop in `game.world`; the net animation (`swish`) projected. FLAT keeps today's look.
-- Done when: ANGLED screenshots of both looks show both hoops, the full far sideline and the backdrop; FLAT matches
-  today; the floor isn't redrawn every frame (check with the profiler or a counter).
-- Depends on: P4-01; P4-08 for textures (flat colors until then). The backdrop waits for Q3; the rest can start.
-
-**P4-08 | Court textures, backdrops and ball art | art-audio | new `tools/art/make_courts.py`, new `assets/courts/*.png`, new `assets/ball/*.png`, `CREDITS.md`**
-- Our own pixel art in the sample's style (generated, so no attribution): a seamless wood plank tile and a blacktop
-  asphalt tile (32 x 32 or 64 x 64), backdrop strips for Q3 a (gym bleachers with a crowd, blacktop fence and street),
-  a 16 x 16 ball with 4 spin frames and a highlight. CC0 fallbacks from the scout (MonoTone or Leozlk ball; Pixel
-  Courts tiles are CC-BY 4.0) only if ours doesn't read well; record any used in CREDITS.
-- Done when: files in place, tiles seamless (a 4 x 4 tiled test image in the report), all under 0.5 MB.
-- Depends on: none for the tiles and ball; the backdrops wait for Q3.
-
-**P4-09 | Player sprite generator, part 2 | art-audio | `tools/art/make_players.py`, `tools/art/pixel3d.py`, `assets/players/*.png`**
-- The remaining animations in all 5 directions: shoot 4, dunk 5, layup 3, block 3, poke 2, stumble 2, pass 2,
-  celebrate 4, plus 2 idle frames (breathing). Celebrate uses the sample's celebrating face.
-- Done when: all 37 columns are real frames for all 6 players; preview sheet updated; still under 1 MB.
-- Depends on: P4-03.
-
-### Wave 3: needs Q1, Q2, Q4, Q5; wave 2 merged
-
-**P4-10 | Ball and effects in 3/4 | gameplay (A) | `scripts/ball.gd`, `scripts/fx.gd`**
-- Ball view in `game.world` at its projected floor point with the visual height per Heights, the rim sort rule
-  (`BALL_RIM_SORT_FT`), shadow in `game.decals` (shrinks with height), spin frames from P4-08 (Kenney ball if
-  missing). fx: popups at `View.to_screen(world_pos)`, the fire trail through `View.to_screen(pos, z)`, shake
-  unchanged. Pixel puffs for landing dust and block sparks only if they come from P4-08 or are drawn in code.
-- Done when: ANGLED screenshots: a jump shot in flight, a swish (ball behind the front rim, in front of the board),
-  a rim-out, a dunk at each hoop, a bouncing loose ball with its shadow, a popup and the fire trail; FLAT matches
-  today; autoplay stats within noise.
-- Depends on: P4-01, P4-07 (`hoop_sort_y`). Can start before the owner answers.
-
-**P4-11 | Turn the 3/4 view on; framing, panels, music | gameplay (B) | `scripts/main.gd`, `scripts/view.gd`, `scripts/menu.gd`**
-- `View.mode` default ANGLED (`--view flat` stays as a test flag). Framing constants for Q1, the side switch per Q2
-  (`SIDE_FLIP`), try `PERSPECTIVE` 0.0 vs a small value and the zoom vs pixel shimmer, and recommend one. Panels:
-  the COURT button per Q4 (sets `court_looks.current`, restarts like the level buttons, remembered in
-  `user://settings.cfg`) and MUSIC ON/OFF per Q5 (remembered); main calls `audio.play_music` for the menu and the
-  court's track (track name in the look's data or a small table in main) and starts it on the first touch on the web.
-- Done when: the default run is ANGLED with no flag; screenshots at 1280x720 and 1280x800 with players on both
-  sidelines and in the corners; panel screenshots (`--menushot`); music starts after the first tap in Chromium and the
-  choice survives a restart.
-- Depends on: P4-01, P4-02, P4-06, P4-07 (P4-10 merges in the same wave); Q1, Q2, Q4, Q5.
+### Wave 3: after P5-05 is merged (screens; each its own file, so they run in parallel)
+- **P5-09** | Trip map: map, pins (beaten = trophy, locked = grey "coming soon"), GO button, the van drives the road
+  to the next city (about 3 s, tap to skip), current city info (name, game n of 3, record, crew name), MENU button
+  back to the title | gameplay A | `scripts/trip_map.gd` (new) | works with and without P5-A3 art; `auto_step` picks GO
+  | P5-05 | Q7
+- **P5-10** | Story scenes: `story.gd` (portraits left/right, name plate, text box with typing, tap to advance, SKIP,
+  `{crew}`/`{van}`/`{city}` replace, `then` screen) and `story_text.gd` (placeholder scenes for the trip start,
+  Hometown, Chicago, first loss, before the final, the ending) | gameplay B | `scripts/story.gd`,
+  `scripts/story_text.gd` (new) | all scenes play by touch; missing portraits show silhouettes | P5-05 | Q1, Q2, Q6
+- **P5-11** | Lineup: roster cards (sprite idle frame, name, role, 5 stat bars), tap to choose 3 starters, the first
+  chosen is the one you control, the opponent's 3 shown on the right, PLAY | gameplay A | `scripts/lineup.gd` (new) |
+  works with 3 to 10 players (scrolls); remembers the last lineup | P5-05 | none
+- **P5-12** | Result and stat points: result screen (score, WIN/LOSS, game n of 3, RETRY or NEXT); points screen
+  (points left, a player picker, 5 stats with + buttons, caps shown, DONE; undo before DONE) | gameplay B |
+  `scripts/after_game.gd` (new) | loss -> retry the same game; points saved; cap enforced | P5-05 | Q5
+- **P5-13** | Recruit screen: the 3 candidates (2 good + boss) with sprite, portrait, ratings, specialty; tap one,
+  confirm; he joins the roster (in your colors if Q11 a) | gameplay A | `scripts/recruit.gd` (new) | the recruit is on
+  the roster and in the save; can't be skipped by accident | P5-05 | Q11
+- **P5-14** | Tournament bracket: the 3 rounds drawn as a bracket, current round lit, PLAY, a loss handled per Q8,
+  the final against the champions and `ny_boss`, then story "ending" -> title with the trip marked complete |
+  gameplay B | `scripts/bracket.gd` (new) | the stub bracket plays through to the ending | P5-05 | Q8
+- **P5-15** | Trip test driver: `--trip-test` (headless; uses `user://trip_test.json`) runs title -> new trip ->
+  Hometown 3 games (each `--autoplay`-style, short: `--target` wins if given) -> points -> recruit -> Chicago ->
+  tournament stub -> ending, calling `auto_step()`; `--trip-force-loss N` makes game N count as a loss (tests the
+  retry); `--trip-stop-after <city>` quits after that city; `--trip-resume` loads the save and goes on; prints
+  `TRIP ...` lines (screen, city, game, result, points, recruit, saved) and `TRIP END` or a clear error;
+  `--screens` (xvfb) screenshots every screen to `/tmp/hoops_screen_*.png` | gameplay A | `scripts/trip_test.gd`
+  (new) | the full test reaches `TRIP END` with no script errors; stop + resume continues at the right game | P5-05 (and
+  runs better as screens land) | none
+- **P5-A4** (optional) | UI sounds, synthesized like the swish: tap, van horn, stat up, recruit fanfare, story blip |
+  art-audio | `tools/` sound script, `assets/sfx/*`, `CREDITS.md` | files exist and are credited; screens play them by
+  name if present (audio.play does nothing for a missing name) | - | none
 
 ### Wave 4: everything above merged
-
-**P4-12 | Phase 4 QA | qa | `docs/qa/phase4.md` (report only; small tuning of view constants with the coordinator's OK)**
-- Gameplay unchanged: repeat P4-00 exactly (100 autoplay, 3 humantest) on the final build; every stat within 2 SE.
-  Humantest FLAT vs ANGLED human stats.
-- Visual: screenshots of both looks, both hoops, the side switch, the far and near sidelines, all four corners, a
-  dunk, a swish, a rim-out, a block, a steal, free throws, game over, at 1280x720 and 1280x800; a slow pan for
-  shimmer; ball vs rim vs backboard sorting.
-- Touch: Playwright with touch emulation: pushing "up" moves toward the far sideline on screen, diagonals look right,
-  turbo pull, flick crossover, defensive assist.
-- Web: `index.pck` size vs budget, fps at 1280x800 (also with 4x CPU throttle), load time, music after the first tap.
-- Done when: the report has the before/after table, the screenshots, size and fps, and a PASS/FAIL list.
-- Depends on: P4-04 to P4-11.
-
-**P4-13 | README, CLAUDE.md, CREDITS check | gameplay (B) | `README.txt`, `CLAUDE.md`, `CREDITS.md`**
-- README: the new view, how to switch court and music (Q4, Q5). CLAUDE.md layout: `view.gd`, `court_looks.gd`,
-  `assets/players`, `assets/music`, the generator scripts and how to rerun them; test flags `--view`, `--court`,
-  `--viewtest`, `--fps`. CREDITS: every file in `assets/` has a row and a CC0/CC-BY license; Kenney rows removed if
-  their files are gone.
-- Done when: a fresh clone opens with no missing files; every asset path is in CREDITS.
-- Depends on: P4-12.
-
-**P4-14 | Publish the web build | coordinator | `gh-pages` branch (build output only)**
-- After P4-12 passes and the phase is merged: `tools/build_web.sh --publish`, then the lead writes the phase summary.
-- Depends on: P4-12, P4-13.
+- **P5-16** | QA: `--trip-test` 3 times (one with `--trip-force-loss 2`), stop after Hometown + resume across a
+  restart; 100 Quick Game autoplay vs P5-00 (within 2 SE); 40 games each for `--city hometown --cgame 1..3` and
+  `--city chicago --cgame 1..3` on Normal (win share, length: a game to 11 should take about 5-8 min); humantest;
+  `--screens` and a look at every screen at 1280x720 and 1280x800; web build in Chromium with touch: whole flow by
+  taps, pause in game, save survives a page reload; `index.pck` size | qa | `docs/qa/phase5.md` | report written;
+  bugs filed on this board | all | none
+- **P5-17** | Docs: README.txt (title screen, the Road Trip, pause, stat points, lineup, saving, what's placeholder),
+  the CLAUDE.md Testing section (new flags), CREDITS.md check | gameplay A | `README.txt`, `CLAUDE.md` (Testing
+  section only, coordinator approves), `CREDITS.md` (check only) | the owner can follow the README on the tablet |
+  P5-16 | none
+- **P5-18** | Web publish (`tools/build_web.sh --publish`) and the lead's phase summary | coordinator, lead | - |
+  published, summary sent | P5-17 | none
 
 ## Parallel plan
 
 | Wave | Programmer A | Programmer B | Art-audio | QA |
 |---|---|---|---|---|
-| 1 (start now) | P4-01 view core (`view.gd`, `main.gd`) | P4-02 music player (`audio.gd`) | P4-03 sprites part 1, then P4-04 swish/bounce, then P4-05 music | P4-00 baseline |
-| 2 (after P4-01) | P4-06 players (`player.gd`) | P4-07 court and hoops (`court.gd`, `court_looks.gd`) | P4-08 courts and ball art, then P4-09 sprites part 2 | quick check per merge |
-| 3 (Q1, Q2, Q4, Q5) | P4-10 ball and fx (`ball.gd`, `fx.gd`) | P4-11 view on, framing, panels, music (`main.gd`, `view.gd`, `menu.gd`) | P4-09 if not done | |
-| 4 | | P4-13 docs | | P4-12, then P4-14 publish (coordinator) |
+| 1 | P5-01 core, then P5-02 main.gd | P5-04 cities data, then P5-03 player/difficulty (after P5-01) | P5-A1 sheets | P5-00 baseline |
+| 2 | P5-05 trip + save | P5-07 volume, P5-08 pause, P5-06 title | P5-A2 portraits, P5-A3 map | quick check per merge |
+| 3 | P5-15 trip test, P5-09 map, P5-11 lineup, P5-13 recruit | P5-10 story, P5-12 results/points, P5-14 bracket | P5-A4 (optional) | quick check per merge |
+| 4 | P5-17 docs | | | P5-16, then P5-18 publish |
 
-Why this split: `main.gd` and `view.gd` belong to A in wave 1 and to B in wave 3, never both in one wave. The art
-files (`tools/`, `assets/`, `CREDITS.md`) belong only to the art-audio agent until P4-13. P4-10 can start in wave 2
-if B finishes P4-07 first and `hoop_sort_y` is merged. Each wave merges and gets a quick QA run (3 autoplay + 1
-humantest in FLAT and ANGLED) before the next starts. If the owner answers late, waves 1-2 and P4-10 still finish;
-only P4-11 and the backdrop parts of P4-07/P4-08 wait.
+Why this split: `main.gd` is touched only by P5-02 (wave 1), `player.gd`/`difficulty.gd` only by P5-03, `menu.gd`
+only by P5-06, `audio.gd` only by P5-07. Every screen is its own new file, so wave 3 tasks never share a file.
+`tools/`, `assets/` and `CREDITS.md` belong to the art-audio agent until P5-17. Screens work without the art (drawn
+fallbacks) and the flow works without screens ("not built yet" panel), so no wave waits on art.
+P5-15 starts as soon as P5-05 merges so each later screen is tested in the full flow when it lands.
 
 ## Doing
 
 ## Review
-- **P4-01** (branch `worktree-agent-acabab04d075939f2`, ffb773e): lead review APPROVE. Merges cleanly into dev.
-  View API matches the contract. Extras: `DEFAULT_MODE`, `ANCHOR`, static vars `perspective`/`flipped`, `self_test()`.
-  `SIDE_FLIP` is false, so `flipped` stays false and the camera does not flip at the switch (owner Q2 a).
-  Checked on the trial merge: `--viewtest` OK, 2 FLAT autoplay runs (16-21, 12-21), FLAT humantest (16-21, snaps 36 =
-  flicks 36), ANGLED humantest (21-16, snaps 29 = flicks 29). No script errors.
-  For P4-11: the zoom shows about 3/4 of the court length, but the owner chose about 2/3. Remove `VIEW_PROBE`.
-  Fix the stale comments on `SIDE_FLIP` and the camera ("until the owner answers").
-- **P4-06** (branch `worktree-agent-a13be5c2a01f60557`, c3ea452, `player.gd` only): lead review APPROVE.
-  FLAT is drawing-only: the only FLAT-reachable changes are `if View.angled()` guards in `setup()` / `_draw()` and a
-  new `_process()` that does nothing while `_v_body` is null. The view code reads sim state and writes only `_v_*`
-  vars and view nodes, so the FLAT stats 2 SE off the baseline are noise. FLAT `_draw()` (ring, arrow, stamina bar,
-  shot meter, fire ring) is unchanged; CALL bubble and steal cue live in main.gd. Sheets are loaded once, sort is by
-  the projected floor point in `game.world`. Checked: FLAT humantest 10-21, ANGLED humantest 21-17, `--shots --view
-  angled` (sheet sprites, rings, arrow and stamina bar look right), no script errors.
-  Notes for later: about 50 small `PackedVector2Array`s per frame from `_floor_ring` (fine; P4-12 measures fps).
-  In ANGLED the shadow and rings are drawn every frame for every player.
 
 ## Done
-- Phase 4 build done: P4-00..P4-13 merged (view.gd projection, players/court/hoops/ball/fx in 3/4, angled default,
-  COURT/MUSIC panel buttons, original sprites/courts/ball, synthesized swish/bounce, 6 CC0 music tracks, docs).
-  P4-12 QA (docs/qa/phase4.md): gameplay unchanged over 200 games (46 stats within the compare rule), BLUE 45.5%
-  (noise band 43-57%), visuals pass, pck 4.07 MB, 23-24 fps in headless Chromium. Follow-ups: gym banners cut at
-  1280x800, "+2" popup overlaps the backboard, human can be off screen on long passes (camera follows the ball),
-  angled view costs ~0.6 ms script time per frame (profile on the tablet).
