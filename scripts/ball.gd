@@ -1,5 +1,8 @@
 extends Node2D
 # The basketball. position = spot on the floor; z = height above the floor (drawn as an upward offset).
+# FLAT draws with `sprite` and _draw() here; ANGLED draws with the view nodes at the end of the file (P4-10).
+
+const View = preload("res://scripts/view.gd")   # projection (Phase 4)
 
 enum { HELD, PASS, SHOT, LOOSE, DEAD }
 
@@ -102,6 +105,8 @@ func setup(g) -> void:
 	sprite.scale = Vector2(1.1, 1.1)
 	add_child(sprite)
 	z_index = 20
+	if View.angled():
+		_build_view()
 
 func hold(p) -> void:
 	state = HELD
@@ -460,8 +465,331 @@ func slam_feedback() -> void:
 		game.audio.play("dunk")
 
 func _draw() -> void:
+	if _v_node != null:
+		return   # ANGLED: the shadow is drawn in game.decals (see the end of the file)
 	# shadow on the floor
 	var r := 7.0 - minf(z, 60.0) / 20.0
 	draw_set_transform(Vector2(0, 3), 0, Vector2(1, 0.55))
 	draw_circle(Vector2.ZERO, max(r, 3.0), Color(0, 0, 0, 0.35))
 	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+
+# ---------------- drawing in the 3/4 view (P4-10, ANGLED only; FLAT draws with `sprite` and _draw() above) ----------------
+# Visual only: reads the sim state (state, position, z, shot_t, lob_t, the holder's view sprite) and never writes it.
+# Two nodes: the ball in game.world (y-sorted: its position.y is the sort y, normally the projected floor point) and
+# its shadow in game.decals. Heights follow the board's "Heights": the held ball sits in the hand drawn by the
+# player's sheet (assets/players/hands.json), a shot rises to View.RIM_Z at the hoop, a rim rebound or a block
+# falls from where it was drawn, a make drops through the net. Every change of state blends from the drawn spot.
+
+const BALL_SHEET := "res://assets/ball/ball.png"   # P4-08: 4 spin frames of 16 x 16 (Kenney ball.png if missing)
+const BALL_FRAMES := 4
+const BALL_VIEW_SCALE := 2.0      # the sheet is drawn at 2x (like the players)
+const BALL_FALLBACK_SCALE := 1.1  # the Kenney ball, as in FLAT
+const BALL_VIEW_R := 12.0         # drawn radius in screen pixels at 2x (12 px of ball in a 16 px frame)
+const HANDS_PATH := "res://assets/players/hands.json"
+const SHEET_COLS := 37            # player sheet layout (board contract)
+const SHEET_W := 40.0
+const SHEET_FEET_Y := 59.0
+# drawn heights of the ball's center above the floor (sim pixels of height, through View.to_screen)
+const CATCH_VIEW_Z := 40.0        # a pass arrives at chest height
+const REACH_VIEW_Z := 86.0        # hands over the head (a lob caught in the air, a shot without hand data)
+const DRIBBLE_VIEW_Z := 34.0      # the dribbling hand without hand data
+const SHOT_VIEW_ARC := 1.0        # the jump shot's arc above the straight line, x the sim's shot_peak
+const LOB_VIEW_ARC := 1.6         # the lob's arc, x LOB_PEAK (so it reads clearly as a lob)
+const RIM_END_Z := 6.0            # the shot arrives this far above the rim (then drops through the net)
+const DRIBBLE_FLOOR_DY := 4.0     # the dribble hits the floor this many screen px in front of the feet
+const HELD_ON_HAND := 0.6         # held up (shot, dunk): the ball's center this many radii above the hand
+const DRIBBLE_UNDER_HAND := 0.7   # dribble: the ball's center this many radii under the hand at the top
+const BLEND_RATE := 22.0          # per second: how fast the drawn ball catches up after a change of state
+const VIEW_GRAVITY := 1400.0      # a dead ball (after a make, out of bounds) falls and bounces with this
+const VIEW_BOUNCE := 0.45         # ... keeping this much of its speed per bounce
+# sorting against the hoop (board "Hoops"): near the rim in the air the ball sorts at exactly hoop_sort_y(i),
+# behind the front of the rim and the net, in front of the backboard
+const BALL_RIM_SORT_FT := 3.0
+const RIM_SORT_BELOW := 34.0      # "in the air": the ball's center no more than this under the rim (the net is ~2 ft)
+# shadow (screen pixels; an ellipse flattened like the court)
+const SHADOW_R := 10.0            # on the floor
+const SHADOW_MIN := 0.4           # x SHADOW_R at the rim and above
+const SHADOW_ALPHA := 0.35
+# spin: one frame per this many screen pixels the ball moves; shots also spin back
+const SPIN_PX_PER_FRAME := 7.0
+const SHOT_SPIN_FPS := 14.0
+# floor dust when a loose or dead ball hits the floor hard (drawn by fx in game.decals)
+const DUST_MIN_SPEED := 160.0     # px/s down
+
+static var _hands = null          # hands.json "players" (null: missing, the held ball uses the heights above)
+
+var v_screen := Vector2.ZERO      # where the ball is drawn (screen): fx's fire trail follows it
+var v_sort_y := 0.0               # its sort y in game.world
+var _v_node: Node2D               # game.world
+var _v_spr: Sprite2D
+var _v_shadow: Node2D             # game.decals
+var _v_sheet := false
+var _v_h := 0.0                   # drawn height of the center (sim px of height) above `position`'s floor point
+var _v_floor := Vector2.ZERO      # screen point on the floor under the drawn ball
+var _v_key := ""                  # state + holder: a change starts a blend
+var _v_t := 0.0                   # seconds in the current state
+var _v_h0 := 0.0                  # drawn height when the state began
+var _v_from := Vector2.ZERO       # floor point where a pass began
+var _v_extra := 0.0               # loose: drawn height above the sim's z, fading out by the first floor touch
+var _v_extra_time := 0.0
+var _v_vz := 0.0                  # dead ball: drawn fall speed
+var _v_off := Vector2.ZERO        # screen offset still being blended out
+var _v_spin := 0.0
+var _v_prev_z := 0.0
+var _v_ready := false
+
+func _build_view() -> void:
+	sprite.visible = false
+	process_priority = 10          # after the players' views, so the ball sits in this frame's hand
+	if _hands == null and ResourceLoader.exists(HANDS_PATH):
+		var j = load(HANDS_PATH)
+		if j != null and j is JSON and j.data is Dictionary and j.data.has("players"):
+			_hands = j.data["players"]
+	_v_node = Node2D.new()
+	_v_node.name = "BallView"
+	_v_spr = Sprite2D.new()
+	if ResourceLoader.exists(BALL_SHEET):
+		_v_spr.texture = load(BALL_SHEET)
+	if _v_spr.texture != null and _v_spr.texture.get_width() == _v_spr.texture.get_height() * BALL_FRAMES:
+		_v_sheet = true
+		_v_spr.hframes = BALL_FRAMES
+	else:
+		_v_spr.texture = sprite.texture
+	_v_node.add_child(_v_spr)
+	game.world.add_child(_v_node)
+	_v_shadow = Node2D.new()
+	_v_shadow.name = "BallShadow"
+	_v_shadow.draw.connect(_draw_view_shadow)
+	game.decals.add_child(_v_shadow)
+
+func _process(delta: float) -> void:
+	if _v_node != null:
+		_update_view(delta)
+
+func _view_lift_of(p) -> float:
+	if p == null:
+		return 0.0
+	if p.has_method("_view_lift"):
+		return p._view_lift()
+	return p.jump_z
+
+# the screen point of the holder's hand from his sheet frame and hands.json (null without data)
+func _hand_point(p, kind: String):
+	if _hands == null or p == null or not ("_v_sheet" in p) or not p._v_sheet or p._v_spr == null:
+		return null
+	var id := "%s_%d" % ["blue" if p.team == 0 else "red", p.index + 1]
+	if not _hands.has(id):
+		return null
+	var spr: Sprite2D = p._v_spr
+	var row: int = spr.frame / SHEET_COLS
+	var col: int = spr.frame % SHEET_COLS
+	var rows: Array = _hands[id]
+	if row >= rows.size() or col >= (rows[row] as Array).size():
+		return null
+	var hd: Dictionary = rows[row][col]
+	var l := Vector2(float(hd["L"][0]), float(hd["L"][1]))
+	var r := Vector2(float(hd["R"][0]), float(hd["R"][1]))
+	if spr.flip_h:   # mirrored row: x' = 39 - x and the hands swap
+		var ml := Vector2(SHEET_W - 1.0 - r.x, r.y)
+		r = Vector2(SHEET_W - 1.0 - l.x, l.y)
+		l = ml
+	var f: Vector2
+	if kind == "dribble":
+		# the sheet dribbles with its right hand; mirrored (a left-hand dribble facing or backing the camera) it is L
+		f = l if spr.flip_h else r
+	elif kind == "up":
+		f = l if l.y < r.y else r              # the higher hand (shot, dunk, pump fake)
+	else:
+		f = (l + r) / 2.0                       # both hands (holding it at the line, stumbling)
+	var local: Vector2 = (f - Vector2(SHEET_W / 2.0, SHEET_FEET_Y)) * spr.scale
+	return p._v_body.position + spr.position + local.rotated(spr.rotation)
+
+# where the ball is drawn this frame (before the blend); sets its drawn height and the floor point under it
+func _view_target(delta: float) -> Vector2:
+	var fl: Vector2 = View.to_screen(position, 0.0)
+	var k: float = View.HEIGHT_SCALE * View.size_at(position)
+	var r: float = BALL_VIEW_R * View.size_at(position)
+	_v_floor = fl
+	match state:
+		HELD:
+			if holder != null:
+				var base: Vector2 = View.to_screen(holder.position, 0.0)
+				var anim: String = holder._v_anim if "_v_anim" in holder else ""
+				var up: bool = holder.rim_kind != "" or holder.shooting or holder.fake_t > 0.0
+				var dribble: bool = not up and not holder.at_free_throw() and (anim == "dribble" or anim == "")
+				var frac: float = clampf((z - 4.0) / 16.0, 0.0, 1.0)
+				var hp = _hand_point(holder, "up" if up else ("dribble" if dribble else "both"))
+				if hp != null:
+					var hand: Vector2 = hp
+					var s: Vector2 = hand
+					if dribble:
+						var top: float = hand.y + r * DRIBBLE_UNDER_HAND
+						var bottom: float = base.y + DRIBBLE_FLOOR_DY * View.size_at(holder.position) - r
+						s = Vector2(hand.x, lerpf(bottom, top, frac))
+					elif up:
+						s = hand + Vector2(0, -r * HELD_ON_HAND)
+					_v_floor = Vector2(hand.x, base.y + DRIBBLE_FLOOR_DY)
+					_v_h = (fl.y - s.y) / k
+					return s
+				# no hand data: the sim's spot at a drawn height
+				if up:
+					_v_h = _view_lift_of(holder) + REACH_VIEW_Z
+				elif dribble:
+					_v_h = r / k + (DRIBBLE_VIEW_Z - r / k) * frac
+				else:
+					_v_h = CATCH_VIEW_Z
+		PASS:
+			if receiver != null:
+				var to_end: float = position.distance_to(receiver.position)
+				var done: float = position.distance_to(_v_from)
+				var end_h: float = _view_lift_of(receiver) + (REACH_VIEW_Z if receiver.is_airborne() else CATCH_VIEW_Z)
+				if lob:
+					_v_h = lerpf(_v_h0, end_h, lob_t) + 4.0 * LOB_PEAK * LOB_VIEW_ARC * lob_t * (1.0 - lob_t)
+				else:
+					_v_h = lerpf(_v_h0, end_h, done / maxf(done + to_end, 1.0))
+		SHOT:
+			var t: float = clampf(shot_t, 0.0, 1.0)
+			_v_h = lerpf(_v_h0, View.RIM_Z + RIM_END_Z, t) + 4.0 * shot_peak * SHOT_VIEW_ARC * t * (1.0 - t)
+		LOOSE:
+			var fade: float = maxf(0.0, 1.0 - _v_t / maxf(_v_extra_time, 0.01))
+			_v_h = r / k + z + _v_extra * fade
+		DEAD:
+			_v_vz -= VIEW_GRAVITY * delta
+			_v_h += _v_vz * delta
+			var lowest: float = r / k
+			if _v_h <= lowest:
+				_v_h = lowest
+				if _v_vz < -DUST_MIN_SPEED and game.fx != null and game.fx.has_method("dust"):
+					game.fx.dust(position, clampf(-_v_vz / 600.0, 0.3, 1.0))
+				_v_vz = -_v_vz * VIEW_BOUNCE
+				if _v_vz < 60.0:
+					_v_vz = 0.0
+	return View.to_screen(position, _v_h)
+
+func _update_view(delta: float) -> void:
+	var key := "%d:%d" % [state, holder.get_instance_id() if holder != null else 0]
+	var changed := key != _v_key
+	if changed:
+		var last_h: float = _v_h
+		_v_key = key
+		_v_t = 0.0
+		_v_h0 = last_h
+		_v_from = position
+		_v_vz = 0.0
+		if state == LOOSE:
+			# fall from where it was drawn onto the sim's own bounce, fading out by its first floor touch
+			var rr: float = BALL_VIEW_R * View.size_at(position) / View.HEIGHT_SCALE
+			_v_extra = last_h - (z + rr)
+			_v_extra_time = (vz + sqrt(maxf(0.0, vz * vz + 2.0 * GRAVITY * z))) / GRAVITY
+	else:
+		_v_t += delta
+	var target: Vector2 = _view_target(delta)
+	if changed and _v_ready:
+		_v_off = v_screen - target
+	_v_ready = true
+	_v_off *= exp(-BLEND_RATE * delta)
+	if _v_off.length() < 0.25:
+		_v_off = Vector2.ZERO
+	var s: Vector2 = target + _v_off
+	# a loose ball hitting the floor hard: a dust puff (fx draws it in ANGLED only)
+	if state == LOOSE and z <= 0.0 and _v_prev_z > 0.5 and game.fx != null and game.fx.has_method("dust"):
+		var spd: float = _v_prev_z / maxf(delta, 0.001)
+		if spd > DUST_MIN_SPEED:
+			game.fx.dust(position, clampf(spd / 600.0, 0.3, 1.0))
+	_v_prev_z = z
+	# spin by how fast it moves on screen (and backspin on shots)
+	var moved: Vector2 = s - v_screen
+	var dir: float = -1.0 if moved.x < 0.0 else 1.0
+	if moved.length() < 40.0:
+		_v_spin += dir * moved.length() / SPIN_PX_PER_FRAME
+	if state == SHOT:
+		_v_spin -= dir * SHOT_SPIN_FPS * delta
+	v_screen = s
+	# sort: the projected floor point; held, by the holder (in front, behind when his back is to the camera);
+	# near the rim in the air, exactly the hoop's sort y
+	v_sort_y = View.to_screen(position, 0.0).y
+	if state == HELD and holder != null:
+		var row := 0
+		if "_v_sheet" in holder and holder._v_sheet:
+			row = int(holder._v_spr.frame) / SHEET_COLS
+		v_sort_y = View.to_screen(holder.position, 0.0).y + (-0.5 if row == 4 else 0.5)
+	else:
+		var hi := _rim_hoop()
+		if hi >= 0:
+			v_sort_y = _hoop_sort_y(hi)
+	_v_node.position = Vector2(s.x, v_sort_y)
+	_v_spr.position = s - _v_node.position
+	var sc: float = View.size_at(position)
+	if _v_sheet:
+		_v_spr.scale = Vector2(BALL_VIEW_SCALE, BALL_VIEW_SCALE) * sc
+		_v_spr.frame = posmod(int(floor(_v_spin)), BALL_FRAMES)
+	else:
+		_v_spr.scale = Vector2(BALL_FALLBACK_SCALE, BALL_FALLBACK_SCALE) * sc
+		_v_spr.rotation = _v_spin * TAU / 8.0
+	_v_shadow.queue_redraw()
+	_ball_shots()
+
+# the hoop whose rim the ball is at (in the air, within BALL_RIM_SORT_FT of it), or -1
+func _rim_hoop() -> int:
+	if state == HELD or _v_h < View.RIM_Z - RIM_SORT_BELOW:
+		return -1
+	for i in 2:
+		var h: Vector2 = game.hoops[i]
+		if position.distance_to(h) < BALL_RIM_SORT_FT * game.FT:
+			return i
+	return -1
+
+func _hoop_sort_y(i: int) -> float:
+	if game.rims != null and game.rims.has_method("hoop_sort_y"):
+		return game.rims.hoop_sort_y(i)
+	return View.to_screen(game.hoops[i], 0.0).y   # before P4-07: the hoop's projected floor point
+
+func _draw_view_shadow() -> void:
+	var sc: float = View.size_at(position)
+	var lowest: float = BALL_VIEW_R * sc / View.HEIGHT_SCALE
+	var k: float = clampf((_v_h - lowest) / View.RIM_Z, 0.0, 1.0)
+	var rx: float = SHADOW_R * sc * lerpf(1.0, SHADOW_MIN, k)
+	var c: Vector2 = Vector2(v_screen.x, _v_floor.y) if state == HELD else _v_floor + Vector2(_v_off.x, 0.0)
+	_v_shadow.draw_set_transform(c, 0.0, Vector2(1.0, View.TILT_Y))
+	_v_shadow.draw_circle(Vector2.ZERO, rx, Color(0, 0, 0, SHADOW_ALPHA * lerpf(1.0, 0.6, k)))
+	_v_shadow.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# test only (-- --ballshots, with xvfb and --view angled): screenshots of the ball to /tmp/hoops_ball_*.png:
+# a dribble, a lob in flight, a shot at the rim (made / missed), a dunk, a loose ball and a popup. Quits when done.
+var _bs_done := {}
+var _bs_on := -1
+var _bs_dir := "/tmp"   # -- --ballshots DIR saves there instead
+func _ball_shots() -> void:
+	if _bs_on < 0:
+		var args: PackedStringArray = OS.get_cmdline_user_args()
+		var i: int = args.find("--ballshots")
+		_bs_on = 1 if i >= 0 else 0
+		if i >= 0 and i + 1 < args.size() and not args[i + 1].begins_with("--"):
+			_bs_dir = args[i + 1]
+	if _bs_on == 0:
+		return
+	var tag := ""
+	if state == HELD and holder != null and holder._v_anim == "dribble" and _v_t > 1.0 and game.is_human(holder):
+		tag = "dribble"
+	elif state == PASS and lob and lob_t > 0.45 and lob_t < 0.6:
+		tag = "lob"
+	elif state == SHOT and shot_kind == "dunk":
+		tag = "dunk"
+	elif state == SHOT and shot_kind == "" and shot_t > 0.93:
+		tag = "rim_make" if shot_made else "rim_miss"
+	elif state == DEAD and _v_t > 0.08 and _v_t < 0.12 and _v_h > View.RIM_Z - 30.0:
+		tag = "net_drop"
+	elif state == LOOSE and loose_cause == "rebound" and _v_t > 0.3:
+		tag = "loose"
+	elif game.fx != null and game.fx.get("_popups") != null and not game.fx._popups.is_empty() and game.fx._popups[0].t > 0.25:
+		tag = "popup"
+	elif game.fx != null and game.fx.get("_trail_on") == true and state == SHOT and shot_t > 0.5:
+		tag = "fire"
+	if tag == "" or _bs_done.has(tag):
+		return
+	_bs_done[tag] = true
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("%s/hoops_ball_%s.png" % [_bs_dir, tag])
+	print("BALLSHOT ", tag)
+	if _bs_done.size() >= 9:
+		get_tree().quit()
