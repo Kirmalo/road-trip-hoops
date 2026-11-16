@@ -18,6 +18,10 @@ extends Node
 # playing does nothing (no restart). With music off, play_music() only remembers the track; set_music_on(true)
 # starts it. music_on is not saved here: the panel task saves it and calls set_music_on() at launch.
 # Every play_music() call that changes the track counts a stat "music_<track>", even when the file is missing.
+# Sound volume (P5-07):  game.audio.set_sfx_volume(0.5)   (0..1 for the effects; 0 = silent; music unaffected)
+# sfx_volume is saved in user://settings.cfg (the file and section menu.gd keeps the music choice in) and read once
+# per run (the first audio node reads it). Stats still count at volume 0. set_sfx_volume(v, false) changes it without
+# saving (a slider being dragged); save_sfx_volume() writes it.
 # On the web, browsers keep audio locked until the first tap: the music waits until the page's audio context runs
 # (the head script in export_presets.cfg resumes it on tap/lift), then starts.
 
@@ -31,6 +35,14 @@ const MUSIC_DUCK_DB := -8.0       # extra dB down while ducked (during play, Q5 
 const MUSIC_DUCK_FADE := 0.6      # seconds to duck or unduck
 const MUSIC_SILENT_DB := -60.0    # a fade ends here, then the player stops
 const UNLOCK_POLL := 0.25         # web: seconds between checks of the page's audio state
+const SETTINGS_PATH := "user://settings.cfg"   # same file and section as difficulty.gd / menu.gd
+const SETTINGS_SECTION := "settings"
+const SAVE_SFX_VOLUME := "sfx_volume"          # key of the effects volume (0..1)
+const SFX_VOLUME_DEFAULT := 1.0   # first launch: full volume
+const SFX_VOLUME_CURVE := 2.0     # gain = volume ^ this: a slider at half sounds about half as loud (not just -6 dB)
+
+static var sfx_volume := SFX_VOLUME_DEFAULT   # 0..1, the effects volume (survives reload_current_scene)
+static var _volume_read := false
 
 var game
 var _pool: Array = []
@@ -55,6 +67,7 @@ var _poll_t := 0.0
 
 func _ready() -> void:
 	_rng.randomize()
+	read_settings()
 	process_mode = Node.PROCESS_MODE_ALWAYS   # fades keep going if the tree is ever paused
 	for i in POOL_SIZE:
 		var p := AudioStreamPlayer.new()
@@ -73,11 +86,11 @@ func play(sfx_name: String, volume_db := 0.0, pitch_jitter := 0.05) -> void:
 	if game != null:
 		game.stat("sfx_" + sfx_name)
 	var stream: AudioStream = _get_stream(sfx_name)
-	if stream == null or _headless:
+	if stream == null or _headless or sfx_volume <= 0.0:
 		return
 	var p: AudioStreamPlayer = _free_player()
 	p.stream = stream
-	p.volume_db = MASTER_DB + volume_db
+	p.volume_db = MASTER_DB + volume_db + linear_to_db(pow(sfx_volume, SFX_VOLUME_CURVE))
 	p.pitch_scale = maxf(0.05, 1.0 + _rng.randf_range(-pitch_jitter, pitch_jitter))
 	p.play()
 
@@ -107,6 +120,31 @@ func _free_player() -> AudioStreamPlayer:
 	var q: AudioStreamPlayer = _pool[_next]
 	_next = (_next + 1) % POOL_SIZE
 	return q
+
+# ---------------- sound volume (P5-07) ----------------
+
+# Once per run: the saved effects volume (safe to call again).
+static func read_settings() -> void:
+	if _volume_read:
+		return
+	_volume_read = true
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) != OK:
+		return
+	sfx_volume = clampf(float(cfg.get_value(SETTINGS_SECTION, SAVE_SFX_VOLUME, sfx_volume)), 0.0, 1.0)
+
+static func save_sfx_volume() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS_PATH)   # keep the other settings in the file
+	cfg.set_value(SETTINGS_SECTION, SAVE_SFX_VOLUME, sfx_volume)
+	cfg.save(SETTINGS_PATH)
+
+# 0..1; 0 silences the effects (music unaffected). save := false while a slider is being dragged.
+func set_sfx_volume(v: float, save := true) -> void:
+	read_settings()   # a call before _ready must not be overwritten by the saved value later
+	sfx_volume = clampf(v, 0.0, 1.0)
+	if save:
+		save_sfx_volume()
 
 # ---------------- music ----------------
 
