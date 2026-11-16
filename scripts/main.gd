@@ -1,6 +1,8 @@
 extends Node2D
 # Road Trip Hoops: 3v3 full court basketball.
-# You control the BLUE team (the player with the yellow ring). BLUE shoots at the RIGHT hoop.
+# First to 21 (1 inside the arc, 2 beyond), switch sides at 11: the rules are in rules.gd.
+# You control the BLUE team (the player with the yellow ring). BLUE shoots at the RIGHT hoop until the side switch
+# at 11 (rules.sides_swapped), then at the left one. The arrow next to BLUE in the top bar shows the way.
 #
 # Touch: drag anywhere on the left half to move.
 #   Offense: hold SHOOT, release in the green zone of the meter. PASS throws to the open teammate
@@ -19,19 +21,18 @@ const AudioScript = preload("res://scripts/audio.gd")
 const FxScript = preload("res://scripts/fx.gd")
 const HumanInputScript = preload("res://scripts/human_input.gd")
 const DefenseScript = preload("res://scripts/defense.gd")
+const RulesScript = preload("res://scripts/rules.gd")
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
 const COURT_H := 50.0 * FT
-const QUARTER_LENGTH := 120.0        # seconds per quarter (change to make games longer)
-const OVERTIME_LENGTH := 60.0
-const SHOT_CLOCK_LENGTH := 24.0
+const SHOT_CLOCK_LENGTH := 24.0      # seconds; the shot clock stays with first to 21 (Q1). Format: rules.gd
 const HUMAN_TEAM := 0
 const TEAM_NAMES := ["BLUE", "RED"]
 const TEAM_COLORS := [Color(0.7, 0.88, 1.0), Color(1.0, 0.42, 0.38)]   # popups and score messages
 
 # game-event feedback (P1-06)
-const SCORE_POPUP_SIZE := 64         # font size of the "+2"/"+3" popup at the hoop
+const SCORE_POPUP_SIZE := 64         # font size of the "+1"/"+2" popup at the hoop
 const SCORE_POPUP_RISE := 3.0 * FT   # popup starts this far above the rim
 const SCORE_MSG_TIME := 0.8          # the center "BLUE SCORES" message is short, the popup carries it
 const BLOCK_SHAKE := 6.0             # screen shake on a block: strength in pixels
@@ -39,6 +40,8 @@ const BLOCK_SHAKE_TIME := 0.25       # and how long it lasts
 const MSG_FONT_SIZE := 56            # center message font size
 const MSG_POP_TIME := 0.15           # center message scale-in time in seconds
 const MSG_POP_SCALE := 1.35          # center message start scale
+const SIDE_ARROW_RIGHT := ">>"       # top bar: next to BLUE, the way BLUE attacks (P3-02)
+const SIDE_ARROW_LEFT := "<<"
 
 # on fire (P1-07)
 const FIRE_STREAK := 3               # makes in a row by one player (dunks and layups count) to catch fire
@@ -127,16 +130,12 @@ var audio                           # sound effects: audio.play("swish")
 var fx                              # shake, popups, ball trail: fx.shake(6.0, 0.3)
 var input                           # human_input.gd: buttons, pass target, switch, flick and tap detection
 var rims                            # court instance that draws rims and nets: rims.swish(hoop_index)
-var score := [0, 0]
-var quarter := 1
-var game_clock := QUARTER_LENGTH
+var rules                           # rules.gd: format, score changes, side switch, dead balls, inbounds
+var score := [0, 0]                 # changed only by rules.add_score()
 var shot_clock := SHOT_CLOCK_LENGTH
 var shot_clock_running := true
 var possession := 0
 var human_player = null
-var dead_timer := 0.0
-var pending_inbound := -1           # team that gets the ball when the dead ball pause ends
-var pending_new_quarter := false
 var game_over := false
 var autoplay := false
 var chasers := []
@@ -174,6 +173,9 @@ var shot_serial := 0                # counts released shots, so each defender ge
 func stat(k: String) -> void:
 	stats[k] = stats.get(k, 0) + 1
 
+func stat_add(k: String, n: int) -> void:
+	stats[k] = stats.get(k, 0) + n
+
 var score_label: Label
 var clock_label: Label
 var shot_label: Label
@@ -187,6 +189,10 @@ func _ready() -> void:
 	rng.randomize()
 	autoplay = OS.get_cmdline_user_args().has("--autoplay")
 	humantest = OS.get_cmdline_user_args().has("--humantest")
+
+	rules = RulesScript.new()
+	rules.game = self
+	add_child(rules)
 
 	audio = AudioScript.new()
 	audio.game = self
@@ -242,7 +248,7 @@ func _ready() -> void:
 	add_child(_call_node)
 
 	_build_hud()
-	start_period()
+	start_game()
 
 func _build_hud() -> void:
 	var hud := CanvasLayer.new()
@@ -298,39 +304,37 @@ func _make_label(parent: Control, size: int, preset: int, top: float) -> Label:
 	parent.add_child(l)
 	return l
 
-func start_period() -> void:
-	game_clock = QUARTER_LENGTH if quarter <= 4 else OVERTIME_LENGTH
-	var team := 0 if quarter in [1, 4, 5] else 1
-	reset_positions(team)
-	give_ball(teams[team][0])
-	if quarter <= 4:
-		show_message("QUARTER %d" % quarter, 1.5)
-	else:
-		show_message("OVERTIME", 1.5)
+func start_game() -> void:
+	rules.start_game()
 
+# line both teams up: `team` (which gets the ball) on its own half, the other just past half court. The rows are
+# mirrored by the attack direction (y times dir) so both halves of the court play the same (B1)
 func reset_positions(team: int) -> void:
 	var own: Vector2 = attack_hoop(1 - team)   # the hoop this team defends
 	var dir := inward(own)
 	for i in 3:
+		var row: float = [0.0, -12.0, 12.0][i] * dir * FT
 		var o = teams[team][i]
-		o.position = own + Vector2(dir * (5 + i * 12) * FT, [0.0, -12.0, 12.0][i] * FT)
-		o.velocity = Vector2.ZERO
+		o.position = own + Vector2(dir * (5 + i * 12) * FT, row)
 		var d = teams[1 - team][i]
-		d.position = Vector2(COURT_W / 2 + dir * 10 * FT, COURT_H / 2 + [0.0, -12.0, 12.0][i] * FT)
-		d.velocity = Vector2.ZERO
-		o.shooting = false
-		d.shooting = false
+		d.position = Vector2(COURT_W / 2 + dir * 10 * FT, COURT_H / 2 + row)
+		for p in [o, d]:
+			p.velocity = Vector2.ZERO
+			p.shooting = false
+			p.facing = 0.0 if attack_hoop(p.team).x > COURT_W / 2 else PI   # face the hoop it attacks
 
 # ---------------- court helpers ----------------
 
+# the only place that knows which hoop a team attacks: team 0 attacks the right hoop until the side switch (P3-02)
 func attack_hoop(team: int) -> Vector2:
-	return hoops[1] if team == 0 else hoops[0]
+	var right: bool = (team == 0) != rules.sides_swapped
+	return hoops[1] if right else hoops[0]
 
 func inward(hoop: Vector2) -> float:
 	return 1.0 if hoop.x < COURT_W / 2 else -1.0
 
 func in_frontcourt(pos: Vector2, team: int) -> bool:
-	return pos.x > COURT_W / 2 if team == 0 else pos.x < COURT_W / 2
+	return (pos.x > COURT_W / 2) == (attack_hoop(team).x > COURT_W / 2)
 
 func clamp_to_court(pos: Vector2) -> Vector2:
 	return Vector2(clamp(pos.x, 10.0, COURT_W - 10.0), clamp(pos.y, 10.0, COURT_H - 10.0))
@@ -390,6 +394,7 @@ func on_ball_held(p) -> void:
 		shot_clock = SHOT_CLOCK_LENGTH
 	shot_clock_running = true
 	possession = p.team
+	rules.on_possession(p.team)
 	if p.team == HUMAN_TEAM:
 		if CONTROL_FOLLOWS_CATCH or human_player == null or human_player.team != HUMAN_TEAM:
 			human_player = p
@@ -402,10 +407,11 @@ func release_shot(p, quality: float) -> void:
 	var hoop := attack_hoop(p.team)
 	var prob := shot_probability(p, quality)
 	var made := rng.randf() < prob
-	var pts := 3 if is_three(p.position, hoop) else 2
+	var pts: int = rules.points_for(p, hoop)
 	shot_clock_running = false
 	shot_serial += 1
 	stat("shots")
+	stat("shots_half%d_t%d" % [2 if rules.sides_swapped else 1, p.team])
 	stat("shot_d%d" % int(p.position.distance_to(hoop) / FT / 5) )
 	if made: stat("makes")
 	if p.on_fire:
@@ -449,16 +455,18 @@ func block_shot(defender) -> void:
 		on_shot_missed(missed_shooter)   # after "BLOCKED!" so a "cooling down" message wins
 
 func on_shot_made(shooter, pts: int) -> void:
-	score[shooter.team] += pts
-	show_message("%s %s!" % [TEAM_NAMES[shooter.team], "THREE" if pts == 3 else "SCORES"], SCORE_MSG_TIME,
+	var hoop := attack_hoop(shooter.team)   # before add_score: the side switch may flip it
+	show_message("%s %s" % [TEAM_NAMES[shooter.team], "FOR TWO!" if pts >= 2 else "SCORES"], SCORE_MSG_TIME,
 			TEAM_COLORS[shooter.team])
-	var hoop := attack_hoop(shooter.team)
 	if ball.shot_kind != "dunk":   # a dunk already shows "SLAM!"
 		fx.popup("+%d" % pts, hoop + Vector2(0, -SCORE_POPUP_RISE), TEAM_COLORS[shooter.team], SCORE_POPUP_SIZE)
 	audio.play("crowd")
 	_update_fire_on_make(shooter)
+	rules.add_score(shooter.team, pts, ball.shot_kind if ball.shot_kind != "" else "shot")
+	if game_over:
+		return
 	possession = 1 - shooter.team
-	_dead_ball(1 - shooter.team, 1.0)
+	rules.dead_ball(1 - shooter.team, rules.MADE_WAIT)
 
 func on_shot_missed(shooter) -> void:
 	if shooter == null:
@@ -613,26 +621,6 @@ func attempt_steal(defender, _legacy := -1.0) -> void:
 		if is_human(defender):
 			stat("human_steals")
 
-func _dead_ball(next_team: int, wait: float) -> void:
-	ball.make_dead()
-	pending_inbound = next_team
-	dead_timer = wait
-	shot_clock_running = false
-
-func _inbound(team: int) -> void:
-	# inbound from the baseline under the hoop this team defends
-	var own := attack_hoop(1 - team)
-	var spot := Vector2(own.x - inward(own) * 3.5 * FT, own.y + 5 * FT)
-	var best = teams[team][0]
-	var best_d := INF
-	for p in teams[team]:
-		var d: float = p.position.distance_to(own)
-		if d < best_d:
-			best_d = d
-			best = p
-	best.position = clamp_to_court(spot)
-	give_ball(best)
-
 # ---------------- input ----------------
 
 func _on_a_pressed() -> void:
@@ -669,6 +657,7 @@ func _input_vector() -> Vector2:
 var _frame := 0
 var _cue_shot := false
 var _block_shot := false
+var _switch_shot := false
 
 func _debug_screenshots() -> void:
 	# developer testing only: run with -- --shots to save a few screenshots to /tmp
@@ -679,9 +668,16 @@ func _debug_screenshots() -> void:
 	if OS.get_cmdline_user_args().has("--shots") and controls.a_block and not _block_shot:
 		_block_shot = true   # first frame the orange button says BLOCK (try -- --shots --humantest)
 		get_viewport().get_texture().get_image().save_png("/tmp/hoops_block_label.png")
+	# the side switch, 1 s into its pause (try -- --shots --target 3 so it comes early; then it quits after this shot)
+	if OS.get_cmdline_user_args().has("--shots") and rules.sides_swapped and not _switch_shot \
+			and rules.dead_timer > 0.0 and rules.dead_timer < rules.SWITCH_PAUSE - 1.0:
+		_switch_shot = true
+		get_viewport().get_texture().get_image().save_png("/tmp/hoops_switch.png")
+		if OS.get_cmdline_user_args().has("--target"):
+			get_tree().quit()
 	if OS.get_cmdline_user_args().has("--shots") and _frame in [240, 900, 1800]:
 		get_viewport().get_texture().get_image().save_png("/tmp/hoops_%d.png" % _frame)
-		if _frame == 1800:
+		if _frame == 1800 and not OS.get_cmdline_user_args().has("--target"):
 			get_tree().quit()
 
 func _physics_process(delta: float) -> void:
@@ -690,17 +686,7 @@ func _physics_process(delta: float) -> void:
 	if game_over:
 		return
 
-	if dead_timer > 0.0:
-		dead_timer -= delta
-		if dead_timer <= 0.0:
-			if pending_new_quarter:
-				pending_new_quarter = false
-				start_period()
-			elif pending_inbound >= 0:
-				_inbound(pending_inbound)
-			pending_inbound = -1
-	else:
-		game_clock -= delta
+	if not rules.update(delta):
 		if shot_clock_running and ball.state != ball.DEAD:
 			shot_clock -= delta
 			if shot_clock <= 0.0:
@@ -709,10 +695,9 @@ func _physics_process(delta: float) -> void:
 				audio.play("whistle")
 				var p = ball.holder if ball.holder != null else ball.passer
 				var next_team: int = 1 - (p.team if p != null else possession)
-				_dead_ball(next_team, 1.0)
-		if game_clock <= 0.0 and ball.state != ball.SHOT:
-			_end_period()
-			return
+				rules.dead_ball(next_team, 1.0)
+	if game_over:
+		return
 
 	# who chases loose balls and rebounds: the closest player on each team
 	chasers = []
@@ -997,35 +982,29 @@ func _separate_players() -> void:
 				a.position -= push
 				b.position += push
 
-func _end_period() -> void:
-	game_clock = 0.0
+# the game is won (rules.gd decides when): stop play, show the result, print the test lines. P3-08 adds the panel here
+func on_game_over(winner: int) -> void:
+	game_over = true
 	audio.play("whistle")
-	if autoplay:
-		print("End of period %d: BLUE %d - RED %d" % [quarter, score[0], score[1]])
-	if quarter >= 4 and score[0] != score[1]:
-		game_over = true
-		ball.make_dead()
-		# _physics_process stops updating after game over: put out the fire and the trail now
-		for p in players:
-			if p.on_fire:
-				_end_fire(p)
-		_trail_on = false
-		fx.set_trail(false)
-		var winner := "BLUE" if score[0] > score[1] else "RED"
-		audio.play("whistle", 3.0, 0.0)   # second, louder whistle: game over
-		show_message("FINAL  %d - %d\n%s WINS!  Tap to play again" % [score[0], score[1], winner], 9999.0)
-		if autoplay or humantest:
-			print("FINAL BLUE %d - RED %d" % [score[0], score[1]])
-			print(stats)
-			if humantest:
-				print(_ht_summary())
-			get_tree().quit()
-		return
-	quarter += 1
-	show_message("END OF %s" % ("QUARTER %d" % (quarter - 1) if quarter <= 5 else "OVERTIME"), 1.5)
 	ball.make_dead()
-	pending_new_quarter = true
-	dead_timer = 2.0
+	# _physics_process stops updating after game over: put out the fire and the trail now
+	for p in players:
+		if p.on_fire:
+			_end_fire(p)
+	_trail_on = false
+	fx.set_trail(false)
+	audio.play("whistle", 3.0, 0.0)   # second, louder whistle: game over
+	show_message("FINAL  %d - %d\n%s WINS!  Tap to play again" % [score[0], score[1], TEAM_NAMES[winner]], 9999.0,
+			TEAM_COLORS[winner])
+	_update_hud()
+	if autoplay or humantest:
+		var secs: int = int(rules.play_time)
+		print("FINAL BLUE %d - RED %d" % [score[0], score[1]])
+		print("GAME LENGTH %d:%02d" % [secs / 60, secs % 60])
+		print(stats)
+		if humantest:
+			print(_ht_summary())
+		get_tree().quit()
 
 # ---------------- HUD ----------------
 
@@ -1073,10 +1052,24 @@ func _update_message(delta: float) -> void:
 			msg_label.modulate.a = maxf(0.0, msg_timer / 0.4)
 
 func _update_hud() -> void:
-	score_label.text = "BLUE  %d   -   %d  RED" % [score[0], score[1]]
-	var t: float = max(game_clock, 0.0)
-	var period := ("Q%d" % quarter) if quarter <= 4 else "OT"
-	clock_label.text = "%s  %d:%02d" % [period, int(t) / 60, int(t) % 60]
+	# the arrow next to BLUE shows which way BLUE attacks; it flips at the side switch
+	if attack_hoop(HUMAN_TEAM).x > COURT_W / 2:
+		score_label.text = "BLUE %s  %d   -   %d  RED" % [SIDE_ARROW_RIGHT, score[0], score[1]]
+	else:
+		score_label.text = "%s BLUE  %d   -   %d  RED" % [SIDE_ARROW_LEFT, score[0], score[1]]
+	var gp := -1
+	for t in 2:
+		if rules.is_game_point(t):
+			gp = t if gp < 0 else 2   # 2: both teams at game point
+	if gp >= 0:
+		clock_label.text = "GAME POINT"
+		clock_label.modulate = TEAM_COLORS[gp] if gp < 2 else Color.WHITE
+	else:
+		clock_label.text = "FIRST TO %d" % rules.target
+		clock_label.modulate = Color.WHITE
+	if rules.GAME_TIME_CAP > 0.0:
+		var t: float = rules.time_left()
+		clock_label.text += "  %d:%02d" % [int(t) / 60, int(t) % 60]
 	shot_label.text = "SHOT %d" % int(ceil(max(shot_clock, 0.0)))
 	if human_player != null and human_player.has_ball():
 		controls.a_text = "SHOOT"
