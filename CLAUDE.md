@@ -27,15 +27,23 @@ Download a Godot 4 Linux editor binary from the GitHub releases, then:
 
 ```
 godot --headless --path . --import
-# full CPU vs CPU game, prints quarter scores, final score and stats
-godot --headless --path . --fixed-fps 60 --quit-after 60000 -- --autoplay
-# scripted human inputs, exercises shoot/pass/steal/switch code paths
-godot --headless --path . --fixed-fps 60 --quit-after 60000 -- --humantest
+# full CPU vs CPU game to 21, prints the final score, GAME LENGTH, fouls/free throws and the stats
+godot --headless --path . --fixed-fps 60 --quit-after 120000 -- --autoplay
+# scripted human inputs, exercises shoot/pass/steal/switch/free-throw code paths
+godot --headless --path . --fixed-fps 60 --quit-after 120000 -- --humantest
 # screenshots to /tmp/hoops_*.png (needs xvfb)
 xvfb-run -a -s "-screen 0 1280x720x24" godot --path . --rendering-driver opengl3 --fixed-fps 60 -- --shots
 ```
-After gameplay changes, run several `--autoplay` games and check the stats look sane. A typical game is about
-45-70 shots, roughly 15-30 points per team over 4 x 2 minute quarters, and few interceptions or shot-clock violations.
+Test flags (after `--`, combine with the modes above):
+- `--difficulty easy|normal|hard` (or `--difficulty=normal`): the level; it changes RED only. `--autoplay` and
+  `--humantest` play Hard without it. With `--autoplay`, RED's win share measures the level (BLUE plays Hard).
+- `--target N`: play to N instead of 21 (sides switch at (N + 1) / 2), e.g. `--target 3` for a short game.
+- `--force-fouls`: fouls some released field goals, to exercise the free-throw path.
+- `--menushot` (xvfb, like `--shots`; add `--target 3`): screenshots of the launch and game-over difficulty panels.
+
+After gameplay changes, run several `--autoplay` games and check the stats look sane. A typical game to 21 is about
+75-120 shots and 10-15 minutes of game time (`GAME LENGTH`), ends 21-x (the loser usually 12-20), has about 2-6
+fouls and 2-3 out of bounds, one side switch, and few interceptions or shot-clock violations.
 Look at a screenshot after visual changes.
 
 ## Web build (how the owner plays)
