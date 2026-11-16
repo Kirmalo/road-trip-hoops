@@ -14,6 +14,9 @@ extends Node2D
 #   Fouls (rules.gd): a badly timed block jump into the shooter, or poking at a ball he shields with his body.
 #   Free throws: hold SHOOT at the line and release in the green zone, as on a jump shot.
 # Keyboard (for testing): WASD/arrows move, J = shoot/steal, K = pass/switch.
+# Phase 5: _ready() first hands non-game screens to Flow.build_screen(). A trip game reads Flow.match (target, look,
+# music, level, crew names, per-player sheet and ratings) and ends with Flow.game_finished(); Flow.match empty =
+# Quick Game exactly as before. Test flags: -- --ratingtest, -- --city <id> --cgame N.
 
 const PlayerScript = preload("res://scripts/player.gd")
 const BallScript = preload("res://scripts/ball.gd")
@@ -27,13 +30,19 @@ const RulesScript = preload("res://scripts/rules.gd")
 const MenuScript = preload("res://scripts/menu.gd")
 const View = preload("res://scripts/view.gd")   # projection sim -> screen (FLAT / ANGLED), stick mapping (Phase 4)
 const Looks = preload("res://scripts/court_looks.gd")   # court looks; Looks.music() is the court's music track
+const Flow = preload("res://scripts/flow.gd")       # screens and the trip match (Phase 5). Always `Flow.match`:
+                                                    # a bare `match` is the GDScript keyword
+const Ratings = preload("res://scripts/ratings.gd") # stat formulas: rating 50 = x1.0 (Quick Game unchanged)
+const Cities = preload("res://scripts/cities.gd")   # city data (names, targets) for the --city test flags
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
 const COURT_H := 50.0 * FT
 const SHOT_CLOCK_LENGTH := 24.0      # seconds; the shot clock stays with first to 21 (Q1). Format: rules.gd
 const HUMAN_TEAM := 0
-const TEAM_NAMES := ["BLUE", "RED"]
+# Team names in the top bar and the messages. A var (rules.gd, menu.gd read game.TEAM_NAMES): a trip game puts the
+# crew names from Flow.match here (owner Q11 a); Quick Game and the tests keep BLUE / RED.
+var TEAM_NAMES: Array = ["BLUE", "RED"]
 const TEAM_COLORS := [Color(0.7, 0.88, 1.0), Color(1.0, 0.42, 0.38)]   # popups and score messages
 
 # game-event feedback (P1-06)
@@ -126,6 +135,38 @@ const CONTROL_FOLLOWS_CATCH := false # false: a teammate who gets the ball (inbo
 const CALL_CUE_RISE := 4.0 * FT      # the "!" bubble floats this far above the caller's feet
 const CALL_CUE_COLOR := Color(1.0, 0.92, 0.3)
 const MENUSHOT_FRAMES := 40          # test only (--menushot): frames the panel is up before its screenshot
+
+# Phase 5 hooks (P5-02): the trip match (Flow.match), the pause screen, the --city test flags
+const TRIP_PATH := "res://scripts/trip.gd"      # P5-05: Trip.match_for(city, n) builds Flow.match (if it exists)
+const PAUSE_PATH := "res://scripts/pause.gd"    # P5-08: added to the HUD if the file exists
+const TOP_BAR_FONT_TRIP := 24       # top bar font in a trip game (crew names are longer than BLUE / RED; Quick Game 30)
+# --city <id> --cgame N without trip.gd: this hand-built match (your 3 underdogs vs a Hometown-like crew; ratings
+# near the contract's example). The flags set its label, target, look and music from cities.gd. Sheets fall back to
+# blue_n / red_n until the art exists (player.gd, P5-03).
+const TEST_MATCH := {
+	"mode": "trip", "label": "HOMETOWN - GAME 1 OF 3", "target": 11, "look": "blacktop", "music": "hometown",
+	"level": "normal",
+	"teams": [
+		{"name": "CORNFIELD KINGS", "style": "", "players": [
+			{"id": "ud_deuce", "name": "DEUCE", "sheet": "ud_deuce", "ratings": {"speed": 55, "shooting": 62,
+				"finishing": 50, "defense": 48, "stamina": 50, "steal": 58, "block": 38}},
+			{"id": "ud_jojo", "name": "JOJO", "sheet": "ud_jojo", "ratings": {"speed": 62, "shooting": 52,
+				"finishing": 48, "defense": 50, "stamina": 55, "steal": 65, "block": 35}},
+			{"id": "ud_tank", "name": "TANK", "sheet": "ud_tank", "ratings": {"speed": 45, "shooting": 40,
+				"finishing": 60, "defense": 58, "stamina": 50, "steal": 40, "block": 72}}]},
+		{"name": "COUNTY LINE", "style": "balanced", "players": [
+			{"id": "ht_g1", "name": "SKIP", "sheet": "ht_g1", "ratings": {"speed": 56, "shooting": 56,
+				"finishing": 44, "defense": 44, "stamina": 44, "steal": 54, "block": 34}},
+			{"id": "ht_a1", "name": "DALE", "sheet": "ht_a1", "ratings": {"speed": 40, "shooting": 40,
+				"finishing": 40, "defense": 40, "stamina": 40, "steal": 45, "block": 35}},
+			{"id": "ht_a2", "name": "RUSTY", "sheet": "ht_a2", "ratings": {"speed": 40, "shooting": 40,
+				"finishing": 40, "defense": 40, "stamina": 40, "steal": 35, "block": 50}}]},
+	],
+}
+# Quick Game settings a trip game overrides (static, so they survive reload_current_scene): put back when a game
+# without a trip match starts, so a Quick Game after a trip game has the saved court and level again
+static var _quick_look := ""
+static var _quick_level := -1
 
 # --humantest scripted thumb (developer testing only): drives the real touch joystick with synthetic touch events
 const HT_FINGER_POS := Vector2(260, 460)   # where the scripted thumb touches down (left half of the screen)
@@ -244,16 +285,32 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().has("--viewtest"):
 		_viewtest()
 		return
-	autoplay = OS.get_cmdline_user_args().has("--autoplay")
+	if OS.get_cmdline_user_args().has("--ratingtest"):
+		_ratingtest()
+		return
+	# screen hand-off (Phase 5): the test modes play a game at once, as before; otherwise Flow decides the screen
+	if Flow.skip_title():
+		Flow.screen = Flow.GAME
+	if Flow.screen != Flow.GAME:
+		set_physics_process(false)   # no game here: the screen node runs itself
+		set_process(false)
+		set_process_unhandled_input(false)
+		Flow.build_screen(self)   # title, map, story, ...: that screen's node and its music; no court
+		return
+	_parse_city_args()   # --city <id> --cgame N: Flow.match = that trip matchup
+	autoplay = OS.get_cmdline_user_args().has("--autoplay") or _city_autoplay()
 	humantest = OS.get_cmdline_user_args().has("--humantest")
 	force_fouls = OS.get_cmdline_user_args().has("--force-fouls")
 	menushot = OS.get_cmdline_user_args().has("--menushot")
+	Flow.attach_test(self)   # --trip-test: the driver (trip_test.gd, P5-15) watches this game too
 	MenuScript.prepare_level()   # before the players: first launch = Normal, then the saved level, then --difficulty
 	MenuScript.prepare_settings()   # before the court: the saved court look (-- --court wins) and music on/off
+	_apply_match_settings()      # a trip game: its court look and level (a Quick Game gets the saved ones back)
 
 	rules = RulesScript.new()
 	rules.game = self
 	add_child(rules)
+	_apply_match_rules()         # a trip game: its target and the crew names
 
 	audio = AudioScript.new()
 	audio.game = self
@@ -280,7 +337,7 @@ func _ready() -> void:
 		for i in 3:
 			var p = PlayerScript.new()
 			var color := "blue" if t == 0 else "red"
-			p.setup(self, t, i, load("res://assets/%s_%d.png" % [color, looks[t][i]]))
+			_setup_player(p, t, i, load("res://assets/%s_%d.png" % [color, looks[t][i]]), _match_player(t, i))
 			add_child(p)
 			players.append(p)
 			teams[t].append(p)
@@ -321,12 +378,15 @@ func _ready() -> void:
 	menu.game = self
 	add_child(menu)
 	start_game()
+	if Flow.in_trip() and str(Flow.match.get("label", "")) != "":
+		show_message(str(Flow.match.get("label", "")), rules.START_MSG_TIME)   # instead of "FIRST TO N"
 	if View.angled():
 		_update_camera()               # set the ANGLED zoom and limits and start on the ball
 		camera.reset_smoothing()
-	# the launch panel: once per run, never in the headless tests (or --shots, unless -- --menushot)
+	# the launch panel: once per run, never in the headless tests (or --shots, unless -- --menushot), never in a trip
+	# game (the lineup screen came before it)
 	var shots_run: bool = OS.get_cmdline_user_args().has("--shots") or OS.get_cmdline_user_args().has("--ballshots")
-	var tests: bool = autoplay or humantest or (shots_run and not menushot)
+	var tests: bool = autoplay or humantest or (shots_run and not menushot) or Flow.in_trip()
 	if not tests and not MenuScript.start_done:
 		menu_wait = true
 		msg_label.visible = false   # no "FIRST TO 21" under the panel; the reloaded game shows it
@@ -339,8 +399,185 @@ func _ready() -> void:
 
 # in play: the court's track, softly (owner Q5 a). The panels play the menu music (menu.gd)
 func _play_court_music() -> void:
-	audio.play_music(Looks.music())
+	var track: String = Looks.music()
+	if Flow.in_trip() and str(Flow.match.get("music", "")) != "":
+		track = str(Flow.match.get("music", ""))   # the city's track
+	audio.play_music(track)
 	audio.set_music_ducked(true)
+
+# ---------------- Phase 5: the trip match (Flow.match) ----------------
+# With Flow.match empty (Quick Game, the tests) none of this changes anything.
+
+# player i of team t from Flow.match ({} in Quick Game): {"id", "name", "sheet", "ratings": {...}}
+func _match_player(t: int, i: int) -> Dictionary:
+	if not Flow.in_trip():
+		return {}
+	var tms: Array = Flow.match.get("teams", [])
+	if t >= tms.size():
+		return {}
+	var tm: Dictionary = tms[t]
+	var ps: Array = tm.get("players", [])
+	if i >= ps.size() or not (ps[i] is Dictionary):
+		return {}
+	return ps[i]
+
+# player.setup() with the player dict (P5-03 adds the optional 5th argument: sheet and ratings). Called the old way
+# when the dict is empty or player.gd doesn't take it yet; then the dict's ratings are copied in here, so steal,
+# block and shooting work before P5-03 lands.
+func _setup_player(p, t: int, i: int, tex: Texture2D, pdata: Dictionary) -> void:
+	var n_args := 0
+	for m in p.get_method_list():
+		if m.name == "setup":
+			n_args = (m.args as Array).size()
+	if pdata.size() > 0 and n_args >= 5:
+		p.setup(self, t, i, tex, pdata)
+		return
+	p.setup(self, t, i, tex)
+	var r = pdata.get("ratings", {})
+	if r is Dictionary:
+		for k in r:
+			p.ratings[k] = int(r[k])
+
+# before the court and the players: a trip game's court look and level (Difficulty for team 1, owner Q4; a
+# --difficulty flag wins, for tests). A game without a trip match gets the Quick Game look and level back.
+func _apply_match_settings() -> void:
+	var diff = MenuScript.Difficulty
+	if not Flow.in_trip():
+		if _quick_look != "":
+			Looks.set_current(_quick_look)
+			_quick_look = ""
+		if _quick_level >= 0:
+			diff.level = _quick_level
+			_quick_level = -1
+		return
+	var look: String = str(Flow.match.get("look", ""))
+	if look != "":
+		if _quick_look == "":
+			_quick_look = Looks.current
+		Looks.set_current(look)
+	var lv: int = diff.parse(str(Flow.match.get("level", "")))
+	if lv >= 0 and not _has_difficulty_flag():
+		if _quick_level < 0:
+			_quick_level = diff.level
+		diff.level = lv
+
+func _has_difficulty_flag() -> bool:
+	for a in OS.get_cmdline_user_args():
+		if a == "--difficulty" or a.begins_with("--difficulty="):
+			return true
+	return false
+
+# after rules.gd is made: a trip game's target (side switch at (target + 1) / 2, as --target does; a --target flag
+# wins) and the crew names for the top bar and the messages
+func _apply_match_rules() -> void:
+	if not Flow.in_trip():
+		return
+	var tg: int = int(Flow.match.get("target", 0))
+	if tg > 0 and not OS.get_cmdline_user_args().has("--target"):
+		rules.target = tg
+		rules.switch_at = floori((tg + 1) / 2.0)
+	var tms: Array = Flow.match.get("teams", [])
+	for t in mini(2, tms.size()):
+		var nm: String = str((tms[t] as Dictionary).get("name", ""))
+		if nm != "":
+			TEAM_NAMES[t] = nm
+
+# test flags -- --city <id> --cgame N (N = 1..3, default 1): play that trip matchup. Built by Trip.match_for(id, N)
+# when trip.gd exists (P5-05), else TEST_MATCH with the city's name, target, look and music from cities.gd.
+# With neither --humantest nor a screenshot mode it is an --autoplay game (see _city_autoplay).
+func _parse_city_args() -> void:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var ci: int = args.find("--city")
+	if ci < 0 or ci + 1 >= args.size():
+		return
+	var city: String = args[ci + 1]
+	var n := 1
+	var gi: int = args.find("--cgame")
+	if gi >= 0 and gi + 1 < args.size() and args[gi + 1].is_valid_int():
+		n = clampi(args[gi + 1].to_int(), 1, 3)
+	var built := {}
+	if ResourceLoader.exists(TRIP_PATH):
+		var trip: GDScript = load(TRIP_PATH) as GDScript
+		if trip != null and trip.has_method("match_for"):
+			var r = trip.call("match_for", city, n)
+			if r is Dictionary and (r as Dictionary).size() > 0:
+				built = r
+			elif Flow.in_trip():
+				built = Flow.match   # match_for() set Flow.match itself
+	if built.is_empty():
+		built = TEST_MATCH.duplicate(true)
+		var c: Dictionary = Cities.city(city)
+		if c.is_empty():
+			print("--city: unknown city '%s', playing the test match" % city)
+		else:
+			built["label"] = "%s - GAME %d OF 3" % [str(c.get("name", city)).to_upper(), n]
+			built["target"] = Cities.game_target(city, n)
+			if str(c.get("look", "")) != "":
+				built["look"] = str(c["look"])
+			if str(c.get("music", "")) != "":
+				built["music"] = str(c["music"])
+			var crew: Dictionary = c.get("crew", {})
+			if str(crew.get("name", "")) != "":
+				built["teams"][1]["name"] = str(crew["name"])
+				built["teams"][1]["style"] = str(crew.get("style", ""))
+	Flow.match = built
+	var tms: Array = built.get("teams", [])
+	var names: Array = []
+	for tm in tms:
+		names.append(str((tm as Dictionary).get("name", "?")))
+	print("MATCH %s | to %d | %s | level %s" % [str(built.get("label", "")), int(built.get("target", 21)),
+			" vs ".join(PackedStringArray(names)), str(built.get("level", ""))])
+
+# --city plays CPU vs CPU unless the run is a --humantest or a screenshot mode
+func _city_autoplay() -> bool:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	if not args.has("--city"):
+		return false
+	for f in ["--humantest", "--shots", "--ballshots", "--menushot"]:
+		if args.has(f):
+			return false
+	return true
+
+# test only (-- --ratingtest): print the ratings table (ratings.gd) and quit
+func _ratingtest() -> void:
+	set_physics_process(false)
+	set_process(false)
+	var ok: bool = Ratings.self_test()
+	get_tree().quit(0 if ok else 1)
+
+# the shooting rating of a player (50 when he has none: Quick Game)
+func _shooting(p) -> int:
+	if p != null and p.has_method("rating"):
+		return int(p.rating("shooting"))
+	return Ratings.AVG_RATING
+
+# per-team numbers for the pause screen (P5-08): points, shots made / taken (field goals incl. dunks and layups),
+# dunks made, steals, blocks
+func team_stats(t: int) -> Dictionary:
+	var g := func(k: String) -> int:
+		return int(stats.get(k, 0))
+	return {"points": int(score[t]), "shots": g.call("shots_t%d" % t), "makes": g.call("makes_t%d" % t),
+			"dunks": g.call("dunk_makes_t%d" % t), "steals": g.call("steals_t%d" % t),
+			"blocks": g.call("blocks_t%d" % t)}
+
+# the pause screen (P5-08) on the HUD, once pause.gd exists; not in CPU-only games
+func _add_pause(hud: CanvasLayer, root: Control) -> void:
+	if autoplay or not ResourceLoader.exists(PAUSE_PATH):
+		return
+	var s: GDScript = load(PAUSE_PATH) as GDScript
+	if s == null:
+		return
+	var node = s.new()
+	if not (node is Node):
+		return
+	if "game" in node:
+		node.set("game", self)
+	if node is Control:
+		root.add_child(node)
+	elif node is CanvasLayer:
+		add_child(node)
+	else:
+		hud.add_child(node)
 
 func _make_layer(n: String, z: int) -> Node2D:
 	var l := Node2D.new()
@@ -408,7 +645,9 @@ func _build_hud() -> void:
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(bar)
 
-	score_label = _make_label(root, 30, Control.PRESET_TOP_WIDE, 8)
+	score_label = _make_label(root, TOP_BAR_FONT_TRIP if Flow.in_trip() else 30, Control.PRESET_TOP_WIDE, 8)
+	if Flow.in_trip():
+		score_label.offset_top = 11   # same middle of the bar with the smaller font
 	clock_label = _make_label(root, 20, Control.PRESET_TOP_LEFT, 14)
 	clock_label.offset_left = 20
 	clock_label.offset_right = 260
@@ -432,6 +671,7 @@ func _build_hud() -> void:
 	controls.b_pressed.connect(_on_b_pressed)
 	if autoplay:
 		controls.visible = false
+	_add_pause(hud, root)
 
 func _make_label(parent: Control, size: int, preset: int, top: float) -> Label:
 	var l := Label.new()
@@ -525,7 +765,9 @@ func shot_probability(p, quality: float) -> float:
 		base *= 0.55
 	elif cont < 6.0:
 		base *= 0.8
-	return clamp(base * quality, 0.02, 0.92)
+	# the shooting rating moves jump shots only (dunks and layups use finishing, in player.gd); 50 = x1.0
+	var rate: float = 1.0 if p.rim_kind != "" else Ratings.shot_mult(_shooting(p))
+	return clampf(base * quality * rate, 0.02, 0.92)
 
 # ---------------- ball events ----------------
 
@@ -558,9 +800,12 @@ func release_shot(p, quality: float) -> void:
 	shot_clock_running = false
 	shot_serial += 1
 	stat("shots")
+	stat("shots_t%d" % p.team)
 	stat("shots_half%d_t%d" % [2 if rules.sides_swapped else 1, p.team])
 	stat("shot_d%d" % int(p.position.distance_to(hoop) / FT / 5) )
-	if made: stat("makes")
+	if made:
+		stat("makes")
+		stat("makes_t%d" % p.team)
 	if p.on_fire:
 		stat("fire_shots")
 		if made: stat("fire_makes")
@@ -572,7 +817,7 @@ func release_shot(p, quality: float) -> void:
 
 # a free throw (rules.ft_active): FT_BASE x the release quality, 1 point, no contest, no blocks, no interceptions
 func _release_free_throw(p, quality: float) -> void:
-	var prob: float = clampf(FT_BASE * quality, 0.0, FT_CAP)
+	var prob: float = clampf(FT_BASE * Ratings.shot_mult(_shooting(p)) * quality, 0.0, FT_CAP)
 	var made: bool = rng.randf() < prob
 	shot_clock_running = false
 	stat("free_throws")
@@ -591,6 +836,7 @@ func rim_shot_blocked(p, defender) -> void:
 	shot_clock_running = false
 	shot_serial += 1   # it counts as a shot: lets the blocker (defense.gd rolled_shot) try again on the next one
 	stat("shots")
+	stat("shots_t%d" % p.team)
 	if p.on_fire:
 		stat("fire_shots")
 	block_shot(defender)
@@ -602,6 +848,9 @@ func block_shot(defender) -> void:
 		# a jump shot swatted in the air: it was rolled at release, so take a rolled make back off the books
 		if ball.shot_made:
 			stats["makes"] = stats.get("makes", 1) - 1
+			if ball.shooter != null:
+				var mk: String = "makes_t%d" % ball.shooter.team
+				stats[mk] = stats.get(mk, 1) - 1
 			if ball.shooter != null and ball.shooter.on_fire:
 				stats["fire_makes"] = stats.get("fire_makes", 1) - 1
 		missed_shooter = ball.shooter
@@ -633,6 +882,8 @@ func on_shot_made(shooter, pts: int) -> void:
 	if ball.shot_kind != "dunk":   # a dunk already shows "SLAM!"
 		fx.popup("+%d" % pts, hoop + Vector2(0, -SCORE_POPUP_RISE), TEAM_COLORS[shooter.team], SCORE_POPUP_SIZE)
 	audio.play("crowd")
+	if ball.shot_kind == "dunk":
+		stat("dunk_makes_t%d" % shooter.team)   # pause screen (team_stats)
 	_update_fire_on_make(shooter)
 	rules.add_score(shooter.team, pts, ball.shot_kind if ball.shot_kind != "" else "shot")
 	if game_over:
@@ -1313,14 +1564,22 @@ func on_game_over(winner: int) -> void:
 	fx.set_trail(false)
 	audio.play("whistle", 3.0, 0.0)   # second, louder whistle: game over
 	_update_hud()
-	if autoplay or humantest:
+	# a trip game (not the --city CPU test): FINAL, then the result screen after Flow.RESULT_DELAY s. Under
+	# --trip-test always, even when its driver made the game CPU vs CPU
+	var trip_end: bool = Flow.in_trip() and (Flow.test != "" or not (autoplay or humantest))
+	if autoplay or humantest or trip_end:
 		show_message("FINAL  %d - %d\n%s WINS!" % [score[0], score[1], TEAM_NAMES[winner]], 9999.0, TEAM_COLORS[winner])
+		if trip_end:
+			stats["team_stats"] = [team_stats(0), team_stats(1)]
+			var fin := func() -> void:
+				Flow.game_finished(winner, score, stats)
+			get_tree().create_timer(Flow.RESULT_DELAY).timeout.connect(fin)
 	else:
 		# P3-08: the level panel under the final score; a tap on a level plays again
 		msg_label.visible = false
 		_menu_input(true)
 		menu.show_game_over(score, winner, TEAM_COLORS[winner])
-	if autoplay or humantest:
+	if (autoplay or humantest) and not trip_end:
 		var secs: int = int(rules.play_time)
 		print("FINAL BLUE %d - RED %d" % [score[0], score[1]])
 		print("GAME LENGTH %d:%02d" % [secs / 60, secs % 60])
@@ -1330,6 +1589,11 @@ func on_game_over(winner: int) -> void:
 				g.call("fouls_t0"), g.call("fouls_t1"), g.call("fouls_shooting"), g.call("fouls_reach"), g.call("and_ones"),
 				g.call("free_throw_makes"), g.call("free_throws"), g.call("ft_makes_t0"), g.call("ft_attempts_t0"),
 				g.call("ft_makes_t1"), g.call("ft_attempts_t1"), g.call("ft_last_misses"), g.call("ft_timeouts")])
+		var ts := func(t: int) -> String:
+			var d: Dictionary = team_stats(t)
+			return "%s %d pts, shots %d/%d, dunks %d, steals %d, blocks %d" % [TEAM_NAMES[t], d.points, d.makes,
+					d.shots, d.dunks, d.steals, d.blocks]
+		print("TEAMS %s | %s" % [ts.call(0), ts.call(1)])   # the pause screen's numbers (team_stats)
 		print(stats)
 		if humantest:
 			print(_ht_summary())
@@ -1397,9 +1661,9 @@ func _update_message(delta: float) -> void:
 func _update_hud() -> void:
 	# the arrow next to BLUE shows which way BLUE attacks; it flips at the side switch
 	if attack_hoop(HUMAN_TEAM).x > COURT_W / 2:
-		score_label.text = "BLUE %s  %d   -   %d  RED" % [SIDE_ARROW_RIGHT, score[0], score[1]]
+		score_label.text = "%s %s  %d   -   %d  %s" % [TEAM_NAMES[0], SIDE_ARROW_RIGHT, score[0], score[1], TEAM_NAMES[1]]
 	else:
-		score_label.text = "%s BLUE  %d   -   %d  RED" % [SIDE_ARROW_LEFT, score[0], score[1]]
+		score_label.text = "%s %s  %d   -   %d  %s" % [SIDE_ARROW_LEFT, TEAM_NAMES[0], score[0], score[1], TEAM_NAMES[1]]
 	var gp := -1
 	for t in 2:
 		if rules.is_game_point(t):
