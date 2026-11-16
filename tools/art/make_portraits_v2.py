@@ -190,18 +190,37 @@ def face(cv, T, Tn, skin, expr, jaw=0.0, chin=0.0, crown=0.0, beard=False, hair_
     return draw_head(cv, T, skin, expr, jaw, chin, crown, beard, brow_col, brow_w)
 
 
+def neck_shape(Tn, jaw):
+    """The neck as part of the body: its sides flare smoothly into the trapezius (head-local, no head tilt)."""
+    j = jaw
+    return Tn([(-44, 10), (-37 - j * 0.5, 54), (-39 - j * 0.6, 70), (-46 - j, 84), (-62 - j, 93), (-84 - j, 99),
+               (-92 - j, 170), (100 + j, 170), (92 + j, 101), (76 + j, 95), (62 + j, 86), (56 + j * 0.6, 72),
+               (51 + j * 0.5, 58), (46, 40), (10, 40)])
+
+
+def neck_column(Tn, jaw):
+    """Just the neck column (for things that sit behind the neck, like a hood)."""
+    return Tn([(-44, 10), (-37 - jaw * 0.5, 54), (-40 - jaw * 0.6, 80), (-42 - jaw, 130), (60 + jaw, 130),
+               (56 + jaw * 0.6, 80), (51 + jaw * 0.5, 58), (46, 40), (10, 40)])
+
+
+def neck_shading(cv, T, Tn, M, skin, jaw):
+    """Cast shadow of the jaw on the neck (hatched), in the same skin tones as the face, and the neck muscle."""
+    d = max(0.0, jaw) * 2.0          # bearded jaws (jaw > 0) cast a deeper shadow
+    cast = cv.poly(T([(-46, 20), (-30, 46), (-10, 62), (12, 74), (34, 82), (58, 84), (62, 96 + d), (40, 102 + d),
+                      (14, 98 + d), (-12, 88 + d), (-32, 74 + d * 0.6), (-44, 56)])) & M
+
+    cv.rgb[cast] = skin["sh"]
+    f = cv.soft(cast, 2.5) * cast
+    cv.rgb[cv.hatch(np.clip((f - 0.3) * 1.6, 0, 1), spacing=2.8, ang=-30.0, wmax=0.6) & cast] = skin["dp"]
+    cv.ink(cv.line(Tn([(40, 88), (30, 106), (18, 124)]), 1.3, taper=(0.5, 0.7)))      # neck muscle
+
+
 def draw_neck(cv, T, Tn, skin, jaw):
-    # neck (drawn before the head; the jaw ink covers its top)
-    neck = cv.poly(Tn([(-44, 10), (-36 - jaw * 0.5, 60), (-42 - jaw, 130), (60 + jaw, 130), (52 + jaw * 0.5, 74),
-                       (44, 40), (10, 40)]))
-    jaw_shadow = cv.poly(T([(-46, 20), (-30, 46), (-10, 62), (12, 74), (34, 82), (56, 84), (58, 94), (30, 98),
-                            (4, 90), (-20, 76), (-38, 58)]))
-    side = cv.crescent(neck, 14)
-    cv.cel(neck, skin, shadow=jaw_shadow | side, dots=False, ink=0,
-           hatch={"spacing": 2.8, "ang": -30.0, "wmax": 0.6})
-    cv.ink(cv.line(Tn([(-37, 56), (-39, 92), (-44, 128)]), 2.4, taper=(0.1, 0.5)))
-    cv.ink(cv.line(Tn([(51, 72), (55, 100), (60, 128)]), 2.6, taper=(0.1, 0.5)))
-    cv.ink(cv.line(Tn([(38, 90), (28, 108), (18, 124)]), 1.3, taper=(0.5, 0.6)))     # neck muscle
+    """A neck on its own (under a tee that covers the shoulders)."""
+    neck = cv.poly(neck_column(Tn, jaw))     # the tee's collar is its lower edge
+    cv.cel(neck, skin, shadow=cv.crescent(neck, 16), hi=cv.sheen(neck, 4, 5), dots=False, ink=2.4)
+    neck_shading(cv, T, Tn, neck, skin, jaw)
     return neck
 
 
@@ -252,13 +271,17 @@ def body_shape(broad):
             (X(198), 224), (X(238), 238), (X(264), 258), (X(282), 296), (X(292), 350)], X
 
 
-def skin_body(cv, skin, broad):
+def skin_body(cv, skin, broad, T, Tn, jaw):
+    """Shoulders, arms and neck as one skin shape: one contour, one set of tones, no seam at the neck."""
     pts, X = body_shape(broad)
-    M = cv.poly(pts)
+    M = cv.poly(pts) | cv.poly(neck_shape(Tn, jaw))
+    # morphological closing (soft dilate, then soft erode): the neck-to-shoulder corner becomes one smooth curve
+    M = cv.soft(cv.soft(M, 5.0) > 0.12, 5.0) > 0.88
     sh = cv.crescent(M, 22)
     sh |= cv.poly([(X(20), 300), (X(60), 270), (X(66), 350), (X(10), 350)])      # near arm, under the deltoid
     hi = cv.sheen(M, 4, 5)
     cv.cel(M, skin, shadow=sh, hi=hi, ink=2.4)
+    neck_shading(cv, T, Tn, M, skin, jaw)
     cv.ink(cv.line([(X(56), 258), (X(62), 290), (X(64), 340)], 2.0, taper=(0.3, 0.1)))   # near deltoid
     cv.ink(cv.line([(X(236), 254), (X(240), 290), (X(244), 340)], 2.0, taper=(0.3, 0.1)))
     cv.ink(cv.line([(X(100), 252), (X(122), 258), (X(138), 258)], 1.4, taper=(0.4, 0.5)))  # collarbones
@@ -304,13 +327,13 @@ def deuce(cv, pal, skins, expr):
     ang = {"focus": 3.0, "happy": -4.0}[expr]
     T = C.Xf(150, 132, 0.95, 1.04, ang, pivot=(0, 40), front=FRONT)
     Tn = C.Xf(150, 132, 0.95, 1.04, 0)
-    _, X = skin_body(cv, skin, 0.96)
+    _, X = skin_body(cv, skin, 0.96, T, Tn, -2)
     # navy arm sleeve on the near arm
     sl = cv.poly([(X(-20), 352), (X(-12), 302), (X(36), 296), (X(66), 308), (X(68), 352)])
     cv.cel(sl, navy, shadow=cv.crescent(sl, 10), hi=cv.sheen(sl, 3, 4), ink=2.0)
     cv.ink(cv.line([(X(-6), 310), (X(30), 306), (X(62), 316)], 1.0, taper=(0.3, 0.3)) & sl)
     tank_top(cv, X, top, trim)
-    face(cv, T, Tn, skin, expr, jaw=-2, chin=1, crown=4, brow_col=(20, 12, 14))
+    face(cv, T, Tn, skin, expr, jaw=-2, chin=1, crown=4, brow_col=(20, 12, 14), neck=False)
     # short hair, then the headband over it
     hp = T([(-54, -36), (-58, -56), (-36, -80), (-4, -92), (30, -86), (52, -70), (62, -50), (63, -40), (20, -46),
             (-20, -40)])
@@ -403,17 +426,17 @@ def tank(cv, pal, skins, expr):
     ang = {"focus": 3.0, "happy": -4.0}[expr]
     T = C.Xf(148, 130, 1.06, 1.0, ang, pivot=(0, 40), front=FRONT)
     Tn = C.Xf(148, 130, 1.12, 1.0, 0)
-    _, X = skin_body(cv, skin, 1.08)
+    _, X = skin_body(cv, skin, 1.08, T, Tn, 4)
     # sleeveless hoodie: wide straps, the hood bunched behind the neck, gold drawstrings
     hood = cv.poly([(X(70), 250), (X(74), 214), (X(100), 192), (X(150), 184), (X(196), 192), (X(222), 214),
-                    (X(228), 250), (X(150), 262)])
+                    (X(228), 250), (X(150), 262)]) & ~cv.poly(neck_column(Tn, 4))
     cv.cel(hood, navy, shadow=cv.crescent(hood, 12) | cv.poly([(X(106), 206), (X(150), 198), (X(194), 206),
                                                               (X(194), 250), (X(106), 250)]),
            hi=cv.sheen(hood, 3, 4), ink=2.2)
     cv.ink(cv.line([(X(82), 236), (X(88), 214), (X(108), 198)], 1.4, taper=(0.3, 0.3)))     # hood folds
     cv.ink(cv.line([(X(212), 236), (X(206), 214)], 1.4, taper=(0.3, 0.3)))
     tank_top(cv, X, navy, gold, scoop=286, strap=14)
-    face(cv, T, Tn, skin, expr, jaw=4, chin=2, crown=0, beard=True, brow_col=hair["dp"], brow_w=1.2)
+    face(cv, T, Tn, skin, expr, jaw=4, chin=2, crown=0, beard=True, brow_col=hair["dp"], brow_w=1.2, neck=False)
     for xs, xe in ((132, 126), (166, 172)):
         cord = cv.line([(X(xs), 266), (X((xs + xe) / 2), 296), (X(xe), 322)], 3.2, taper=(0, 0))
         cv.cel(cord, gold, ink=1.0, dots=False)
@@ -486,9 +509,10 @@ def mayor(cv, pal, skins, expr):
     ang = {"neutral": 0.0, "smug": -7.0}[expr]
     T = C.Xf(148, 128, 1.08, 1.0, ang, pivot=(0, 40), front=FRONT)
     Tn = C.Xf(148, 128, 1.16, 1.0, 0)
-    _, X = skin_body(cv, skin, 1.12)
+    _, X = skin_body(cv, skin, 1.12, T, Tn, 5)
     tank_top(cv, X, green, white, scoop=296, strap=20)
-    face(cv, T, Tn, skin, expr, jaw=5, chin=2, crown=-2, beard=True, brow_col=grey["base"], brow_w=1.4)
+    face(cv, T, Tn, skin, expr, jaw=5, chin=2, crown=-2, beard=True, brow_col=grey["base"], brow_w=1.4, neck=False)
+
     # a few short grey hairs above and behind the ear
     for k in range(7):
         x, y = -58 + k * 3.6, -16 + abs(k - 3) * 0.8
