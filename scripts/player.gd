@@ -3,6 +3,7 @@ extends Node2D
 # CPU defense lives in defense.gd (one instance per player, `def`).
 
 const Defense = preload("res://scripts/defense.gd")
+const Difficulty = preload("res://scripts/difficulty.gd")   # CPU skill knobs by level (P3-03; Hard = the constant)
 
 var game
 var team := 0
@@ -279,6 +280,9 @@ func setup(g, t: int, i: int, tex: Texture2D) -> void:
 	humantest = OS.get_cmdline_user_args().has("--humantest")
 	def = Defense.new(self, g)
 	ratings = (RATINGS_BY_INDEX[i] as Dictionary).duplicate()
+	if t == Difficulty.CPU_TEAM and i == 0:
+		Difficulty.init_once()   # saved level, then --difficulty (autoplay/humantest default to Hard)
+		game.stat("difficulty_" + Difficulty.level_name())
 
 func has_ball() -> bool:
 	return game.ball.state == game.ball.HELD and game.ball.holder == self
@@ -348,6 +352,7 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		game.stat("guard_slow_frames_t%d" % team)
 	if update_turbo(delta, want_turbo, is_human):
 		desired *= TURBO_SPEED_MULT * (TURBO_BALL_MULT if has_ball() else 1.0)
+	desired *= Difficulty.value(team, "speed_mult", 1.0)   # Q6 b knob (1.0 on every level until answered)
 	update_dribble_hand(delta)
 	velocity = velocity.move_toward(desired, accel * delta)
 	position += velocity * delta
@@ -710,7 +715,7 @@ func update_turbo(delta: float, want: bool, is_human: bool) -> bool:
 		if on_fire:
 			game.stat("fire_turbo_frames")   # on fire: stamina doesn't drain
 		else:
-			stamina = maxf(0.0, stamina - STAMINA_DRAIN * delta)
+			stamina = maxf(0.0, stamina - Difficulty.value(team, "stamina_drain", STAMINA_DRAIN) * delta)
 		refill_wait = REFILL_DELAY
 		game.stat("turbo_frames_t%d" % team)
 		if stamina <= 0.0:
@@ -781,7 +786,8 @@ func release_shot() -> void:
 		else:
 			quality = 0.6
 	else:
-		quality = game.rng.randf_range(CPU_SHOT_QUALITY_MIN, CPU_SHOT_QUALITY_MAX)
+		quality = game.rng.randf_range(Difficulty.value(team, "shot_quality_min", CPU_SHOT_QUALITY_MIN),
+				Difficulty.value(team, "shot_quality_max", CPU_SHOT_QUALITY_MAX))
 		if on_fire:
 			quality *= FIRE_SHOT_BONUS
 	# a closeout that only arrived during the shot (or a defender who is beaten, trailing or still up from a bite)
@@ -1217,7 +1223,7 @@ func on_lob_thrown(to_p, flight: float) -> void:
 			continue
 		if o.position.distance_to(to_p.position) > reach and o.position.distance_to(hoop) > reach:
 			continue
-		var chance: float = CPU_LOB_JUMP_CHANCE * (1.0 + CPU_LOB_RATING_SPAN * o.rating_frac("block"))
+		var chance: float = Difficulty.value(o.team, "lob_jump_chance", CPU_LOB_JUMP_CHANCE) * (1.0 + CPU_LOB_RATING_SPAN * o.rating_frac("block"))
 		if game.rng.randf() < chance:
 			o.lob_read_target = to_p
 			game.stat("cpu_lob_reads")
