@@ -6,11 +6,13 @@ tools/art/pixel3d.py), rendered close up at a high scale with the procedural por
 4-tone shading with the light from the upper left, plus a crew-colored rim light on the far edge
 (the fighting-game portrait look). Original characters; nothing is traced or copied.
 
-SAMPLE ONLY for now (the owner approves the style first): the 3 underdogs in 2 expressions and Hometown's boss.
+SAMPLE ONLY: the 3 underdogs in 2 expressions and Hometown's boss. SUPERSEDED: the owner chose the comic style v2,
+so the game's portraits come from tools/art/make_portraits_v2.py; this script now writes to build/portraits_v1/
+(ignored) so rerunning it cannot overwrite them.
 
 Usage:  python3 tools/art/make_portraits.py
-Output: assets/portraits/<id>.png            96 x 112, default expression (neutral / determined), faces right
-        assets/portraits/<id>_<expr>.png     the other expressions (happy, smug)
+Output: build/portraits_v1/<id>.png            96 x 112, default expression (neutral / determined), faces right
+        build/portraits_v1/<id>_<expr>.png     the other expressions (happy, smug)
         docs/art/portraits_sample_v1.png     story text box mock-ups and all sample portraits
 Needs:  Pillow, numpy
 """
@@ -24,7 +26,7 @@ import pixel3d as P
 from make_players import P_STAND, load_players
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-OUT_DIR = os.path.join(ROOT, "assets", "portraits")
+OUT_DIR = os.path.join(ROOT, "build", "portraits_v1")
 SHEET = os.path.join(ROOT, "docs", "art", "portraits_sample_v1.png")
 
 PW, PH = 96, 112           # board contract: 96 x 112 source px, drawn 3x, facing right
