@@ -58,6 +58,9 @@ tablet with a joystick and two buttons.
 | Picking the level | Big EASY / NORMAL / HARD buttons on a start panel and after each game; the choice is remembered |
 | Phase 3 check-in | Difficulty levels well spaced. Keep games to 21 in the test build. Keep the long rim bounces that go out of bounds. Crossovers beating the assisted defender: fine on Hard, but on Easy/Normal a CPU crossover beats you less often (difficulty knob cross_beat_human: Hard 1.0, Normal 0.75, Easy 0.5) |
 | Camera view | Angled 3/4 view (court seen at an angle from the sideline, upright players, visible backboards, like classic arcade basketball). The game simulation stays 2D top-down underneath; only drawing and joystick mapping change. Decided before Phase 4 art (owner, Phase 4 start) |
+| Player sprites | Our own original 3/4-view players, drawn by the team (scripts in tools/), designed with the owner step by step and improved over time |
+| Asset licenses (Phase 4) | CC0 and CC-BY only; no share-alike (CC-BY-SA, OGA-BY) art or music |
+| Swish and bounce | Synthesized by script (like the referee whistle), replacing the stand-ins |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
