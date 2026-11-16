@@ -89,7 +89,6 @@ const STEAL_HELD_TIMING := 0.25      # timing factor when the ball is held up (g
 
 # fouls and free throws (P3-05; the sequence and the counts are in rules.gd). Owner Q3: fouls come from bad timing only
 const REACH_FOULS := true            # a poke that reaches a ball shielded by the handler's body can be a reaching foul
-const FOUL_REACH_CHANCE := 0.3       # ... with this chance per such poke (Q3 a; P3-09 tunes it with the shooting fouls)
 const FT_BASE := 0.72                # free throw made chance at quality 1.0 (normal release); no contest, no blocks
 const FT_CAP := 0.95                 # at most this (a perfect release is quality 1.3: 0.94)
 const FT_PERFECT_Q := 1.25           # a free throw at or above this quality counts as a perfect release (human_ft_perfect)
@@ -710,10 +709,7 @@ func attempt_steal(defender, _legacy := -1.0) -> void:
 		stat("steal_shielded")
 		# reaching foul (P3-05, Q3 a): the poke reached the handler, but the ball was behind his body
 		if REACH_FOULS and _ball_behind_body(defender, h):
-			stat("steal_shielded_body")
-			if rng.randf() < FOUL_REACH_CHANCE and rules.has_method("call_foul"):
-				rules.call_foul(defender, h, "reach")
-				return
+			stat("steal_shielded_body")   # the reach-foul roll itself is defense.try_reach_foul (P3-09)
 	if good:
 		stat("steal_good_pokes_t%d" % defender.team)
 	if rng.randf() < steal_chance(defender, h):
@@ -877,17 +873,8 @@ func _physics_process(delta: float) -> void:
 	# free throws: nobody moves with the stick (no walking off the line, no crossovers)
 	var stick := Vector2.ZERO if rules.ft_active else _input_vector()
 	input.update(delta, stick)
-	# until player.gd runs the free-throw behavior (P3-06), main walks everyone to rules.ft_spot() and only updates
-	# the human shooter (his shot meter)
-	var ft_hold: bool = rules.ft_active and not rules.ft_native()
 	for p in players:
-		if ft_hold:
-			if p == rules.ft_shooter and rules.ft_phase == "shoot" and is_human(p):
-				p.update(delta, true, Vector2.ZERO)
-			else:
-				rules.ft_walk(p, delta)
-			continue
-		p.update(delta, is_human(p), stick)
+		p.update(delta, is_human(p), stick)   # during free throws player.at_free_throw() handles positions
 	input.face_caller(delta)
 	_call_node.queue_redraw()
 	if not rules.ft_active:

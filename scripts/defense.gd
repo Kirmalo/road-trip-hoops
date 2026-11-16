@@ -52,15 +52,18 @@ const LAYUP_AIR_BLOCK_MULT := 0.5 # block chance x this on a layup already on it
 
 # ---- fouls (P3-06; owner Q3: bad timing only). Both the human and the CPU can foul; the call itself (whistle, free
 # throws, sideline ball) is rules.call_foul (P3-05). Target: about 3-6 fouls a game for both teams together. ----
-const FOUL_BAD_JUMP_CHANCE := 0.35  # a badly timed block jump that reaches the shooter's body: chance it is a foul
+const FOUL_BAD_JUMP_CHANCE := 0.5   # a badly timed block jump that reaches the shooter's body: chance it is a foul (P3-09: was 0.35)
 const FOUL_CONTACT_FT := 3.0      # "reaches the shooter": the jumping defender is this close to the shooter's body
                                   # (tighter than the block reach: a bad jump further off just misses)
 const FOUL_LATE_WINDOW := 0.2     # seconds after the block window that a late jump (still rising) into him fouls
 const FOUL_LATE_MULT := 0.35      # a late jump fouls with FOUL_BAD_JUMP_CHANCE x this (late jumps at layups are
                                   # common and mostly catch only air: without it ~7 fouls a game)
 const FOUL_FAKE_WINDOW := 0.4    # a bad jump that started this soon after the shooter's pump fake: "bit on the fake"
-const FOUL_SHIELD_POKE_CHANCE := 0.2  # a poke at a ball the handler shields with his body: chance it is a reach foul
-                                  # (0.3 gave a STEAL-mashing human ~6 reach fouls a game)
+# reaching fouls (P3-09: rolled only here, in try_reach_foul; main.attempt_steal's own roll was removed)
+const REACH_FOUL_CHANCE := 0.3    # CPU: a poke that reaches a ball behind the handler's body fouls with this chance
+                                  # (replaces main.gd's old FOUL_REACH_CHANCE)
+const REACH_FOUL_HUMAN_CHANCE := 0.1   # the human: lower, so a player who pokes a lot isn't whistled all game
+                                  # (0.3 gave a STEAL-mashing humantest 2-5 reach fouls a game, of 3-6 in all)
 const FOUL_SHIELD_DEG := 120.0    # shielded: the angle handler->ball vs handler->defender is at least this (exposure 0)
 const CPU_SHIELD_REACH := 0.06    # CPU: ball shielded and his poke gap is up: chance he reaches in anyway (bad timing)
 const FOUL_POPUP_COLOR := Color(1.0, 0.85, 0.2)
@@ -412,29 +415,31 @@ static func is_shielded(g, d, h) -> bool:
 		return false
 	return rad_to_deg(absf(to_ball.angle_to(to_def))) >= FOUL_SHIELD_DEG
 
-# P3-05's main.attempt_steal may roll its own reach foul (FOUL_REACH_CHANCE): then this file leaves the dice to it,
-# so a shielded poke is never rolled twice
-static func _reach_foul_elsewhere(g) -> bool:
-	for o in [g, g.rules]:
-		if o != null and o.get_script() != null and o.get_script().get_script_constant_map().has("FOUL_REACH_CHANCE"):
-			return true
-	return false
-
-# A poke (human STEAL or CPU) at a shielded ball: a reach foul with FOUL_SHIELD_POKE_CHANCE. True if it fouled (then
-# don't also attempt the steal). Called right before game.attempt_steal.
+# A poke (human STEAL or CPU) that reaches the handler while the ball is behind his body (main.steal_exposure 0 and
+# main._ball_behind_body, the same test main.attempt_steal uses): the one reach-foul roll. True if the poke was settled
+# here (a foul, or a whiff off his body: a shielded ball can't be stolen), so the caller skips game.attempt_steal.
 static func try_reach_foul(g, d, h) -> bool:
-	if h == null or d.stumble_t > 0.0 or d.steal_cooldown > 0.0 or not is_shielded(g, d, h):
+	var ball = g.ball
+	if not g.REACH_FOULS or h == null or d == null or ball.state != ball.HELD or ball.holder != h or h.team == d.team:
 		return false
-	g.stat("shield_pokes_t%d" % d.team)
-	if g.is_human(d):
-		g.stat("human_shield_pokes")
-	if _reach_foul_elsewhere(g):
+	if d.stumble_t > 0.0 or d.steal_cooldown > 0.0 or ft_on(g):
 		return false
-	if g.rng.randf() >= Difficulty.value(d.team, "shield_poke_foul", FOUL_SHIELD_POKE_CHANCE):
+	if d.position.distance_to(h.position) > g.STEAL_POKE_PX or g.steal_exposure(d, h) > 0.0 or not g._ball_behind_body(d, h):
 		return false
+	var human: bool = g.is_human(d)
+	# what main.attempt_steal does for this poke (it could only miss)
 	d.steal_cooldown = g.STEAL_COOLDOWN
 	d.poke_t = g.STEAL_POKE_FREEZE
-	commit_foul(g, d, h, "reach", "reach")
+	g.stat("steal_pokes_t%d" % d.team)
+	g.stat("steal_shielded")
+	g.stat("steal_shielded_body")
+	g.stat("shield_pokes_t%d" % d.team)
+	if human:
+		g.stat("human_steal_pokes")
+		g.stat("human_shield_pokes")
+	var chance: float = REACH_FOUL_HUMAN_CHANCE if human else Difficulty.value(d.team, "reach_foul", REACH_FOUL_CHANCE)
+	if g.rng.randf() < chance:
+		commit_foul(g, d, h, "reach", "reach")
 	return true
 
 # Jump-shot (and layup) blocks on timing, every frame from main.gd: while the shot is in its first

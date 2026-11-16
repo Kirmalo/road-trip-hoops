@@ -49,7 +49,7 @@ const LEVELS := {
 		"lob_jump_chance": ["mul", 0.9],
 		"poke_chance": ["mul", 0.9],
 		"poke_on_time": ["mul", 0.75],       # fewer pokes timed on the floor touch
-		"fake_bite": ["mul", 1.25],          # bites on pump fakes more
+		"fake_bite": ["mul", 1.4],           # bites on pump fakes more (P3-12: was 1.25; the slower jump_react cancelled it)
 		"help_side": ["mul", 0.75],          # less help defense
 		"speed_mult": ["mul", 1.0],          # owner Q6: less sharp, not slower (Hard on every level)
 		"stamina_drain": ["mul", 1.0],
@@ -66,7 +66,7 @@ const LEVELS := {
 		"lob_jump_chance": ["mul", 0.8],
 		"poke_chance": ["mul", 0.8],
 		"poke_on_time": ["mul", 0.55],
-		"fake_bite": ["mul", 1.5],
+		"fake_bite": ["mul", 1.8],
 		"help_side": ["mul", 0.5],
 		"speed_mult": ["mul", 1.0],
 		"stamina_drain": ["mul", 1.0],

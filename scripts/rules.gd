@@ -24,7 +24,7 @@ const GAME_POINT_BASKET := POINTS_INSIDE   # GAME POINT shows when a basket wort
                                      # POINTS_BEYOND would show it from 19, but 2s are rare)
 
 # fouls and free throws (P3-05, owner Q3/Q4: bad timing only; 1 FT inside the arc, 2 beyond, and-one 1, reaching =
-# sideline ball, a missed last FT is a live rebound). Who commits fouls: defense.gd (P3-06) and main.attempt_steal.
+# sideline ball, a missed last FT is a live rebound). Who commits fouls: defense.gd (P3-06; reach fouls too, P3-09).
 const FT_INSIDE := 1                 # free throws for a missed shot fouled inside the arc ...
 const FT_BEYOND := 2                 # ... and beyond it
 const FT_AND_ONE := 1                # a made shot that was fouled
@@ -47,11 +47,6 @@ const FT_SETUP_TIME := 1.0           # seconds everyone stands set before the sh
 const FT_HUMAN_WAIT := 10.0          # a human at the line who doesn't shoot within this shoots at quality 1.0
 const FT_CPU_FORCE_WAIT := 4.0       # safety: a CPU shooter who hasn't started within this shoots at quality 1.0
 const FT_AIR_MAX := 3.0              # safety: a free throw "in the air" this long without a result counts as missed
-const FT_WALK_MULT := 0.8            # fallback walk (player.gd without at_free_throw): this fraction of top speed
-const FB_CPU_FT_WAIT_MIN := 0.8      # fallback CPU shooter (until P3-06): seconds at the line before shooting ...
-const FB_CPU_FT_WAIT_MAX := 1.4
-const FB_CPU_FT_QUALITY_MIN := 0.97  # ... and his quality (x main.FT_BASE 0.72 = about 70-78% made), through
-const FB_CPU_FT_QUALITY_MAX := 1.08  # Difficulty.value(team, "ft_quality", ...)
 const SWITCH_SKIPS_FT_REBOUND := false # a missed last free throw while the side switch waits: no live rebound, the
                                      # defense gets the ball after "SWITCH SIDES" (false: live rebound, the switch waits
                                      # for the next dead ball)
@@ -64,8 +59,6 @@ const OOB_BASELINE_KEY_FT := 9.5     # baseline inbound: at least this far to th
 const OOB_CORNER_FT := 4.0           # ... and this far from the sidelines
 const OOB_MIN_CLOCK := 5.0           # the team that had the ball keeps it: the shot clock runs on, but is at least this
 const OOB_CLEAR_FT := 6.0            # opponents closer than this to the inbounder are moved back to this distance
-
-const Difficulty = preload("res://scripts/difficulty.gd")
 
 var game
 var target := TARGET_SCORE
@@ -105,7 +98,6 @@ var ft_ready := false                # the shooter has the ball and may shoot
 var ft_shot_live := false            # a free throw is in the air (main.on_shot_made / on_shot_missed -> ft_result)
 var ft_hoop := Vector2.ZERO
 var _ft_timer := 0.0
-var _ft_cpu_wait := 1.0
 var _ft_order := {}                  # player -> lineup slot name
 
 func _ready() -> void:
@@ -338,6 +330,7 @@ func _switch_sides() -> void:
 	game.audio.play("whistle")
 	game.show_message("SWITCH SIDES", SWITCH_PAUSE)
 	var team: int = pending_inbound if pending_inbound >= 0 else game.possession
+	pending_spot = Vector2.INF   # a spot from before the switch (e.g. out of bounds) is on the wrong half now
 	game.reset_positions(team)
 	game.ball.position = Vector2(game.COURT_W / 2, game.COURT_H / 2)   # the camera follows the ball: show both halves
 	game.ball.z = 0.0
@@ -457,13 +450,6 @@ func start_free_throws(shooter, count: int, value: int, and_one: bool) -> void:
 	if "call_t" in game.input:
 		game.input.call_t = -1.0
 	game.stat("ft_trips")
-	if not ft_native():
-		for p in game.players:
-			_fallback_reset(p)
-
-# true when player.gd runs the free-throw behavior itself (P3-06); otherwise main.gd moves everyone with ft_walk()
-func ft_native() -> bool:
-	return game.players.size() > 0 and game.players[0].has_method("at_free_throw")
 
 # lane slots: the defenders take the low spots (one per side) and the arc, the shooter's teammates the high spots
 func _ft_lineup() -> void:
@@ -527,7 +513,6 @@ func _update_ft(delta: float) -> void:
 				_snap_spots()
 				ft_phase = "shoot"
 				_ft_timer = 0.0
-				_ft_cpu_wait = game.rng.randf_range(FB_CPU_FT_WAIT_MIN, FB_CPU_FT_WAIT_MAX)
 				ft_ready = true
 				ft_shooter.shooting = false
 				game.give_ball(ft_shooter)
@@ -539,10 +524,7 @@ func _update_ft(delta: float) -> void:
 					game.shot_clock_running = false
 				return
 			var human: bool = game.is_human(ft_shooter)
-			if not human and not ft_native() and _ft_timer >= _ft_cpu_wait:
-				var q: float = game.rng.randf_range(FB_CPU_FT_QUALITY_MIN, FB_CPU_FT_QUALITY_MAX)
-				game.release_shot(ft_shooter, Difficulty.value(ft_shooter.team, "ft_quality", q))
-			elif not ft_shooter.shooting and _ft_timer >= (FT_HUMAN_WAIT if human else FT_CPU_FORCE_WAIT):
+			if not ft_shooter.shooting and _ft_timer >= (FT_HUMAN_WAIT if human else FT_CPU_FORCE_WAIT):
 				game.stat("ft_timeouts")
 				game.release_shot(ft_shooter, 1.0)
 		"air":
@@ -610,30 +592,3 @@ func ft_hud_text() -> String:
 	if ft_total <= 1:
 		return "FREE THROW"
 	return "FREE THROW %d OF %d" % [ft_cur, ft_total]
-
-# fallback until player.gd has the free-throw behavior (P3-06): stop whatever each player was doing
-func _fallback_reset(p) -> void:
-	p.shooting = false
-	p.velocity = Vector2.ZERO
-	for k in ["cross_t", "poke_t", "fake_t", "stumble_t"]:
-		if k in p:
-			p.set(k, 0.0)
-	if "block_jump_t" in p:
-		p.block_jump_t = -1.0
-	if "jump_z" in p and p.rim_kind == "":
-		p.jump_z = 0.0
-	if "cpu_faking" in p:
-		p.cpu_faking = false
-
-# fallback (no P3-06): main.gd walks every player to his spot instead of running his update, facing the hoop
-func ft_walk(p, delta: float) -> void:
-	var spot: Vector2 = ft_spot(p)
-	var sp: float = (p.speed if "speed" in p else 170.0) * FT_WALK_MULT
-	p.position = p.position.move_toward(spot, sp * delta)
-	p.velocity = Vector2.ZERO
-	var look: Vector2 = ft_hoop - p.position
-	if look.length() > 1.0:
-		p.facing = lerp_angle(p.facing, look.angle(), minf(1.0, 10.0 * delta))
-	if "sprite" in p and p.sprite != null:
-		p.sprite.rotation = p.facing
-	p.queue_redraw()

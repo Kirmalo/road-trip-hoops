@@ -125,8 +125,11 @@ scripts/rules.gd (the rules):
 scripts/main.gd:
 - SHOT_CLOCK_LENGTH: the shot clock (24)
 - FT_BASE / FT_CAP: free-throw make chance with a normal release (0.72), and at most (0.95)
-- FOUL_REACH_CHANCE: chance that a poke at a shielded ball is a reaching foul (0.3); REACH_FOULS = false turns
-  reaching fouls off
+- REACH_FOULS = false turns reaching fouls off
+
+scripts/defense.gd:
+- REACH_FOUL_CHANCE / REACH_FOUL_HUMAN_CHANCE: chance that a poke at a ball the handler shields with his body is a
+  reaching foul, for the CPU (0.3) and for you (0.1)
 - FIRE_STREAK: makes in a row to catch fire (3)
 - FIRE_MISSES: misses that put the fire out (2)
 - STEAL_POKE_FREEZE: seconds you stand still after every steal try (0.3)

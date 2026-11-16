@@ -17,6 +17,10 @@ var speed_mult := 1.0
 var spot_index := 0
 var spot_timer := 0.0
 var decision_timer := 0.0
+var _cpu_had_ball := false       # CPU: had the ball last frame (a catch resets the decision timer)
+var kick_catch := false           # CPU: a kick-out pass is coming to me (spot up for it)
+var _cpu_catch_t := 0.0          # CPU: seconds since he caught the ball (cpu_twos_catch / _dribble counters)
+var cpu_three_try := false        # this CPU jumper was chosen as a 2 (beyond the arc): counts cpu_threes_inside
 var steal_cooldown := 0.0
 var steal_timer := 0.0
 var shooting := false
@@ -189,8 +193,21 @@ const CPU_PULLUP_MAX_FT := 22.0
 const CPU_PULLUP_ROOM_FT := 3.0   # defender at least this far off (or behind me) to pull up
 const CPU_PULLUP_CHANCE := 0.2    # chance per decision when a pull-up is on (P2-11: was 0.28)
 const CPU_THREE_MAX_FT := 28.5    # deep pull-up: beyond the arc but inside this (P2-11: was 28.0)
-const CPU_THREE_OPEN_FT := 3.0    # and the defender at least this far off (P2-11: was 4.0)
-const CPU_THREE_CHANCE := 0.75    # chance per decision (P2-11: was 0.25)
+const CPU_THREE_OPEN_FT := 3.0    # and the defender at least this far off (P2-11: was 4.0; P3-09 tried 4.0 again: 2s fell to 5 a game)
+const CPU_THREE_CHANCE := 0.9     # chance per decision (P2-11: 0.25 -> 0.75; P3-09: 0.9, a 2 is worth twice a 1 now)
+# kick-outs and catch-and-shoot 2s (P3-09: with 1 inside / 2 beyond, an open 2 is worth ~0.85 points a shot, a
+# contested drive less; before this the CPU took only ~7 2s a game, ~12% of the points)
+const CPU_KICK_MAX_FT := 20.0     # driving handler this close to the rim ...
+const CPU_KICK_PRESSURE_FT := 6.0 # ... with a defender this close (or the lane shut) looks for an open shooter ...
+const CPU_KICK_OPEN_FT := 4.5     # ... a teammate beyond the arc this open ...
+const CPU_KICK_LANE_FT := 4.0     # ... with no opponent this close to the pass line (interceptions) ...
+const CPU_KICK_CHANCE := 0.6      # ... and kicks it out with this chance per decision
+const CPU_CATCH_SHOT_T := 1.0     # a 2 this soon after the catch counts as catch and shoot (cpu_twos_catch)
+const CPU_CATCH_WINDUP_MIN := 0.2  # a CPU catch-and-shoot jumper: quicker windup than CPU_WINDUP_MIN..MAX
+const CPU_CATCH_WINDUP_MAX := 0.3
+const CPU_CATCH_DECIDE := 0.1     # a CPU who just caught the ball decides this soon (catch and shoot)
+const CPU_THREE_LEAD := 0.08      # P3-09: seconds of drift ahead the 2 must still be beyond the arc (he slides about
+                                  # v/(2 x 1600 px/s^2) on while stopping; without it a third of his 2s landed inside)
 const CPU_SHOT_QUALITY_MIN := 1.05  # CPU jump-shot quality, random between these (P2-11: was 0.85..1.1; P2-13: 0.95..1.2 -> 1.05..1.25;
 const CPU_SHOT_QUALITY_MAX := 1.25  # a human's normal release is 1.0, a perfect one 1.3)
 const CPU_WINDUP_MIN := 0.3       # seconds from a CPU jumper's start to its release, random between these
@@ -219,7 +236,7 @@ const CPU_CUT_CHANCE := 0.08      # CPU off-ball: chance that a spot change is a
 const CPU_CUT_TIME := 1.5         # seconds a cut lasts (alley_cut stays on; P2-10 cuts get the same)
 const CPU_CUT_MIN_FT := 14.0      # a cut starts at least this far from the rim (time to throw the lob)
 const CPU_CUT_MAN_FT := 3.0       # ... and only if my man isn't this close (tight on me: no back-door)
-const CPU_LOB_CHANCE := 0.18      # CPU handler: chance per decision to lob to a teammate the lob rule allows (P2-13: was 0.25)
+const CPU_LOB_CHANCE := 0.15      # CPU handler: chance per decision to lob to a teammate the lob rule allows (P2-13: was 0.25; P3-12: 0.18)
 const CPU_LOB_READ_FT := 10.0     # CPU defenders this close to the receiver or the rim read a lob in the air ...
 const CPU_LOB_JUMP_CHANCE := 0.45 # ... and jump to block the dunk with this chance (x CPU_LOB_RATING_SPAN)
 const CPU_LOB_RATING_SPAN := 0.3  # that chance x(1 -/+ this) across block ratings 0..100
@@ -272,12 +289,14 @@ var fire_misses := 0              # misses/blocks while on fire (main.FIRE_MISSE
 var fire_anim := 0.0
 
 # Offensive spots, in feet: (distance out from the baseline side of the hoop, sideways offset)
+# P3-09: the top, wings and corners sit just beyond the arc (23.75 ft; 22 ft in the corners) so a kick-out there is
+# a 2 (top was 24, wings 18/16 = 24.1 ft, corners 3/21: inside the corner line)
 const SPOTS := [
-	Vector2(24, 0),    # top of the key
-	Vector2(18, -16),  # left wing
-	Vector2(18, 16),   # right wing
-	Vector2(3, -21),   # left corner
-	Vector2(3, 21),    # right corner
+	Vector2(24.8, 0),  # top of the key
+	Vector2(18.3, -16.7),  # left wing (24.8 ft)
+	Vector2(18.3, 16.7),   # right wing
+	Vector2(3, -22.5),   # left corner
+	Vector2(3, 22.5),    # right corner
 	Vector2(5, -8),    # left block
 	Vector2(5, 8),     # right block
 	Vector2(17, -7),   # left elbow
@@ -771,6 +790,7 @@ func seek(t: Vector2, mult: float) -> Vector2:
 
 func start_shot() -> void:
 	if has_ball() and not shooting and rim_kind == "":
+		cpu_three_try = false
 		if fake_t > 0.0:
 			end_pump_fake()   # out of a pump fake straight into the real shot
 			game.stat("pump_then_shoot_t%d" % team)
@@ -781,6 +801,8 @@ func start_shot() -> void:
 		shooting = true
 		shot_charge = 0.0
 		cpu_shot_time = game.rng.randf_range(CPU_WINDUP_MIN, CPU_WINDUP_MAX)
+		if _cpu_catch_t <= CPU_CATCH_SHOT_T and not game.is_human(self) and not at_free_throw():
+			cpu_shot_time = game.rng.randf_range(CPU_CATCH_WINDUP_MIN, CPU_CATCH_WINDUP_MAX)   # catch and shoot
 		shot_elapsed = 0.0
 		# a CPU closeout must arrive in the first half of the windup to count fully; a human meter uses CLOSEOUT_GRACE
 		shot_grace = CLOSEOUT_GRACE if game.is_human(self) else minf(CLOSEOUT_GRACE, 0.5 * cpu_shot_time)
@@ -834,6 +856,13 @@ func release_shot() -> void:
 	# jump-shot counters: attempts per team, 5 ft distance bands, threes, and makes
 	var counted := has_ball()
 	var three: bool = game.is_three(position, hoop)
+	if cpu_three_try and counted and not three:
+		game.stat("cpu_threes_inside")   # a CPU 2 that drifted inside the arc during the windup (worth 1)
+	var two_src := ""
+	if cpu_three_try and counted and three:
+		two_src = "catch" if _cpu_catch_t <= CPU_CATCH_SHOT_T else "dribble"
+		game.stat("cpu_twos_" + two_src)   # CPU 2s: catch and shoot vs off the dribble (and makes, below)
+	cpu_three_try = false
 	if counted:
 		game.stat("jumpers_t%d" % team)
 		game.stat("jumper_d%d" % int(position.distance_to(hoop) / game.FT / 5.0))
@@ -846,6 +875,8 @@ func release_shot() -> void:
 		game.stat("jumper_makes_t%d" % team)
 		if three:
 			game.stat("jumper_three_makes_t%d" % team)
+		if two_src != "":
+			game.stat("cpu_twos_%s_makes" % two_src)
 
 # A free throw leaves the hand: the human's meter (perfect 1.3, normal 1.0, bad 0.6) or the CPU's
 # CPU_FT_QUALITY range; no contest or sprint penalties. main.release_shot scores it with rules' FT odds (P3-05).
@@ -995,6 +1026,10 @@ func ai(delta: float) -> void:
 	speed_mult = 1.0
 	cpu_turbo_want = false
 	var my_hoop: Vector2 = game.attack_hoop(team)
+	if not has_ball():
+		_cpu_had_ball = false
+		if not (ball.state == ball.PASS and ball.receiver == self):
+			kick_catch = false
 
 	# the last free throw is up: box out first, the chasers crash the glass late in its flight
 	if ft_box_live() and ball.shooter != self and not (ball.shot_t > BOXOUT_CRASH_T and game.is_chaser(self)):
@@ -1016,6 +1051,8 @@ func ai(delta: float) -> void:
 		return
 	if ball.state == ball.PASS and ball.receiver == self:
 		target = ball.position
+		if kick_catch:
+			target = position   # kick-out: spot up beyond the arc and wait for it (running at it steps inside)
 		if ball.lob:
 			target = alley_spot()   # go to the rim for the lob
 			cpu_turbo_want = true
@@ -1023,6 +1060,14 @@ func ai(delta: float) -> void:
 
 	if game.possession == team:
 		if has_ball():
+			if not _cpu_had_ball:
+				_cpu_had_ball = true
+				if kick_catch:
+					game.stat("cpu_kick_catches_beyond" if game.is_three(position, my_hoop) else "cpu_kick_catches_inside")
+				kick_catch = false
+				decision_timer = minf(decision_timer, CPU_CATCH_DECIDE)   # just caught it: catch and shoot
+				_cpu_catch_t = 0.0
+			_cpu_catch_t += delta
 			handler_ai(delta, my_hoop)
 		else:
 			offball_ai(delta, my_hoop)
@@ -1187,6 +1232,7 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 	decision_timer = game.rng.randf_range(CPU_DECIDE_MIN, CPU_DECIDE_MAX)
 	var p: float = game.shot_probability(self, 1.0)
 	var three: bool = game.is_three(position, hoop)
+	var three_set: bool = three and game.is_three(position + velocity * CPU_THREE_LEAD, hoop)
 	if dist_ft < CPU_FINISH_FT:
 		start_shot()
 	elif game.shot_clock < CPU_CLOCK_SHOOT and dist_ft < CPU_CLOCK_SHOOT_FT:
@@ -1206,10 +1252,13 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 			and (open_ft >= CPU_PULLUP_ROOM_FT or guard_behind) and game.rng.randf() < CPU_PULLUP_CHANCE:
 		game.stat("pullups_t%d" % team)
 		start_shot()
-	elif three and dist_ft <= CPU_THREE_MAX_FT and open_ft >= CPU_THREE_OPEN_FT \
+	elif three_set and dist_ft <= CPU_THREE_MAX_FT and open_ft >= CPU_THREE_OPEN_FT \
 			and game.rng.randf() < CPU_THREE_CHANCE:
 		game.stat("cpu_threes")
 		start_shot()
+		cpu_three_try = shooting
+	elif dist_ft <= CPU_KICK_MAX_FT and (open_ft < CPU_KICK_PRESSURE_FT or not lane_open(hoop)) and try_cpu_kickout():
+		pass   # kick-out to an open shooter beyond the arc
 	elif p > CPU_GOOD_SHOT_P and open_ft > CPU_GOOD_SHOT_OPEN_FT and game.rng.randf() < CPU_GOOD_SHOT_CHANCE:
 		start_shot()
 	elif open_ft > CPU_OPEN_SHOT_FT and dist_ft < CPU_OPEN_SHOT_RANGE and game.rng.randf() < CPU_OPEN_SHOT_CHANCE:
@@ -1329,6 +1378,37 @@ func try_cpu_cut(hoop: Vector2) -> bool:
 	game.stat("rim_cuts_t%d" % team)
 	target = alley_spot()
 	cpu_turbo_want = true
+	return true
+
+# CPU handler driving into traffic: pass to a teammate who is open beyond the arc, when the pass line is clear
+func try_cpu_kickout() -> bool:
+	var hoop: Vector2 = game.attack_hoop(team)
+	var best = null
+	var best_open: float = CPU_KICK_OPEN_FT
+	for mate in game.teams[team]:
+		if mate == self or not game.is_three(mate.position, hoop) or mate.alley_cut:
+			continue
+		var o: float = game.openness(mate)
+		if o >= best_open and pass_lane_clear(mate):
+			best_open = o
+			best = mate
+	if best == null or game.rng.randf() >= CPU_KICK_CHANCE:
+		return false
+	game.stat("cpu_kickouts_t%d" % team)
+	best.kick_catch = not game.is_human(best)   # (the human catches it his own way)
+	game.do_pass(self, best)
+	return true
+
+# no opponent within CPU_KICK_LANE_FT of the line from me to `mate` (my own defender, right on me, can't pick it off)
+func pass_lane_clear(mate) -> bool:
+	var a: Vector2 = position
+	var b: Vector2 = mate.position
+	for o in game.teams[1 - team]:
+		if o.position.distance_to(a) < 5.0 * game.FT:
+			continue
+		var t: float = clampf((o.position - a).dot(b - a) / maxf((b - a).length_squared(), 1.0), 0.0, 1.0)
+		if o.position.distance_to(a + (b - a) * t) < CPU_KICK_LANE_FT * game.FT:
+			return false
 	return true
 
 # CPU handler: lob to a teammate the alley-oop rule allows (the human too, when he cuts)
