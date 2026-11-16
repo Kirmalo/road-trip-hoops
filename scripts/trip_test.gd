@@ -12,7 +12,8 @@ extends Node
 #   ... -- --trip-test --target 3 --trip-stop-after hometown  quits on the map once Hometown is done (saved)
 #   ... -- --trip-test --target 3 --trip-resume               loads the save (a new process) and goes on
 #   xvfb-run -a -s "-screen 0 1280x720x24" godot --path . --rendering-driver opengl3 --fixed-fps 60 -- --trip-test
-#        --target 3 --screens      screenshots of every screen to /tmp/hoops_screen_NN_<screen>.png
+#        --target 3 --screens      screenshots of every screen to /tmp/hoops_screen_NN_<screen>.png (each trip game
+#                                  is then decided at once: won, or lost when forced; the screens are the point)
 # Prints TRIP lines (screen, city, game, phase, points, record, roster, save check, each game's result) and ends with
 # "TRIP END" (exit 0), "TRIP STOP" (exit 0) or "TRIP ERROR: <why>" (exit 1). Uses user://trip_test.json (save.gd).
 
@@ -46,6 +47,7 @@ static var _shot_n := 0
 static var _shot_count := {}      # screen name -> screenshots taken
 static var _picked := false       # PICK_TEST done
 static var _losses_forced := 0
+static var _pick_want: Array = [] # the lineup the pick test chose; the next game's team 0 must be it
 
 var main                          # main.gd (Flow sets it)
 var _screen := ""
@@ -60,6 +62,8 @@ func _ready() -> void:
 	if not _started:
 		_started = true
 		_parse_args()
+		if _shoot:
+			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)   # xvfb: don't wait for frames
 		print("TRIP TEST start | save file %s | target %s | force loss %s | stop after %s | resume %s" % [
 				Save.path(), _arg_after("--target", "-"), str(_force), _stop_after if _stop_after != "" else "-",
 				"yes" if _resume else "no"])
@@ -168,18 +172,29 @@ func _start_game() -> void:
 			str(m.get("level", "")), Cities.CREW_NAME, str(mine),
 			str((tm[1] as Dictionary).get("name", "")) if tm.size() == 2 else "?", str(theirs),
 			" | FORCED LOSS" if _forcing else ""])
+	if _pick_want.size() > 0:
+		var same: bool = mine == _pick_want and Trip.starters == _pick_want and Trip.human == str(_pick_want[0]) \
+				and str(Save.read().get("human", "")) == str(_pick_want[0])
+		print("TRIP lineup in the game and the save: %s" % ("ok, you play " + str(mine[0]) if same else "WRONG"))
+		if not same:
+			_fail("the picked lineup is not the game's or the save's")
+			return
+		_pick_want = []
 	if mine.size() != Trip.STARTERS or theirs.size() != Trip.STARTERS:
 		_fail("the match does not have 3 players a side")
 
 func _watch_game() -> void:
 	if main == null:
 		return
-	if _forcing and _frames == FORCE_LOSS_FRAMES and not bool(main.get("game_over")):
+	if (_forcing or _shoot) and _frames == FORCE_LOSS_FRAMES and not bool(main.get("game_over")):
+		# a forced loss: the CPU crew "wins"; under --screens every game is decided at once (the screens matter)
 		var tg: int = int(main.rules.get("target"))
-		main.score[0] = 0
-		main.score[1] = tg
-		_losses_forced += 1
-		main.rules.call("_end_game", 1)   # the CPU crew "wins": the flow records a loss
+		var w: int = 1 if _forcing else 0
+		main.score[w] = tg
+		main.score[1 - w] = 0
+		if _forcing:
+			_losses_forced += 1
+		main.rules.call("_end_game", w)
 	if bool(main.get("game_over")):
 		if not _over_seen:
 			_over_seen = true
@@ -188,7 +203,7 @@ func _watch_game() -> void:
 			var st: Dictionary = main.stats
 			print("TRIP result game %d | %s %d - %d | %s | length %d:%02d | shots %d | fouls %d" % [_games,
 					"WON" if int(sc[0]) > int(sc[1]) else "LOST", int(sc[0]), int(sc[1]),
-					"forced" if _forcing else "played", secs / 60, secs % 60, int(st.get("shots", 0)),
+					"forced" if _forcing else "decided (--screens)" if _shoot else "played", secs / 60, secs % 60, int(st.get("shots", 0)),
 					int(st.get("fouls_t0", 0)) + int(st.get("fouls_t1", 0))])
 		return
 	if _frames > GAME_FRAMES:
@@ -279,11 +294,15 @@ func _pick_test() -> void:
 		node.call("tap_player", str(id))   # tap a starter = bench him
 	for id in want:
 		node.call("tap_player", id)
-	var ok: bool = Trip.starters == want and Trip.human == want[0]
-	print("TRIP lineup picked by taps %s, you play %s: %s" % [str(Trip.starters), Trip.human,
-			"ok" if ok else "WRONG (wanted %s)" % str(want)])
-	if not ok:
-		_fail("lineup taps did not set the starters")
+	var got: Array = node.get("_picks")
+	print("TRIP lineup picked by taps %s (you play %s): %s" % [str(got), str(got[0]) if got.size() > 0 else "-",
+			"ok" if got == want else "WRONG (wanted %s)" % str(want)])
+	if got != want:
+		_fail("lineup taps did not pick %s" % str(want))
+		return
+	_pick_want = want   # PLAY saves them; the next game must use them (checked in _start_game)
+	if _shoot:
+		_screenshot("lineup_picked")
 
 # ---------------- prints ----------------
 
@@ -320,10 +339,10 @@ func _quit(code: int) -> void:
 	_finished = true
 	get_tree().quit(code)
 
-func _screenshot() -> void:
+func _screenshot(tag: String = "") -> void:
 	_shot_count[_screen] = int(_shot_count.get(_screen, 0)) + 1
 	_shot_n += 1
-	var path: String = SHOT_PATH % [_shot_n, _screen]
+	var path: String = SHOT_PATH % [_shot_n, tag if tag != "" else _screen]
 	await RenderingServer.frame_post_draw
 	if not is_inside_tree():
 		return
