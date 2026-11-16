@@ -127,7 +127,7 @@ func _build() -> void:
 		var tr := TextureRect.new()
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_SCALE
-		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR   # comic portraits are drawn art (smooth), not pixels
 		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tr.flip_h = side == 1
 		tr.visible = false

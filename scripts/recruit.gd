@@ -31,7 +31,8 @@ const CARD_BORDER_W := 3
 const PICKED_BORDER_W := 9
 const BAND_H := 10.0                     # the crew-colour band at the top of a card
 const ART_H := 164.0                     # px: the portrait / sprite row
-const PORTRAIT_SCALE := 1.45             # portraits are 96 x 112 source px
+const PORTRAIT_SCALE := 1.45             # portraits are shown at 96 x 112 x this, whatever their file size
+const PORTRAIT_BOX := Vector2(96, 112)   # the portrait contract size (v2 files are 3x, drawn smoothly)
 const SPRITE_SCALE := 2.0                # idle frame 40 x 64 source px
 const SPRITE_SCALE_ALONE := 2.5          # no portrait: bigger sprites
 const SHEET_FRAME := Vector2(40, 64)     # player.gd SHEET_FRAME; the idle frame facing the camera is column 0, row 0
@@ -265,6 +266,7 @@ class CardArt extends Control:
 	var _city_tex: Texture2D
 	var _crew_tex: Texture2D
 	var _portrait: Texture2D
+	var _portrait_rect: TextureRect = null
 	var _spec: Array = []
 	var _tier := ""
 
@@ -302,8 +304,18 @@ class CardArt extends Control:
 		var spr: Vector2 = SHEET_FRAME * sc
 		var spr_y: float = top + ART_H - spr.y
 		if _portrait != null:
-			var ps: Vector2 = _portrait.get_size() * PORTRAIT_SCALE
-			draw_texture_rect(_portrait, Rect2(Vector2(x, top + ART_H - ps.y), ps), false)
+			var ps: Vector2 = PORTRAIT_BOX * PORTRAIT_SCALE
+			# drawn by a child TextureRect with smooth filtering (the comic portraits are drawn art, not pixels)
+			if _portrait_rect == null:
+				_portrait_rect = TextureRect.new()
+				_portrait_rect.texture = _portrait
+				_portrait_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				_portrait_rect.stretch_mode = TextureRect.STRETCH_SCALE
+				_portrait_rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+				_portrait_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				add_child(_portrait_rect)
+			_portrait_rect.position = Vector2(x, top + ART_H - ps.y)
+			_portrait_rect.size = ps
 			x += ps.x + 6.0
 		var room: float = w - pad - 4.0 - x
 		var gap: float = maxf(0.0, (room - spr.x * 2.0) / 3.0)
