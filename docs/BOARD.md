@@ -1,17 +1,17 @@
 # Task Board
 
-Current phase: **Phase 3: rules and format** (planned 2026-11-16 by `lead-producer`). The Phase 2 board (with the
-P2.5 tuning round) is archived in `docs/board-phase2.md`, Phase 1 in `docs/board-phase1.md`.
+Current phase: **Phase 4: 3/4 view, pixel art and audio** (planned 2026-11-16 by `lead-producer`). The Phase 3 board
+is archived in `docs/board-phase3.md`, Phase 2 in `docs/board-phase2.md`, Phase 1 in `docs/board-phase1.md`.
 
-Scope (from `docs/VISION.md`): first to 21 with streetball scoring (1 point inside the arc, 2 beyond); switch sides
-when the first team reaches 11; fouls and free throws (reusing the shot meter); out of bounds; Easy / Normal / Hard.
-Owner (Phase 2 check-in): today's CPU is too hard, so **today's CPU becomes Hard** and Normal and Easy are built below
-it. Check game length: if a full-court game to 21 runs past about 8 minutes, the owner picks a fix (Q2).
-Carried from Phase 2: B1 (the team attacking the right hoop scores ~0.7 points per game more; the side switch should
-cancel it, and P3-02 also mirrors the absolute-y literals), and the crossover vs. assisted-defender question (for the
-Phase 3 check-in, see the end of "Questions for owner").
-Not in scope: title screen, trip map, cities, saving campaign progress (Phase 5); settings screen (Phase 7). The only
-new screen is the minimal difficulty panel (Q7).
+Scope (from `docs/VISION.md`): (a) switch the camera to the angled 3/4 view (decided by the owner) while the
+simulation stays 2D top-down underneath: one projection function, a foreshortened court, depth-sorted upright
+sprites, hoops with backboards and poles, ball height and shadow, popups and effects placed through the projection,
+the joystick mapped to the view, HUD unchanged. (b) The full player sprite set in the approved style (sample v1),
+made by a generator script so new players (Road Trip recruits, Phase 5) are cheap. (c) Ball and hoop art, two court
+looks set by data (wood gym and an outdoor blacktop; the rest come in Phase 6), effects. (d) Audio: a music player
+with a menu track and 2-3 city tracks (CC0/CC-BY only), synthesized swish and bounce, everything in `CREDITS.md`.
+Not in scope: title screen, trip map, city data beyond the two looks, saving (Phase 5); settings screen and the
+in-game credits line (Phase 7); new gameplay or tuning. **Gameplay must not change in this phase.**
 
 Format: `ID | task | owner role | files | done when | depends on`
 
@@ -19,69 +19,116 @@ Rules for every task in this phase:
 - Godot 4.3 compatible; no `:=` with an untyped right side (`game.x`, `min`/`max`/`clamp`); use an explicit type or
   `minf`/`maxf`/`clampf`. Tuning constants go at the top of the script they belong to, with a comment. Touch first:
   joystick + A (orange) + B (blue) during play, no new in-game buttons. No new `.tscn` scenes: new scripts are built
-  in code (`rules.gd`, `difficulty.gd`, `menu.gd`). Static vars are fine (Godot 4.1+).
+  in code (`view.gd`, `court_looks.gd`). Nearest filtering stays on (pixel art).
 - A task touches only the files listed. If it needs another file, stop and tell the coordinator.
-- Every rule adds `stat(...)` counters (listed per task) so `--autoplay` proves the rule fires in CPU games and
-  `--humantest` proves the human path runs. Per-team counters end in `_t0` / `_t1`; human-only ones start with
-  `human_`. Scripted `--humantest` inputs live in `main.gd` only.
-- **Games are longer now.** Run tests with `--quit-after 120000` (33 min at 60 fps) until P3-11 updates CLAUDE.md.
-  `--autoplay` (3 games) and `--humantest` (1 game) must still reach `FINAL` with no script errors. Until P3-04
-  measures the new normal, report per game: final score, shots, `GAME LENGTH`, and the task's own counters.
-- Each design choice the owner hasn't made yet is a **constant** with the recommended option as its default, so an
-  answer only changes constants (or adds a small follow-up the task lists).
-- Call into another task's code by the names in "Shared contract". If that code isn't merged yet, guard the call
-  (`if game.rules != null and game.rules.has_method("call_foul"):`) so each task merges on its own.
+- **Drawing only.** No task may change how the simulation moves, decides or scores: `position`, `velocity`, `z`,
+  `jump_z`, `facing` and every timer keep their meaning and values. Visual-only values (heights, sort keys, frame
+  numbers) are computed from them, never written back.
+- **Two view modes until P4-11.** `View.mode` is `FLAT` (today's top-down look, the identity projection) by default
+  and `ANGLED` with the test flag `--view angled`. Every task must look right in both modes and merge in FLAT, so the
+  dev branch always plays like today. P4-11 makes ANGLED the default.
+- Each design choice the owner hasn't made yet is a **constant** with the recommended option as its default.
+- Assets: CC0 or CC-BY only (no CC-BY-SA, no OGA-BY, no GPL). Every new file in `assets/` gets a `CREDITS.md` row in
+  the same task (generated art: "Original, made for this project", with the generator script). Web build budget:
+  `index.pck` under 12 MB (it is 0.27 MB now; the engine `.wasm` is the other ~35 MB and doesn't change).
+- Tests: `--quit-after 120000` as in CLAUDE.md. Every gameplay task runs 3 `--autoplay` + 1 `--humantest` in FLAT
+  and the same in `--view angled`, all reaching `FINAL` with no script errors, plus screenshots (`--shots`) in both
+  modes. Report final score, shots and `GAME LENGTH` per game.
 
 ## Shared contract (names fixed now so parallel tasks can call each other)
 
-`rules.gd` (new, P3-01; `extends Node`, `var game`, created in `main._ready()` as `game.rules`). Owns the score, the
-format, possession changes after dead balls, fouls and free throws. `main.gd` keeps the loop, HUD, input routing,
-steals and the humantest script.
-- Constants (P3-01): `TARGET_SCORE := 21`, `WIN_BY := 1` (Q1), `GAME_TIME_CAP := 0.0` (seconds; 0 = no time limit,
-  Q1), `SWITCH_AT := 11` (P3-02). Test-only command-line override `--target N` (switch at `(N + 1) / 2`).
-- `func points_for(shooter, hoop: Vector2) -> int`: 2 beyond the arc (`game.is_three()` keeps its name and means
-  "beyond the arc"), else 1. Free throws are 1.
-- `func add_score(team: int, pts: int, kind: String)`: the only place `game.score` changes; checks the side switch
-  (P3-02) and the win; `kind` is "shot", "dunk", "layup", "ft".
-- `func is_game_point(team: int) -> bool` (HUD).
-- `var sides_swapped := false` (P3-02); `game.attack_hoop(team)` and `game.in_frontcourt(pos, team)` read it.
-  Nothing else may hard-code "team 0 attacks right".
-- `func dead_ball(next_team: int, wait: float, spot := Vector2.INF)` and `func inbound(team: int, spot := Vector2.INF)`
-  (moved from main's `_dead_ball` / `_inbound`; `Vector2.INF` = the baseline under the hoop the team defends, as today).
-- Fouls (P3-05): `func call_foul(defender, fouled, kind: String) -> void`, kind "shooting" or "reach" (and "drive" if
-  Q3 = c). A shooting foul during a shot waits for the shot's result (`pending_foul`), then free throws or an and-one.
-- Free throws (P3-05): `var ft_active := false`, `var ft_shooter = null`, `var ft_left := 0`,
-  `func ft_spot(p) -> Vector2` (where each player stands during free throws), `func ft_released()` (the shooter let
-  go). `main.release_shot()` asks `rules.ft_active` and scores a free throw with `FT_*` odds (no contest, no blocks).
-- Out of bounds (P3-07): `func ball_out(pos: Vector2, last_team: int)`.
-- `main.gd` (P3-01): `func on_game_over(winner: int)` (P3-08 shows the panel from here) and `func start_game()`.
+`scripts/view.gd` (new, P4-01; `extends RefCounted`, used through `const View = preload("res://scripts/view.gd")`,
+static functions only, no instance):
+- `const FLAT := 0`, `const ANGLED := 1`, `static var mode := FLAT` (set from `--view flat|angled` by main.gd;
+  P4-11 changes the default). `static func angled() -> bool`.
+- Constants (tuning, top of the file): `TILT_Y` (court depth on screen as a fraction of its true depth, start 0.55),
+  `PERSPECTIVE` (0 = parallel, a small value narrows the far side; start 0.0, P4-11 tries 0.1-0.2),
+  `HEIGHT_SCALE` (screen pixels per sim pixel of height, start 1.0), `RIM_Z := 10.0 * 12` (rim height in sim pixels,
+  10 ft), `SIDE_FLIP := false` (Q2 b: view from the other sideline after the switch).
+- `static func to_screen(p: Vector2, h := 0.0) -> Vector2`: sim floor point `p` (pixels) at height `h` (sim pixels,
+  like `ball.z` and `jump_z`) to canvas pixels. FLAT: `p - Vector2(0, h)` (today's drawing).
+- `static func to_floor(s: Vector2) -> Vector2`: the inverse at `h = 0`.
+- `static func size_at(p: Vector2) -> float`: sprite scale at `p` (1.0 without perspective).
+- `static func stick_to_world(v: Vector2) -> Vector2`: a stick vector in screen terms (up = toward the far sideline
+  as seen on screen) to the sim direction that looks like that on screen, **same length** (so speed and turbo don't
+  change). FLAT: identity. `static func world_to_stick(v: Vector2) -> Vector2`: the inverse (humantest's thumb).
+- `static func screen_angle(p: Vector2, world_angle: float) -> float`: a sim facing angle as seen on screen at `p`
+  (sprite direction choice).
 
-`difficulty.gd` (new, P3-03; `extends RefCounted`, used through `preload`, no instance needed):
-- `const EASY := 0`, `NORMAL := 1`, `HARD := 2`; `static var level := HARD` (survives `reload_current_scene()`).
-- `static func value(team: int, key: String, hard_value: float) -> float`: returns `hard_value` for the human's team
-  (team 0) and on Hard; on Normal/Easy scales or replaces it from the `LEVELS` table. Only the other team changes.
-- `static func level_name() -> String`, `static func load_saved()`, `static func save()` (`user://settings.cfg`,
-  `ConfigFile`, key `difficulty`), `static func from_cmdline()` (`--difficulty easy|normal|hard`; autoplay and
-  humantest default to `hard` so numbers compare with Phase 2).
+Layers (created in `main._ready()` by P4-01; all are Node2D children of main):
+- `game.floor_layer` z -10: the court floor instance (court.gd, `draw_rims = false`).
+- `game.decals` z -5: things lying on the floor under everyone: shadows, team rings, fire rings, dust, the steal cue.
+- `game.world` z 0, `y_sort_enabled = true`: every upright thing. Each child's `position` is its **projected floor
+  point** (`View.to_screen(sim_pos, 0)`) and it draws its height offset itself, so Godot's y-sort is the depth sort.
+- `game.overlay` z 30: the CALL cue, the human's arrow, stamina bar and shot meter (always on top, never sorted).
+- `game.fx` z 50 (as today): popups. `fx.popup(text, world_pos, ...)` keeps its signature; fx projects `world_pos`.
+- HUD (CanvasLayer), touch controls and the menu: unchanged.
+- Sim nodes (players, ball) stay where they are and keep `position` as the sim position, but stop drawing in their
+  own transform: each one creates its view node(s) in `game.world` / `game.decals` / `game.overlay` and updates them
+  after its own update each frame.
 
-`player.gd` (P3-06): `func at_free_throw() -> bool` (this player is `rules.ft_shooter`), CPU and human free-throw
-behavior; `ball.gd` (P3-07): `var last_touch_team := -1`.
+Hoops (P4-07, `court.gd`): per hoop `i` three nodes in `game.world`: the pole and backboard (sort y = hoop screen y minus 3), the back half of the rim (minus 1), the front half of the
+rim and the net (plus 1). `swish(i, k)` keeps its signature. `func hoop_sort_y(i: int) -> float` returns the hoop's screen y. The ball (P4-10) sets its sort y to
+exactly `hoop_sort_y(i)` while it is within `BALL_RIM_SORT_FT` of the rim in the air, so it draws behind the front of
+the rim and the net and in front of the backboard.
 
-## Game length estimate (to check in P3-04)
-Today (P2-13 final build): 60 shots, 37% FG, ~22 makes and 1.4 threes made per 8 minutes of game clock.
-With 1s and 2s that is ~24 points per 8 minutes for both teams together. A game to 21 ends around 21-15 (P2 losers
-score ~74% of the winner), so ~36 points: **about 12 minutes of play and ~90 shots**, plus dead-ball pauses (the game
-clock stops during them today). To 15 (switch at 8): ~26 points, ~9 minutes. To 11 (switch at 6): ~6-7 minutes.
-Free throws add a few points and a few stoppages. So games to 21 will very likely run past 8 minutes: Q2.
+Heights (visual only): the sim treats the rim as height 0 at the end of a shot and uses small jump heights
+(`DUNK_JUMP_PX` 30). The views map them: `ball.gd` draws a shot rising to `View.RIM_Z` at the hoop and a rim
+rebound falling from there, a made shot dropping through the net; `player.gd` scales a dunk or alley-oop jump so the
+hands reach the rim (constant `DUNK_VIEW_LIFT`). Held ball: drawn at the holder's hand height in screen space.
 
-## Owner answers (2026-11-16, also in docs/VISION.md): every question got the recommended option
-- Q1 game end: first to 21, 21-20 counts, no game clock or quarters, 24 s shot clock stays.
-- Q2 length: test build to 21; Road Trip early cities 11, middle 15, late + tournament 21.
-- Q3 fouls: bad timing only (badly timed block jump reaching the shooter, or poking a shielded ball), 3-6 per game.
-- Q4 after a foul: 1 FT inside the arc, 2 beyond, and-one 1; reaching = sideline ball; missed last FT = live rebound.
-- Q5 out of bounds: simple (only a loose ball crossing a line).
-- Q6 Easy/Normal: the CPU is less sharp, not slower (shooting, reactions, timing, more fake bites, less help).
-- Q7 picking the level: start + game-over panel with big EASY/NORMAL/HARD buttons, remembered.
+Player sprite sheets (P4-03 makes them, P4-06 plays them; layout fixed here):
+- One PNG per player: `assets/players/<id>.png`, ids `blue_1`, `blue_2`, `blue_3`, `red_1`, `red_2`, `red_3`
+  (index 0-2 in the team = `_1`-`_3`). Frame 40 x 64 px, feet on row 59, character about 24 x 40, no ball and no
+  ring baked in (the ball and the team ring are drawn in code). Drawn at 2x (`PLAYER_SCALE := 2.0` in player.gd).
+- 5 rows = drawn directions: 0 S (facing the camera), 1 SE, 2 E, 3 NE, 4 N (back to the camera). SW, W, NW are
+  rows 1, 2, 3 mirrored (`flip_h`). E = +x on screen.
+- 37 columns, animations in this order (start column, frames): idle 0 (2), run 2 (6), dribble 8 (4), shoot 12 (4),
+  dunk 16 (5), layup 21 (3), block 24 (3), poke 27 (2), stumble 29 (2), pass 31 (2), celebrate 33 (4).
+  Sheet size 1480 x 320. Free throw = shoot; pump fake = shoot frames 0-1 and back; crossover = dribble, faster
+  and leaning; alley-oop = dunk. The 6 VISION animations plus layup, poke, stumble and pass, which the game shows now.
+- A missing sheet must not break the game: player.gd falls back to today's Kenney texture.
+
+## Risks and how this plan handles them
+- **Gameplay drift.** All work is drawing; FLAT mode keeps the old look on the dev branch; P4-00 measures a
+  100-game baseline now and P4-12 repeats it on the final build (each stat within 2 standard errors). Autoplay doesn't
+  touch the stick, so a drift there means a drawing task wrote to sim state.
+- **Joystick in a foreshortened view.** One mapping function (`View.stick_to_world`, same length), applied in
+  main.gd before the stick reaches `human_input` and the players; the humantest thumb goes through the inverse.
+  P4-12 compares human steals, blocks, crossovers and defensive-assist use between FLAT and ANGLED humantests and
+  plays it by hand in Chromium with touch emulation.
+- **Depth sorting** of ball vs players vs rims vs backboard: y-sorted `game.world` plus the rim sort rule above.
+  P4-12 screenshots a made shot, a rim-out and a dunk at each hoop.
+- **The far sideline.** Players on the far sideline are small and high on screen, the near sideline is under the
+  thumbs. Camera framing constants (P4-01) plus Q1 and Q3; P4-12 checks 1280x720 and 1280x800 (stretch `expand`
+  shows more court on 16:10) with a player on each sideline and in each corner.
+- **Heights** (rim at 10 ft but the sim's shot ends at height 0): visual-only mapping (see Heights); QA checks
+  shots, rebounds and dunks look like they go through the rim.
+- **Sheet and build size:** 6 sheets of 1480 x 320 (well under the 2048 px WebGL limit), budget 1 MB for all player
+  art; music as mono Ogg Vorbis about q3, 1-2 MB per track; `index.pck` under 12 MB.
+- **Tablet performance:** about 15 sorted nodes; the court floor is drawn once (not every frame), nets redraw only
+  while animating. `--fps` (P4-01) prints the frame rate; P4-12 measures it in Chromium (target 55+ fps at
+  1280x800 with 4x CPU throttle) and reports draw calls from the Godot monitor.
+- **Shimmering pixels** with a non-integer camera zoom (today 1.15) and nearest filtering: P4-11 picks a zoom that
+  keeps 2x sprites crisp, or snaps sprite positions to whole pixels; P4-12 looks at a slow pan.
+- **Web audio:** browsers start sound only after the first touch; music must start (or resume) on the first tap, and
+  never play in headless tests (like audio.gd today).
+
+## Owner questions (to ask now; answers go here and in `docs/VISION.md`)
+- **Q1 Camera framing.** (a) Follow the ball left and right, zoomed in so about two thirds of the court length shows
+  and both sidelines are always on screen (recommended: bigger players, classic arcade feel); (b) the whole court
+  always on screen, no camera movement (smaller players); (c) closer still, following the ball both ways (biggest
+  players, the far sideline sometimes off screen). How steep the angle looks is judged at the check-in.
+- **Q2 Side switch at 11.** (a) The camera stays on the same sideline; after the switch BLUE attacks to the left, as
+  today (recommended); (b) the view swings to the other sideline so BLUE always attacks to the right.
+- **Q3 Behind the far sideline.** (a) A strip of scenery that fits the court: bleachers with a crowd in the gym, a
+  fence and street in the blacktop (recommended); (b) a plain dark border, like today.
+- **Q4 Trying the two courts before the trip map exists.** (a) A COURT button on the start and game-over panels
+  switches Gym / Blacktop, and the music follows the court (recommended); (b) the court changes every game by itself;
+  (c) only the gym for now (the blacktop stays in the files for Phase 5).
+- **Q5 Music during games.** (a) Menu music on the panels, the court's track softly during play, and a MUSIC ON/OFF
+  button on the start and game-over panels (recommended); (b) music on the panels only, crowd and effects during play;
+  (c) music everywhere, no on/off button until the Phase 7 settings.
 
 ## Owner answers
 (none yet; the coordinator records them here and in `docs/VISION.md`)
@@ -90,260 +137,179 @@ Free throws add a few points and a few stoppages. So games to 21 will very likel
 
 ### Wave 1: can start now (no owner answers needed)
 
-**P3-01 | Rules module, first to 21, 1s and 2s, game end | gameplay (A) | `scripts/main.gd`, new `scripts/rules.gd`**
-- New `rules.gd` per "Shared contract". Move the score, `_dead_ball`, `_inbound`, `start_period`/`_end_period`
-  logic into it. Scoring: `points_for` (2 beyond the arc, 1 inside); messages "BLUE SCORES" / "BLUE FOR TWO!",
-  popups "+1" / "+2". Game end per Q1 option a (constants `TARGET_SCORE`, `WIN_BY`, `GAME_TIME_CAP` cover b and c):
-  remove quarters, overtime and the game clock; the shot clock stays. BLUE has the first ball. "Tap to play again"
-  still restarts (A reloads the scene) until P3-08.
-- HUD: top-left shows "FIRST TO 21" (and "GAME POINT" in the team color when a team is one basket away), the score
-  and the shot clock as now. `on_game_over(winner)` in main.gd prints the autoplay lines (`FINAL BLUE x - RED y`,
-  the stats dict, a new `GAME LENGTH m:ss` line with all play time including dead-ball pauses).
-- `--target N` test override in rules.gd.
-- Stats: `points1_t0/_t1`, `points2_t0/_t1` (made baskets by value), `game_seconds`, `dead_seconds`,
-  `possessions_t0/_t1`, `game_points` (times a team reached game point), `lead_changes`.
-- Done when: 5 `--autoplay` games end at the target (winner 21 or 22, never past it), no quarter/OT text, shot-clock
-  violations still rare; `--target 11` ends at 11-12; humantest reaches FINAL; screenshot of the new top bar; the
-  report lists game length, shots and scores per game.
-- Depends on: none. Q1 only changes constants.
+**P4-00 | Gameplay baseline before the view change | qa | `docs/qa/phase4-baseline.md` (report only)**
+- On the current dev branch: 100 `--autoplay` games (Hard) and 3 `--humantest`. Table of means and standard errors:
+  final scores, shots, FG%, 2s, `GAME LENGTH`, steals/blocks per 60 shots, fouls, free throws, OOB, lobs,
+  interceptions, crossover beats, fake bites, shot-clock violations, BLUE win share; human counters from humantest.
+  Also the web build `index.pck` size and an fps reading in Chromium (Playwright, 1280x800, touch emulation).
+- Done when: the report has the table and the exact commands, so P4-12 can repeat them.
+- Depends on: none.
 
-**P3-02 | Switch sides at 11 (and B1) | gameplay (A, after P3-01) | `scripts/main.gd`, `scripts/rules.gd`**
-- When a basket first brings a team to `SWITCH_AT` (11; `(TARGET_SCORE + 1) / 2` when `--target` is used): pause
-  `SWITCH_PAUSE` 2.0 s, whistle, message "SWITCH SIDES", set `sides_swapped`, reset positions on the new halves, the
-  team that was scored on inbounds as usual. Only once per game. `attack_hoop` and `in_frontcourt` follow the flag;
-  check every caller in `player.gd`, `defense.gd`, `ball.gd` and `human_input.gd` reads hoops only through them
-  (report any that don't; don't edit those files, list them for the coordinator).
-- A small arrow next to BLUE in the top bar shows which way BLUE attacks; flips at the switch.
-- B1 (QA R1): make the absolute-y literals in `reset_positions` and the inbound spot relative to the attack
-  direction (mirror with `inward()`), so both halves play the same.
-- Stats: `side_switches` (exactly 1 per finished game), `points_right_hoop`, `points_left_hoop`,
-  `points_half1_t0/_t1`, `points_half2_t0/_t1`.
-- Done when: every autoplay game has exactly one switch, at 11; after it both teams attack the other hoop (CPU offense
-  spots, defense, fast breaks, lobs, rebounds all work: shots per team stay level in each half); humantest's human
-  attacks the correct hoop after the switch; screenshot after the switch; 20 autoplay games list right-hoop vs
-  left-hoop points.
-- Depends on: P3-01 (same files).
+**P4-01 | Projection core, layers, camera, stick mapping | gameplay (A) | new `scripts/view.gd`, `scripts/main.gd`**
+- `view.gd` per the contract (FLAT and ANGLED; ANGLED is a parallel tilt with `PERSPECTIVE` support).
+  `--view flat|angled` and `--fps` (prints `FPS n` every 5 s) parsed in main.gd.
+- main.gd: create `floor_layer`, `decals`, `world` (y-sorted), `overlay`; the floor court instance goes in
+  `floor_layer`, the rims instance stays as today until P4-07 replaces it. Camera follows
+  `View.to_screen(ball.position, 0)` with limits from the projected court corners plus margins; framing constants at
+  the top (`CAM_ZOOM`, `CAM_FOLLOW_X`, `CAM_FOLLOW_Y`, `CAM_MARGIN_FT`) set for Q1 (a). Stick: `_input_vector()`
+  result goes through `View.stick_to_world` before `input.update` and `p.update`; the humantest thumb (world
+  directions) goes through `View.world_to_stick`. The CALL cue and steal cue draw through `View.to_screen` (cue in
+  `overlay`, steal ring in `decals`).
+- A `--viewtest` flag prints `VIEWTEST OK` after checking `to_floor(to_screen(p)) == p` (under 0.5 px) on a grid
+  and `stick_to_world` keeps length, then quits.
+- Done when: FLAT looks like today (screenshots side by side) and 20 autoplay games match P4-00 within noise;
+  `--viewtest` passes; with `--view angled` the game runs to FINAL (players and ball still flat-drawn, that's expected),
+  the camera keeps the ball framed, and humantest's human stats are close to FLAT's.
+- Depends on: none. Merge early: wave 2 needs `view.gd`.
 
-**P3-03 | Difficulty plumbing (today's CPU = Hard) | gameplay (B) | new `scripts/difficulty.gd`, `scripts/player.gd`, `scripts/defense.gd`**
-- New `difficulty.gd` per "Shared contract", with save/load in `user://settings.cfg`. Wrap every CPU skill constant
-  Q6 might touch in `Difficulty.value(team, "key", CONST)` at the point of use: jump-shot quality
-  (`CPU_SHOT_QUALITY_MIN/MAX`), crossover reaction (`CPU_CROSS_REACT_*`, `CPU_CROSS_BEAT_REACT`), jump reaction and
-  chances (`CPU_JUMP_REACT_*`, `CPU_JUMP_CHANCE`, `CPU_JUMPER_JUMP_CHANCE`, `CPU_LOB_JUMP_CHANCE`), pokes
-  (`CPU_POKE_CHANCE`, `CPU_POKE_ON_TIME`), `CPU_FAKE_BITE`, help defense (`HELP_SIDE`), and for Q6 b a `speed_mult`
-  and `stamina_drain` key (1.0 on every level until answered). Hard returns today's values exactly.
-- Placeholder table for Normal/Easy (multipliers on Hard, so a later Hard retune carries over), marked "until Q6":
-  for example Normal shot quality x0.92, reactions +0.05 s, on-time pokes x0.7, fake bite x1.3; Easy about twice that.
-- Stats: `difficulty_<name>` once per game.
-- Done when: `--difficulty hard` (and no flag) gives the same numbers as today over 10 autoplay games (scores,
-  steals, blocks, crossover beats within noise); `--difficulty easy` and `normal` make RED clearly weaker against the
-  Hard BLUE CPU (report BLUE win share at each level over 10 games each); a saved level is read back after a restart.
-- Depends on: none (values finalized in P3-10 after Q6).
+**P4-02 | Music player | gameplay (B) | `scripts/audio.gd`**
+- `func play_music(track: String, fade := 1.0)`, `func stop_music(fade := 1.0)`, `func set_music_on(on: bool)`,
+  `var music_on := true` (saved later by the panel task). Tracks are `res://assets/music/<track>.ogg`, looping; a
+  missing file is skipped with one print (like effects). Crossfade with two players. `MUSIC_DB` (start -14 dB),
+  `MUSIC_DUCK_DB` (lower during play, Q5 a). Never plays in headless runs. Stats `music_<track>`.
+- Done when: with a test ogg the track loops and crossfades (desktop run), headless runs show no errors and no
+  leftover audio at exit; nothing calls it yet (P4-11 wires it).
+- Depends on: none.
 
-**P3-04 | Game length check | qa | `docs/qa/phase3-length.md` (report only)**
-- After P3-02 merges: 20 `--autoplay` games each at `--target 21`, `--target 15`, `--target 11`: real play time
-  (`GAME LENGTH`), shots, final scores, 2-pointer share, B1 right vs left hoop points. Recommend the shot and score
-  ranges for CLAUDE.md (P3-11) and give the coordinator the numbers for Q2.
-- Done when: the report has a table per target and a one-line answer "a game to 21 takes about N minutes".
-- Depends on: P3-02. Can run before any owner answer.
+**P4-03 | Player sprite generator, part 1 | art-audio | new `tools/art/pixel3d.py`, new `tools/art/make_players.py`, new `tools/art/crews.json`, new `assets/players/*.png`, `CREDITS.md`**
+- Move the renderer of `draw_style_sample.py` (3D primitives, 4-tone shading, outlines, face stamps) into
+  `pixel3d.py` without changing its output (rerun the sample: pixel-identical), or import it from the sample
+  unchanged; `draw_style_sample.py` may only change its imports.
+- `crews.json`: one entry per player: id, crew, body type, skin, hair, face extras, outfit pieces, colors, number.
+  The 4 approved sample players plus one new player per crew built from the same parts (the owner judges them at the
+  check-in). Adding a recruit = one more entry.
+- `make_players.py` writes the 6 sheets in the contract layout: idle, run and dribble in all 5 directions now, the
+  other columns filled with idle frames (layout final, so P4-06 can integrate). A preview sheet goes to
+  `docs/art/players_preview.png` (not exported).
+- Done when: 6 sheets at 1480 x 320, transparent background, feet on row 59, run cycle reads at 2x, all under 1 MB
+  together; CREDITS row added; preview image attached to the report.
+- Depends on: none.
 
-### Wave 2: needs Q3 and Q4
+**P4-04 | Synthesized swish and bounce | art-audio | new `tools/make_swish.py`, new `tools/make_bounce.py`, `assets/sfx/swish.ogg`, `assets/sfx/bounce.ogg`, `CREDITS.md`**
+- Like `tools/make_whistle.py`: a net swish (filtered noise burst with a soft rattle) and a basketball bounce (a
+  pitched rubber thump with a short ring), mono Ogg Vorbis, peak-normalized. Same file names, so no code changes.
+  Replace the two CREDITS rows (the Vinrax and AntumDeluge stand-ins leave).
+- Done when: both files play in the game (desktop or web run), the dribble stays soft at the -8 dB the owner set,
+  CREDITS updated, the old source files are gone.
+- Depends on: none.
 
-**P3-05 | Foul calls and the free-throw sequence | gameplay (A) | `scripts/rules.gd`, `scripts/main.gd`**
-- `rules.call_foul` per "Shared contract": whistle, "FOUL!" popup on the fouler, dead ball. Shooting foul during a
-  shot: `pending_foul`, resolved when the shot lands: made = and-one (1 FT), missed = free throws per Q4 (constants
-  `FT_INSIDE` 1, `FT_BEYOND` 2, `FT_VALUE_MODE` "one_each" or "shot_value" for Q4 b, `BONUS_FOULS` 0 = off for Q4 c).
-  Reach foul: the fouled team inbounds from the sideline at the ball's x (`rules.inbound(team, spot)`); the shot
-  clock keeps running for the same team unless under `FOUL_MIN_CLOCK` 10 s (then reset to it).
-- Free-throw sequence: players walk to `ft_spot(p)` (shooter at the line, 13.75 ft from the hoop center; two per side
-  of the key, alternating teams; the rest behind the arc), `FT_SETUP_TIME` 1.0 s, then the shooter shoots; HUD
-  "FREE THROW 1 OF 2". `main.release_shot` during `ft_active`: odds `FT_BASE` 0.72 x quality (perfect release 1.3,
-  normal 1.0, bad 0.6; cap 0.95), 1 point, no contest, no blocks, no interceptions. Not the last FT: the shooter
-  gets the ball back at the line. Last FT: made = other team's ball from the baseline, missed = live rebound (everyone
-  is released when the ball leaves the hand). A human at the line who doesn't shoot within `FT_HUMAN_WAIT` 10 s
-  shoots automatically at quality 1.0.
-- The reach-foul trigger in `attempt_steal` (main.gd): a poke that reaches the handler while the ball is shielded
-  (`steal_exposure` 0, Q3 a/c) fouls with `FOUL_REACH_CHANCE` 0.3 (constant `REACH_FOULS` false for Q3 b).
-- Humantest (main.gd): at the line press A and release in the green zone on every 2nd free throw and early (charge
-  0.5) on the others; count `humantest_ft_good` / `humantest_ft_early`.
-- Stats: `fouls_t0/_t1` (committed), `fouls_shooting`, `fouls_reach`, `and_ones`, `ft_attempts_t0/_t1`,
-  `ft_makes_t0/_t1`, `ft_last_misses`, `human_fouls`, `human_fouled`, `human_ft_attempts`, `human_ft_makes`,
-  `human_ft_perfect`, `ft_timeouts`.
-- Done when: autoplay fouls and free throws happen in every few games (shooting fouls arrive with P3-06), the score
-  includes FT points, the game still ends at the target (a FT can win it); humantest has human FT attempts with good
-  releases making clearly more than early ones; screenshot of the FT line-up.
-- Depends on: P3-02 (same files), Q3, Q4.
+**P4-05 | Music tracks | art-audio | new `assets/music/*.ogg`, new `tools/make_music.sh`, `CREDITS.md`**
+- From `docs/phase4-asset-scout.md`, CC0 first: menu "Hella Bumps" (cynicmusic, CC0); gym court "Wednesday Night
+  [Funk Fusion]" (Zane Little, CC0; Memphis, the old-school gym); blacktop "Catchy Swing" (Doge, CC0; New Orleans, the
+  bayou blacktop); Hometown "Apple Cider" (Zane Little, CC0) for later. Re-read each license on its page. Mono Ogg
+  Vorbis about q3, trimmed to a clean loop, loudness matched; file names `menu`, `gym`, `blacktop`, `hometown`.
+- Done when: 3-4 tracks, together under 7 MB, loop without a click, CREDITS rows with the exact page and license.
+- Depends on: none (Q5 decides only when they play).
 
-**P3-06 | Player side of fouls and free throws | gameplay (B) | `scripts/defense.gd`, `scripts/player.gd`, `scripts/human_input.gd`**
-- Shooting fouls (defense.gd): in `rim_blocker` and `check_jump_shot_block`, an airborne defender within reach whose
-  timing is "bad" (Q3: too early, too late, or still up from biting on a fake) fouls with `FOUL_BAD_JUMP_CHANCE` 0.35
-  instead of just missing; call `game.rules.call_foul(d, shooter, "shooting")` (guarded). Good timing never fouls.
-  CPU defenders don't change their jumping to avoid fouls (difficulty may later). If Q3 = c, also the late step into a
-  driver (`player.gd` close-guard check: a defender moving into the handler at > `FOUL_DRIVE_SPEED` inside 2 ft).
-- Free throws (player.gd): while `rules.ft_active`, every player seeks `rules.ft_spot(self)` and stands still; no
-  turbo, crossovers, pokes or block jumps; the CPU shooter shoots after `CPU_FT_WAIT` 0.8-1.4 s with quality
-  `Difficulty.value(team, "ft_quality", ...)` random in `CPU_FT_QUALITY_MIN/MAX` (about 70-78% made). Human at the line:
-  the normal meter; a short tap is ignored (no pump fake at the line).
-- human_input.gd: during free throws A only shoots (shooter) or does nothing; B does nothing; `defense_action()`
-  returns "-" while `ft_active`.
-- Stats: `foul_bad_jumps` (bad-timed jumps that fouled), `cpu_ft_shots`, `human_ft_taps_ignored`.
-- Done when: autoplay about 3-6 fouls per game for both teams together, split roughly evenly; CPU free throws ~70-78%;
-  no player moves during a free throw until the last one is released; humantest human fouls > 0 and human free
-  throws work; scores still end at the target.
-- Depends on: P3-03 (`player.gd`, `defense.gd`), P3-05 for the free-throw state (guarded until merged), Q3, Q4.
+### Wave 2: after P4-01 is merged
 
-### Wave 3: needs Q5 and Q7
+**P4-06 | Player rendering in 3/4 | gameplay (A) | `scripts/player.gd`**
+- A view node per player in `game.world` (sprite from the player's sheet; fallback Kenney texture), positioned at
+  `View.to_screen(position, 0)` and scaled by `View.size_at`; the jump drawn as a height offset (dunk lift per
+  Heights). Direction: `View.screen_angle(position, facing)` to 8 directions (rows and `flip_h` per contract).
+  Animation per state: idle, run (speed-scaled fps), dribble (has the ball; crossover faster with lean), shoot (also
+  free throw, pump fake frames 0-1), dunk (also alley-oop), layup, block jump, poke (steal attempt), stumble (beaten,
+  off balance), pass, celebrate (scorer after a make, the winners at game over). Constants for fps per animation.
+- Shadow, team ring (soft, team colored, like the sample), fire ring and dust go to a node in `game.decals`; the
+  human's arrow, stamina bar and shot meter to a node in `game.overlay`, all through `View.to_screen`.
+- Done when: FLAT and ANGLED screenshots of all six players running, dribbling, shooting, dunking, blocking;
+  the sprite direction matches movement in all 8 directions; autoplay stats within noise; nothing in the sim reads the
+  new nodes.
+- Depends on: P4-01; P4-03 for real sheets (the fallback lets it start and merge before).
 
-**P3-07 | Out of bounds | gameplay (B) | `scripts/ball.gd`, `scripts/rules.gd`**
-- ball.gd: track `last_touch_team` (holder's team on a catch; the defender's team when a steal or block knocks it
-  loose, judged from the state before `make_loose`; the shooter's team on a rim-out). A LOOSE ball that crosses a
-  sideline or baseline (instead of bouncing back) calls `game.rules.ball_out(pos, last_touch_team)`.
-- rules.gd `ball_out`: whistle, "OUT OF BOUNDS" message, the other team inbounds from the nearest sideline spot (from
-  the baseline if it went out there), shot clock reset on a change of possession, kept otherwise.
-- Q5 b (full rule) would add the handler stepping out (`player.gd` movement and `main.clamp_to_court`): a separate
-  follow-up task if chosen.
-- Stats: `oob_t0/_t1` (team that lost it), `oob_after_steal`, `oob_after_block`, `oob_after_rebound`.
-- Done when: autoplay about 1-4 out-of-bounds per game, no ball stuck on a line, no inbound from off the court;
-  humantest runs; screenshot of a sideline inbound.
-- Depends on: P3-05 (`rules.gd`), Q5.
+**P4-07 | Court and hoops in 3/4, court looks by data | gameplay (B) | `scripts/court.gd`, new `scripts/court_looks.gd`**
+- `court_looks.gd`: `const LOOKS := {"gym": {...}, "blacktop": {...}}` with floor texture or colors, line color,
+  paint color, center logo color, apron, backdrop kind (Q3), backboard style (glass / metal), net color. `static var
+  current := "gym"`; a test flag `--court gym|blacktop` (parsed here). Plain dictionaries, easy to edit on the tablet.
+- Floor: the court drawn through `View.to_screen`: floor (texture tiled on a subdivided grid so it foreshortens),
+  lines, keys, arcs, center circle as projected polylines; the apron; the far-side backdrop strip (Q3 a, flat border
+  with Q3 b). Drawn once per look, not every frame.
+- Hoops per the contract: pole, backboard (with the square), rim back half, rim front half and the net, as three
+  y-sorted nodes per hoop in `game.world`; the net animation (`swish`) projected. FLAT keeps today's look.
+- Done when: ANGLED screenshots of both looks show both hoops, the full far sideline and the backdrop; FLAT matches
+  today; the floor isn't redrawn every frame (check with the profiler or a counter).
+- Depends on: P4-01; P4-08 for textures (flat colors until then). The backdrop waits for Q3; the rest can start.
 
-**P3-08 | Difficulty panel | gameplay (A) | new `scripts/menu.gd`, `scripts/main.gd`**
-- Per Q7 (option a): a CanvasLayer panel built in code with three large buttons (at least 200x110 px, finger-sized at
-  1280x720) EASY / NORMAL / HARD, the remembered level lit; shown at launch (game waits) and after each game under the
-  final score. Tap = `Difficulty.level = x`, `Difficulty.save()`, `reload_current_scene()`. First launch: Normal.
-  Option b: skip the launch panel. Option c: a small top-bar button instead (no panel).
-- `--autoplay` and `--humantest` skip the panel and use `Difficulty.from_cmdline()`.
-- Stats: `menu_shown`, `menu_picks_<name>`.
-- Done when: the panel works by touch in the web build (Playwright touch emulation: tap each level, the choice
-  survives a reload); keyboard J/K or mouse also work on desktop; autoplay and humantest unchanged; screenshots of
-  the launch and game-over panels.
-- Depends on: P3-05 (`main.gd`), P3-03 (`difficulty.gd`), Q7.
+**P4-08 | Court textures, backdrops and ball art | art-audio | new `tools/art/make_courts.py`, new `assets/courts/*.png`, new `assets/ball/*.png`, `CREDITS.md`**
+- Our own pixel art in the sample's style (generated, so no attribution): a seamless wood plank tile and a blacktop
+  asphalt tile (32 x 32 or 64 x 64), backdrop strips for Q3 a (gym bleachers with a crowd, blacktop fence and street),
+  a 16 x 16 ball with 4 spin frames and a highlight. CC0 fallbacks from the scout (MonoTone or Leozlk ball; Pixel
+  Courts tiles are CC-BY 4.0) only if ours doesn't read well; record any used in CREDITS.
+- Done when: files in place, tiles seamless (a 4 x 4 tiled test image in the report), all under 0.5 MB.
+- Depends on: none for the tiles and ball; the backdrops wait for Q3.
 
-### Wave 4: needs Q6; everything above merged
+**P4-09 | Player sprite generator, part 2 | art-audio | `tools/art/make_players.py`, `tools/art/pixel3d.py`, `assets/players/*.png`**
+- The remaining animations in all 5 directions: shoot 4, dunk 5, layup 3, block 3, poke 2, stumble 2, pass 2,
+  celebrate 4, plus 2 idle frames (breathing). Celebrate uses the sample's celebrating face.
+- Done when: all 37 columns are real frames for all 6 players; preview sheet updated; still under 1 MB.
+- Depends on: P4-03.
 
-**P3-09 | CPU retune for 1s and 2s, fouls and Hard | gameplay (A) | `scripts/player.gd`, `scripts/defense.gd` (constants and small logic)**
-- With 2 points beyond the arc the CPU's shot choice changes value: retune `CPU_THREE_*`, pull-ups and passes so
-  2-pointers are 8-15% of shots at 28-35%. Tune `FOUL_BAD_JUMP_CHANCE` / `FOUL_REACH_CHANCE` (if needed via the
-  coordinator for main.gd) to 3-6 fouls a game. Hard stays the Phase 2 CPU in feel: per 60 shots, blocks 4-7,
-  steals 5-10, alley-oops 1-3, crossover beats 25-45%, few interceptions and shot-clock violations.
-- Done when: 20 autoplay games at `--difficulty hard` hit the targets; changes listed before/after.
-- Depends on: P3-01 to P3-08 merged.
+### Wave 3: needs Q1, Q2, Q4, Q5; wave 2 merged
 
-**P3-10 | Normal and Easy values | gameplay (B) | `scripts/difficulty.gd`**
-- Set the `LEVELS` table per Q6 (multipliers on Hard). Proxy targets with BLUE as the Hard CPU, 20 games per level:
-  RED wins about 50% on Hard, about 25-35% on Normal, about 10-20% on Easy; RED still uses every move on Easy (no
-  move counter drops to 0). Humantest at each level: the human scores more on Easy than on Hard.
-- Done when: the table and a per-level stats table are in the hand-off.
-- Depends on: P3-03, Q6. Runs in parallel with P3-09 (multipliers carry over a Hard retune).
+**P4-10 | Ball and effects in 3/4 | gameplay (A) | `scripts/ball.gd`, `scripts/fx.gd`**
+- Ball view in `game.world` at its projected floor point with the visual height per Heights, the rim sort rule
+  (`BALL_RIM_SORT_FT`), shadow in `game.decals` (shrinks with height), spin frames from P4-08 (Kenney ball if
+  missing). fx: popups at `View.to_screen(world_pos)`, the fire trail through `View.to_screen(pos, z)`, shake
+  unchanged. Pixel puffs for landing dust and block sparks only if they come from P4-08 or are drawn in code.
+- Done when: ANGLED screenshots: a jump shot in flight, a swish (ball behind the front rim, in front of the board),
+  a rim-out, a dunk at each hoop, a bouncing loose ball with its shadow, a popup and the fire trail; FLAT matches
+  today; autoplay stats within noise.
+- Depends on: P4-01, P4-07 (`hoop_sort_y`). Can start before the owner answers.
 
-**P3-11 | README and CLAUDE.md testing targets | gameplay (B, after P3-10) | `README.txt`, `CLAUDE.md` (Testing section only)**
-- README: first to 21 with 1s and 2s, game end and clocks (Q1), switch at 11, fouls and free throws (how to shoot
-  them: hold and release SHOOT at the line), out of bounds, difficulty and how to pick it; "EASY THINGS TO CHANGE"
-  for `rules.gd` (`TARGET_SCORE`, `SWITCH_AT`, `WIN_BY`, foul and free-throw constants) and `difficulty.gd`; remove
-  quarters and "Shots beyond the arc count 3". FILES list adds `rules.gd`, `difficulty.gd`, `menu.gd`.
-- CLAUDE.md "Testing": `--quit-after` large enough for a game to 21, the new typical numbers from P3-04/P3-12
-  (shots, points, game length, fouls, free throws), and `--difficulty` / `--target`.
-- Done when: the text matches the merged behavior and the owner's answers.
-- Depends on: P3-10 (and P3-04 numbers).
+**P4-11 | Turn the 3/4 view on; framing, panels, music | gameplay (B) | `scripts/main.gd`, `scripts/view.gd`, `scripts/menu.gd`**
+- `View.mode` default ANGLED (`--view flat` stays as a test flag). Framing constants for Q1, the side switch per Q2
+  (`SIDE_FLIP`), try `PERSPECTIVE` 0.0 vs a small value and the zoom vs pixel shimmer, and recommend one. Panels:
+  the COURT button per Q4 (sets `court_looks.current`, restarts like the level buttons, remembered in
+  `user://settings.cfg`) and MUSIC ON/OFF per Q5 (remembered); main calls `audio.play_music` for the menu and the
+  court's track (track name in the look's data or a small table in main) and starts it on the first touch on the web.
+- Done when: the default run is ANGLED with no flag; screenshots at 1280x720 and 1280x800 with players on both
+  sidelines and in the corners; panel screenshots (`--menushot`); music starts after the first tap in Chromium and the
+  choice survives a restart.
+- Depends on: P4-01, P4-02, P4-06, P4-07 (P4-10 merges in the same wave); Q1, Q2, Q4, Q5.
 
-**P3-12 | Phase 3 QA and balance pass | qa | `docs/qa/phase3.md` (report); tuning constants at the top of `rules.gd`, `player.gd`, `defense.gd`, `difficulty.gd` only if needed, listed in the report**
-- 20+ `--autoplay` games per difficulty, 4 `--humantest` (two on Easy, two on Hard), `--shots` screenshots (top bar,
-  game point, switch sides, free-throw line-up, sideline inbound, both panels). Compare with `docs/qa/phase2.md`.
-- Per rule pass/fail: games end at the target per Q1; exactly one switch at 11; B1 gone (right vs left hoop points
-  and win share within noise over 40+ games); fouls 3-6 per game and FT 65-80% (CPU); and-ones happen; out of bounds
-  1-4 per game; difficulty proxy targets from P3-10; game length per Q2's answer; no stuck states (ball dead with no
-  inbound, players frozen after a free throw); no script errors.
-- Web build in Chromium with Playwright touch emulation: pick a level on the panel, shoot a free throw with the
-  meter, see the switch, and check the choice is remembered after a reload.
-- Done when: report with per-game tables and a pass/fail line per rule; tuning changes listed before/after.
-- Depends on: P3-09, P3-10 (P3-11 optional).
+### Wave 4: everything above merged
 
-**P3-13 | Publish the web build | coordinator | `gh-pages` branch (build output only)**
-- After P3-12 passes and the phase is merged: `tools/build_web.sh --publish`, then the lead writes the phase summary
-  (with the check-in questions above).
-- Depends on: P3-12.
+**P4-12 | Phase 4 QA | qa | `docs/qa/phase4.md` (report only; small tuning of view constants with the coordinator's OK)**
+- Gameplay unchanged: repeat P4-00 exactly (100 autoplay, 3 humantest) on the final build; every stat within 2 SE.
+  Humantest FLAT vs ANGLED human stats.
+- Visual: screenshots of both looks, both hoops, the side switch, the far and near sidelines, all four corners, a
+  dunk, a swish, a rim-out, a block, a steal, free throws, game over, at 1280x720 and 1280x800; a slow pan for
+  shimmer; ball vs rim vs backboard sorting.
+- Touch: Playwright with touch emulation: pushing "up" moves toward the far sideline on screen, diagonals look right,
+  turbo pull, flick crossover, defensive assist.
+- Web: `index.pck` size vs budget, fps at 1280x800 (also with 4x CPU throttle), load time, music after the first tap.
+- Done when: the report has the before/after table, the screenshots, size and fps, and a PASS/FAIL list.
+- Depends on: P4-04 to P4-11.
+
+**P4-13 | README, CLAUDE.md, CREDITS check | gameplay (B) | `README.txt`, `CLAUDE.md`, `CREDITS.md`**
+- README: the new view, how to switch court and music (Q4, Q5). CLAUDE.md layout: `view.gd`, `court_looks.gd`,
+  `assets/players`, `assets/music`, the generator scripts and how to rerun them; test flags `--view`, `--court`,
+  `--viewtest`, `--fps`. CREDITS: every file in `assets/` has a row and a CC0/CC-BY license; Kenney rows removed if
+  their files are gone.
+- Done when: a fresh clone opens with no missing files; every asset path is in CREDITS.
+- Depends on: P4-12.
+
+**P4-14 | Publish the web build | coordinator | `gh-pages` branch (build output only)**
+- After P4-12 passes and the phase is merged: `tools/build_web.sh --publish`, then the lead writes the phase summary.
+- Depends on: P4-12, P4-13.
 
 ## Parallel plan
 
-| Wave | Programmer A | Programmer B | Other |
-|---|---|---|---|
-| 1 (start now) | P3-01 rules module + first to 21, then P3-02 switch sides (`main.gd`, `rules.gd`) | P3-03 difficulty plumbing (`difficulty.gd`, `player.gd`, `defense.gd`) | coordinator asks Q1-Q7; P3-04 length check after P3-02 |
-| 2 (Q3, Q4) | P3-05 fouls + free-throw sequence (`rules.gd`, `main.gd`) | P3-06 player side of fouls and FTs (`defense.gd`, `player.gd`, `human_input.gd`) | |
-| 3 (Q5, Q7) | P3-08 difficulty panel (`menu.gd`, `main.gd`) | P3-07 out of bounds (`ball.gd`, `rules.gd`) | |
-| 4 (Q6) | P3-09 CPU retune (`player.gd`, `defense.gd`) | P3-10 Normal/Easy values (`difficulty.gd`), then P3-11 README + CLAUDE.md | P3-12 QA, then P3-13 publish (coordinator) |
+| Wave | Programmer A | Programmer B | Art-audio | QA |
+|---|---|---|---|---|
+| 1 (start now) | P4-01 view core (`view.gd`, `main.gd`) | P4-02 music player (`audio.gd`) | P4-03 sprites part 1, then P4-04 swish/bounce, then P4-05 music | P4-00 baseline |
+| 2 (after P4-01) | P4-06 players (`player.gd`) | P4-07 court and hoops (`court.gd`, `court_looks.gd`) | P4-08 courts and ball art, then P4-09 sprites part 2 | quick check per merge |
+| 3 (Q1, Q2, Q4, Q5) | P4-10 ball and fx (`ball.gd`, `fx.gd`) | P4-11 view on, framing, panels, music (`main.gd`, `view.gd`, `menu.gd`) | P4-09 if not done | |
+| 4 | | P4-13 docs | | P4-12, then P4-14 publish (coordinator) |
 
-Why this split: `main.gd` is the hot spot, so P3-01 moves the rules (score, format, dead balls, inbounds, later
-fouls and free throws) into `rules.gd` first. A owns `main.gd` + `rules.gd` in waves 1-2; in wave 3 `rules.gd` passes
-to B (out of bounds) while A works in `main.gd` + `menu.gd`. B owns `player.gd` + `defense.gd` in waves 1-2, and the
-CPU retune goes back to A in wave 4 while B only touches `difficulty.gd`. Within a wave A and B never share a file.
-Each wave merges and gets a quick QA run (3 autoplay + 1 humantest, `--quit-after 120000`) before the next starts.
-If the owner answers late, wave 1 and P3-04 still finish (and P3-04's numbers help answer Q2); nothing in wave 2
-starts before Q3 and Q4.
+Why this split: `main.gd` and `view.gd` belong to A in wave 1 and to B in wave 3, never both in one wave. The art
+files (`tools/`, `assets/`, `CREDITS.md`) belong only to the art-audio agent until P4-13. P4-10 can start in wave 2
+if B finishes P4-07 first and `hoop_sort_y` is merged. Each wave merges and gets a quick QA run (3 autoplay + 1
+humantest in FLAT and ANGLED) before the next starts. If the owner answers late, waves 1-2 and P4-10 still finish;
+only P4-11 and the backdrop parts of P4-07/P4-08 wait.
 
 ## Doing
 
 ## Review
-- P3-01, P3-02, P3-03 (trial merge trial-p3w1): lead review APPROVE, with these notes.
-  - Follow-up for the coordinator (player.gd, not in P3-02's files): B1 mirrors the `reset_positions` rows and the
-    inbound spot by attack direction, but `player.spot_pos()` still uses the absolute `SPOTS` y. The team inbounding
-    at the right hoop now lines up on the opposite side from its offense spots (player 1 at +12 ft, his spot at -16 ft).
-    Mirror `s.y` by `inward(hoop)` too, or the halves still play differently.
-  - Note for P3-08: `Difficulty.level` defaults to HARD (per the contract). The board says first launch = Normal, so
-    the panel must pick Normal when `user://settings.cfg` has no saved level.
-  - BLUE bias check: `FIRST_BALL_TEAM` 0 means BLUE always gets the first ball (quarters used to alternate it), and
-    `players` update team 0 first every frame (older code). For balance tests, alternate or randomize the first ball
-    in `--autoplay` only.
-  - `is_game_point` counts a 2 as "one basket away", so GAME POINT shows from 19 even though 2s are rare.
-- P3-05 + P3-06 (trial merge trial-p3w2): lead review APPROVE, with these follow-ups.
-  - Parses and runs on Godot 4.3; no double or missing reach roll (defense.gd defers to main's FOUL_REACH_CHANCE);
-    jumpers_t* no longer counts free throws; free-throw flow recovers from a lost ball, a lost result and a win.
-  - `defense.commit_foul` shows the reason popup and counts `foul_bad_jumps` even when `rules.call_foul` ignores
-    the call (pending foul, dead ball): have `call_foul` return bool and popup/count only when accepted.
-  - A side switch triggered by an and-one or a free throw waits for the next dead ball; if the last FT misses (live
-    rebound), the switch happens a possession or more later. Rare; fix with P3-07 or note it.
-  - Dead code in the combined build: rules.gd fallback (`FB_CPU_FT_*`, `ft_walk`, `_fallback_reset`) and
-    defense.gd's `FOUL_SHIELD_POKE_CHANCE` path with `_reach_foul_elsewhere`. Remove in P3-09 (one owner each).
-  - P3-09: reach fouls run high with a poking human (humantest 7 reach + 1 shooting = 8 fouls); most shooting
-    fouls are late jumps at rim shots, hence ~60% and-ones (owner question added to VISION).
-  - `--force-fouls` (test only) stays; list it in CLAUDE.md Testing in P3-11.
-  - GAME POINT at 20 vs 19: owner question in VISION; one constant (`GAME_POINT_BASKET`).
-- P3-07 + P3-08 + f12978e (trial merge trial-p3w3): lead review CHANGES (one line), then APPROVE.
-  - `rules.SWITCH_SKIPS_FT_REBOUND := true` overrides owner Q4 ("missed last FT = live rebound"). Default it to
-    false until the owner picks; the open question is in VISION.
-  - Unrequested `RIM_LONG_*` / `RIM_WIDE_*` long rebounds: physics and rates look fine (rim_long 2-4, rim_wide 0-2,
-    OOB 2-3 per game, almost all after a rebound, so the defense gets the ball); kept pending the owner (open
-    question in VISION; `RIM_LONG_CHANCE`/`RIM_WIDE_CHANCE` 0 turns them off).
-  - Note: after a ball hits the rim the shot clock resets even when the same team keeps it (the board said "kept
-    otherwise"). Sensible; list it in the README (P3-11).
-  - Lead runs: autoplay 21-14, 19-21 (1 switch each, OOB 2 and 3, fouls 3 and 2); humantest 21-18, OOB 2. No errors.
-
-- P3-09 + e83f419 (trial-p309): lead review CHANGES (small).
-  - Fine: parses on 4.3; one reach roll (defense.try_reach_foul); kick-out runs after cpu_call_hold and can't
-    ping-pong (catchers stand beyond the arc, outside CPU_KICK_MAX_FT 20 ft); is_three/attack_hoop follow the hoop
-    and the switch. Per 60 shots: blocks 6.9, steals 7.3, lobs ~3.0, so the higher per-game counts come from longer
-    games. Lead runs: autoplay 20-21 (3 fouls), 13-21 (2); humantest 20-21 (7 fouls, 6 reach). No errors.
-  - README.txt still lists main.gd `FOUL_REACH_CHANCE`: point it to defense.gd `REACH_FOUL_CHANCE` /
-    `REACH_FOUL_HUMAN_CHANCE`.
-  - rules.gd `ft_native()` has no callers now and its comment says main.gd still asks: delete it. defense.gd:62
-    "never reached" should say "removed".
-  - 2s are 16.2 of 89 shots (~18%) at 28%, over the 8-15% target: pull back a little (CPU_KICK_CHANCE or
-    CPU_THREE_CHANCE), or the coordinator accepts it and changes the target.
-  - Minor: rebounds and inbounds count as a "catch" too (0.1 s decision, quick windup, cpu_twos_catch).
 
 ## Done
-- Phase 3 check-in (owner): levels well spaced; keep 21; keep long rim bounces; CPU crossovers beat the human less
-  on Easy/Normal: coordinator added the `cross_beat_human` knob (difficulty.gd; player.start_crossover), Hard
-  unchanged. Phase 3 done.
-- P3-09 CPU retune (approved after small fixes; coordinator cleanup e83f419 + 969f3fd). Coordinator decision on the
-  2s target: the board's old "2s 8-15% of shots" conflicted with the brief given (20-30% of points from 2s); kept the
-  retune (2s ~18% of shots, ~22% of points, 28% made). Lobs are ~3 per 60 shots (per game higher because games are
-  longer).
-- P3-01/02 rules.gd, first to 21, 1s and 2s, side switch (merged a2860e2); P3-03 difficulty plumbing (merged).
-- P3-05/06 fouls and free throws (merged 16ce490).
-- P3-07 out of bounds (incl. unrequested rare long/wide rim bounces, owner to confirm), P3-08 difficulty panel,
-  coordinator fixes: foul popup only on an accepted call, SWITCH_SKIPS_FT_REBOUND false (owner Q4) (merged 7a2a6da).
-- P3-10 Normal/Easy values, P3-11 README and CLAUDE.md (merged). RED win share vs a Hard BLUE: Hard 62%, Normal 30%,
-  Easy 20% (40 games each; Hard's 62% is within noise per P3-04).
-- P3-04 game length + balance (docs/qa/phase3-length.md): to 21 about 13 min / 90 shots; to 15 about 9 min; to 11
-  about 6.5 min. No team bias over ~2,180 games (BLUE 48-51%); B1 gone (right/left hoop points level). 2-pointers
-  are only ~10% of points (P3-09). Coordinator: --autoplay now picks the first ball at random; CLAUDE.md says to
-  judge balance on 200+ games.
