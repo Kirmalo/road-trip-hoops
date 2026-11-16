@@ -451,7 +451,15 @@ def build(p, pose, expr="focus", portrait=False):
     ball_c = pelvis + S(*pose["ball_at"]) if "ball_at" in pose else None
     for side, sx in (("L", 1.0), ("R", -1.0)):
         sh = pelvis + S(sx * sw * (1 - 0.06 * pose.get("shrug", 0.0)), sh_y - 0.7 + pose.get("shrug", 0.0), -0.3)
-        if ("hand_" + side) in pose:
+        if ("reach_" + side) in pose:
+            # new (make_players part 2): arm aimed along a body-space direction, extended to a fraction of its length
+            dirv, frac = pose["reach_" + side]
+            T = sh + unit(*dirv) * (upper_len + fore_len + 0.7) * frac
+            wr = T - unit(*(T - sh)) * 0.7
+            el = ik(sh, wr, upper_len, fore_len, unit(*pose.get("pole_" + side, (sx, -0.2, -0.3))))
+            fd = unit(*(wr - el))
+            hands[side] = T
+        elif ("hand_" + side) in pose:
             tgt = pose["hand_" + side]
             T = ball_c + vec(*tgt[1]) if tgt[0] == "ball" else pelvis + S(*tgt)
             wr = T - unit(*(T - sh)) * 0.7
@@ -563,7 +571,7 @@ def build(p, pose, expr="focus", portrait=False):
 
         prims.append(Sphere(bc, BR, ball_mat, "ball"))
 
-    info = {"head_c": head_c, "Rh": Rh, "HX": HX, "HY": HY, "HZ": HZ, "pelvis": pelvis}
+    info = {"head_c": head_c, "Rh": Rh, "HX": HX, "HY": HY, "HZ": HZ, "pelvis": pelvis, "hands": hands}
     return prims, info, pp
 
 
@@ -758,7 +766,7 @@ def render(p, pose, yaw, w=FRAME_W, h=FRAME_H, ox=None, oy=GROUND_Y, scale=1.0,
 
     # sprite faces: placed pixel by pixel
     if face_stamp and not portrait:
-        stamp_face(px, cv, info, p, pp, yaw)
+        stamp_face(px, cv, info, p, pp, yaw, expr)
 
     # remove one-pixel spurs so the outline doesn't grow spikes
     for _ in range(2):
@@ -792,7 +800,7 @@ def render(p, pose, yaw, w=FRAME_W, h=FRAME_H, ox=None, oy=GROUND_Y, scale=1.0,
     return out, cv, info
 
 
-def stamp_face(px, cv, info, p, pp, yaw):
+def stamp_face(px, cv, info, p, pp, yaw, expr="focus"):
     hc, Rh = info["head_c"], info["Rh"]
     skin = pp["skin"]
     hair = pp["hair"]
@@ -815,6 +823,9 @@ def stamp_face(px, cv, info, p, pp, yaw):
     yaw_n = ((yaw + 180) % 360) - 180
     if abs(yaw_n) > 120:
         return  # back view: no face
+    if expr == "celebrate":
+        stamp_cheer(vis, put, skin, brow, eye_dark, yaw_n)
+        return
     if abs(yaw_n) < 30:
         # front: two eyes with a brow over each, mouth
         for sx in (1, -1):
@@ -845,3 +856,38 @@ def stamp_face(px, cv, info, p, pp, yaw):
         if m:
             i, j = m
             put(i, j, darker(skin[3], 0.8))
+
+
+def stamp_cheer(vis, put, skin, brow, eye_dark, yaw_n):
+    """New (make_players part 2): the sample's celebrating face at sprite size: eyes squeezed shut, mouth open."""
+    mouth_in, teeth = FLAT["mouth_in"], FLAT["teeth"]
+    lid = darker(skin[3], 0.8)
+    if abs(yaw_n) < 30:
+        for sx in (1, -1):
+            e = vis((sx * 1.45, 0.05, 3.2))
+            if e:
+                i, j = e
+                put(i, j, lid)
+                put(i + sx, j, lid)
+                put(i, j - 1, brow)
+        m = vis((0, -2.1, 3.0))
+        if m:
+            i, j = m
+            put(i - 1, j - 1, teeth)
+            put(i, j - 1, teeth)
+            put(i - 1, j, mouth_in)
+            put(i, j, mouth_in)
+    else:
+        sx = -1.0 if yaw_n > 0 else 1.0
+        fwd = 1 if yaw_n > 0 else -1
+        e = vis((sx * 1.35, 0.05, 3.0))
+        if e:
+            i, j = e
+            put(i, j, lid)
+            put(i - fwd, j, lid)
+            put(i, j - 1, brow)
+        m = vis((sx * 0.6, -2.1, 3.0))
+        if m:
+            i, j = m
+            put(i, j - 1, teeth)
+            put(i, j, mouth_in)
