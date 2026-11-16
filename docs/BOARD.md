@@ -316,7 +316,24 @@ starts before Q3 and Q4.
     otherwise"). Sensible; list it in the README (P3-11).
   - Lead runs: autoplay 21-14, 19-21 (1 switch each, OOB 2 and 3, fouls 3 and 2); humantest 21-18, OOB 2. No errors.
 
+- P3-09 + e83f419 (trial-p309): lead review CHANGES (small).
+  - Fine: parses on 4.3; one reach roll (defense.try_reach_foul); kick-out runs after cpu_call_hold and can't
+    ping-pong (catchers stand beyond the arc, outside CPU_KICK_MAX_FT 20 ft); is_three/attack_hoop follow the hoop
+    and the switch. Per 60 shots: blocks 6.9, steals 7.3, lobs ~3.0, so the higher per-game counts come from longer
+    games. Lead runs: autoplay 20-21 (3 fouls), 13-21 (2); humantest 20-21 (7 fouls, 6 reach). No errors.
+  - README.txt still lists main.gd `FOUL_REACH_CHANCE`: point it to defense.gd `REACH_FOUL_CHANCE` /
+    `REACH_FOUL_HUMAN_CHANCE`.
+  - rules.gd `ft_native()` has no callers now and its comment says main.gd still asks: delete it. defense.gd:62
+    "never reached" should say "removed".
+  - 2s are 16.2 of 89 shots (~18%) at 28%, over the 8-15% target: pull back a little (CPU_KICK_CHANCE or
+    CPU_THREE_CHANCE), or the coordinator accepts it and changes the target.
+  - Minor: rebounds and inbounds count as a "catch" too (0.1 s decision, quick windup, cpu_twos_catch).
+
 ## Done
+- P3-09 CPU retune (approved after small fixes; coordinator cleanup e83f419 + 969f3fd). Coordinator decision on the
+  2s target: the board's old "2s 8-15% of shots" conflicted with the brief given (20-30% of points from 2s); kept the
+  retune (2s ~18% of shots, ~22% of points, 28% made). Lobs are ~3 per 60 shots (per game higher because games are
+  longer).
 - P3-01/02 rules.gd, first to 21, 1s and 2s, side switch (merged a2860e2); P3-03 difficulty plumbing (merged).
 - P3-05/06 fouls and free throws (merged 16ce490).
 - P3-07 out of bounds (incl. unrequested rare long/wide rim bounces, owner to confirm), P3-08 difficulty panel,
