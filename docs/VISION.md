@@ -66,6 +66,8 @@ tablet with a joystick and two buttons.
 | Court backgrounds | Scenery behind the far sideline that fits the court: bleachers and a crowd in the gym, a fence and a street behind the blacktop |
 | Trying courts | A COURT button on the start and game-over panels switches Gym and Blacktop until the Road Trip exists; the music follows the court |
 | Music | Menu music on the panels, the court's track softly during play, MUSIC ON/OFF button on the panels (remembered) |
+| Phase 4 check-in | Camera angle and zoom feel right; runs smoothly on the tablet; keep the camera following the ball on long passes; players, courts and the new swish/bounce are good. Music: wrong style; owner wants **upbeat chiptune** (retro 16-bit synth, high energy) |
+| Music style | Upbeat chiptune for all music (replaces the earlier per-city local styles). Each city's track may still lean toward its city's flavor in chiptune form where good CC0/CC-BY tracks exist |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
