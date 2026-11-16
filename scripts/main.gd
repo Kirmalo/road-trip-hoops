@@ -325,7 +325,8 @@ func _ready() -> void:
 		_update_camera()               # set the ANGLED zoom and limits and start on the ball
 		camera.reset_smoothing()
 	# the launch panel: once per run, never in the headless tests (or --shots, unless -- --menushot)
-	var tests: bool = autoplay or humantest or (OS.get_cmdline_user_args().has("--shots") and not menushot)
+	var shots_run: bool = OS.get_cmdline_user_args().has("--shots") or OS.get_cmdline_user_args().has("--ballshots")
+	var tests: bool = autoplay or humantest or (shots_run and not menushot)
 	if not tests and not MenuScript.start_done:
 		menu_wait = true
 		msg_label.visible = false   # no "FIRST TO 21" under the panel; the reloaded game shows it
