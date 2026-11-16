@@ -4,6 +4,7 @@ extends Node2D
 
 const Defense = preload("res://scripts/defense.gd")
 const Difficulty = preload("res://scripts/difficulty.gd")   # CPU skill knobs by level (P3-03; Hard = the constant)
+const View = preload("res://scripts/view.gd")               # projection (Phase 4): FLAT draws as before, ANGLED below
 
 var game
 var team := 0
@@ -323,6 +324,8 @@ func setup(g, t: int, i: int, tex: Texture2D) -> void:
 		game.stat("difficulty_" + Difficulty.level_name())
 	if t == 0 and i == 0:
 		ft_box_serial = -1       # static: a restarted game starts shot_serial at 0 again
+	if View.angled():
+		_build_view()
 
 func has_ball() -> bool:
 	return game.ball.state == game.ball.HELD and game.ball.holder == self
@@ -1473,6 +1476,8 @@ func defense_ai(delta: float) -> void:
 	def.cpu_update(delta)
 
 func _draw() -> void:
+	if View.angled():
+		return   # ANGLED: the view nodes in game.world / decals / overlay draw this player (see the end of the file)
 	if jump_z > 0.5:
 		# shadow on the floor under a jumping player
 		var sr := 16.0 - jump_z * 0.15
@@ -1539,3 +1544,305 @@ func draw_fire_ring() -> void:
 		var flame := PackedVector2Array([base - side, base + side, base + dir * h])
 		var col := FIRE_RING_COLOR if i % 2 == 0 else Color(1.0, 0.8, 0.2)
 		draw_colored_polygon(flame, col)
+
+# ---------------- drawing in the 3/4 view (P4-06, ANGLED only; FLAT draws with `sprite` and _draw() above) ----------------
+# Visual only: everything here reads the sim state (position, velocity, facing, jump_z, timers) and never writes it.
+# Three nodes per player: the upright sprite in game.world (y-sorted: its position is the projected floor point),
+# the floor things (shadow, team ring, fire ring, dust, crossover lines) in game.decals, and the human's arrow,
+# stamina bar and shot meter in game.overlay. Sheet layout: docs/BOARD.md "Player sprite sheets".
+
+const PLAYER_SCALE := 2.0         # sheet frames are drawn at 2x
+const SHEET_FRAME := Vector2(40, 64)
+const SHEET_COLS := 37
+const SHEET_ROWS := 5
+const SHEET_FEET_Y := 59.0        # the floor row inside a frame
+# animation: [start column, frames] (board contract; P4-09 fills the columns that still hold idle frames)
+const ANIMS := {
+	"idle": [0, 2], "run": [2, 6], "dribble": [8, 4], "shoot": [12, 4], "dunk": [16, 5], "layup": [21, 3],
+	"block": [24, 3], "poke": [27, 2], "stumble": [29, 2], "pass": [31, 2], "celebrate": [33, 4],
+}
+# screen octant (0 = E, 1 = SE, 2 = S ... 7 = NE, clockwise on screen) -> sheet row and mirror
+const OCT_ROW := [2, 1, 0, 1, 2, 3, 4, 3]
+const OCT_FLIP := [false, false, false, true, true, true, false, false]
+const DIR_HYST_DEG := 8.0         # degrees past an octant's edge before the sprite turns (no flicker on the edge)
+# frames per second
+const IDLE_FPS := 2.0
+const RUN_FPS := 11.0             # at full speed (`speed`); scaled by the actual speed, never below RUN_FPS_MIN
+const RUN_FPS_MIN := 5.0
+const RUN_MIN_SPEED := 22.0       # px/s: slower than this is standing (idle)
+const DRIBBLE_FPS := 7.0
+const CROSS_DRIBBLE_MULT := 2.2   # dribble fps x this during a crossover
+const CROSS_LEAN_DEG := 12.0      # sprite lean into the cut at the start of a crossover
+const POKE_FPS := 8.0
+const STUMBLE_FPS := 6.0
+const PASS_FPS := 8.0
+const CELEBRATE_FPS := 6.0
+const PASS_ANIM_TIME := 0.25      # seconds the pass pose shows after the ball leaves the hands
+const FOLLOW_TIME := 0.3          # seconds the last shoot frame (follow-through) shows after a jumper's release
+const CELEBRATE_TIME := 1.4       # seconds the scorer celebrates after a make (unless he runs off at speed)
+const CELEBRATE_MAX_SPEED := 90.0 # px/s: faster than this he runs instead
+# heights (sim pixels of height, drawn through View.to_screen)
+const DUNK_VIEW_LIFT := 1.5       # a dunk / alley-oop jump drawn this much higher so the hands reach the rim (Heights)
+const HEAD_PX := 80.0             # top of the head above the feet at PLAYER_SCALE (40 px character x 2)
+# floor marks (sim pixels; projected, so they foreshorten with the court)
+const TEAM_RING_R := 21.0
+const TEAM_RING_COLORS := [Color(0.35, 0.65, 1.0), Color(1.0, 0.32, 0.3)]
+const HUMAN_RING_R := 27.0
+const HUMAN_COLOR := Color(1, 0.9, 0.2)
+const RING_SEGMENTS := 28
+
+var _v_body: Node2D               # game.world: sorted by its position (the projected floor point)
+var _v_spr: Sprite2D              # the sheet (or the Kenney fallback texture) inside _v_body
+var _v_decal: Node2D              # game.decals
+var _v_over: Node2D               # game.overlay
+var _v_sheet := false             # false: the sheet is missing, the Kenney top-down sprite stands in
+var _v_oct := -1
+var _v_anim := ""
+var _v_phase := 0.0               # frames advanced in the current looping animation
+var _v_lift := 0.0                # drawn jump height (sim pixels)
+var _v_pass_t := 0.0
+var _v_follow_t := 0.0
+var _v_celebrate_t := 0.0
+var _v_was_passing := false
+var _v_was_shooting := false
+var _v_make_seen := false
+
+func _build_view() -> void:
+	sprite.visible = false
+	_v_body = Node2D.new()
+	_v_body.name = "PlayerView%d_%d" % [team, index]
+	_v_spr = Sprite2D.new()
+	var path := "res://assets/players/%s_%d.png" % ["blue" if team == 0 else "red", index + 1]
+	if ResourceLoader.exists(path):
+		_v_spr.texture = load(path)
+	if _v_spr.texture != null and _v_spr.texture.get_size() == SHEET_FRAME * Vector2(SHEET_COLS, SHEET_ROWS):
+		_v_sheet = true
+		_v_spr.hframes = SHEET_COLS
+		_v_spr.vframes = SHEET_ROWS
+		_v_spr.centered = false
+		_v_spr.offset = Vector2(-SHEET_FRAME.x / 2.0, -SHEET_FEET_Y)   # the feet at the node's origin
+	else:
+		_v_spr.texture = sprite.texture   # fallback: today's top-down sprite, turned to the screen direction
+	_v_body.add_child(_v_spr)
+	game.world.add_child(_v_body)
+	_v_decal = Node2D.new()
+	_v_decal.draw.connect(_draw_view_decal)
+	game.decals.add_child(_v_decal)
+	_v_over = Node2D.new()
+	_v_over.draw.connect(_draw_view_overlay)
+	game.overlay.add_child(_v_over)
+
+func _process(delta: float) -> void:
+	if _v_body != null:
+		_update_view(delta)
+
+# the drawn height of the jump (dunks and alley-oops lifted so the hands reach the rim)
+func _view_lift() -> float:
+	if rim_kind == "dunk":
+		return jump_z * DUNK_VIEW_LIFT
+	return jump_z
+
+func _update_view(delta: float) -> void:
+	var ball = game.ball
+	_v_lift = _view_lift()
+	# one-shot animation triggers, seen from the sim state
+	var passing: bool = ball.state == ball.PASS and ball.passer == self
+	if passing and not _v_was_passing:
+		_v_pass_t = PASS_ANIM_TIME
+	_v_was_passing = passing
+	if _v_was_shooting and not shooting and rim_kind == "" and ball.state == ball.SHOT and ball.shooter == self:
+		_v_follow_t = FOLLOW_TIME
+	_v_was_shooting = shooting
+	if ball.state == ball.SHOT and ball.shooter == self and ball.shot_made:
+		_v_make_seen = true
+	elif _v_make_seen and ball.state != ball.SHOT:
+		_v_make_seen = false
+		_v_celebrate_t = CELEBRATE_TIME
+	_v_pass_t = maxf(0.0, _v_pass_t - delta)
+	_v_follow_t = maxf(0.0, _v_follow_t - delta)
+	_v_celebrate_t = maxf(0.0, _v_celebrate_t - delta)
+
+	var base: Vector2 = View.to_screen(position, 0.0)
+	_v_body.position = base
+	var sc: float = View.size_at(position)
+	var up: float = base.y - View.to_screen(position, _v_lift).y
+	if _v_sheet:
+		_update_sheet_frame(delta)
+		_v_spr.scale = Vector2(PLAYER_SCALE, PLAYER_SCALE) * sc
+		_v_spr.position = Vector2(0, -up)
+	else:
+		_v_spr.rotation = View.screen_angle(position, facing)
+		_v_spr.scale = Vector2(1.75, 1.75) * sc * (1.0 + 0.15 * jump_z / DUNK_JUMP_PX)
+		_v_spr.position = Vector2(0, -up - 14.0 * sc)
+	_v_decal.queue_redraw()
+	_v_over.queue_redraw()
+
+# picks the direction row (8 screen directions, 3 mirrored), the animation and its frame
+func _update_sheet_frame(delta: float) -> void:
+	var a: float = View.screen_angle(position, facing)
+	var step := PI / 4.0
+	if _v_oct < 0 or absf(wrapf(a - float(_v_oct) * step, -PI, PI)) > step / 2.0 + deg_to_rad(DIR_HYST_DEG):
+		_v_oct = wrapi(roundi(a / step), 0, 8)
+	var row: int = OCT_ROW[_v_oct]
+	var flip: bool = OCT_FLIP[_v_oct]
+	var spd: float = velocity.length()
+	var anim := "idle"
+	var k := -1               # frame for progress-driven animations (-1: run the clock)
+	var fps := IDLE_FPS
+	var loop := true
+	if rim_kind != "":
+		anim = rim_kind       # "dunk" (also the alley-oop) or "layup"
+		k = int(clampf(jump_t / maxf(jump_time, 0.01), 0.0, 0.999) * float(ANIMS[anim][1]))
+	elif block_jump_t >= 0.0:
+		anim = "block"
+		k = int(clampf(block_jump_t / BLOCK_JUMP_TIME, 0.0, 0.999) * 3.0)
+	elif fake_t > 0.0:
+		anim = "shoot"        # pump fake: shoot frames 0-1 and back
+		k = [0, 1, 1, 0][int(clampf(1.0 - fake_t / PUMP_TIME, 0.0, 0.999) * 4.0)]
+	elif shooting:
+		anim = "shoot"        # jumper or free throw: frames 0-2 through the windup / meter
+		var f := 0.0
+		if game.is_human(self):
+			f = shot_charge
+		else:
+			f = shot_elapsed / maxf(shot_elapsed + maxf(cpu_shot_time, 0.0), 0.01)
+		k = int(clampf(f, 0.0, 0.999) * 3.0)
+	elif _v_follow_t > 0.0:
+		anim = "shoot"
+		k = 3
+	elif poke_t > 0.0:
+		anim = "poke"
+		fps = POKE_FPS
+		loop = false
+	elif stumble_t > 0.0:
+		anim = "stumble"
+		fps = STUMBLE_FPS
+	elif _v_pass_t > 0.0:
+		anim = "pass"
+		fps = PASS_FPS
+		loop = false
+	elif (_v_celebrate_t > 0.0 and spd < CELEBRATE_MAX_SPEED) or _won_game():
+		anim = "celebrate"
+		fps = CELEBRATE_FPS
+	elif has_ball() and not at_free_throw():
+		anim = "dribble"
+		fps = DRIBBLE_FPS * (CROSS_DRIBBLE_MULT if cross_t > 0.0 else 1.0)
+		# the sheet dribbles with the right hand: facing or backing the camera, mirror it for the left hand
+		if hand_x < 0.0 and (row == 0 or row == 4):
+			flip = not flip
+	elif spd > RUN_MIN_SPEED:
+		anim = "run"
+		fps = maxf(RUN_FPS_MIN, RUN_FPS * spd / maxf(speed, 1.0))
+	if anim != _v_anim:
+		_v_anim = anim
+		_v_phase = 0.0
+	else:
+		_v_phase += delta * fps
+	var n: int = ANIMS[anim][1]
+	if k < 0:
+		k = int(_v_phase) % n if loop else mini(int(_v_phase), n - 1)
+	_v_spr.frame = row * SHEET_COLS + int(ANIMS[anim][0]) + clampi(k, 0, n - 1)
+	_v_spr.flip_h = flip
+	# crossover: lean into the cut, easing out over the burst
+	var lean := 0.0
+	if cross_t > 0.0 and cross_dir.length() > 0.1:
+		var sx: float = (View.to_screen(position + cross_dir * game.FT) - View.to_screen(position)).x
+		lean = deg_to_rad(CROSS_LEAN_DEG) * signf(sx) * cross_t / CROSS_TIME
+	_v_spr.rotation = lean
+
+func _won_game() -> bool:
+	return game.game_over and int(game.score[team]) > int(game.score[1 - team])
+
+# a circle of radius r (sim px) around sim point c, on the floor, projected
+func _floor_ring(c: Vector2, r: float, segments: int = RING_SEGMENTS) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in segments + 1:
+		pts.append(View.to_screen(c + Vector2.from_angle(TAU * float(i) / float(segments)) * r))
+	return pts
+
+func _draw_view_decal() -> void:
+	var n := _v_decal
+	# shadow: under the feet, shrinking as he goes up
+	var sr: float = maxf(8.0, 16.0 - _v_lift * 0.15)
+	var shadow := _floor_ring(position + Vector2(0, 2), sr, 20)
+	shadow.remove_at(shadow.size() - 1)   # (a polygon: no repeated closing point)
+	n.draw_colored_polygon(shadow, Color(0, 0, 0, 0.25 if _v_lift > 0.5 else 0.18))
+	# soft team ring (like the style sample: a strong edge, a fainter inside band, a faint halo)
+	var col: Color = TEAM_RING_COLORS[team]
+	n.draw_polyline(_floor_ring(position, TEAM_RING_R * 1.08), Color(col, 0.25), 2.0)
+	n.draw_polyline(_floor_ring(position, TEAM_RING_R), Color(col, 0.85), 2.5)
+	n.draw_polyline(_floor_ring(position, TEAM_RING_R * 0.82), Color(col, 0.4), 2.0)
+	if game.is_human(self):
+		n.draw_polyline(_floor_ring(position, HUMAN_RING_R, 36), HUMAN_COLOR, 3.0)
+	if on_fire:
+		_draw_view_fire_ring(n)
+	if turbo and velocity.length() > 20.0:
+		# dust puffs behind a sprinting player
+		var back := -velocity.normalized()
+		var side := back.orthogonal()
+		var puffs := [[back * 18.0, 6.0, 0.35], [back * 30.0 + side * 4.0, 4.5, 0.22], [back * 40.0 - side * 3.0, 3.0, 0.12]]
+		for q in puffs:
+			var puff := _floor_ring(position + (q[0] as Vector2), float(q[1]), 12)
+			puff.remove_at(puff.size() - 1)
+			n.draw_colored_polygon(puff, Color(1, 1, 1, float(q[2])))
+	if cross_t > 0.0 and cross_dir.length() > 0.1:
+		# crossover: speed lines behind the cut, at knee height
+		var a := cross_t / CROSS_TIME
+		var bk := -cross_dir
+		var sd := bk.orthogonal()
+		for k in 3:
+			var off := sd * (float(k) - 1.0) * 9.0
+			n.draw_line(View.to_screen(position + bk * 16.0 + off, 12.0),
+					View.to_screen(position + bk * (38.0 + 10.0 * float(k % 2)) + off, 12.0),
+					Color(1, 1, 1, 0.9 * a), 3.0)
+
+# the flickering flame ring of an on-fire player, on the floor; the flames stand up
+func _draw_view_fire_ring(n: Node2D) -> void:
+	var t := fire_anim
+	var r := 26.0 + 1.5 * sin(t * 9.0)
+	n.draw_polyline(_floor_ring(position, r, 40), Color(1.0, 0.25, 0.05, 0.85), 3.0)
+	n.draw_polyline(_floor_ring(position, r - 3.0, 40), Color(1.0, 0.75, 0.2, 0.9), 2.0)
+	var cnt := 8
+	for i in cnt:
+		var a: float = TAU * float(i) / float(cnt) + t * 1.5
+		var h: float = 9.0 + 4.0 * sin(t * 13.0 + float(i) * 1.7)
+		var dir := Vector2.from_angle(a)
+		var base := position + dir * r
+		var side := dir.orthogonal() * 4.0
+		var flame := PackedVector2Array([View.to_screen(base - side), View.to_screen(base + side),
+				View.to_screen(base + dir * 2.0, h)])
+		var col := FIRE_RING_COLOR if i % 2 == 0 else Color(1.0, 0.8, 0.2)
+		# draw_primitive: a flame seen edge-on is a sliver (draw_colored_polygon's triangulation would complain)
+		n.draw_primitive(flame, PackedColorArray([col, col, col]), PackedVector2Array())
+
+# the human's arrow over the head, the stamina bar under the feet and the shot meter above the arrow
+func _draw_view_overlay() -> void:
+	if not game.is_human(self):
+		return
+	var n := _v_over
+	var feet: Vector2 = View.to_screen(position, 0.0)
+	var head: Vector2 = View.to_screen(position, _v_lift) - Vector2(0, HEAD_PX * View.size_at(position))
+	var tri := PackedVector2Array([head + Vector2(-7, -16), head + Vector2(7, -16), head + Vector2(0, -6)])
+	n.draw_colored_polygon(tri, HUMAN_COLOR)
+	var bw := 48.0
+	var bo := feet + Vector2(-bw / 2, 16)
+	n.draw_rect(Rect2(bo - Vector2(2, 2), Vector2(bw + 4, 14)), Color(0, 0, 0, 0.75))
+	var col := Color(0.25, 0.9, 0.35)
+	if turbo_locked:
+		col = Color(0.55, 0.55, 0.55)
+	elif stamina < 0.3:
+		col = Color(0.95, 0.25, 0.2)
+	elif stamina < 0.6:
+		col = Color(1.0, 0.8, 0.2)
+	n.draw_rect(Rect2(bo, Vector2(bw * stamina, 10)), col)
+	var mark := bo.x + bw * TURBO_MIN_RESTART
+	n.draw_line(Vector2(mark, bo.y), Vector2(mark, bo.y + 10), Color(1, 1, 1, 0.5), 1.0)
+	if shooting:
+		var w := 56.0
+		var o := head + Vector2(-w / 2, -32)
+		n.draw_rect(Rect2(o, Vector2(w, 10)), Color(0, 0, 0, 0.7))
+		var glo := green_lo()
+		var gcol := Color(1.0, 0.6, 0.15) if on_fire else Color(0.2, 0.9, 0.3)
+		n.draw_rect(Rect2(o + Vector2(w * glo / 1.2, 0), Vector2(w * (green_hi() - glo) / 1.2, 10)), gcol)
+		var c: float = minf(shot_charge, 1.2) / 1.2
+		n.draw_rect(Rect2(o + Vector2(w * c - 2, -3), Vector2(4, 16)), Color.WHITE)
