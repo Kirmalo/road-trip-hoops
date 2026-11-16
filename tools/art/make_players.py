@@ -17,6 +17,9 @@ put the ball in the hand (shoot and pass: both hands; dunk and layup: "R", the n
 Usage:  python3 tools/art/make_players.py [--preview-only] [--only ID]
 Output: assets/players/<id>.png, assets/players/hands.json, docs/art/players_preview_v1.png (part 1 view) and
         docs/art/players_preview_v2.png (every animation, not exported)
+        (both for the Phase 4 six), docs/art/players_preview_p5.png (Phase 5 players: S, E, N and an action frame).
+Phase 5: entries with "recruit": true also write <id>_crew.png in your crew's colors (crews.json crew_recolor);
+sheets are saved as indexed-palette PNGs when that is smaller (same pixels, about 40 KB instead of 95 KB).
 Needs:  Pillow, numpy
 """
 import json
@@ -34,6 +37,7 @@ CREWS = os.path.join(ROOT, "tools", "art", "crews.json")
 OUT_DIR = os.path.join(ROOT, "assets", "players")
 PREVIEW = os.path.join(ROOT, "docs", "art", "players_preview_v1.png")
 PREVIEW2 = os.path.join(ROOT, "docs", "art", "players_preview_v2.png")
+PREVIEW_P5 = os.path.join(ROOT, "docs", "art", "players_preview_p5.png")
 HANDS = os.path.join(ROOT, "assets", "players", "hands.json")
 
 FW, FH = P.FRAME_W, P.FRAME_H          # 40 x 64
@@ -56,8 +60,21 @@ def load_players(path=CREWS):
     pals = data["palettes"]
     for k, v in data.get("skins", {}).items():
         P.SKINS[k] = v
-    out = []
+    entries = []
     for e in data["players"]:
+        entries.append(e)
+        if e.get("recruit"):
+            # recruits switch to your colors (Q11 a): the same parts, palette names swapped
+            swap = data["crew_recolor"][e["crew"]]
+            c = {k: (swap.get(v, v) if isinstance(v, str) and (k.endswith("_pal") or k in ("shorts_trim", "shoe_acc"))
+                     else v) for k, v in e.items()}
+            c.update(swap.get("_fields", {}))
+            c["id"] = e["id"] + "_crew"
+            c["crew"] = "U"
+            c["recolor_of"] = e["id"]
+            entries.append(c)
+    out = []
+    for e in entries:
         p = {"crew": e["crew"], "number": int(e["number"]), "id": e["id"],
              "beard": bool(e.get("beard", False)), "goatee": bool(e.get("goatee", False)),
              "headband": bool(e.get("headband", False))}
@@ -73,6 +90,7 @@ def load_players(path=CREWS):
         p.setdefault("sleeve", None)
         p.setdefault("tight", None)
         p["label"] = "#%d %s" % (p["number"], e.get("role", ""))
+        p["title"] = e.get("name", "")
         p["ring"] = tuple(data["crews"][e["crew"]]["ring"])
         out.append(p)
     return out
@@ -419,8 +437,29 @@ def make_sheet(p):
 
 
 def save_png(img, path):
-    """RGBA PNG (about 35-40 KB per sheet; the repeated filler frames compress to almost nothing)."""
+    """Indexed-palette PNG (exact colors, index 0 transparent) when the sheet has at most 255 colors and that file
+    is smaller than the RGBA one (Phase 5 measure); otherwise RGBA. Pixels are identical either way."""
     img.save(path, optimize=True)
+    rgba_size = os.path.getsize(path)
+    a = np.array(img)
+    opaque = a[:, :, 3] > 0
+    if not opaque.any() or (a[:, :, 3][opaque] != 255).any():
+        return "rgba"
+    cols, inv = np.unique(a[:, :, :3][opaque].reshape(-1, 3), axis=0, return_inverse=True)
+    if len(cols) > 255:
+        return "rgba"
+    idx = np.zeros(a.shape[:2], np.uint8)
+    idx[opaque] = inv.reshape(-1) + 1
+    q = Image.fromarray(idx, "P")
+    flat = [0, 0, 0] + [int(v) for v in cols.reshape(-1)]
+    q.putpalette(flat + [0] * (768 - len(flat)))
+    tmp = path + ".tmp.png"
+    q.save(tmp, optimize=True, transparency=0)
+    if os.path.getsize(tmp) < rgba_size:
+        os.replace(tmp, path)
+        return "indexed"
+    os.remove(tmp)
+    return "rgba"
 
 
 # ----------------------------------------------------------------------------- preview
@@ -561,6 +600,54 @@ def preview2(players, all_frames, path=PREVIEW2, zoom=2):
     big.convert("RGB").save(path, optimize=True)
 
 
+P5_GROUPS = [("Your crew: the underdogs (blue ring)", lambda p: p["crew"] == "U" and "recolor_of" not in p),
+             ("Hometown: County Line (green and white, red ring)", lambda p: p["crew"] == "HT"),
+             ("Chicago: Lakeshore Gusts (purple and white, red ring)", lambda p: p["crew"] == "CHI"),
+             ("New York champions: Concrete Crowns", lambda p: p["crew"] == "NY"),
+             ("Recruits in your colors (<id>_crew)", lambda p: "recolor_of" in p)]
+
+
+def preview_p5(players, all_frames, path=PREVIEW_P5, zoom=3, per_line=5):
+    """Phase 5 check: every new player standing S, E, N plus one action frame (crews.json 'action'), by crew."""
+    cell = 42
+    block = 4 * cell + 14
+    head = 16
+    lines = []
+    for title, keep in P5_GROUPS:
+        grp = [p for p in players if keep(p)]
+        for i in range(0, len(grp), per_line):
+            lines.append((title if i == 0 else None, grp[i:i + per_line]))
+    w = per_line * block + 8
+    h = sum((head if t else 0) + FH + 16 for t, _ in lines) + 6
+    base = Image.new("RGBA", (w, h), P.hexc("#c99a62") + (255,))
+    dr = ImageDraw.Draw(base)
+    labels = []
+    y = 4
+    for title, grp in lines:
+        if title:
+            dr.rectangle([0, y, w, y + head - 4], fill=P.hexc("#1c1a26"))
+            labels.append((title, 4, y + 1, True))
+            y += head
+        for b, p in enumerate(grp):
+            fr = all_frames[p["id"]]
+            act = tuple(p.get("action", ["shoot", 2]))
+            seq = [fr[("S", "idle", 0)], fr[("E", "idle", 0)], fr[("N", "idle", 0)], fr[("E", act[0], act[1])]]
+            x_b = 4 + b * block
+            for c, img in enumerate(seq):
+                x0 = x_b + c * cell + (cell - FW) // 2
+                ring = ring_image(p["ring"])
+                base.alpha_composite(ring, (x0, y + 10 + P.GROUND_Y - ring.size[1] // 2 - 1))
+                base.alpha_composite(img, (x0, y + 10))
+            labels.append(("%s  %s #%d  (S E N, %s)" % (p["id"], p["title"], p["number"], act[0]), x_b + 2, y, False))
+        y += FH + 16
+    big = base.resize((w * zoom, h * zoom), Image.NEAREST)
+    dr = ImageDraw.Draw(big)
+    for txt, x, yy, is_head in labels:
+        dr.text((x * zoom + 4, yy * zoom + 4), txt, font=font(22 if is_head else 17),
+                fill=(250, 244, 230) if is_head else (28, 20, 30))
+    big.convert("RGB").save(path, optimize=True)
+
+
 def main(argv):
     only = argv[argv.index("--only") + 1] if "--only" in argv else None
     players = load_players()
@@ -577,13 +664,16 @@ def main(argv):
         problems += probs
         out = os.path.join(OUT_DIR, p["id"] + ".png")
         if "--preview-only" not in argv:
-            save_png(sheet, out)
-            print("wrote %s %s %d bytes" % (out, sheet.size, os.path.getsize(out)))
+            kind = save_png(sheet, out)
+            print("wrote %s %s %s %d bytes" % (out, sheet.size, kind, os.path.getsize(out)))
     if not only:
-        preview(players, all_frames)
+        p4 = [p for p in players if p["crew"] in ("A", "B")]   # the Phase 4 previews keep their six players
+        preview(p4, all_frames)
         print("wrote", PREVIEW)
-        preview2(players, all_frames)
+        preview2(p4, all_frames)
         print("wrote", PREVIEW2)
+        preview_p5([p for p in players if p["crew"] not in ("A", "B")], all_frames)
+        print("wrote", PREVIEW_P5)
         if "--preview-only" not in argv:
             write_hands(all_hands)
     for s in problems:
