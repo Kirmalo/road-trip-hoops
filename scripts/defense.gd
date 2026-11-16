@@ -1,6 +1,9 @@
 extends RefCounted
 # CPU defense brain for one player (player.def), plus shared block rules used by everyone.
 # player.gd creates one in setup(); player.defense_ai() just calls cpu_update().
+# CPU skill knobs go through Difficulty.value(team, key, CONST) at the point of use (P3-03; Hard = the constant).
+
+const Difficulty = preload("res://scripts/difficulty.gd")
 
 # ---- tuning ----
 const GAP_FT := 5.5               # off-ball: stay this far off my man, on the hoop side
@@ -103,7 +106,7 @@ func cpu_update(delta: float) -> void:
 		var toward: float = -game.inward(guard_hoop)
 		p.target = Vector2(game.COURT_W / 2 + toward * WAIT_PAST_HALF_FT * FT, lerpf(man.position.y, game.COURT_H / 2, 0.3))
 	if ball.holder != man and ball.state != ball.DEAD:
-		p.target = p.target.lerp(ball.position, HELP_SIDE)  # help side
+		p.target = p.target.lerp(ball.position, Difficulty.value(p.team, "help_side", HELP_SIDE))  # help side
 	p.speed_mult = CPU_ON_BALL_SPEED if ball.holder == man else DEF_SPEED_MULT
 	# beaten by my man: sprint to recover
 	var beaten: float = (p.position.distance_to(guard_hoop) - man.position.distance_to(guard_hoop)) / FT
@@ -128,8 +131,9 @@ func on_pump_fake(_faker) -> void:
 
 func _start_cross_read() -> void:
 	_cross_seen = true
-	_cross_react = game.rng.randf_range(CPU_CROSS_REACT_MIN, CPU_CROSS_REACT_MAX)
-	_cross_beat = _cross_react > CPU_CROSS_BEAT_REACT
+	_cross_react = game.rng.randf_range(Difficulty.value(p.team, "cross_react_min", CPU_CROSS_REACT_MIN),
+			Difficulty.value(p.team, "cross_react_max", CPU_CROSS_REACT_MAX))
+	_cross_beat = _cross_react > Difficulty.value(p.team, "cross_beat_react", CPU_CROSS_BEAT_REACT)
 	_cross_target = p.target
 	if not _cross_beat:
 		_poke_gap = 0.0   # he read it: the ball is crossing in front of him, go for it
@@ -181,10 +185,10 @@ func _update_pokes(delta: float, man) -> void:
 		game.stat("cpu_poke_skipped_shielded")
 		_poke_gap = CPU_POKE_RECHECK
 		return
-	if game.rng.randf() >= CPU_POKE_CHANCE:
+	if game.rng.randf() >= Difficulty.value(p.team, "poke_chance", CPU_POKE_CHANCE):
 		_poke_gap = CPU_POKE_RECHECK
 		return
-	_poke_on_time = game.rng.randf() < CPU_POKE_ON_TIME * (1.0 + CPU_POKE_RATING_SPAN * p.rating_frac("steal"))
+	_poke_on_time = game.rng.randf() < Difficulty.value(p.team, "poke_on_time", CPU_POKE_ON_TIME) * (1.0 + CPU_POKE_RATING_SPAN * p.rating_frac("steal"))
 	_poke_wait = CPU_POKE_WAIT_MAX
 
 func _poke(h) -> void:
@@ -220,7 +224,8 @@ func _update_block_jump(delta: float) -> void:
 		_watch_phase = phase
 		_jump_wait = -1.0
 		if phase != "" and p.position.distance_to(s.position) < CPU_JUMP_FT * game.FT:
-			_jump_wait = game.rng.randf_range(CPU_JUMP_REACT_MIN, CPU_JUMP_REACT_MAX)
+			_jump_wait = game.rng.randf_range(Difficulty.value(p.team, "jump_react_min", CPU_JUMP_REACT_MIN),
+					Difficulty.value(p.team, "jump_react_max", CPU_JUMP_REACT_MAX))
 	if _jump_wait < 0.0:
 		return
 	_jump_wait -= delta
@@ -229,11 +234,11 @@ func _update_block_jump(delta: float) -> void:
 	if phase == "shot" and s.shooting and game.is_human(s) and s.shot_charge < CPU_JUMP_CHARGE:
 		return   # a human's meter: wait for his rhythm (a short tap turns into a fake and is judged as one)
 	_jump_wait = -1.0
-	var chance: float = CPU_JUMP_CHANCE
+	var chance: float = Difficulty.value(p.team, "jump_chance", CPU_JUMP_CHANCE)
 	if phase == "fake":
-		chance = CPU_FAKE_BITE
+		chance = Difficulty.value(p.team, "fake_bite", CPU_FAKE_BITE)
 	elif phase == "shot":
-		chance = CPU_JUMPER_JUMP_CHANCE
+		chance = Difficulty.value(p.team, "jumper_jump_chance", CPU_JUMPER_JUMP_CHANCE)
 	chance *= 1.0 + CPU_JUMP_RATING_SPAN * p.rating_frac("block")
 	if game.rng.randf() < chance and p.start_block_jump():
 		game.stat("cpu_block_jumps")
