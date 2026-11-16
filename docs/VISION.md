@@ -116,3 +116,6 @@ export and an Android export, store page text and screenshots.
 - Names and personalities of the 3 starting underdogs, and the name of the tournament.
 - Do opponent crews get any identity (style of play, a star player) beyond ratings? The owner didn't pick named
   rivals; for now crews differ only by ratings and play style.
+- GAME POINT in the top bar: show it at 20 (a 1 wins; the current build) or already at 19 (a 2 also wins)?
+- Fouled shots: today a fouled layup or dunk goes in as often as an unfouled one, so most shooting fouls are
+  and-ones (about 60%; real basketball is nearer 25%). Should a foul make the shot miss more often?

@@ -293,5 +293,18 @@ starts before Q3 and Q4.
     `players` update team 0 first every frame (older code). For balance tests, alternate or randomize the first ball
     in `--autoplay` only.
   - `is_game_point` counts a 2 as "one basket away", so GAME POINT shows from 19 even though 2s are rare.
+- P3-05 + P3-06 (trial merge trial-p3w2): lead review APPROVE, with these follow-ups.
+  - Parses and runs on Godot 4.3; no double or missing reach roll (defense.gd defers to main's FOUL_REACH_CHANCE);
+    jumpers_t* no longer counts free throws; free-throw flow recovers from a lost ball, a lost result and a win.
+  - `defense.commit_foul` shows the reason popup and counts `foul_bad_jumps` even when `rules.call_foul` ignores
+    the call (pending foul, dead ball): have `call_foul` return bool and popup/count only when accepted.
+  - A side switch triggered by an and-one or a free throw waits for the next dead ball; if the last FT misses (live
+    rebound), the switch happens a possession or more later. Rare; fix with P3-07 or note it.
+  - Dead code in the combined build: rules.gd fallback (`FB_CPU_FT_*`, `ft_walk`, `_fallback_reset`) and
+    defense.gd's `FOUL_SHIELD_POKE_CHANCE` path with `_reach_foul_elsewhere`. Remove in P3-09 (one owner each).
+  - P3-09: reach fouls run high with a poking human (humantest 7 reach + 1 shooting = 8 fouls); most shooting
+    fouls are late jumps at rim shots, hence ~60% and-ones (owner question added to VISION).
+  - `--force-fouls` (test only) stays; list it in CLAUDE.md Testing in P3-11.
+  - GAME POINT at 20 vs 19: owner question in VISION; one constant (`GAME_POINT_BASKET`).
 
 ## Done
