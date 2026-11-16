@@ -5,6 +5,7 @@ extends Node2D
 const Defense = preload("res://scripts/defense.gd")
 const Difficulty = preload("res://scripts/difficulty.gd")   # CPU skill knobs by level (P3-03; Hard = the constant)
 const View = preload("res://scripts/view.gd")               # projection (Phase 4): FLAT draws as before, ANGLED below
+const Ratings = preload("res://scripts/ratings.gd")         # stat -> gameplay multipliers (P5; rating 50 = 1.0)
 
 var game
 var team := 0
@@ -12,7 +13,8 @@ var index := 0
 var sprite: Sprite2D
 var velocity := Vector2.ZERO
 var facing := 0.0
-var speed := 170.0
+const BASE_SPEED := 170.0         # top speed in px/s at speed rating 50 (Ratings.speed_px scales it)
+var speed := BASE_SPEED
 var target := Vector2.ZERO
 var speed_mult := 1.0
 var spot_index := 0
@@ -65,6 +67,12 @@ const BLOCK_HUMAN_GOOD_BONUS := 0.1   # human (P2.5): a well-timed block jump's 
 const RIM_BLOCK_RATING_SPAN := 0.5  # rim-block dice (defense.rim_blocker) x0.5 at rating 0, x1.5 at 100
 
 var ratings := {"steal": 50, "block": 50}
+# P5-03: the player dict from Flow.match (board "Match config"); {} in Quick Game. Ratings missing from it are 50.
+const SHEET_DIR := "res://assets/players/"   # sheets are <SHEET_DIR><sheet>.png (recruits for you: <sheet>_crew.png)
+const CREW_SHEET_SUFFIX := "_crew"           # a city player's recolor in your colors, used when he plays for team 0
+var pdata := {}
+var pid := ""                     # cities.gd PLAYERS id ("" in Quick Game)
+var pname := ""                   # shown name ("" in Quick Game)
 
 # ---- crossover and the dribble hand (P2-05; owner Q1: crossover only, a "spin" flick is a crossover too) ----
 const CROSS_TIME := 0.3           # seconds of the crossover burst
@@ -304,7 +312,9 @@ const SPOTS := [
 	Vector2(17, 7),    # right elbow
 ]
 
-func setup(g, t: int, i: int, tex: Texture2D) -> void:
+# `pdict` (optional, P5-03): {"id", "name", "sheet", "ratings": {speed, shooting, finishing, defense, stamina, steal,
+# block}}. Without it (Quick Game, tests) the player is today's: RATINGS_BY_INDEX steal/block, every other stat 50.
+func setup(g, t: int, i: int, tex: Texture2D, pdict: Dictionary = {}) -> void:
 	game = g
 	team = t
 	index = i
@@ -319,13 +329,46 @@ func setup(g, t: int, i: int, tex: Texture2D) -> void:
 	humantest = OS.get_cmdline_user_args().has("--humantest")
 	def = Defense.new(self, g)
 	ratings = (RATINGS_BY_INDEX[i] as Dictionary).duplicate()
+	_apply_pdict(pdict)
+	speed = Ratings.speed_px(BASE_SPEED, rating("speed"))
 	if t == Difficulty.CPU_TEAM and i == 0:
 		Difficulty.init_once()   # saved level, then --difficulty (autoplay/humantest default to Hard)
-		game.stat("difficulty_" + Difficulty.level_name())
+		game.stat("difficulty_" + Difficulty.level_name(Difficulty.effective_level()))
 	if t == 0 and i == 0:
 		ft_box_serial = -1       # static: a restarted game starts shot_serial at 0 again
 	if View.angled():
 		_build_view()
+
+# Ratings from the match dict. steal/block come from the dict (trip.gd derives them from defense + bias); a dict
+# with defense but no steal/block derives them here (bias from the dict, 0 if absent).
+func _apply_pdict(pdict: Dictionary) -> void:
+	pdata = pdict
+	if pdict.is_empty():
+		return
+	pid = str(pdict.get("id", ""))
+	pname = str(pdict.get("name", ""))
+	var r: Dictionary = pdict.get("ratings", {})
+	for k in r:
+		ratings[k] = clampi(int(r[k]), Ratings.MIN_RATING, Ratings.MAX_RATING)
+	if r.has("defense"):
+		var dfn: int = int(r["defense"])
+		if not r.has("steal"):
+			ratings["steal"] = Ratings.derived(dfn, int(pdict.get("steal_bias", 0)))
+		if not r.has("block"):
+			ratings["block"] = Ratings.derived(dfn, int(pdict.get("block_bias", 0)))
+
+# The 3/4-view sheet: the match dict's sheet (team 0 prefers its _crew recolor), else today's blue_n / red_n.
+func sheet_path() -> String:
+	var sheet: String = str(pdata.get("sheet", ""))
+	if sheet != "":
+		if team == 0:
+			var crew_path: String = SHEET_DIR + sheet + CREW_SHEET_SUFFIX + ".png"
+			if ResourceLoader.exists(crew_path):
+				return crew_path
+		var own: String = SHEET_DIR + sheet + ".png"
+		if ResourceLoader.exists(own):
+			return own
+	return SHEET_DIR + "%s_%d.png" % ["blue" if team == 0 else "red", index + 1]
 
 func has_ball() -> bool:
 	return game.ball.state == game.ball.HELD and game.ball.holder == self
@@ -763,7 +806,8 @@ func update_turbo(delta: float, want: bool, is_human: bool) -> bool:
 		if on_fire:
 			game.stat("fire_turbo_frames")   # on fire: stamina doesn't drain
 		else:
-			stamina = maxf(0.0, stamina - Difficulty.value(team, "stamina_drain", STAMINA_DRAIN) * delta)
+			stamina = maxf(0.0, stamina - Ratings.stamina_drain(Difficulty.value(team, "stamina_drain", STAMINA_DRAIN),
+					rating("stamina")) * delta)
 		refill_wait = REFILL_DELAY
 		game.stat("turbo_frames_t%d" % team)
 		if stamina <= 0.0:
@@ -773,7 +817,7 @@ func update_turbo(delta: float, want: bool, is_human: bool) -> bool:
 		since_turbo += delta
 		refill_wait -= delta
 		if refill_wait <= 0.0:
-			stamina = minf(1.0, stamina + STAMINA_REFILL * delta)
+			stamina = minf(1.0, stamina + Ratings.stamina_refill(STAMINA_REFILL, rating("stamina")) * delta)
 	return turbo
 
 # opponents closer to this hoop than me (0 or 1 means a fast break)
@@ -936,7 +980,7 @@ func green_hi() -> float:
 # ---------------- dunks and layups ----------------
 
 func is_dunk_speed() -> bool:
-	return turbo or since_turbo < 0.2 or velocity.length() >= DUNK_SPEED_FRAC * speed
+	return turbo or since_turbo < 0.2 or velocity.length() >= Ratings.dunk_speed_frac(DUNK_SPEED_FRAC, rating("finishing")) * speed
 
 # Shoot near the rim: take off for a dunk (very close and fast) or a layup. No shot meter.
 func start_rim_move(d_ft: float) -> void:
@@ -1010,7 +1054,7 @@ func release_rim_shot() -> void:
 	# openness penalty (about x0.55 with a defender on you)
 	var d_ft: float = position.distance_to(game.attack_hoop(team)) / game.FT
 	var base := 0.66 if d_ft < 5.0 else maxf(0.02, 0.52 - (d_ft - 5.0) * 0.0075)  # mirrors main.shot_probability
-	var target := DUNK_OPEN_PCT if rim_kind == "dunk" else LAYUP_OPEN_PCT
+	var target: float = (DUNK_OPEN_PCT if rim_kind == "dunk" else LAYUP_OPEN_PCT) * Ratings.finish_mult(rating("finishing"))
 	var fire_mult := FIRE_SHOT_BONUS if on_fire else 1.0
 	var alley_mult := ALLEY_MAKE_MULT if alley_oop else 1.0
 	var soft := 1.0
@@ -1255,11 +1299,11 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 			and since_fake > 2.0 * PUMP_SCORE_WINDOW and game.rng.randf() < CPU_PUMP_CHANCE:
 		start_cpu_pump_fake()   # sell the shot to a defender right in front
 	elif dist_ft >= CPU_PULLUP_MIN_FT and dist_ft <= CPU_PULLUP_MAX_FT and not three \
-			and (open_ft >= CPU_PULLUP_ROOM_FT or guard_behind) and game.rng.randf() < CPU_PULLUP_CHANCE:
+			and (open_ft >= CPU_PULLUP_ROOM_FT or guard_behind) and game.rng.randf() < Difficulty.value(team, "pullup_chance", CPU_PULLUP_CHANCE):
 		game.stat("pullups_t%d" % team)
 		start_shot()
 	elif three_set and dist_ft <= CPU_THREE_MAX_FT and open_ft >= CPU_THREE_OPEN_FT \
-			and game.rng.randf() < CPU_THREE_CHANCE:
+			and game.rng.randf() < Difficulty.value(team, "three_chance", CPU_THREE_CHANCE):
 		game.stat("cpu_threes")
 		start_shot()
 		cpu_three_try = shooting
@@ -1377,7 +1421,7 @@ func try_cpu_cut(hoop: Vector2) -> bool:
 	var man = game.teams[1 - team][index]
 	if man.position.distance_to(position) < CPU_CUT_MAN_FT * game.FT:
 		return false
-	if game.rng.randf() >= CPU_CUT_CHANCE:
+	if game.rng.randf() >= Difficulty.value(team, "cut_chance", CPU_CUT_CHANCE):
 		return false
 	alley_cut_t = CPU_CUT_TIME
 	alley_cut = true
@@ -1398,7 +1442,7 @@ func try_cpu_kickout() -> bool:
 		if o >= best_open and pass_lane_clear(mate):
 			best_open = o
 			best = mate
-	if best == null or game.rng.randf() >= CPU_KICK_CHANCE:
+	if best == null or game.rng.randf() >= Difficulty.value(team, "kick_chance", CPU_KICK_CHANCE):
 		return false
 	game.stat("cpu_kickouts_t%d" % team)
 	best.kick_catch = not game.is_human(best)   # (the human catches it his own way)
@@ -1423,7 +1467,7 @@ func try_cpu_lob() -> bool:
 	for mate in game.teams[team]:
 		if mate == self or not ball.is_lob_target(mate, self):
 			continue
-		if game.rng.randf() < CPU_LOB_CHANCE:
+		if game.rng.randf() < Difficulty.value(team, "lob_chance", CPU_LOB_CHANCE):
 			game.stat("cpu_lobs")
 			game.do_pass(self, mate)
 			return true
@@ -1612,7 +1656,7 @@ func _build_view() -> void:
 	_v_body = Node2D.new()
 	_v_body.name = "PlayerView%d_%d" % [team, index]
 	_v_spr = Sprite2D.new()
-	var path := "res://assets/players/%s_%d.png" % ["blue" if team == 0 else "red", index + 1]
+	var path: String = sheet_path()
 	if ResourceLoader.exists(path):
 		_v_spr.texture = load(path)
 	if _v_spr.texture != null and _v_spr.texture.get_size() == SHEET_FRAME * Vector2(SHEET_COLS, SHEET_ROWS):
