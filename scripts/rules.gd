@@ -450,11 +450,6 @@ func start_free_throws(shooter, count: int, value: int, and_one: bool) -> void:
 		game.input.call_t = -1.0
 	game.stat("ft_trips")
 
-# player.gd runs the free-throw behavior itself (P3-06: at_free_throw, ft_stand). main.gd still asks; its ft_walk
-# fallback branch is never taken and can go with main.gd's next owner.
-func ft_native() -> bool:
-	return true
-
 # lane slots: the defenders take the low spots (one per side) and the arc, the shooter's teammates the high spots
 func _ft_lineup() -> void:
 	_ft_order = {}

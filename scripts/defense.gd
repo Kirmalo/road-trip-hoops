@@ -59,9 +59,9 @@ const FOUL_LATE_WINDOW := 0.2     # seconds after the block window that a late j
 const FOUL_LATE_MULT := 0.35      # a late jump fouls with FOUL_BAD_JUMP_CHANCE x this (late jumps at layups are
                                   # common and mostly catch only air: without it ~7 fouls a game)
 const FOUL_FAKE_WINDOW := 0.4    # a bad jump that started this soon after the shooter's pump fake: "bit on the fake"
-# reaching fouls (P3-09: rolled only here, in try_reach_foul; main.attempt_steal's own roll is never reached)
+# reaching fouls (P3-09: rolled only here, in try_reach_foul; main.attempt_steal's own roll was removed)
 const REACH_FOUL_CHANCE := 0.3    # CPU: a poke that reaches a ball behind the handler's body fouls with this chance
-                                  # (was main.FOUL_REACH_CHANCE, the same value)
+                                  # (replaces main.gd's old FOUL_REACH_CHANCE)
 const REACH_FOUL_HUMAN_CHANCE := 0.1   # the human: lower, so a player who pokes a lot isn't whistled all game
                                   # (0.3 gave a STEAL-mashing humantest 2-5 reach fouls a game, of 3-6 in all)
 const FOUL_SHIELD_DEG := 120.0    # shielded: the angle handler->ball vs handler->defender is at least this (exposure 0)
