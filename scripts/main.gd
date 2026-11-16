@@ -25,6 +25,7 @@ const HumanInputScript = preload("res://scripts/human_input.gd")
 const DefenseScript = preload("res://scripts/defense.gd")
 const RulesScript = preload("res://scripts/rules.gd")
 const MenuScript = preload("res://scripts/menu.gd")
+const View = preload("res://scripts/view.gd")   # projection sim -> screen (FLAT / ANGLED), stick mapping (Phase 4)
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
@@ -45,6 +46,24 @@ const MSG_POP_TIME := 0.15           # center message scale-in time in seconds
 const MSG_POP_SCALE := 1.35          # center message start scale
 const SIDE_ARROW_RIGHT := ">>"       # top bar: next to BLUE, the way BLUE attacks (P3-02)
 const SIDE_ARROW_LEFT := "<<"
+
+# camera (P4-01). FLAT keeps today's camera. ANGLED framing follows owner Q1 (a), the recommended default until the
+# owner answers: the camera follows the ball left and right, zoomed in, both sidelines always on screen (it doesn't
+# move up and down). TILT_Y 0.55 makes the court 330 px deep, so zoom 1.45 still fits both sidelines, the far
+# players' heads and the HUD bar on 1280x720 and shows about 3/4 of the court length (2/3 needs a flatter TILT_Y).
+const CAM_ZOOM_FLAT := 1.15          # FLAT: today's zoom
+const CAM_ZOOM := 1.45               # ANGLED zoom
+const CAM_SMOOTHING := 4.0           # Camera2D position smoothing speed (both modes, as today)
+const CAM_FOLLOW_X := 1.0            # ANGLED: 1 = the camera follows the ball left/right, 0 = stays at half court
+const CAM_FOLLOW_Y := 0.0            # ANGLED: 0 = fixed depth (both sidelines in view), 1 = follows the ball up/down
+                                     # (it follows anyway on a screen too short to show both sidelines)
+const CAM_MARGIN_FT := 2.0           # ANGLED: room past the baselines and the near sideline (feet, floor)
+const CAM_TOP_FT := 7.0              # ANGLED: room above the far sideline for the players standing on it (feet, height)
+const CAM_HUD_PX := 54.0             # the HUD top bar (screen px): the far sideline stays below it
+const VIEW_PROBE := true             # ANGLED test aid until P4-06/P4-07/P4-10 draw the real view: a thin outline of the
+                                     # projected court and a marker per player and the ball (overlay). P4-11 removes it.
+const VIEW_PROBE_COLOR := Color(1.0, 0.3, 0.9, 0.9)
+const FPS_PRINT_EVERY := 5.0         # -- --fps: seconds between "FPS n" lines
 
 # on fire (P1-07)
 const FIRE_STREAK := 3               # makes in a row by one player (dunks and layups count) to catch fire
@@ -183,7 +202,16 @@ var ht_away_t := 0.0
 var ht_guard_on := false            # stay-in-front metric: guarding a handler this frame
 var ht_guard_front := true          # ... and the human is between him and the rim
 var ht_guard_holder = null
-var _call_node: Node2D               # draws the "!" over the human while his call is live
+var _call_node: Node2D               # draws the "!" over the human while his call is live (in overlay)
+var _steal_node: Node2D              # draws the lit-STEAL ring on the floor under the ball (decals; FLAT: overlay)
+var _probe_node: Node2D              # ANGLED test aid (VIEW_PROBE): projected court outline and markers (in overlay)
+# drawing layers (P4-01, see the Shared contract in docs/BOARD.md). All Node2D children of main.
+var floor_layer: Node2D              # z -10: the court floor
+var decals: Node2D                   # z -5: things lying on the floor under everyone (shadows, rings, dust, steal cue)
+var world: Node2D                    # z 0, y-sorted: upright things, each positioned at its projected floor point
+var overlay: Node2D                  # z 30: cues, arrow, stamina bar, shot meter; always on top, never sorted
+var fps_print := false               # test only (-- --fps): print "FPS n" every FPS_PRINT_EVERY seconds
+var _fps_t := 0.0
 var shot_serial := 0                # counts released shots, so each defender gets one block try per shot (defense.gd)
 var menu                            # menu.gd: the EASY / NORMAL / HARD panel (launch and game over, P3-08)
 var menu_wait := false              # the launch panel is up: the game waits behind it
@@ -212,6 +240,10 @@ var msg_age := 0.0
 
 func _ready() -> void:
 	rng.randomize()
+	_parse_view_args()
+	if OS.get_cmdline_user_args().has("--viewtest"):
+		_viewtest()
+		return
 	autoplay = OS.get_cmdline_user_args().has("--autoplay")
 	humantest = OS.get_cmdline_user_args().has("--humantest")
 	force_fouls = OS.get_cmdline_user_args().has("--force-fouls")
@@ -226,10 +258,15 @@ func _ready() -> void:
 	audio.game = self
 	add_child(audio)
 
+	floor_layer = _make_layer("FloorLayer", -10)
+	decals = _make_layer("Decals", -5)
+	world = _make_layer("World", 0)
+	world.y_sort_enabled = true        # children sit at their projected floor point: y-sort = depth sort
+	overlay = _make_layer("Overlay", 30)
+
 	var floor_node = CourtScript.new()
 	floor_node.game = self
-	floor_node.z_index = -10
-	add_child(floor_node)
+	floor_layer.add_child(floor_node)
 	rims = CourtScript.new()
 	rims.game = self
 	rims.draw_rims = true
@@ -251,9 +288,10 @@ func _ready() -> void:
 	add_child(ball)
 
 	camera = Camera2D.new()
-	camera.zoom = Vector2(1.15, 1.15)
+	var zm: float = CAM_ZOOM if View.angled() else CAM_ZOOM_FLAT
+	camera.zoom = Vector2(zm, zm)
 	camera.position_smoothing_enabled = true
-	camera.position_smoothing_speed = 4.0
+	camera.position_smoothing_speed = CAM_SMOOTHING
 	camera.limit_left = int(-6 * FT)
 	camera.limit_top = int(-10 * FT)
 	camera.limit_right = int(COURT_W + 6 * FT)
@@ -269,17 +307,25 @@ func _ready() -> void:
 	input.game = self
 	add_child(input)
 
-	_call_node = Node2D.new()
-	_call_node.z_as_relative = false
-	_call_node.z_index = 30            # over the players and the ball, under the fx popups
+	_call_node = Node2D.new()          # in overlay (z 30): over the players and the ball, under the fx popups
 	_call_node.draw.connect(_draw_call_cue)
-	add_child(_call_node)
+	overlay.add_child(_call_node)
+	_steal_node = Node2D.new()         # ANGLED: in decals (a ring on the floor, under the upright players);
+	_steal_node.draw.connect(_draw_steal_cue)   # FLAT: in overlay as before, where top-down sprites would hide it
+	(decals if View.angled() else overlay).add_child(_steal_node)
+	if VIEW_PROBE and View.angled():
+		_probe_node = Node2D.new()
+		_probe_node.draw.connect(_draw_view_probe)
+		overlay.add_child(_probe_node)
 
 	_build_hud()
 	menu = MenuScript.new()
 	menu.game = self
 	add_child(menu)
 	start_game()
+	if View.angled():
+		_update_camera()               # set the ANGLED limits and start on the ball (FLAT starts as before)
+		camera.reset_smoothing()
 	# the launch panel: once per run, never in the headless tests (or --shots, unless -- --menushot)
 	var tests: bool = autoplay or humantest or (OS.get_cmdline_user_args().has("--shots") and not menushot)
 	if not tests and not MenuScript.start_done:
@@ -289,6 +335,43 @@ func _ready() -> void:
 		menu.show_start()
 	elif not tests:
 		MenuScript.start_done = true
+
+func _make_layer(n: String, z: int) -> Node2D:
+	var l := Node2D.new()
+	l.name = n
+	l.z_index = z
+	add_child(l)
+	return l
+
+# test flags: -- --view flat|angled (or --view=angled) sets View.mode; -- --fps prints the frame rate
+func _parse_view_args() -> void:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	fps_print = args.has("--fps")
+	for i in args.size():
+		var v := ""
+		if args[i].begins_with("--view="):
+			v = args[i].substr("--view=".length())
+		elif args[i] == "--view" and i + 1 < args.size():
+			v = args[i + 1]
+		if v == "angled":
+			View.mode = View.ANGLED
+		elif v == "flat":
+			View.mode = View.FLAT
+		elif v != "":
+			print("--view: unknown mode '%s' (flat or angled)" % v)
+
+# test only (-- --viewtest): check the projection round trip and the stick mapping, print the result and quit
+func _viewtest() -> void:
+	set_physics_process(false)
+	set_process(false)
+	var errs: PackedStringArray = View.self_test()
+	if errs.is_empty():
+		print("VIEWTEST OK")
+	else:
+		for e in errs.slice(0, 20):
+			print(e)
+		print("VIEWTEST FAILED (%d)" % errs.size())
+	get_tree().quit(0 if errs.is_empty() else 1)
 
 # the panel is up: the joystick and A/B take no touches (touch_controls reads _input, before the GUI) and are hidden,
 # so the tap on a level can't also move or shoot
@@ -763,7 +846,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.keycode == KEY_K and event.pressed:
 			_on_b_pressed()
 
+# the stick in sim (world) terms: what the human player, human_input (flicks, pass direction) and the assist get
 func _input_vector() -> Vector2:
+	return View.stick_to_world(_stick_screen())
+
+# the stick (or the keys) in screen terms: up = up on screen. View.stick_to_world turns it into a sim direction of the
+# same length (FLAT: the same vector)
+func _stick_screen() -> Vector2:
 	var v: Vector2 = controls.joystick()   # in --humantest the scripted thumb drives this too
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT): v.x -= 1
 	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT): v.x += 1
@@ -877,6 +966,9 @@ func _physics_process(delta: float) -> void:
 		p.update(delta, is_human(p), stick)   # during free throws player.at_free_throw() handles positions
 	input.face_caller(delta)
 	_call_node.queue_redraw()
+	_steal_node.queue_redraw()
+	if _probe_node != null:
+		_probe_node.queue_redraw()
 	if not rules.ft_active:
 		_separate_players()
 	ball.update(delta)
@@ -884,8 +976,53 @@ func _physics_process(delta: float) -> void:
 		DefenseScript.check_jump_shot_block(self)   # free throws can't be blocked
 	_update_fire_trail()
 
-	camera.position = ball.position
+	_update_camera()
 	_update_hud()
+
+# FLAT: the camera sits on the ball (today). ANGLED: it follows the ball's projected floor point left and right
+# (CAM_FOLLOW_X) at a fixed depth (CAM_FOLLOW_Y), inside limits from the projected court corners plus margins.
+func _update_camera() -> void:
+	View.flipped = View.SIDE_FLIP and rules.sides_swapped
+	var target: Vector2 = View.to_screen(ball.position, 0.0)
+	if not View.angled():
+		camera.position = target
+		return
+	var corners := [View.to_screen(Vector2(0, 0)), View.to_screen(Vector2(COURT_W, 0)),
+			View.to_screen(Vector2(0, COURT_H)), View.to_screen(Vector2(COURT_W, COURT_H))]
+	var lo: Vector2 = corners[0]
+	var hi: Vector2 = corners[0]
+	for c in corners:
+		lo = Vector2(minf(lo.x, c.x), minf(lo.y, c.y))
+		hi = Vector2(maxf(hi.x, c.x), maxf(hi.y, c.y))
+	var vis: Vector2 = get_viewport_rect().size / camera.zoom
+	var left: float = lo.x - CAM_MARGIN_FT * FT
+	var right: float = hi.x + CAM_MARGIN_FT * FT
+	var top: float = lo.y - CAM_TOP_FT * FT * View.HEIGHT_SCALE - CAM_HUD_PX / camera.zoom.y
+	var bottom: float = hi.y + CAM_MARGIN_FT * FT
+	var mid := Vector2((left + right) / 2.0, (top + bottom) / 2.0)
+	var follow_y: float = CAM_FOLLOW_Y
+	if bottom - top > vis.y:
+		follow_y = 1.0   # the screen can't show both sidelines: follow the ball up and down instead
+	# a screen bigger than the framed area: grow the limits evenly, so the court stays centered
+	if right - left < vis.x:
+		left = mid.x - vis.x / 2.0
+		right = mid.x + vis.x / 2.0
+	if bottom - top < vis.y:
+		top = mid.y - vis.y / 2.0
+		bottom = mid.y + vis.y / 2.0
+	camera.limit_left = int(floorf(left))
+	camera.limit_right = int(ceilf(right))
+	camera.limit_top = int(floorf(top))
+	camera.limit_bottom = int(ceilf(bottom))
+	camera.position = Vector2(lerpf(mid.x, target.x, CAM_FOLLOW_X), lerpf(mid.y, target.y, follow_y))
+
+func _process(delta: float) -> void:
+	if not fps_print:
+		return
+	_fps_t += delta
+	if _fps_t >= FPS_PRINT_EVERY:
+		_fps_t = 0.0
+		print("FPS %d" % Engine.get_frames_per_second())
 
 # ---------------- humantest scripted thumb ----------------
 
@@ -912,7 +1049,7 @@ func _humantest_thumb(delta: float) -> void:
 		ht_away_t -= delta
 		goal_angle += PI
 		# last frame's stick (assist_on is from last frame's update): aimed away from the handler and his spot?
-		if ball.holder != null and not human_player.assist_aim_ok(controls.joystick(), ball.holder, false):
+		if ball.holder != null and not human_player.assist_aim_ok(View.stick_to_world(controls.joystick()), ball.holder, false):
 			stat("humantest_away_frames")
 			if human_player.assist_on:
 				stat("humantest_away_assist_frames")   # should stay 0: pulling away turns the assist off
@@ -969,10 +1106,10 @@ func _humantest_thumb(delta: float) -> void:
 					if human_player.shooting and human_player.rim_kind == "":
 						stat("humantest_taps")
 						_ht_start("tap")
-	ht_angle = wrapf(ht_angle, -PI, PI)
+	ht_angle = wrapf(ht_angle, -PI, PI)   # a sim direction; the thumb pushes the stick that moves that way on screen
 	var drag := InputEventScreenDrag.new()
 	drag.index = 0
-	drag.position = controls.joy_center + Vector2.from_angle(ht_angle) * ht_dist * controls.JOY_RADIUS
+	drag.position = controls.joy_center + View.world_to_stick(Vector2.from_angle(ht_angle)) * ht_dist * controls.JOY_RADIUS
 	controls._input(drag)
 
 # press A and count it as a "random" or "timed" poke if it really poked the handler (and if it stole the ball)
@@ -1188,28 +1325,61 @@ func on_game_over(winner: int) -> void:
 
 # ---------------- HUD ----------------
 
-# the call was heard: a "!" speech bubble over the caller, plus a faint line from the teammate with the ball
-func _draw_call_cue() -> void:
+# lit STEAL: a pulsing ring on the floor where the dribble bounces (P2.5), next to where the eyes are (decals layer)
+func _draw_steal_cue() -> void:
 	if controls.a_glow and ball.state == ball.HELD and ball.holder != null:
-		# lit STEAL: a pulsing ring on the floor where the dribble bounces (P2.5), next to where the eyes are
 		var pulse: float = 0.5 + 0.5 * sin(float(_frame) * 0.5)
-		_call_node.draw_arc(ball.position, 9.0 + 2.0 * pulse, 0, TAU, 24, STEAL_CUE_RING_COLOR, 2.5)
+		draw_floor_ring(_steal_node, ball.position, 9.0 + 2.0 * pulse, STEAL_CUE_RING_COLOR, 2.5)
+
+# a circle of radius r (sim px) lying on the floor at sim point center, drawn through the view: FLAT a circle (as
+# before), ANGLED the projected ellipse. For any decal node (shadows, rings): call it from that node's draw callback.
+func draw_floor_ring(node: CanvasItem, center: Vector2, r: float, color: Color, width: float, segments := 24) -> void:
+	if not View.angled():
+		node.draw_arc(center, r, 0, TAU, segments, color, width)
+		return
+	var pts := PackedVector2Array()
+	for i in segments + 1:
+		pts.append(View.to_screen(center + Vector2.from_angle(TAU * float(i) / float(segments)) * r))
+	node.draw_polyline(pts, color, width)
+
+# the call was heard: a "!" speech bubble over the caller, plus a faint line from the teammate with the ball
+# (overlay layer; the bubble floats CALL_CUE_RISE above the caller's projected feet)
+func _draw_call_cue() -> void:
 	if autoplay or not input.call_active() or human_player == null:
 		return
 	var h = human_player
 	var pulse: float = 0.5 + 0.5 * sin(input.call_t * 18.0)
-	var c: Vector2 = h.position + Vector2(0, -CALL_CUE_RISE - 3.0 * pulse)
+	var c: Vector2 = View.to_screen(h.position, CALL_CUE_RISE + 3.0 * pulse)
 	var q = input.call_passer()
 	if q != null:
-		_call_node.draw_line(q.position, h.position, Color(CALL_CUE_COLOR, 0.35), 2.0)
-	_call_node.draw_colored_polygon(PackedVector2Array([c + Vector2(-5, 9), c + Vector2(5, 9), h.position + Vector2(0, -CALL_CUE_RISE + 18)]),
-			Color.WHITE)
+		_call_node.draw_line(View.to_screen(q.position), View.to_screen(h.position), Color(CALL_CUE_COLOR, 0.35), 2.0)
+	_call_node.draw_colored_polygon(PackedVector2Array([c + Vector2(-5, 9), c + Vector2(5, 9),
+			View.to_screen(h.position, CALL_CUE_RISE - 18.0)]), Color.WHITE)
 	_call_node.draw_circle(c, 12.0, Color.WHITE)
 	_call_node.draw_arc(c, 12.0, 0, TAU, 24, CALL_CUE_COLOR, 2.5)
 	var font := ThemeDB.fallback_font
 	var fs := 20
 	var w: float = font.get_string_size("!", HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
 	_call_node.draw_string(font, c + Vector2(-w / 2.0, fs * 0.36), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.1, 0.2, 0.5))
+
+# VIEW_PROBE (ANGLED only, until the real view lands): the projected court outline, half court line, the hoops, a
+# ring per player (yellow for the human) with a line up to head height, and the ball at its height with a floor dot
+func _draw_view_probe() -> void:
+	var n: Node2D = _probe_node
+	var c := VIEW_PROBE_COLOR
+	var outline := PackedVector2Array([View.to_screen(Vector2(0, 0)), View.to_screen(Vector2(COURT_W, 0)),
+			View.to_screen(Vector2(COURT_W, COURT_H)), View.to_screen(Vector2(0, COURT_H)), View.to_screen(Vector2(0, 0))])
+	n.draw_polyline(outline, c, 2.0)
+	n.draw_line(View.to_screen(Vector2(COURT_W / 2, 0)), View.to_screen(Vector2(COURT_W / 2, COURT_H)), c, 2.0)
+	for hp in hoops:
+		n.draw_line(View.to_screen(hp), View.to_screen(hp, View.RIM_Z), c, 2.0)
+		draw_floor_ring(n, hp, 0.9 * FT, c, 2.0)
+	for p in players:
+		var col: Color = Color(1.0, 0.95, 0.3) if p == human_player and not autoplay else TEAM_COLORS[p.team]
+		draw_floor_ring(n, p.position, 1.2 * FT, col, 2.0, 16)
+		n.draw_line(View.to_screen(p.position), View.to_screen(p.position, 6.0 * FT), col, 2.0)
+	n.draw_circle(View.to_screen(ball.position), 2.5, Color(0, 0, 0, 0.6))
+	n.draw_circle(View.to_screen(ball.position, ball.z), 5.0, Color(1.0, 0.55, 0.1))
 
 func show_message(text: String, time := 1.2, color := Color.WHITE) -> void:
 	msg_label.text = text
