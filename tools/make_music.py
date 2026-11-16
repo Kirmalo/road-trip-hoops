@@ -11,7 +11,8 @@ Two jobs (the commands used for assets/music are in tools/make_music.sh):
          back to the start (Godot's loop) continues the music without a click. Downmixes to mono, scales to the
          target loudness (EBU R128 integrated, measured by ffmpeg; peaks kept under -1 dBFS) and encodes Ogg Vorbis.
          --start 0 --end full uses the whole file (for tracks made to loop); then the crossfade uses the file's
-         own first and last samples (a short equal-power blend of the wrap point).
+         own first and last samples (a short equal-power blend of the wrap point; it shortens the loop by XFADE,
+         so keep it to a few ms there). --xfade 0 keeps the file exactly as is.
 
 Needs numpy and ffmpeg (libvorbis, ebur128). The source files stay outside the repo (see CREDITS.md for pages).
 """
@@ -122,7 +123,9 @@ def cut(args):
     out = y[s:e].copy()
     t = np.linspace(0.0, 1.0, xf)
     fin, fout = np.sin(t * np.pi / 2), np.cos(t * np.pi / 2)
-    if s >= xf:
+    if xf <= 0:
+        pass
+    elif s >= xf:
         # end of the loop fades into the music just before the loop start
         out[-xf:] = out[-xf:] * fout + y[s - xf:s] * fin
     else:
