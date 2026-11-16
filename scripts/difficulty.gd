@@ -6,6 +6,9 @@ extends RefCounted
 # constant untouched, and so does the human's team (team 0) on every level: only the other team gets weaker.
 # The choice is saved in user://settings.cfg; --difficulty easy|normal|hard (or --difficulty=normal) overrides it.
 
+const Flow = preload("res://scripts/flow.gd")         # Flow.match: the trip game's level and team styles (P5-03)
+const Ratings = preload("res://scripts/ratings.gd")   # Ratings.style_mult(): play style multipliers
+
 const EASY := 0
 const NORMAL := 1
 const HARD := 2
@@ -37,6 +40,8 @@ const SAVE_KEY := "difficulty"
 #   cross_beat_human      chance a CPU crossover beats a human defender caught leaning the wrong way (1.0 on Hard)
 #   speed_mult            movement speed multiplier (Q6 b; 1.0 on every level until answered)
 #   stamina_drain         stamina per second while sprinting (player.STAMINA_DRAIN; Q6 b, Hard on every level)
+# Offense tendencies read through value() too (P5-03; no level entry, so only a play style changes them):
+#   three_chance / pullup_chance / lob_chance / cut_chance / kick_chance   player.CPU_THREE_CHANCE ... CPU_KICK_CHANCE
 const LEVELS := {
 	NORMAL: {
 		"shot_quality_min": ["mul", 0.94],   # jumpers a bit off (Hard 1.05..1.25 -> ~0.99..1.18)
@@ -76,14 +81,30 @@ const LEVELS := {
 	},
 }
 
-static var level := HARD              # survives reload_current_scene()
+static var level := HARD              # survives reload_current_scene(); the saved / chosen level
 static var _inited := false
 
-# The level's value for `key`, given today's (Hard) value. Hard, and the human's team on any level, get hard_value.
+# P5-03: a trip game (Flow.match, board "Match config") may set its own level ("level": "normal"; "" or absent = the
+# saved level above) and a play style per team ("style": "inside" / "outside" / "balanced" / ""). The style
+# multiplies CPU tendency keys (Ratings.STYLES) after the level rule, for CPU_TEAM only. Quick Game (Flow.match
+# empty) has neither, so value() returns exactly what it did before.
+# (`match` is a GDScript keyword: always written Flow.match, with the dot.)
+const STYLE_TEAM := CPU_TEAM          # the only team a play style changes (board: "Play style (team 1 only)")
+
+# The level's value for `key`, given today's (Hard) value. Hard, and the human's team on any level, get hard_value;
+# then team 1's play style (if any) multiplies it.
 static func value(team: int, key: String, hard_value: float) -> float:
-	if team != CPU_TEAM or level == HARD:
+	if team != CPU_TEAM:
 		return hard_value
-	var table: Dictionary = LEVELS.get(level, {})
+	var v: float = _level_value(effective_level(), key, hard_value)
+	if team == STYLE_TEAM:
+		v *= Ratings.style_mult(team_style(team), key)
+	return v
+
+static func _level_value(lv: int, key: String, hard_value: float) -> float:
+	if lv == HARD:
+		return hard_value
+	var table: Dictionary = LEVELS.get(lv, {})
 	if not table.has(key):
 		return hard_value
 	var rule: Array = table[key]
@@ -92,8 +113,30 @@ static func value(team: int, key: String, hard_value: float) -> float:
 		return hard_value + amount
 	return hard_value * amount
 
-static func level_name() -> String:
-	return String(NAMES[clampi(level, EASY, HARD)])
+# The level this game plays: Flow.match.level when a trip game sets one, else the saved / chosen level.
+static func effective_level() -> int:
+	var m: Dictionary = Flow.match
+	if m.is_empty():
+		return level
+	var lv: int = parse(str(m.get("level", "")))
+	return lv if lv >= 0 else level
+
+# A team's play style from Flow.match ("" in Quick Game or when the match doesn't name one).
+static func team_style(team: int) -> String:
+	var m: Dictionary = Flow.match
+	if m.is_empty():
+		return ""
+	var teams: Array = m.get("teams", [])
+	if team < 0 or team >= teams.size() or not (teams[team] is Dictionary):
+		return ""
+	var t: Dictionary = teams[team]
+	return str(t.get("style", ""))
+
+# The name of a level (default: the saved / chosen one, which is what save() writes).
+static func level_name(lv: int = -1) -> String:
+	if lv < 0:
+		lv = level
+	return String(NAMES[clampi(lv, EASY, HARD)])
 
 # "easy" / "normal" / "hard" -> the level, or -1
 static func parse(s: String) -> int:
