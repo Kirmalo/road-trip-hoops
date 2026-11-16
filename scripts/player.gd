@@ -231,6 +231,25 @@ var _cut_on := false
 var lob_jump_wait := -1.0         # CPU defender: seconds until he jumps at a lob's dunk (< 0 = none planned)
 var lob_read_target = null        # CPU defender: the lob receiver he is running at
 
+# ---- free throws (P3-06; the sequence itself is rules.gd, P3-05). While rules.ft_active everyone walks to
+# rules.ft_spot(self) and stands: no turbo, crossovers, pokes or block jumps. On the last free throw everyone is
+# released when the ball leaves the hand; the CPU boxes out for the live rebound. ----
+const CPU_FT_WAIT_MIN := 0.8      # CPU at the line: seconds with the ball before he shoots, random between these
+const CPU_FT_WAIT_MAX := 1.4
+const CPU_FT_WAIT_CAP := 3.0      # ... he shoots by then even if he never got right onto his spot
+const CPU_FT_QUALITY_MIN := 0.97  # CPU free-throw quality, random between these (x main's FT_BASE 0.72: ~70-77%)
+const CPU_FT_QUALITY_MAX := 1.07
+const FT_SPOT_TOL_FT := 1.0       # "at the spot": this close to rules.ft_spot()
+const FT_WALK_MULT := 0.8         # walking to the free-throw spots (no sprint)
+const BOXOUT_FT := 2.5            # box-out: get this far in front of the nearest opponent, on his line to the rim
+const BOXOUT_SPEED := 0.9         # speed multiplier while boxing out
+const BOXOUT_CRASH_T := 0.6       # fraction of the free throw's flight after which the chasers go for the ball
+
+static var ft_box_serial := -1    # game.shot_serial of the last free throw of a trip, in the air (everyone released)
+var ft_wait := -1.0               # CPU at the line: seconds until he shoots (< 0 = not counting)
+var ft_wait_total := 0.0
+var _box_counted := -1
+
 var rim_kind := ""                # "dunk" or "layup" while in the air, "" otherwise
 var jump_t := 0.0                 # seconds since take-off
 var jump_time := 0.0
@@ -283,6 +302,8 @@ func setup(g, t: int, i: int, tex: Texture2D) -> void:
 	if t == Difficulty.CPU_TEAM and i == 0:
 		Difficulty.init_once()   # saved level, then --difficulty (autoplay/humantest default to Hard)
 		game.stat("difficulty_" + Difficulty.level_name())
+	if t == 0 and i == 0:
+		ft_box_serial = -1       # static: a restarted game starts shot_serial at 0 again
 
 func has_ball() -> bool:
 	return game.ball.state == game.ball.HELD and game.ball.holder == self
@@ -322,6 +343,8 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 			cpu_shot_time -= delta
 			if cpu_shot_time <= 0.0:
 				release_shot()
+	elif ft_frozen():
+		desired = ft_stand(delta, is_human)   # free throws: walk to the spot and stand (the shooter shoots from it)
 	elif is_human:
 		desired = input_vec.limit_length(1.0) * speed * (0.94 if has_ball() else 1.0)
 		var ball = game.ball
@@ -456,7 +479,7 @@ func stumble(time: float) -> void:
 
 # A defender jumps to block. False if already airborne, off balance or holding the ball.
 func start_block_jump() -> bool:
-	if is_airborne() or stumble_t > 0.0 or has_ball():
+	if is_airborne() or stumble_t > 0.0 or has_ball() or ft_frozen():   # (no block jumps during free throws)
 		return false
 	block_jump_t = 0.0
 	block_jump_vel = velocity * BLOCK_JUMP_MOMENTUM
@@ -503,7 +526,7 @@ func is_guarded(move: Vector2) -> bool:
 # A quick cut toward `dir` with the ball switching hands in front of the body. Called by human_input.gd on a flick
 # and by the CPU handler. Owner (Q1): crossover only, so every kind (including "spin") is a crossover.
 func start_crossover(dir: Vector2, kind: String) -> void:
-	if not has_ball() or shooting or is_airborne() or stumble_t > 0.0:
+	if not has_ball() or shooting or is_airborne() or stumble_t > 0.0 or ft_frozen():
 		return
 	if cross_cd > 0.0 or cross_t > 0.0:
 		if game.is_human(self):
@@ -752,7 +775,7 @@ func start_shot() -> void:
 			end_pump_fake()   # out of a pump fake straight into the real shot
 			game.stat("pump_then_shoot_t%d" % team)
 		var d_ft: float = position.distance_to(game.attack_hoop(team)) / game.FT
-		if d_ft <= LAYUP_RANGE:
+		if d_ft <= LAYUP_RANGE and not at_free_throw():
 			start_rim_move(d_ft)
 			return
 		shooting = true
@@ -767,6 +790,11 @@ func release_shot() -> void:
 	if not shooting or rim_kind != "":
 		return  # dunks and layups release on their own
 	if game.is_human(self) and is_pump_tap():
+		if at_free_throw():
+			shooting = false      # no pump fake at the line: a short tap is ignored (hold and release to shoot)
+			shot_charge = 0.0
+			game.stat("human_ft_taps_ignored")
+			return
 		if since_fake < PUMP_COOLDOWN:
 			shooting = false      # another fake too soon after the last one: the tap does nothing
 			shot_charge = 0.0
@@ -775,6 +803,9 @@ func release_shot() -> void:
 		start_pump_fake()     # a short tap of SHOOT: pump fake instead of a near-useless 0.6 shot (owner Q2)
 		return
 	shooting = false
+	if at_free_throw():
+		release_free_throw()
+		return
 	var quality := 1.0
 	if game.is_human(self):
 		var c := shot_charge
@@ -815,6 +846,31 @@ func release_shot() -> void:
 		game.stat("jumper_makes_t%d" % team)
 		if three:
 			game.stat("jumper_three_makes_t%d" % team)
+
+# A free throw leaves the hand: the human's meter (perfect 1.3, normal 1.0, bad 0.6) or the CPU's
+# CPU_FT_QUALITY range; no contest or sprint penalties. main.release_shot scores it with rules' FT odds (P3-05).
+func release_free_throw() -> void:
+	var quality := 1.0
+	if game.is_human(self):
+		var c := shot_charge
+		if c >= green_lo() and c <= green_hi():
+			quality = 1.3
+			game.show_message("PERFECT RELEASE", 0.8)
+		elif c >= 0.6 and c <= 1.05:
+			quality = 1.0
+		else:
+			quality = 0.6
+	else:
+		var q: float = game.rng.randf_range(CPU_FT_QUALITY_MIN, CPU_FT_QUALITY_MAX)
+		quality = Difficulty.value(team, "ft_quality", q)
+	# the last free throw of the trip (ft_left still counts the one in my hands): its flight releases everyone
+	var last: bool = not ("ft_left" in game.rules) or int(game.rules.ft_left) <= 1
+	game.release_shot(self, quality)
+	var ball = game.ball
+	if ball.state == ball.SHOT and ball.shooter == self:
+		game.stat("ft_releases_t%d" % team)
+		if last:
+			ft_box_serial = game.shot_serial
 
 # the nearest defender is right on me (main.shot_probability's full contest), on balance, not trailing behind me,
 # and not still in the air from biting on an earlier fake
@@ -928,6 +984,9 @@ func release_rim_shot() -> void:
 	count_pump_and_score()
 	if ball.state == ball.SHOT:
 		ball.blocked_checked = true  # the take-off contest replaces the CPU jump-shot contest
+		Defense.call_pending_fouls(game, self)   # a bad block jump into me at the release (P3-06): and-one or FTs
+	else:
+		Defense.clear_pending_fouls(game, self)
 
 # ---------------- CPU brain ----------------
 
@@ -937,6 +996,14 @@ func ai(delta: float) -> void:
 	cpu_turbo_want = false
 	var my_hoop: Vector2 = game.attack_hoop(team)
 
+	# the last free throw is up: box out first, the chasers crash the glass late in its flight
+	if ft_box_live() and ball.shooter != self and not (ball.shot_t > BOXOUT_CRASH_T and game.is_chaser(self)):
+		target = boxout_spot()
+		speed_mult = BOXOUT_SPEED
+		if _box_counted != ft_box_serial:
+			_box_counted = ft_box_serial
+			game.stat("ft_boxouts_t%d" % team)
+		return
 	# chase loose balls and rebounds (sprint for them)
 	if ball.state == ball.LOOSE:
 		if game.is_chaser(self):
@@ -963,9 +1030,73 @@ func ai(delta: float) -> void:
 		defense_ai(delta)
 		lob_defense()
 
+# the sideways offset is mirrored by the attack direction too, so both hoops are mirror images (like
+# main.reset_positions and the inbound spot: B1)
 func spot_pos(hoop: Vector2, i: int) -> Vector2:
 	var s: Vector2 = SPOTS[i]
-	return hoop + Vector2(game.inward(hoop) * s.x * game.FT, s.y * game.FT)
+	var dir: float = game.inward(hoop)
+	return hoop + Vector2(dir * s.x * game.FT, dir * s.y * game.FT)
+
+# ---------------- free throws (P3-06) ----------------
+
+# rules.ft_active (P3-05); false while that isn't merged
+func ft_on() -> bool:
+	return Defense.ft_on(game)
+
+# this player is the one at the line
+func at_free_throw() -> bool:
+	return ft_on() and game.rules.ft_shooter == self
+
+# the last free throw of the trip is in the air: everyone is released (the CPU boxes out)
+func ft_box_live() -> bool:
+	var ball = game.ball
+	return ft_box_serial >= 0 and ball.state == ball.SHOT and game.shot_serial == ft_box_serial
+
+# standing for a free throw: from the setup until the last one leaves the hand
+func ft_frozen() -> bool:
+	return ft_on() and not ft_box_live()
+
+# During free throws: walk to my spot and stand. The CPU shooter shoots CPU_FT_WAIT after he has the ball.
+func ft_stand(delta: float, is_human: bool) -> Vector2:
+	cross_t = 0.0
+	cpu_drive_t = 0.0
+	alley_cut = false
+	lob_jump_wait = -1.0
+	lob_read_target = null
+	if def != null:
+		def._jump_wait = -1.0
+		def._poke_wait = -1.0
+		def.foul_pending = ""
+	var spot: Vector2 = position
+	if game.rules.has_method("ft_spot"):
+		spot = game.rules.ft_spot(self)
+	var desired: Vector2 = seek(spot, FT_WALK_MULT)
+	if not is_human and at_free_throw() and has_ball() and not shooting:
+		if ft_wait < 0.0:
+			ft_wait = game.rng.randf_range(CPU_FT_WAIT_MIN, CPU_FT_WAIT_MAX)
+			ft_wait_total = 0.0
+		ft_wait_total += delta
+		if position.distance_to(spot) <= FT_SPOT_TOL_FT * game.FT:
+			ft_wait -= delta
+		if ft_wait <= 0.0 or ft_wait_total >= CPU_FT_WAIT_CAP:
+			ft_wait = -1.0
+			game.stat("cpu_ft_shots")
+			start_shot()
+			return Vector2.ZERO
+	elif not has_ball():
+		ft_wait = -1.0
+	return desired
+
+# CPU box-out while the last free throw is in the air: get between the nearest opponent and the rim
+func boxout_spot() -> Vector2:
+	var hoop: Vector2 = game.ball.shot_hoop
+	var o = game.nearest_opponent(self)
+	if o == null:
+		return position
+	var line: Vector2 = hoop - o.position
+	if line.length() < 1.0:
+		return position
+	return o.position + line.normalized() * minf(BOXOUT_FT * game.FT, line.length() * 0.5)
 
 func offball_ai(delta: float, hoop: Vector2) -> void:
 	spot_timer -= delta
