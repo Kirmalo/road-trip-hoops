@@ -288,6 +288,13 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().has("--ratingtest"):
 		_ratingtest()
 		return
+	if OS.get_cmdline_user_args().has("--triptest-data"):
+		# test only: prints every city game's lineups and ratings and checks the trip rules and save cases
+		var trip_script = load("res://scripts/trip.gd")
+		var ok: bool = trip_script.self_test(OS.get_cmdline_user_args().has("--load"))
+		print("TRIPDATA ", "OK" if ok else "FAILED")
+		get_tree().quit()
+		return
 	# screen hand-off (Phase 5): the test modes play a game at once, as before; otherwise Flow decides the screen
 	if Flow.skip_title():
 		Flow.screen = Flow.GAME
