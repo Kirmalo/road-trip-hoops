@@ -26,6 +26,7 @@ const DefenseScript = preload("res://scripts/defense.gd")
 const RulesScript = preload("res://scripts/rules.gd")
 const MenuScript = preload("res://scripts/menu.gd")
 const View = preload("res://scripts/view.gd")   # projection sim -> screen (FLAT / ANGLED), stick mapping (Phase 4)
+const Looks = preload("res://scripts/court_looks.gd")   # court looks; Looks.music() is the court's music track
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
@@ -47,12 +48,15 @@ const MSG_POP_SCALE := 1.35          # center message start scale
 const SIDE_ARROW_RIGHT := ">>"       # top bar: next to BLUE, the way BLUE attacks (P3-02)
 const SIDE_ARROW_LEFT := "<<"
 
-# camera (P4-01). FLAT keeps today's camera. ANGLED framing follows owner Q1 (a), the recommended default until the
-# owner answers: the camera follows the ball left and right, zoomed in, both sidelines always on screen (it doesn't
-# move up and down). TILT_Y 0.55 makes the court 330 px deep, so zoom 1.45 still fits both sidelines, the far
-# players' heads and the HUD bar on 1280x720 and shows about 3/4 of the court length (2/3 needs a flatter TILT_Y).
-const CAM_ZOOM_FLAT := 1.15          # FLAT: today's zoom
-const CAM_ZOOM := 1.45               # ANGLED zoom
+# camera (P4-01, framing P4-11). FLAT keeps the old top-down camera. ANGLED follows the owner's framing (Q1 a): the
+# camera follows the ball left and right, about 2/3 of the court length on screen, both sidelines always visible (it
+# doesn't move up and down), and it stays on the same sideline at the side switch (Q2 a, View.SIDE_FLIP false).
+# View.TILT_Y 0.48 makes the court 288 px deep; with zoom 1.68 the 1280x720 screen shows 762 px = 63.5 ft (68% of the
+# court length) and 429 px of height: HUD bar 32 + far players' heads 84 + court 288 + near margin 24 = 428.
+# 1280x800 (stretch expand) shows more height: the framing grows evenly and the court stays centered.
+const CAM_ZOOM_FLAT := 1.15          # FLAT: the old zoom
+const CAM_ZOOM := 1.68               # ANGLED zoom (at most; a screen too short for both sidelines zooms out to fit)
+const CAM_ZOOM_MIN := 1.2            # ANGLED: never zoom out further than this to fit (then it follows up and down)
 const CAM_SMOOTHING := 4.0           # Camera2D position smoothing speed (both modes, as today)
 const CAM_FOLLOW_X := 1.0            # ANGLED: 1 = the camera follows the ball left/right, 0 = stays at half court
 const CAM_FOLLOW_Y := 0.0            # ANGLED: 0 = fixed depth (both sidelines in view), 1 = follows the ball up/down
@@ -60,9 +64,6 @@ const CAM_FOLLOW_Y := 0.0            # ANGLED: 0 = fixed depth (both sidelines i
 const CAM_MARGIN_FT := 2.0           # ANGLED: room past the baselines and the near sideline (feet, floor)
 const CAM_TOP_FT := 7.0              # ANGLED: room above the far sideline for the players standing on it (feet, height)
 const CAM_HUD_PX := 54.0             # the HUD top bar (screen px): the far sideline stays below it
-const VIEW_PROBE := true             # ANGLED test aid until P4-06/P4-07/P4-10 draw the real view: a thin outline of the
-                                     # projected court and a marker per player and the ball (overlay). P4-11 removes it.
-const VIEW_PROBE_COLOR := Color(1.0, 0.3, 0.9, 0.9)
 const FPS_PRINT_EVERY := 5.0         # -- --fps: seconds between "FPS n" lines
 
 # on fire (P1-07)
@@ -204,7 +205,6 @@ var ht_guard_front := true          # ... and the human is between him and the r
 var ht_guard_holder = null
 var _call_node: Node2D               # draws the "!" over the human while his call is live (in overlay)
 var _steal_node: Node2D              # draws the lit-STEAL ring on the floor under the ball (decals; FLAT: overlay)
-var _probe_node: Node2D              # ANGLED test aid (VIEW_PROBE): projected court outline and markers (in overlay)
 # drawing layers (P4-01, see the Shared contract in docs/BOARD.md). All Node2D children of main.
 var floor_layer: Node2D              # z -10: the court floor
 var decals: Node2D                   # z -5: things lying on the floor under everyone (shadows, rings, dust, steal cue)
@@ -249,6 +249,7 @@ func _ready() -> void:
 	force_fouls = OS.get_cmdline_user_args().has("--force-fouls")
 	menushot = OS.get_cmdline_user_args().has("--menushot")
 	MenuScript.prepare_level()   # before the players: first launch = Normal, then the saved level, then --difficulty
+	MenuScript.prepare_settings()   # before the court: the saved court look (-- --court wins) and music on/off
 
 	rules = RulesScript.new()
 	rules.game = self
@@ -257,6 +258,7 @@ func _ready() -> void:
 	audio = AudioScript.new()
 	audio.game = self
 	add_child(audio)
+	audio.set_music_on(MenuScript.music_on)
 
 	floor_layer = _make_layer("FloorLayer", -10)
 	decals = _make_layer("Decals", -5)
@@ -313,10 +315,6 @@ func _ready() -> void:
 	_steal_node = Node2D.new()         # ANGLED: in decals (a ring on the floor, under the upright players);
 	_steal_node.draw.connect(_draw_steal_cue)   # FLAT: in overlay as before, where top-down sprites would hide it
 	(decals if View.angled() else overlay).add_child(_steal_node)
-	if VIEW_PROBE and View.angled():
-		_probe_node = Node2D.new()
-		_probe_node.draw.connect(_draw_view_probe)
-		overlay.add_child(_probe_node)
 
 	_build_hud()
 	menu = MenuScript.new()
@@ -324,7 +322,7 @@ func _ready() -> void:
 	add_child(menu)
 	start_game()
 	if View.angled():
-		_update_camera()               # set the ANGLED limits and start on the ball (FLAT starts as before)
+		_update_camera()               # set the ANGLED zoom and limits and start on the ball
 		camera.reset_smoothing()
 	# the launch panel: once per run, never in the headless tests (or --shots, unless -- --menushot)
 	var tests: bool = autoplay or humantest or (OS.get_cmdline_user_args().has("--shots") and not menushot)
@@ -335,6 +333,13 @@ func _ready() -> void:
 		menu.show_start()
 	elif not tests:
 		MenuScript.start_done = true
+	if not menu_wait:
+		_play_court_music()
+
+# in play: the court's track, softly (owner Q5 a). The panels play the menu music (menu.gd)
+func _play_court_music() -> void:
+	audio.play_music(Looks.music())
+	audio.set_music_ducked(true)
 
 func _make_layer(n: String, z: int) -> Node2D:
 	var l := Node2D.new()
@@ -343,11 +348,14 @@ func _make_layer(n: String, z: int) -> Node2D:
 	add_child(l)
 	return l
 
-# test flags: -- --view flat|angled (or --view=angled) sets View.mode; -- --fps prints the frame rate
+# test flags: -- --view flat|angled (or --view=angled) sets View.mode (default ANGLED); -- --perspective k tries
+# View.perspective k (e.g. 0.15); -- --fps prints the frame rate
 func _parse_view_args() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	fps_print = args.has("--fps")
 	for i in args.size():
+		if args[i] == "--perspective" and i + 1 < args.size():
+			View.perspective = clampf(args[i + 1].to_float(), 0.0, 0.5)
 		var v := ""
 		if args[i].begins_with("--view="):
 			v = args[i].substr("--view=".length())
@@ -967,8 +975,6 @@ func _physics_process(delta: float) -> void:
 	input.face_caller(delta)
 	_call_node.queue_redraw()
 	_steal_node.queue_redraw()
-	if _probe_node != null:
-		_probe_node.queue_redraw()
 	if not rules.ft_active:
 		_separate_players()
 	ball.update(delta)
@@ -979,8 +985,9 @@ func _physics_process(delta: float) -> void:
 	_update_camera()
 	_update_hud()
 
-# FLAT: the camera sits on the ball (today). ANGLED: it follows the ball's projected floor point left and right
-# (CAM_FOLLOW_X) at a fixed depth (CAM_FOLLOW_Y), inside limits from the projected court corners plus margins.
+# FLAT: the camera sits on the ball (as before). ANGLED: it follows the ball's projected floor point left and right
+# (CAM_FOLLOW_X) at a fixed depth (CAM_FOLLOW_Y), inside limits from the projected court corners plus margins. The
+# zoom is CAM_ZOOM, or less if the screen is too short to show the HUD bar, the far heads and the whole court depth.
 func _update_camera() -> void:
 	View.flipped = View.SIDE_FLIP and rules.sides_swapped
 	var target: Vector2 = View.to_screen(ball.position, 0.0)
@@ -994,7 +1001,11 @@ func _update_camera() -> void:
 	for c in corners:
 		lo = Vector2(minf(lo.x, c.x), minf(lo.y, c.y))
 		hi = Vector2(maxf(hi.x, c.x), maxf(hi.y, c.y))
-	var vis: Vector2 = get_viewport_rect().size / camera.zoom
+	var screen: Vector2 = get_viewport_rect().size
+	var need_y: float = hi.y - lo.y + CAM_TOP_FT * FT * View.HEIGHT_SCALE + CAM_MARGIN_FT * FT
+	var zm: float = clampf((screen.y - CAM_HUD_PX) / need_y, CAM_ZOOM_MIN, CAM_ZOOM)
+	camera.zoom = Vector2(zm, zm)
+	var vis: Vector2 = screen / camera.zoom
 	var left: float = lo.x - CAM_MARGIN_FT * FT
 	var right: float = hi.x + CAM_MARGIN_FT * FT
 	var top: float = lo.y - CAM_TOP_FT * FT * View.HEIGHT_SCALE - CAM_HUD_PX / camera.zoom.y
@@ -1361,25 +1372,6 @@ func _draw_call_cue() -> void:
 	var fs := 20
 	var w: float = font.get_string_size("!", HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
 	_call_node.draw_string(font, c + Vector2(-w / 2.0, fs * 0.36), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.1, 0.2, 0.5))
-
-# VIEW_PROBE (ANGLED only, until the real view lands): the projected court outline, half court line, the hoops, a
-# ring per player (yellow for the human) with a line up to head height, and the ball at its height with a floor dot
-func _draw_view_probe() -> void:
-	var n: Node2D = _probe_node
-	var c := VIEW_PROBE_COLOR
-	var outline := PackedVector2Array([View.to_screen(Vector2(0, 0)), View.to_screen(Vector2(COURT_W, 0)),
-			View.to_screen(Vector2(COURT_W, COURT_H)), View.to_screen(Vector2(0, COURT_H)), View.to_screen(Vector2(0, 0))])
-	n.draw_polyline(outline, c, 2.0)
-	n.draw_line(View.to_screen(Vector2(COURT_W / 2, 0)), View.to_screen(Vector2(COURT_W / 2, COURT_H)), c, 2.0)
-	for hp in hoops:
-		n.draw_line(View.to_screen(hp), View.to_screen(hp, View.RIM_Z), c, 2.0)
-		draw_floor_ring(n, hp, 0.9 * FT, c, 2.0)
-	for p in players:
-		var col: Color = Color(1.0, 0.95, 0.3) if p == human_player and not autoplay else TEAM_COLORS[p.team]
-		draw_floor_ring(n, p.position, 1.2 * FT, col, 2.0, 16)
-		n.draw_line(View.to_screen(p.position), View.to_screen(p.position, 6.0 * FT), col, 2.0)
-	n.draw_circle(View.to_screen(ball.position), 2.5, Color(0, 0, 0, 0.6))
-	n.draw_circle(View.to_screen(ball.position, ball.z), 5.0, Color(1.0, 0.55, 0.1))
 
 func show_message(text: String, time := 1.2, color := Color.WHITE) -> void:
 	msg_label.text = text
