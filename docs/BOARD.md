@@ -285,8 +285,24 @@ Answer with the letter; (a) is the recommendation each time. Answers go here and
   colors; the top bar shows the crew names instead of BLUE and RED. (b) Opponents always wear red, recruits keep
   their old colors, and the top bar keeps BLUE and RED.
 
-## Owner answers
-(none yet)
+## Owner answers (2026-11-16, also in docs/VISION.md)
+- Q1 underdogs: as written: Deuce Carter (shooting wing, leader), Jojo Reyes (quick point guard), Tobias "Tank" Lind
+  (big man), with the looks and backstories proposed on this board.
+- Q2 names: crew "Cornfield Kings", van "The Biscuit".
+- Q3 tiers: moderate: average players match the trip stage (~40 rising to ~70), good players +12 in two specialties,
+  boss +20 at everything, no special moves.
+- Q4 difficulty on the trip: pick EASY/NORMAL/HARD at trip start, changeable in Settings, stacks on the cities.
+- Q5 stat points: 2 per win, +3 per point, cap 90.
+- Q6 story: arrival scene (4-6 lines) and a scene after beating each city, plus trip start, first loss, before the
+  final and the ending.
+- Q7 trip map: fixed route, tap GO, no replays of beaten cities.
+- Q8 game lengths (owner's own answer): in EVERY city game 1 is to 11, game 2 to 15, game 3 (the boss game) to 21.
+- Q8b tournament: quarterfinal, semifinal and final ALL to 21; a loss replays that round.
+- Q9 Quick Game: stays as today.
+- Q10 pause: button top-right; big RESUME, then RESTART and QUIT (to title or trip map; a quit game restarts at 0-0);
+  MUSIC on/off, sound volume slider, score and per-team stats.
+- Q11 looks: your crew in blue and gold; each city crew in its own colors but with a red ring; recruits change into
+  your colors; the top bar shows crew names.
 
 ## Todo
 

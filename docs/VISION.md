@@ -50,7 +50,7 @@ tablet with a joystick and two buttons.
 | Steals and blocks | Timing based and dependent on each player's attributes (steal and block ratings, 0-100). Player attributes start here and grow in the campaign. No stumble after a missed steal: instead a defender stands still while attempting a steal (hit or miss), so poking has a cost |
 | Phase 2 check-in | Crossover feels about right. Steals and blocks both too hard: make them easier. CPU too hard, mainly because it's hard to stay in front of the ball handler: add a defensive assist (your defender slides to stay between his man and the basket while you steer roughly toward him; you still steer). PASS/SHOOT covering the bottom-right corner: leave it. Tuning round P2.5 before Phase 3. After P2.5 the owner said defense is "much better now" |
 | Game end | First to 21 (21-20 counts, no win-by-2). No game clock or quarters; the 24 s shot clock stays |
-| Game length | This test build plays to 21. On the Road Trip: early cities to 11, middle cities to 15, late cities and the tournament to 21 |
+| Game length | Quick Game plays to 21. On the Road Trip every city's games go to 11, 15 and 21 (boss game); tournament games to 21 (Phase 5 answer) |
 | Fouls | Bad timing only: a badly timed block jump that hits the shooter, or poking at a ball the handler shields with his body (about 3-6 per game) |
 | Free throws | Fouled inside the arc: 1 free throw; beyond: 2; and-one: 1 extra. Reaching foul: ball from the sideline. A missed last free throw is a live rebound |
 | Out of bounds | Simple: only a loose ball crossing a line is out; the ball handler can't step out by accident |
@@ -80,6 +80,7 @@ tablet with a joystick and two buttons.
 | Story scenes | Fighting-game style: big pixel portraits + text box, tap to advance; before and after each city plus a few key moments |
 | Saving | Auto-save after every game; one trip at a time; "New trip" asks to confirm |
 | Finale | New York tournament: a short knockout bracket (quarterfinal, semifinal, final) against the toughest crews; the final against the champions with a special boss; big ending scene |
+| Phase 5 plan answers | Starting crew: Deuce Carter (shooting wing, leader), Jojo Reyes (quick point guard), Tobias "Tank" Lind (big man). Crew "Cornfield Kings", van "The Biscuit". Tiers: average = trip stage (~40 to ~70), good +12 in two specialties, boss +20 at everything. EASY/NORMAL/HARD picked at trip start, changeable. 2 stat points per win, +3 each, cap 90. Story: arrival + after-win scene per city, plus trip start, first loss, before the final, ending. Fixed route, GO, no replays. Every city: game 1 to 11, game 2 to 15, boss game to 21. Tournament: 3 rounds all to 21, a loss replays the round. Quick Game unchanged. Pause button top-right with RESUME, RESTART, QUIT, music, volume, score and stats. Your crew in blue and gold, city crews in their own colors with a red ring, recruits switch to your colors, crew names in the top bar |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
