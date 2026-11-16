@@ -322,5 +322,14 @@ only P4-11 and the backdrop parts of P4-07/P4-08 wait.
   flicks 36), ANGLED humantest (21-16, snaps 29 = flicks 29). No script errors.
   For P4-11: the zoom shows about 3/4 of the court length, but the owner chose about 2/3. Remove `VIEW_PROBE`.
   Fix the stale comments on `SIDE_FLIP` and the camera ("until the owner answers").
+- **P4-06** (branch `worktree-agent-a13be5c2a01f60557`, c3ea452, `player.gd` only): lead review APPROVE.
+  FLAT is drawing-only: the only FLAT-reachable changes are `if View.angled()` guards in `setup()` / `_draw()` and a
+  new `_process()` that does nothing while `_v_body` is null. The view code reads sim state and writes only `_v_*`
+  vars and view nodes, so the FLAT stats 2 SE off the baseline are noise. FLAT `_draw()` (ring, arrow, stamina bar,
+  shot meter, fire ring) is unchanged; CALL bubble and steal cue live in main.gd. Sheets are loaded once, sort is by
+  the projected floor point in `game.world`. Checked: FLAT humantest 10-21, ANGLED humantest 21-17, `--shots --view
+  angled` (sheet sprites, rings, arrow and stamina bar look right), no script errors.
+  Notes for later: about 50 small `PackedVector2Array`s per frame from `_floor_ring` (fine; P4-12 measures fps).
+  In ANGLED the shadow and rings are drawn every frame for every player.
 
 ## Done
