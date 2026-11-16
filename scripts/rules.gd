@@ -52,6 +52,18 @@ const FB_CPU_FT_WAIT_MIN := 0.8      # fallback CPU shooter (until P3-06): secon
 const FB_CPU_FT_WAIT_MAX := 1.4
 const FB_CPU_FT_QUALITY_MIN := 0.97  # ... and his quality (x main.FT_BASE 0.72 = about 70-78% made), through
 const FB_CPU_FT_QUALITY_MAX := 1.08  # Difficulty.value(team, "ft_quality", ...)
+const SWITCH_SKIPS_FT_REBOUND := true # a missed last free throw while the side switch waits: no live rebound, the
+                                     # defense gets the ball after "SWITCH SIDES" (false: live rebound, the switch waits
+                                     # for the next dead ball)
+
+# out of bounds (P3-07, owner Q5: simple, only a loose ball crossing a line is out; ball.gd calls ball_out)
+const OOB_WAIT := 1.2                # dead-ball pause after "OUT OF BOUNDS"
+const OOB_SIDELINE_INSET_FT := 6.0   # sideline inbound: x is where it went out, kept this far from the baselines
+const OOB_BASELINE_KEY_FT := 9.5     # baseline inbound: at least this far to the side of the hoop (outside the 16 ft
+                                     # key, so it never sits under the basket where made-basket inbounds start)
+const OOB_CORNER_FT := 4.0           # ... and this far from the sidelines
+const OOB_MIN_CLOCK := 5.0           # the team that had the ball keeps it: the shot clock runs on, but is at least this
+const OOB_CLEAR_FT := 6.0            # opponents closer than this to the inbounder are moved back to this distance
 
 const Difficulty = preload("res://scripts/difficulty.gd")
 
@@ -79,6 +91,7 @@ var _pf_shooter = null
 var _pf_beyond := false
 var _pf_t := 0.0
 var _clock_after_inbound := -1.0     # reaching foul: the shot clock value to restore after the inbound
+var _clear_inbound := false          # out of bounds: move defenders off the inbounder when the pause ends
 # free throws (P3-05; shared contract: ft_active, ft_shooter, ft_left, ft_spot(), ft_released())
 var ft_active := false               # players stand at ft_spot(); false again once the last free throw leaves the hand
 var ft_shooter = null
@@ -209,6 +222,7 @@ func time_left() -> float:
 
 func dead_ball(next_team: int, wait: float, spot := Vector2.INF) -> void:
 	game.ball.make_dead()
+	_clear_inbound = false
 	pending_inbound = next_team
 	pending_spot = spot
 	dead_timer = wait
@@ -229,10 +243,82 @@ func inbound(team: int, spot := Vector2.INF) -> void:
 			best_d = d
 			best = p
 	best.position = game.clamp_to_court(spot)
+	if _clear_inbound:
+		_clear_inbound = false
+		_clear_around(best)
 	game.give_ball(best)
 	if _clock_after_inbound >= 0.0:
 		game.shot_clock = _clock_after_inbound   # reaching foul: the clock kept running (at least FOUL_MIN_CLOCK)
 		_clock_after_inbound = -1.0
+
+# ---------------- out of bounds (P3-07) ----------------
+
+# ball.gd: a loose ball crossed a sideline or baseline at `pos`; `last_team` touched it last (-1: unknown, then the
+# team that had possession counts). The other team inbounds near where it went out. Returns false if the call is
+# ignored (dead ball, free throws, game over); ball.gd then bounces it back in.
+func ball_out(pos: Vector2, last_team: int) -> bool:
+	if game.game_over or dead_timer > 0.0 or ft_phase != "" or game.ball.state != game.ball.LOOSE:
+		return false
+	if pending_foul and _pf_shooter != null:
+		resolve_pending_foul(_pf_shooter, false)   # a fouled shooter lost it out: his free throws first
+		return true
+	var W: float = game.COURT_W
+	var H: float = game.COURT_H
+	if last_team < 0:
+		last_team = game.possession
+	var team: int = 1 - last_team
+	# which line: the one it is further past (a corner counts for the baseline on a tie)
+	var past_x: float = maxf(-pos.x, pos.x - W)
+	var past_y: float = maxf(-pos.y, pos.y - H)
+	var baseline: bool = past_x >= past_y
+	var spot: Vector2
+	if baseline:
+		var key: float = OOB_BASELINE_KEY_FT * game.FT
+		var cy: float = H / 2.0
+		var y: float = clampf(pos.y, OOB_CORNER_FT * game.FT, H - OOB_CORNER_FT * game.FT)
+		if absf(y - cy) < key:
+			y = cy + (key if y >= cy else -key)
+		spot = Vector2(10.0 if pos.x < W / 2.0 else W - 10.0, y)
+	else:
+		var inset: float = OOB_SIDELINE_INSET_FT * game.FT
+		spot = Vector2(clampf(pos.x, inset, W - inset), 10.0 if pos.y < H / 2.0 else H - 10.0)
+	# shot clock: kept (at least OOB_MIN_CLOCK) when the team that had it keeps it and no shot hit the rim
+	var cause: String = String(game.ball.loose_cause)
+	var keep: bool = team == game.possession and cause != "rebound"
+	_clock_after_inbound = maxf(game.shot_clock, OOB_MIN_CLOCK) if keep else -1.0
+	game.stat("out_of_bounds")
+	game.stat("oob_t%d" % team)
+	game.stat("oob_baseline" if baseline else "oob_sideline")
+	if cause != "":
+		game.stat("oob_after_" + cause)
+	if keep:
+		game.stat("oob_clock_kept")
+	if game.audio:
+		game.audio.play("whistle")
+	game.show_message("OUT OF BOUNDS\n%s BALL" % game.TEAM_NAMES[team], OOB_WAIT, game.TEAM_COLORS[team])
+	if game.autoplay or game.humantest:
+		print("OUT OF BOUNDS %s (%s, after %s) at x %d y %d: %s ball" % ["baseline" if baseline else "sideline",
+				game.TEAM_NAMES[last_team], cause, int(pos.x / game.FT), int(pos.y / game.FT), game.TEAM_NAMES[team]])
+	for p in game.players:
+		p.shooting = false
+	game.possession = team
+	dead_ball(team, OOB_WAIT, spot)
+	_clear_inbound = true
+	return true
+
+# out-of-bounds inbound: opponents right on top of the inbounder step back to OOB_CLEAR_FT (toward the court)
+func _clear_around(inbounder) -> void:
+	var r: float = OOB_CLEAR_FT * game.FT
+	var center := Vector2(game.COURT_W / 2.0, game.COURT_H / 2.0)
+	for o in game.teams[1 - inbounder.team]:
+		var off: Vector2 = o.position - inbounder.position
+		if off.length() >= r:
+			continue
+		var dir: Vector2 = off.normalized() if off.length() > 1.0 else (center - inbounder.position).normalized()
+		if dir.dot(center - inbounder.position) < 0.0:
+			dir = (center - inbounder.position).normalized()   # never pushed off the court
+		o.position = game.clamp_to_court(inbounder.position + dir * r)
+		o.velocity = Vector2.ZERO
 
 # ---------------- game start and the side switch ----------------
 
@@ -261,12 +347,12 @@ func _switch_sides() -> void:
 
 # A foul by `defender` on `fouled`. kind "shooting" (a badly timed block jump that reached the shooter), "reach"
 # (a poke at a shielded ball) or "drive" (Q3 c, treated like a reach). Ignored while the ball is dead, during free
-# throws, or while another shooting foul waits for its shot.
-func call_foul(defender, fouled, kind: String) -> void:
+# throws, or while another shooting foul waits for its shot. Returns true if the foul was called.
+func call_foul(defender, fouled, kind: String) -> bool:
 	if game.game_over or defender == null or fouled == null or defender.team == fouled.team:
-		return
+		return false
 	if ft_phase != "" or pending_foul or dead_timer > 0.0 or game.ball.state == game.ball.DEAD:
-		return
+		return false
 	team_fouls[defender.team] += 1
 	game.stat("fouls_t%d" % defender.team)
 	game.stat("fouls_%s" % kind)
@@ -287,12 +373,12 @@ func call_foul(defender, fouled, kind: String) -> void:
 		_pf_t = 0.0
 		if not _pf_shot_coming():
 			resolve_pending_foul(fouled, false)   # not in a shot after all: free throws now
-		return
+		return true
 	# reaching: the fouled team keeps the ball, from the sideline at the ball's x (or free throws in the bonus)
 	if BONUS_FOULS > 0 and team_fouls[defender.team] >= BONUS_FOULS:
 		game.stat("bonus_free_throws")
 		start_free_throws(fouled, FT_INSIDE, POINTS_FT, false)
-		return
+		return true
 	var side_y: float = 10.0 if game.ball.position.y < game.COURT_H / 2 else game.COURT_H - 10.0
 	var inset: float = FOUL_SIDELINE_INSET_FT * game.FT
 	var spot := Vector2(clampf(game.ball.position.x, inset, game.COURT_W - inset), side_y)
@@ -300,6 +386,7 @@ func call_foul(defender, fouled, kind: String) -> void:
 	fouled.shooting = false
 	game.possession = fouled.team
 	dead_ball(fouled.team, FOUL_WAIT, spot)
+	return true
 
 # the fouled shooter's shot is in the air, or he is still in his shot (windup, rim move, pump fake)
 func _pf_shot_coming() -> bool:
@@ -497,6 +584,11 @@ func ft_result(made: bool) -> void:
 		dead_ball(1 - team, MADE_WAIT)   # like a made basket: the other team from its baseline
 	else:
 		game.stat("ft_last_misses")      # live rebound: ball.gd already bounced it off the rim
+		if pending_switch and SWITCH_SKIPS_FT_REBOUND:
+			# the switch would wait a possession or more: the defense gets the ball now, after "SWITCH SIDES"
+			game.stat("switch_after_ft_miss")
+			game.possession = 1 - team
+			dead_ball(1 - team, MADE_WAIT)
 
 func _end_ft() -> void:
 	ft_active = false
