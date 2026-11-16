@@ -16,9 +16,12 @@ const SAVE_PATH := "user://settings.cfg"
 const SAVE_SECTION := "settings"
 const SAVE_KEY := "difficulty"
 
-# PLACEHOLDER VALUES until the owner answers Q6 (real tuning is P3-10). Each entry is [mode, amount] applied to the
-# Hard value: "mul" multiplies it, "add" adds to it (seconds for reaction times). A key missing here = the Hard value,
-# so a later Hard retune carries over to Normal and Easy.
+# P3-10 values (owner Q6: the CPU is less sharp, not slower: worse shooting, slower reactions, worse steal/block
+# timing, bites on fakes more, less help defense; speed and stamina stay Hard on every level). Each entry is
+# [mode, amount] applied to the Hard value: "mul" multiplies it, "add" adds to it (seconds for reaction times). A key
+# missing here = the Hard value, so a later Hard retune carries over to Normal and Easy.
+# Tuned with --autoplay --difficulty=<level> (RED plays the level, BLUE plays Hard), 40 games each:
+# RED won 62% on Hard, 30% on Normal, 20% on Easy, and still used every move on Easy.
 # Keys (and where they are read):
 #   shot_quality_min/max  CPU jump-shot quality range (player.CPU_SHOT_QUALITY_MIN/MAX)
 #   cross_react_min/max   seconds a defender keeps going the old way after a crossover (defense.CPU_CROSS_REACT_*)
@@ -35,36 +38,36 @@ const SAVE_KEY := "difficulty"
 #   stamina_drain         stamina per second while sprinting (player.STAMINA_DRAIN; Q6 b, Hard on every level)
 const LEVELS := {
 	NORMAL: {
-		"shot_quality_min": ["mul", 0.92],
-		"shot_quality_max": ["mul", 0.92],
-		"cross_react_min": ["add", 0.05],
-		"cross_react_max": ["add", 0.05],
-		"jump_react_min": ["add", 0.05],
-		"jump_react_max": ["add", 0.05],
-		"jump_chance": ["mul", 0.85],
-		"jumper_jump_chance": ["mul", 0.85],
-		"lob_jump_chance": ["mul", 0.85],
-		"poke_chance": ["mul", 0.85],
-		"poke_on_time": ["mul", 0.7],
-		"fake_bite": ["mul", 1.3],
-		"help_side": ["mul", 0.7],
-		"speed_mult": ["mul", 1.0],
+		"shot_quality_min": ["mul", 0.94],   # jumpers a bit off (Hard 1.05..1.25 -> ~0.99..1.18)
+		"shot_quality_max": ["mul", 0.94],
+		"cross_react_min": ["add", 0.04],    # a step slower to read a crossover (beaten more often)
+		"cross_react_max": ["add", 0.04],
+		"jump_react_min": ["add", 0.04],     # block jumps a little late
+		"jump_react_max": ["add", 0.04],
+		"jump_chance": ["mul", 0.9],
+		"jumper_jump_chance": ["mul", 0.9],
+		"lob_jump_chance": ["mul", 0.9],
+		"poke_chance": ["mul", 0.9],
+		"poke_on_time": ["mul", 0.75],       # fewer pokes timed on the floor touch
+		"fake_bite": ["mul", 1.25],          # bites on pump fakes more
+		"help_side": ["mul", 0.75],          # less help defense
+		"speed_mult": ["mul", 1.0],          # owner Q6: less sharp, not slower (Hard on every level)
 		"stamina_drain": ["mul", 1.0],
 	},
 	EASY: {
-		"shot_quality_min": ["mul", 0.84],
-		"shot_quality_max": ["mul", 0.84],
-		"cross_react_min": ["add", 0.1],
-		"cross_react_max": ["add", 0.1],
-		"jump_react_min": ["add", 0.1],
-		"jump_react_max": ["add", 0.1],
-		"jump_chance": ["mul", 0.7],
-		"jumper_jump_chance": ["mul", 0.7],
-		"lob_jump_chance": ["mul", 0.7],
-		"poke_chance": ["mul", 0.7],
-		"poke_on_time": ["mul", 0.4],
-		"fake_bite": ["mul", 1.6],
-		"help_side": ["mul", 0.4],
+		"shot_quality_min": ["mul", 0.83],   # Hard 1.05..1.25 -> ~0.87..1.04
+		"shot_quality_max": ["mul", 0.83],
+		"cross_react_min": ["add", 0.08],
+		"cross_react_max": ["add", 0.08],
+		"jump_react_min": ["add", 0.06],
+		"jump_react_max": ["add", 0.06],
+		"jump_chance": ["mul", 0.8],
+		"jumper_jump_chance": ["mul", 0.8],
+		"lob_jump_chance": ["mul", 0.8],
+		"poke_chance": ["mul", 0.8],
+		"poke_on_time": ["mul", 0.55],
+		"fake_bite": ["mul", 1.5],
+		"help_side": ["mul", 0.5],
 		"speed_mult": ["mul", 1.0],
 		"stamina_drain": ["mul", 1.0],
 	},
