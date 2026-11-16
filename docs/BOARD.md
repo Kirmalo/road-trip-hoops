@@ -333,3 +333,9 @@ only P4-11 and the backdrop parts of P4-07/P4-08 wait.
   In ANGLED the shadow and rings are drawn every frame for every player.
 
 ## Done
+- Phase 4 build done: P4-00..P4-13 merged (view.gd projection, players/court/hoops/ball/fx in 3/4, angled default,
+  COURT/MUSIC panel buttons, original sprites/courts/ball, synthesized swish/bounce, 6 CC0 music tracks, docs).
+  P4-12 QA (docs/qa/phase4.md): gameplay unchanged over 200 games (46 stats within the compare rule), BLUE 45.5%
+  (noise band 43-57%), visuals pass, pck 4.07 MB, 23-24 fps in headless Chromium. Follow-ups: gym banners cut at
+  1280x800, "+2" popup overlaps the backboard, human can be off screen on long passes (camera follows the ball),
+  angled view costs ~0.6 ms script time per frame (profile on the tablet).
