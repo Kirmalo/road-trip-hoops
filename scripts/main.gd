@@ -293,6 +293,8 @@ func _ready() -> void:
 		var trip_script = load("res://scripts/trip.gd")
 		var ok: bool = trip_script.self_test(OS.get_cmdline_user_args().has("--load"))
 		print("TRIPDATA ", "OK" if ok else "FAILED")
+		set_physics_process(false)
+		set_process(false)
 		get_tree().quit()
 		return
 	# screen hand-off (Phase 5): the test modes play a game at once, as before; otherwise Flow decides the screen
