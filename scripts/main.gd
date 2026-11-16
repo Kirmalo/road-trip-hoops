@@ -11,6 +11,8 @@ extends Node2D
 #   Defense: the orange button is STEAL or BLOCK (picked for you). STEAL pokes at the ball: poke when the dribble is
 #            low and the ball is not behind his body. BLOCK (your man shoots, or is near the rim, and you're close)
 #            jumps: time it so you're high when the ball leaves his hand. Don't bite on pump fakes. SWITCH changes player.
+#   Fouls (rules.gd): a badly timed block jump into the shooter, or poking at a ball he shields with his body.
+#   Free throws: hold SHOOT at the line and release in the green zone, as on a jump shot.
 # Keyboard (for testing): WASD/arrows move, J = shoot/steal, K = pass/switch.
 
 const PlayerScript = preload("res://scripts/player.gd")
@@ -83,6 +85,19 @@ const STEAL_HUMAN_LUCK := 0.5        # human (P2.5): STEAL_LUCK for the human's 
                                      # exposed the ball is (CPU keeps STEAL_LUCK)
 const STEAL_CUE_RING_COLOR := Color(1.0, 0.95, 0.4, 0.9)   # ring on the floor under the ball while STEAL is lit
 const STEAL_HELD_TIMING := 0.25      # timing factor when the ball is held up (gathering a shot, pump fake, at the rim)
+
+# fouls and free throws (P3-05; the sequence and the counts are in rules.gd). Owner Q3: fouls come from bad timing only
+const REACH_FOULS := true            # a poke that reaches a ball shielded by the handler's body can be a reaching foul
+const FOUL_REACH_CHANCE := 0.3       # ... with this chance per such poke (Q3 a; P3-09 tunes it with the shooting fouls)
+const FT_BASE := 0.72                # free throw made chance at quality 1.0 (normal release); no contest, no blocks
+const FT_CAP := 0.95                 # at most this (a perfect release is quality 1.3: 0.94)
+const FT_PERFECT_Q := 1.25           # a free throw at or above this quality counts as a perfect release (human_ft_perfect)
+const FORCE_FOUL_CHANCE := 0.12      # test only (-- --force-fouls): a released field goal is fouled with this chance
+const HT_FT_GOOD_CHARGE := 0.865     # --humantest at the line: release a "good" free throw at this meter charge
+                                     # (middle of the 0.78-0.95 green zone) ...
+const HT_FT_EARLY_CHARGE := 0.5      # ... and an "early" one here (a bad release, quality 0.6)
+const HT_FT_DELAY := 0.5             # seconds the scripted thumb waits at the line before pressing SHOOT
+const FT_LABEL_COLOR := Color(1.0, 0.92, 0.45)
 
 # call for the ball (P2-10). human_input.gd has the call rules; main.gd decides who the human controls and draws the cue
 const CONTROL_FOLLOWS_CATCH := false # false: a teammate who gets the ball (inbound, rebound, steal, CPU pass) runs it
@@ -169,6 +184,10 @@ var ht_guard_front := true          # ... and the human is between him and the r
 var ht_guard_holder = null
 var _call_node: Node2D               # draws the "!" over the human while his call is live
 var shot_serial := 0                # counts released shots, so each defender gets one block try per shot (defense.gd)
+var force_fouls := false            # test only: -- --force-fouls fouls some field goals (until P3-06 commits fouls)
+var ht_ft_t := 0.0                  # humantest: seconds the human has had the ball at the line
+var ht_ft_n := 0                    # humantest: free throws the scripted thumb started (every 2nd is "good")
+var ht_ft_kind := ""                # humantest: "good" or "early" for the free throw on the meter now
 
 func stat(k: String) -> void:
 	stats[k] = stats.get(k, 0) + 1
@@ -180,6 +199,7 @@ var score_label: Label
 var clock_label: Label
 var shot_label: Label
 var msg_label: Label
+var ft_label: Label
 var msg_timer := 0.0
 var msg_age := 0.0
 
@@ -189,6 +209,7 @@ func _ready() -> void:
 	rng.randomize()
 	autoplay = OS.get_cmdline_user_args().has("--autoplay")
 	humantest = OS.get_cmdline_user_args().has("--humantest")
+	force_fouls = OS.get_cmdline_user_args().has("--force-fouls")
 
 	rules = RulesScript.new()
 	rules.game = self
@@ -280,6 +301,8 @@ func _build_hud() -> void:
 	msg_label.offset_right = 500
 	msg_label.offset_top = -160
 	msg_label.offset_bottom = -60
+	ft_label = _make_label(root, 26, Control.PRESET_TOP_WIDE, 62)   # "FREE THROW 1 OF 2" under the top bar
+	ft_label.modulate = FT_LABEL_COLOR
 
 	controls = ControlsScript.new()
 	root.add_child(controls)
@@ -404,6 +427,9 @@ func on_ball_held(p) -> void:
 func release_shot(p, quality: float) -> void:
 	if not p.has_ball():
 		return
+	if rules.ft_active and p == rules.ft_shooter:
+		_release_free_throw(p, quality)
+		return
 	var hoop := attack_hoop(p.team)
 	var prob := shot_probability(p, quality)
 	var made := rng.randf() < prob
@@ -418,6 +444,26 @@ func release_shot(p, quality: float) -> void:
 		stat("fire_shots")
 		if made: stat("fire_makes")
 	ball.shoot(p, hoop, made, pts)
+	if force_fouls and rng.randf() < FORCE_FOUL_CHANCE:
+		var d = nearest_opponent(p)   # test only: as if he had jumped badly into the shooter
+		stat("forced_fouls")
+		rules.call_foul(d, p, "shooting")
+
+# a free throw (rules.ft_active): FT_BASE x the release quality, 1 point, no contest, no blocks, no interceptions
+func _release_free_throw(p, quality: float) -> void:
+	var prob: float = clampf(FT_BASE * quality, 0.0, FT_CAP)
+	var made: bool = rng.randf() < prob
+	shot_clock_running = false
+	stat("free_throws")
+	stat("ft_attempts_t%d" % p.team)
+	if is_human(p):
+		stat("human_ft_attempts")
+		if quality >= FT_PERFECT_Q:
+			stat("human_ft_perfect")
+	ball.next_shot_kind = ""
+	ball.next_alley = false
+	rules.ft_released()
+	ball.shoot(p, attack_hoop(p.team), made, rules.ft_value)
 
 # a dunk or layup blocked at take-off: counts as a missed shot, the ball is swatted out of the shooter's hands
 func rim_shot_blocked(p, defender) -> void:
@@ -456,6 +502,11 @@ func block_shot(defender) -> void:
 
 func on_shot_made(shooter, pts: int) -> void:
 	var hoop := attack_hoop(shooter.team)   # before add_score: the side switch may flip it
+	if rules.ft_shot_live:
+		# a free throw: no "SCORES" banner and no on-fire streak, just the +1 at the hoop
+		fx.popup("+%d" % pts, hoop + Vector2(0, -SCORE_POPUP_RISE), TEAM_COLORS[shooter.team], SCORE_POPUP_SIZE)
+		rules.ft_result(true)
+		return
 	show_message("%s %s" % [TEAM_NAMES[shooter.team], "FOR TWO!" if pts >= 2 else "SCORES"], SCORE_MSG_TIME,
 			TEAM_COLORS[shooter.team])
 	if ball.shot_kind != "dunk":   # a dunk already shows "SLAM!"
@@ -465,12 +516,19 @@ func on_shot_made(shooter, pts: int) -> void:
 	rules.add_score(shooter.team, pts, ball.shot_kind if ball.shot_kind != "" else "shot")
 	if game_over:
 		return
+	if rules.resolve_pending_foul(shooter, true):
+		return   # fouled on the make: and-one free throw
 	possession = 1 - shooter.team
 	rules.dead_ball(1 - shooter.team, rules.MADE_WAIT)
 
 func on_shot_missed(shooter) -> void:
+	if rules.ft_shot_live:
+		rules.ft_result(false)   # a missed free throw doesn't touch the on-fire streak
+		return
 	if shooter == null:
 		return
+	if rules.resolve_pending_foul(shooter, false):
+		return   # fouled on the miss: free throws (the fire streak isn't charged with this miss)
 	shooter.make_streak = 0
 	if shooter.on_fire:
 		shooter.fire_misses += 1
@@ -534,6 +592,18 @@ func steal_exposure(defender, handler) -> float:
 	var ang: float = rad_to_deg(absf(to_ball.angle_to(to_def)))
 	return clampf((STEAL_SHIELD_DEG - ang) / (STEAL_SHIELD_DEG - STEAL_OPEN_DEG), 0.0, 1.0)
 
+# the handler's body is between this defender and the ball (angle at least STEAL_SHIELD_DEG): a poke from here goes
+# through the body. (Distance is checked by the caller: the poke reached the handler, STEAL_POKE_PX.)
+func _ball_behind_body(defender, handler) -> bool:
+	var ball_pos: Vector2 = handler.position + Vector2.from_angle(handler.facing) * STEAL_BALL_PX
+	if ball.state == ball.HELD and ball.holder == handler:
+		ball_pos = ball.position
+	var to_ball: Vector2 = ball_pos - handler.position
+	var to_def: Vector2 = defender.position - handler.position
+	if to_ball.length() < 0.01 or to_def.length() < 0.01:
+		return false
+	return rad_to_deg(absf(to_ball.angle_to(to_def))) >= STEAL_SHIELD_DEG
+
 # how well a poke at this handler's ball is timed right now: 1 within `grace` s of a dribble floor touch, else 0
 # (STEAL_HELD_TIMING while the ball is held up). grace < 0 means STEAL_GRACE. late >= 0: the window after the floor
 # touch is `late` s instead of `grace` (the human's reaction allowance).
@@ -590,7 +660,7 @@ func steal_chance(defender, handler) -> float:
 func attempt_steal(defender, _legacy := -1.0) -> void:
 	if "stumble_t" in defender and defender.stumble_t > 0.0:
 		return   # off balance: can't poke
-	if defender.steal_cooldown > 0.0:
+	if defender.steal_cooldown > 0.0 or rules.ft_active:
 		return
 	defender.steal_cooldown = STEAL_COOLDOWN
 	var h = ball.holder
@@ -608,6 +678,12 @@ func attempt_steal(defender, _legacy := -1.0) -> void:
 			stat("human_pokes_on_cue")   # the STEAL button was lit (well-timed, exposed ball)
 	if steal_exposure(defender, h) <= 0.0:
 		stat("steal_shielded")
+		# reaching foul (P3-05, Q3 a): the poke reached the handler, but the ball was behind his body
+		if REACH_FOULS and _ball_behind_body(defender, h):
+			stat("steal_shielded_body")
+			if rng.randf() < FOUL_REACH_CHANCE and rules.has_method("call_foul"):
+				rules.call_foul(defender, h, "reach")
+				return
 	if good:
 		stat("steal_good_pokes_t%d" % defender.team)
 	if rng.randf() < steal_chance(defender, h):
@@ -623,13 +699,21 @@ func attempt_steal(defender, _legacy := -1.0) -> void:
 
 # ---------------- input ----------------
 
+# during free throws A only shoots (the human at the line) and B does nothing (human_input.gd gets the same rule in P3-06)
+func _ft_blocks_buttons() -> bool:
+	return rules.ft_active and not game_over and not (human_player == rules.ft_shooter and human_player.has_ball())
+
 func _on_a_pressed() -> void:
+	if _ft_blocks_buttons():
+		return
 	input.a_pressed()
 
 func _on_a_released() -> void:
 	input.a_released()
 
 func _on_b_pressed() -> void:
+	if rules.ft_active and not game_over:
+		return
 	input.b_pressed()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -721,25 +805,41 @@ func _physics_process(delta: float) -> void:
 				human_player = mine
 
 	if humantest and human_player != null:
-		if _frame % 97 == 0 and not (human_player.has_ball() and _ht_hoop_ft() > HT_SHOOT_MAX_FT):
-			ht_jump_kind = "random"
-			_ht_poke("random")   # on offense: a shot (meter held 50 frames); on defense: a randomly timed poke
-		if _frame % 97 == 50: _on_a_released()
-		if _frame % 211 == 0: _on_b_pressed()
+		if rules.ft_active:
+			_humantest_free_throw(delta)   # at the line: the scripted thumb shoots with the meter
+		else:
+			if _frame % 97 == 0 and not (human_player.has_ball() and _ht_hoop_ft() > HT_SHOOT_MAX_FT):
+				ht_jump_kind = "random"
+				_ht_poke("random")   # on offense: a shot (meter held 50 frames); on defense: a randomly timed poke
+			if _frame % 97 == 50: _on_a_released()
+			if _frame % 211 == 0: _on_b_pressed()
 		_humantest_thumb(delta)
-		_humantest_timed_poke(delta)
-		_humantest_block(delta)
-		_humantest_call(delta)
-		_humantest_guard_metric()
-	var stick := _input_vector()
+		if not rules.ft_active:
+			_humantest_timed_poke(delta)
+			_humantest_block(delta)
+			_humantest_call(delta)
+			_humantest_guard_metric()
+	# free throws: nobody moves with the stick (no walking off the line, no crossovers)
+	var stick := Vector2.ZERO if rules.ft_active else _input_vector()
 	input.update(delta, stick)
+	# until player.gd runs the free-throw behavior (P3-06), main walks everyone to rules.ft_spot() and only updates
+	# the human shooter (his shot meter)
+	var ft_hold: bool = rules.ft_active and not rules.ft_native()
 	for p in players:
+		if ft_hold:
+			if p == rules.ft_shooter and rules.ft_phase == "shoot" and is_human(p):
+				p.update(delta, true, Vector2.ZERO)
+			else:
+				rules.ft_walk(p, delta)
+			continue
 		p.update(delta, is_human(p), stick)
 	input.face_caller(delta)
 	_call_node.queue_redraw()
-	_separate_players()
+	if not rules.ft_active:
+		_separate_players()
 	ball.update(delta)
-	DefenseScript.check_jump_shot_block(self)
+	if not rules.ft_shot_live:
+		DefenseScript.check_jump_shot_block(self)   # free throws can't be blocked
 	_update_fire_trail()
 
 	camera.position = ball.position
@@ -774,7 +874,7 @@ func _humantest_thumb(delta: float) -> void:
 			stat("humantest_away_frames")
 			if human_player.assist_on:
 				stat("humantest_away_assist_frames")   # should stay 0: pulling away turns the assist off
-	var can_flick: bool = input.flick_ready()
+	var can_flick: bool = input.flick_ready() and not rules.ft_active   # no gestures at the line
 	if can_flick:
 		ht_snap_clock += delta
 		ht_turn_clock += delta
@@ -921,6 +1021,32 @@ func _humantest_call(delta: float) -> void:
 		if stats.get("human_calls", 0) > calls:
 			stat("humantest_calls")
 
+# at the free-throw line: press SHOOT HT_FT_DELAY after getting the ball, release in the green zone on every 2nd free
+# throw ("good") and early on the others; count attempts and makes of each
+func _humantest_free_throw(delta: float) -> void:
+	var h = human_player
+	if rules.ft_shooter != h or not h.has_ball():
+		ht_ft_t = 0.0
+		return
+	if not h.shooting:
+		ht_ft_kind = ""
+		ht_ft_t += delta
+		if ht_ft_t >= HT_FT_DELAY:
+			ht_ft_t = 0.0
+			ht_ft_n += 1
+			ht_ft_kind = "good" if ht_ft_n % 2 == 0 else "early"
+			_on_a_pressed()
+		return
+	if ht_ft_kind == "":
+		return
+	if h.shot_charge >= (HT_FT_GOOD_CHARGE if ht_ft_kind == "good" else HT_FT_EARLY_CHARGE):
+		var k: String = ht_ft_kind
+		ht_ft_kind = ""
+		stat("humantest_ft_%s" % k)
+		_on_a_released()
+		if ball.state == ball.SHOT and ball.shot_made:
+			stat("humantest_ft_%s_makes" % k)
+
 # stay-in-front metric: while a CPU handler in his frontcourt is within HT_GUARD_FT of the human, count the frames
 # the human is between him and the rim, and each time the handler gets past him (closer to the rim by the margin)
 func _humantest_guard_metric() -> void:
@@ -952,12 +1078,13 @@ func _ht_summary() -> String:
 		return "%d/%d" % [stats.get(a, 0), stats.get(b, 0)]
 	var gf: int = stats.get("humantest_guard_frames", 0)
 	var front_pct: float = 100.0 * float(stats.get("humantest_guard_front_frames", 0)) / float(maxi(gf, 1))
-	return "HUMANTEST steals timed %s random %s | blocks timed %s early %s | in front %.0f%% beaten %d in %d spells | assist %d frames, %d while pulling away, crossovers beat him %s" % [
+	return "HUMANTEST steals timed %s random %s | blocks timed %s early %s | in front %.0f%% beaten %d in %d spells | assist %d frames, %d while pulling away, crossovers beat him %s | free throws good %s early %s" % [
 		f.call("humantest_timed_steals", "humantest_timed_pokes"), f.call("humantest_random_steals", "humantest_random_pokes"),
 		f.call("humantest_timed_blocks", "humantest_timed_jumps"), f.call("humantest_early_blocks", "humantest_early_jumps"),
 		front_pct, stats.get("humantest_guard_beaten", 0), stats.get("humantest_guard_spells", 0),
 		stats.get("human_assist_frames", 0), stats.get("humantest_away_assist_frames", 0),
-		f.call("human_cross_beaten", "human_cross_faced")]
+		f.call("human_cross_beaten", "human_cross_faced"),
+		f.call("humantest_ft_good_makes", "humantest_ft_good"), f.call("humantest_ft_early_makes", "humantest_ft_early")]
 
 func _ht_hoop_ft() -> float:
 	return human_player.position.distance_to(attack_hoop(HUMAN_TEAM)) / FT
@@ -1001,6 +1128,12 @@ func on_game_over(winner: int) -> void:
 		var secs: int = int(rules.play_time)
 		print("FINAL BLUE %d - RED %d" % [score[0], score[1]])
 		print("GAME LENGTH %d:%02d" % [secs / 60, secs % 60])
+		var g := func(k: String) -> int:
+			return int(stats.get(k, 0))
+		print("FOULS BLUE %d RED %d (shooting %d, reach %d, and-ones %d) | FREE THROWS %d/%d (BLUE %d/%d, RED %d/%d), last missed %d, timeouts %d" % [
+				g.call("fouls_t0"), g.call("fouls_t1"), g.call("fouls_shooting"), g.call("fouls_reach"), g.call("and_ones"),
+				g.call("free_throw_makes"), g.call("free_throws"), g.call("ft_makes_t0"), g.call("ft_attempts_t0"),
+				g.call("ft_makes_t1"), g.call("ft_attempts_t1"), g.call("ft_last_misses"), g.call("ft_timeouts")])
 		print(stats)
 		if humantest:
 			print(_ht_summary())
@@ -1071,7 +1204,16 @@ func _update_hud() -> void:
 		var t: float = rules.time_left()
 		clock_label.text += "  %d:%02d" % [int(t) / 60, int(t) % 60]
 	shot_label.text = "SHOT %d" % int(ceil(max(shot_clock, 0.0)))
-	if human_player != null and human_player.has_ball():
+	ft_label.text = rules.ft_hud_text()
+	if rules.ft_phase != "" and rules.ft_shooter != null:
+		ft_label.modulate = TEAM_COLORS[rules.ft_shooter.team]
+	if rules.ft_active and not (human_player != null and human_player == rules.ft_shooter):
+		controls.a_text = "-"   # someone else is at the line: wait
+		controls.b_text = "-"
+	elif rules.ft_active:
+		controls.a_text = "SHOOT"
+		controls.b_text = "-"
+	elif human_player != null and human_player.has_ball():
 		controls.a_text = "SHOOT"
 		controls.b_text = "PASS"
 	elif possession == HUMAN_TEAM and ball.state != ball.DEAD:

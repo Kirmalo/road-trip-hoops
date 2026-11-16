@@ -50,6 +50,29 @@ const LAYUP_AIR_BLOCKS := true    # layups can also be blocked on the way up, du
 const LAYUP_AIR_WINDOW := 0.12    # seconds after a layup leaves the hand that it can still be blocked
 const LAYUP_AIR_BLOCK_MULT := 0.5 # block chance x this on a layup already on its way up
 
+# ---- fouls (P3-06; owner Q3: bad timing only). Both the human and the CPU can foul; the call itself (whistle, free
+# throws, sideline ball) is rules.call_foul (P3-05). Target: about 3-6 fouls a game for both teams together. ----
+const FOUL_BAD_JUMP_CHANCE := 0.35  # a badly timed block jump that reaches the shooter's body: chance it is a foul
+const FOUL_CONTACT_FT := 3.0      # "reaches the shooter": the jumping defender is this close to the shooter's body
+                                  # (tighter than the block reach: a bad jump further off just misses)
+const FOUL_LATE_WINDOW := 0.2     # seconds after the block window that a late jump (still rising) into him fouls
+const FOUL_LATE_MULT := 0.35      # a late jump fouls with FOUL_BAD_JUMP_CHANCE x this (late jumps at layups are
+                                  # common and mostly catch only air: without it ~7 fouls a game)
+const FOUL_FAKE_WINDOW := 0.4    # a bad jump that started this soon after the shooter's pump fake: "bit on the fake"
+const FOUL_SHIELD_POKE_CHANCE := 0.2  # a poke at a ball the handler shields with his body: chance it is a reach foul
+                                  # (0.3 gave a STEAL-mashing human ~6 reach fouls a game)
+const FOUL_SHIELD_DEG := 120.0    # shielded: the angle handler->ball vs handler->defender is at least this (exposure 0)
+const CPU_SHIELD_REACH := 0.06    # CPU: ball shielded and his poke gap is up: chance he reaches in anyway (bad timing)
+const FOUL_POPUP_COLOR := Color(1.0, 0.85, 0.2)
+const FOUL_POPUP_SIZE := 34
+const FOUL_POPUP_RISE_FT := 6.0   # the reason popup floats this far above the fouler (over rules' "FOUL!" popup)
+const FOUL_REASONS := {           # what the popup over the fouler says, so the human sees why
+	"early": "FOUL: TOO EARLY",   # came down on the shooter (jumped before the shot)
+	"late": "FOUL: TOO LATE",     # jumped after the ball was gone, into his body
+	"fake": "FOUL: BIT ON FAKE",  # still up from jumping at a pump fake
+	"reach": "FOUL: REACH",       # poked through a shielded ball
+}
+
 # ---- CPU block jumps (P2-07) ----
 const CPU_JUMP_FT := 6.0          # the CPU defender jumps at a shooter this close when the shot (or fake) starts
 const CPU_JUMP_REACT_MIN := 0.12  # reaction delay in seconds, random between these
@@ -79,6 +102,10 @@ var _cross_react := 0.0      # seconds left of his reaction to it
 var _cross_beat := false     # this crossover beats him
 var _cross_target := Vector2.ZERO   # where he was heading when the crossover started (he keeps going there)
 var _recover_t := 0.0        # seconds left of a recovery sprint
+
+# fouls (P3-06)
+var foul_pending := ""       # a bad rim-block jump that fouled: called once the shot is in the air (call_pending_fouls)
+var foul_rolled := -1        # game.shot_serial this defender's foul dice were rolled for (once per shot)
 
 func _init(player, g) -> void:
 	p = player
@@ -184,6 +211,9 @@ func _update_pokes(delta: float, man) -> void:
 	if not exposed:
 		game.stat("cpu_poke_skipped_shielded")
 		_poke_gap = CPU_POKE_RECHECK
+		if is_shielded(game, p, h) and game.rng.randf() < Difficulty.value(p.team, "shield_reach", CPU_SHIELD_REACH):
+			game.stat("cpu_shield_reaches")   # reaches in at a shielded ball anyway (badly timed): may foul
+			_poke(h)
 		return
 	if game.rng.randf() >= Difficulty.value(p.team, "poke_chance", CPU_POKE_CHANCE):
 		_poke_gap = CPU_POKE_RECHECK
@@ -196,6 +226,8 @@ func _poke(h) -> void:
 	var crossing: bool = "cross_t" in h and h.cross_t > 0.0
 	_poke_gap = CPU_POKE_CROSS_GAP if crossing else CPU_POKE_GAP
 	game.stat("cpu_pokes")
+	if try_reach_foul(game, p, h):
+		return
 	game.attempt_steal(p)
 
 # The other team's shooter worth jumping at: the handler, or the shooter of a ball still in its block window.
@@ -285,8 +317,124 @@ static func rim_blocker(g, shooter, kind: String):
 		_count_try(g, d, good)
 		var chance: float = d.block_chance(good) * (DUNK_BLOCK_MULT if dunk else 1.0)
 		if g.rng.randf() < chance:
+			clear_pending_fouls(g, shooter)   # blocked: no foul on this shot
 			return d
+		if not good:
+			# a bad jump into him at the release (late: still rising; early: coming down): maybe a foul, called once
+			# the shot is in the air (player.release_rim_shot -> call_pending_fouls)
+			var why: String = "late" if tim == "wait" else _early_reason(d, shooter)
+			if _foul_roll(g, d, shooter, g.shot_serial + 1, why):
+				d.def.foul_pending = why
 	return null
+
+# ---------------- fouls (P3-06) ----------------
+
+# free throws are on (rules.ft_active, P3-05; false while that isn't merged)
+static func ft_on(g) -> bool:
+	return g.rules != null and "ft_active" in g.rules and bool(g.rules.ft_active)
+
+# A bad block jump that reaches the shooter: rolls FOUL_BAD_JUMP_CHANCE once per shot (serial). Good timing never
+# calls this. The CPU doesn't change its jumping to avoid fouls.
+static func _foul_roll(g, d, shooter, serial: int, why: String) -> bool:
+	if d.def.foul_rolled == serial:
+		return false
+	if d.position.distance_to(shooter.position) > FOUL_CONTACT_FT * g.FT:
+		return false   # a bad jump, but not into his body: just a miss
+	d.def.foul_rolled = serial
+	g.stat("bad_jump_contacts_" + why)
+	var chance: float = Difficulty.value(d.team, "foul_bad_jump", FOUL_BAD_JUMP_CHANCE)
+	return g.rng.randf() < chance * (FOUL_LATE_MULT if why == "late" else 1.0)
+
+# a jump that is already coming down at the release: "fake" if it started at the shooter's pump fake, else "early"
+static func _early_reason(d, shooter) -> String:
+	if "since_fake" in shooter:
+		var after_fake: float = shooter.since_fake - d.block_jump_t
+		if after_fake >= 0.0 and after_fake <= FOUL_FAKE_WINDOW:
+			return "fake"
+	return "early"
+
+# called by player.release_rim_shot once the dunk/layup is in the air: the first pending bad-jump foul is called
+static func call_pending_fouls(g, shooter) -> void:
+	var fouler = null
+	var why := ""
+	for d in g.teams[1 - shooter.team]:
+		if d.def.foul_pending != "" and fouler == null:
+			fouler = d
+			why = d.def.foul_pending
+		d.def.foul_pending = ""
+	if fouler != null:
+		commit_foul(g, fouler, shooter, "shooting", why)
+
+static func clear_pending_fouls(g, shooter) -> void:
+	for d in g.teams[1 - shooter.team]:
+		d.def.foul_pending = ""
+
+# Counts the foul, shows why over the fouler, and calls the rules (P3-05; guarded so this branch runs alone).
+# kind: "shooting" or "reach"; why: a FOUL_REASONS key.
+static func commit_foul(g, d, fouled, kind: String, why: String) -> void:
+	var human: bool = g.is_human(d)
+	if kind == "reach":
+		g.stat("fouls_shield_poke")
+		g.stat("fouls_shield_poke_t%d" % d.team)
+		if human:
+			g.stat("human_fouls_reach")
+	else:
+		g.stat("foul_bad_jumps")
+		g.stat("fouls_block")
+		g.stat("fouls_block_t%d" % d.team)
+		g.stat("fouls_block_" + why)
+		if human:
+			g.stat("human_fouls_block")
+	if g.fx != null:
+		var col: Color = FOUL_POPUP_COLOR if human else g.TEAM_COLORS[d.team]
+		g.fx.popup(String(FOUL_REASONS.get(why, "FOUL")), d.position + Vector2(0, -FOUL_POPUP_RISE_FT * g.FT), col,
+				FOUL_POPUP_SIZE + (6 if human else 0))
+	if g.rules != null and g.rules.has_method("call_foul"):
+		g.rules.call_foul(d, fouled, kind)
+	else:
+		g.stat("fouls_uncalled")   # rules.call_foul not merged yet (P3-05): counted, play goes on
+		if human:
+			g.stat("human_fouls")  # P3-05's call_foul counts this once merged
+
+# The handler's body is between the defender and the ball: a poke now reaches through him.
+static func is_shielded(g, d, h) -> bool:
+	var ball = g.ball
+	if h == null or d == null or ball.state != ball.HELD or ball.holder != h or h.team == d.team:
+		return false
+	if h.shooting or h.rim_kind != "" or ("fake_t" in h and h.fake_t > 0.0) or ("cross_t" in h and h.cross_t > 0.0):
+		return false   # the ball is up or crossing in front: not shielded
+	if d.position.distance_to(h.position) > g.STEAL_POKE_PX:
+		return false
+	var to_ball: Vector2 = ball.position - h.position
+	var to_def: Vector2 = d.position - h.position
+	if to_ball.length() < 0.01 or to_def.length() < 0.01:
+		return false
+	return rad_to_deg(absf(to_ball.angle_to(to_def))) >= FOUL_SHIELD_DEG
+
+# P3-05's main.attempt_steal may roll its own reach foul (FOUL_REACH_CHANCE): then this file leaves the dice to it,
+# so a shielded poke is never rolled twice
+static func _reach_foul_elsewhere(g) -> bool:
+	for o in [g, g.rules]:
+		if o != null and o.get_script() != null and o.get_script().get_script_constant_map().has("FOUL_REACH_CHANCE"):
+			return true
+	return false
+
+# A poke (human STEAL or CPU) at a shielded ball: a reach foul with FOUL_SHIELD_POKE_CHANCE. True if it fouled (then
+# don't also attempt the steal). Called right before game.attempt_steal.
+static func try_reach_foul(g, d, h) -> bool:
+	if h == null or d.stumble_t > 0.0 or d.steal_cooldown > 0.0 or not is_shielded(g, d, h):
+		return false
+	g.stat("shield_pokes_t%d" % d.team)
+	if g.is_human(d):
+		g.stat("human_shield_pokes")
+	if _reach_foul_elsewhere(g):
+		return false
+	if g.rng.randf() >= Difficulty.value(d.team, "shield_poke_foul", FOUL_SHIELD_POKE_CHANCE):
+		return false
+	d.steal_cooldown = g.STEAL_COOLDOWN
+	d.poke_t = g.STEAL_POKE_FREEZE
+	commit_foul(g, d, h, "reach", "reach")
+	return true
 
 # Jump-shot (and layup) blocks on timing, every frame from main.gd: while the shot is in its first
 # JUMPER_BLOCK_WINDOW seconds, an airborne defender near the ball gets one try per shot. Also counts early jumps.
@@ -303,12 +451,15 @@ static func check_jump_shot_block(g) -> void:
 			g.stat("jumps_early")   # landed before any shot left the hand (jumped too soon, or at a fake)
 			g.stat("jumps_early_t%d" % pl.team)
 		dd._was_air = air
-	if ball.state != ball.SHOT or ball.shooter == null:
-		return
+	if ball.state != ball.SHOT or ball.shooter == null or ft_on(g):
+		return   # (free throws: no blocks, no fouls)
 	if ball.shot_kind == "dunk" or (ball.shot_kind == "layup" and not LAYUP_AIR_BLOCKS):
 		return
 	var layup: bool = ball.shot_kind == "layup"
-	if ball.shot_t * ball.shot_time >= (LAYUP_AIR_WINDOW if layup else JUMPER_BLOCK_WINDOW):
+	var window: float = LAYUP_AIR_WINDOW if layup else JUMPER_BLOCK_WINDOW
+	var since: float = ball.shot_t * ball.shot_time
+	if since >= window:
+		_check_late_fouls(g, since, window)
 		return
 	for d in g.teams[1 - ball.shooter.team]:
 		if d.block_jump_t < 0.0 or d.def.rolled_shot == g.shot_serial:
@@ -324,4 +475,23 @@ static func check_jump_shot_block(g) -> void:
 		if g.rng.randf() < d.block_chance(good) * (LAYUP_AIR_BLOCK_MULT if layup else 1.0):
 			g.stat("layup_air_blocks" if layup else "jumper_blocks")
 			g.block_shot(d)
+			return
+		var why: String = _early_reason(d, ball.shooter)
+		if not good and _foul_roll(g, d, ball.shooter, g.shot_serial, why):
+			commit_foul(g, d, ball.shooter, "shooting", why)   # came down on him
+			return
+
+# Just after the block window: a defender who jumped after the ball was gone (too late to block it) and is still
+# rising into the shooter can foul him (once per shot)
+static func _check_late_fouls(g, since: float, window: float) -> void:
+	if since >= window + FOUL_LATE_WINDOW:
+		return
+	var ball = g.ball
+	for d in g.teams[1 - ball.shooter.team]:
+		if d.block_jump_t < 0.0 or d.def.rolled_shot == g.shot_serial or d.def.foul_rolled == g.shot_serial:
+			continue
+		if d.block_jump_t >= since or _jump_timing(d) != "wait":
+			continue   # jumped before the release, or already high: not a late jump into him
+		if _foul_roll(g, d, ball.shooter, g.shot_serial, "late"):
+			commit_foul(g, d, ball.shooter, "shooting", "late")
 			return
