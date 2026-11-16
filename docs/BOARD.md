@@ -130,8 +130,12 @@ Player sprite sheets (P4-03 makes them, P4-06 plays them; layout fixed here):
   button on the start and game-over panels (recommended); (b) music on the panels only, crowd and effects during play;
   (c) music everywhere, no on/off button until the Phase 7 settings.
 
-## Owner answers
-(none yet; the coordinator records them here and in `docs/VISION.md`)
+## Owner answers (2026-11-16, also in docs/VISION.md): every question got the recommended option
+- Q1 camera: follow the ball, ~2/3 of the court length, both sidelines always visible.
+- Q2 side switch: the camera stays (BLUE attacks left after the switch).
+- Q3 behind the far sideline: court scenery (gym bleachers + crowd; blacktop fence + street).
+- Q4 trying courts: COURT button on the start/game-over panels (Gym / Blacktop); music follows the court.
+- Q5 music: menu music on the panels, the court's track softly in game, MUSIC ON/OFF on the panels (remembered).
 
 ## Todo
 
@@ -311,5 +315,12 @@ only P4-11 and the backdrop parts of P4-07/P4-08 wait.
 ## Doing
 
 ## Review
+- **P4-01** (branch `worktree-agent-acabab04d075939f2`, ffb773e): lead review APPROVE. Merges cleanly into dev.
+  View API matches the contract. Extras: `DEFAULT_MODE`, `ANCHOR`, static vars `perspective`/`flipped`, `self_test()`.
+  `SIDE_FLIP` is false, so `flipped` stays false and the camera does not flip at the switch (owner Q2 a).
+  Checked on the trial merge: `--viewtest` OK, 2 FLAT autoplay runs (16-21, 12-21), FLAT humantest (16-21, snaps 36 =
+  flicks 36), ANGLED humantest (21-16, snaps 29 = flicks 29). No script errors.
+  For P4-11: the zoom shows about 3/4 of the court length, but the owner chose about 2/3. Remove `VIEW_PROBE`.
+  Fix the stale comments on `SIDE_FLIP` and the camera ("until the owner answers").
 
 ## Done
