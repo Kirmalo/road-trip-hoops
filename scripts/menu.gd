@@ -9,9 +9,12 @@ extends CanvasLayer
 # Touch first: the panel stops taps (main.gd also turns the joystick and A/B off while it's up). Desktop: mouse, or
 # A/D (left/right arrows) or K to move the light and J / Space / Enter to play the lit level; C = COURT, M = MUSIC.
 # --autoplay and --humantest never show it (main.gd); they keep Difficulty.from_cmdline() (Hard by default).
+# P5-06: a TITLE button next to COURT and MUSIC goes back to the title screen (title.gd), where QUICK GAME brings
+# this start panel back. title.gd's Settings use set_music() and save_setting() below. Desktop: T or Escape = TITLE.
 
 const Difficulty = preload("res://scripts/difficulty.gd")
 const Looks = preload("res://scripts/court_looks.gd")
+const Flow = preload("res://scripts/flow.gd")
 
 const BUTTON_SIZE := Vector2(300, 140)   # px at the 1280x720 base: finger-sized on a tablet (board: at least 200x110)
 const BUTTON_GAP := 40                   # px between the buttons
@@ -19,6 +22,7 @@ const BUTTON_FONT := 46
 const OPT_SIZE := Vector2(380, 110)      # COURT and MUSIC buttons: wide enough for "COURT: BLACKTOP", a bit lower than a
                                          # level button (board min 200x110)
 const OPT_FONT := 34
+const TITLE_BTN_SIZE := Vector2(220, 110)        # TITLE: the smallest option (board min 200x110)
 const OPT_COLOR := Color(0.2, 0.22, 0.27)        # COURT / MUSIC: neutral, so they don't look like a level
 const OPT_BORDER := Color(0.85, 0.85, 0.9, 0.8)
 const OPT_OFF_TEXT := Color(0.65, 0.65, 0.7)     # MUSIC OFF
@@ -52,6 +56,7 @@ var _sub: Label
 var _buttons: Array = []
 var _court_btn: Button
 var _music_btn: Button
+var _title_btn: Button
 
 # Once per run, before the players are made (player.gd calls Difficulty.init_once() too, later, which is then a no-op):
 # first launch (nothing saved) plays Normal; a saved level wins; --difficulty (and autoplay/humantest = Hard) win over both.
@@ -73,6 +78,14 @@ static func prepare_settings() -> void:
 		return
 	Looks.set_current(str(cfg.get_value(Difficulty.SAVE_SECTION, SAVE_COURT, Looks.current)))
 	music_on = bool(cfg.get_value(Difficulty.SAVE_SECTION, SAVE_MUSIC, music_on))
+
+# the MUSIC choice, saved (title.gd's Settings; the panel's own MUSIC button too)
+static func set_music(on: bool) -> void:
+	music_on = on
+	save_setting(SAVE_MUSIC, music_on)
+
+static func save_setting(key: String, value) -> void:
+	_save_setting(key, value)
 
 static func _save_setting(key: String, value) -> void:
 	var cfg := ConfigFile.new()
@@ -122,6 +135,9 @@ func _ready() -> void:
 	box.add_child(opts)
 	_court_btn = _opt_button(opts, _pick_court)
 	_music_btn = _opt_button(opts, _toggle_music)
+	_title_btn = _opt_button(opts, _go_title)
+	_title_btn.custom_minimum_size = TITLE_BTN_SIZE
+	_title_btn.text = "TITLE"
 
 func _opt_button(parent: Control, on_tap: Callable) -> Button:
 	var b := Button.new()
@@ -203,7 +219,8 @@ func _refresh() -> void:
 	for k in ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color"]:
 		_court_btn.add_theme_color_override(k, OFF_TEXT)
 		_music_btn.add_theme_color_override(k, mc)
-	for b in [_court_btn, _music_btn]:
+		_title_btn.add_theme_color_override(k, OFF_TEXT)
+	for b in [_court_btn, _music_btn, _title_btn]:
 		b.disabled = _arm_t > 0.0
 		b.modulate.a = 0.6 if _arm_t > 0.0 else 1.0
 
@@ -232,6 +249,8 @@ func key(event: InputEventKey) -> void:
 			_pick_court()
 		KEY_M:
 			_toggle_music()
+		KEY_T, KEY_ESCAPE:
+			_go_title()
 
 func _pick(lv: int) -> void:
 	if not showing or _arm_t > 0.0:
@@ -260,9 +279,18 @@ func _pick_court() -> void:
 func _toggle_music() -> void:
 	if not showing or _arm_t > 0.0:
 		return
-	music_on = not music_on
-	_save_setting(SAVE_MUSIC, music_on)
+	set_music(not music_on)
 	if game != null:
 		game.audio.set_music_on(music_on)
 		game.stat("menu_music_" + ("on" if music_on else "off"))
 	_refresh()
+
+# TITLE: back to the title screen (P5-06); its QUICK GAME shows the start panel again
+func _go_title() -> void:
+	if not showing or _arm_t > 0.0:
+		return
+	showing = false
+	start_done = false
+	if game != null:
+		game.stat("menu_title")
+	Flow.go("title")   # deferred reload, like _pick()
