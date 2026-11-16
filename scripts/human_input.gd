@@ -43,6 +43,8 @@ const CALL_CUT_FT := 12.0         # within this many feet of the rim ... (ball.g
 const CALL_CUT_SPEED := 0.6       # ... and moving toward it at this fraction of top speed = cutting: the pass is a lob
 const CALL_TURN_RATE := 14.0      # how fast the passer turns to face the caller while the call is live
 
+const DefenseScript = preload("res://scripts/defense.gd")   # reach fouls and the free-throw check (P3-06)
+
 var game
 
 # gesture results other scripts can read
@@ -90,6 +92,12 @@ func a_pressed() -> void:
 		return
 	_a_down_at = _time
 	_a_meter = false
+	if ft_on():
+		# free throws (P3-06): A only shoots, and only for the shooter at the line; otherwise it does nothing
+		if h.has_ball() and h.has_method("at_free_throw") and h.at_free_throw():
+			h.start_shot()
+			_a_meter = h.shooting
+		return
 	if h.has_ball():
 		h.start_shot()
 		_a_meter = h.shooting and h.rim_kind == ""
@@ -98,8 +106,8 @@ func a_pressed() -> void:
 			h.assist_off_t = h.ASSIST_PRESS_OFF   # STEAL/BLOCK takes over from the defensive assist (player.gd)
 		if defense_action() == "BLOCK":
 			block_jump(h)
-		else:
-			game.attempt_steal(h)
+		elif not DefenseScript.try_reach_foul(game, h, game.ball.holder):
+			game.attempt_steal(h)   # (a poke through a shielded ball may be a reach foul instead, P3-06)
 
 # the opponent the human would jump at: the handler, or the shooter of a ball still in its block window
 func block_threat():
@@ -114,8 +122,14 @@ func block_threat():
 		return ball.shooter
 	return null
 
-# "BLOCK" or "STEAL": what A does on defense right now (main.gd shows it on the button)
+# free throws are on (rules.ft_active, P3-05)
+func ft_on() -> bool:
+	return DefenseScript.ft_on(game)
+
+# "BLOCK" or "STEAL": what A does on defense right now (main.gd shows it on the button); "-" during free throws
 func defense_action() -> String:
+	if ft_on():
+		return "-"
 	var h = game.human_player
 	# a lob (alley-oop) coming to a player you're close to: BLOCK, so you can jump to meet the catch
 	var b = game.ball
@@ -156,8 +170,8 @@ func a_released() -> void:
 
 func b_pressed() -> void:
 	var h = game.human_player
-	if h == null or game.game_over:
-		return
+	if h == null or game.game_over or ft_on():
+		return   # (free throws: B does nothing)
 	if h.has_ball():
 		var to = pass_target(game._input_vector())
 		game.do_pass(h, to)
@@ -320,7 +334,7 @@ func face_caller(delta: float) -> void:
 
 # flicks only count while the human holds the ball on the floor and isn't in the shot meter
 func flick_ready() -> bool:
-	if game.autoplay or game.game_over:
+	if game.autoplay or game.game_over or ft_on():
 		return false
 	var h = game.human_player
 	if h == null or not h.has_ball() or h.shooting or h.rim_kind != "":
