@@ -49,6 +49,13 @@ tablet with a joystick and two buttons.
 | Alley-oops | Automatic: a pass to a teammate cutting to the rim is a lob he dunks in the air |
 | Steals and blocks | Timing based and dependent on each player's attributes (steal and block ratings, 0-100). Player attributes start here and grow in the campaign. No stumble after a missed steal: instead a defender stands still while attempting a steal (hit or miss), so poking has a cost |
 | Phase 2 check-in | Crossover feels about right. Steals and blocks both too hard: make them easier. CPU too hard, mainly because it's hard to stay in front of the ball handler: add a defensive assist (your defender slides to stay between his man and the basket while you steer roughly toward him; you still steer). PASS/SHOOT covering the bottom-right corner: leave it. Tuning round P2.5 before Phase 3. After P2.5 the owner said defense is "much better now" |
+| Game end | First to 21 (21-20 counts, no win-by-2). No game clock or quarters; the 24 s shot clock stays |
+| Game length | This test build plays to 21. On the Road Trip: early cities to 11, middle cities to 15, late cities and the tournament to 21 |
+| Fouls | Bad timing only: a badly timed block jump that hits the shooter, or poking at a ball the handler shields with his body (about 3-6 per game) |
+| Free throws | Fouled inside the arc: 1 free throw; beyond: 2; and-one: 1 extra. Reaching foul: ball from the sideline. A missed last free throw is a live rebound |
+| Out of bounds | Simple: only a loose ball crossing a line is out; the ball handler can't step out by accident |
+| Easy / Normal | Today's CPU = Hard. Easy and Normal make the CPU less sharp, not slower: worse shooting, slower reactions, worse steal/block timing, more bites on fakes, less help defense |
+| Picking the level | Big EASY / NORMAL / HARD buttons on a start panel and after each game; the choice is remembered |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints

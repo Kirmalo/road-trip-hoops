@@ -74,68 +74,14 @@ score ~74% of the winner), so ~36 points: **about 12 minutes of play and ~90 sho
 clock stops during them today). To 15 (switch at 8): ~26 points, ~9 minutes. To 11 (switch at 6): ~6-7 minutes.
 Free throws add a few points and a few stoppages. So games to 21 will very likely run past 8 minutes: Q2.
 
-## Questions for owner
-Pick one answer for each; the first option is our recommendation. Tasks use the recommended option until you answer.
-
-**Q1. How does a game end, and which clocks stay?**
-- a) First team to 21 wins, even 21-20 (a 2-pointer at 20 wins 22-x). No game clock and no quarters. The 24-second
-  shot clock stays. (recommended)
-- b) The same, but you must win by 2: at 21-20 play goes on until someone leads by 2.
-- c) Like a), plus a time limit (for example 10 minutes): when it runs out the team ahead wins; if tied, the next
-  basket wins.
-
-**Q2. Games to 21 will likely take about 12 minutes (our estimate; we will measure it). What should we do?**
-- a) Shorter games in early cities: this test build plays to 21 so you can feel it, and in the Road Trip early cities
-  play to 11, middle cities to 15, the last cities and the tournament to 21 (switch sides at the halfway score).
-  (recommended)
-- b) Always to 21. Longer games are fine.
-- c) Always to 15, switching sides at 8.
-
-**Q3. What counts as a foul?** (Same rules for you and the CPU.)
-- a) Bad timing fouls: a badly timed block jump that reaches the shooter (too early, too late, or coming down on him
-  after biting on a fake), and a steal poke at a ball the handler is shielding with his body (reaching across him).
-  Good timing never fouls. About 3-6 fouls a game. (recommended)
-- b) Shooting fouls only: just the badly timed block jump. Pokes never foul (the short freeze after a poke stays their
-  only cost).
-- c) Like a), plus contact on drives: a defender who steps into a driver at the last moment fouls. More fouls and
-  free throws (about 6-10 a game).
-
-**Q4. What happens after a foul?** (Free throws are worth 1 point and use the shot meter.)
-- a) Fouled while shooting inside the arc: 1 free throw; beyond the arc: 2 free throws. If the shot goes in anyway it
-  counts, plus 1 free throw ("and-one"). A foul that isn't on a shot (reaching): your team keeps the ball and
-  inbounds from the sideline. After the last free throw: made = the other team's ball, missed = live rebound.
-  (recommended)
-- b) Fewer stoppages: always 1 free throw, worth what the shot was worth (1 or 2 points); an and-one is 1 free throw
-  worth 1. Reaching fouls and the last free throw as in a).
-- c) Like a), but reaching fouls only give free throws once a team has 4 fouls in the game (before that, just the
-  sideline inbound). A small foul counter shows in the top bar.
-
-**Q5. Out of bounds: how strict?**
-- a) Simple: players still can't leave the court (like now), but a loose ball that crosses a line (after a steal,
-  block, tip or long rebound) is out. The team that didn't touch it last inbounds from the sideline where it went
-  out. (recommended)
-- b) Full rule: like a), and the ball handler stepping on or over a line is out too, so you have to watch your feet
-  near the sidelines.
-
-**Q6. What should Normal and Easy change?** (Today's CPU is Hard.)
-- a) The other team plays less sharp, not slower: it shoots a bit worse, reacts later to your crossovers and shots,
-  times fewer pokes and blocks, bites on your fakes more often and helps less on defense. Same speed and stamina.
-  Your CPU teammates don't change. (recommended)
-- b) Like a), and on Normal and Easy the other team also runs a little slower and tires sooner.
-- c) Like a), and Easy also helps you: a bigger green zone on the shot meter, a stronger defensive assist and easier
-  steal timing.
-
-**Q7. How do you pick the difficulty on the tablet (before the Phase 5 title screen)?**
-- a) A start panel: when the game opens and after every game, three big buttons EASY / NORMAL / HARD (your last pick
-  is lit and remembered on the tablet). Tap one to start. After a game the final score shows above the buttons.
-  (recommended)
-- b) After-game panel only: the first game starts at once on Normal; the three buttons show on the game-over screen.
-- c) A small difficulty button in the top bar: tap it to cycle Easy / Normal / Hard; it applies from the next game.
-
-**For the Phase 3 check-in (don't ask now):** crossovers beat the human defender 11 of 15 times while the defensive
-assist is steering him (the assist copies the handler's sideways move, so a reversal finds him going the wrong way).
-Too punishing, or fair? Also confirm at the check-in: free throws don't count toward (or against) "on fire"; BLUE
-starts with the ball; a player shoots his own free throws (you only shoot them when your player was fouled).
+## Owner answers (2026-11-16, also in docs/VISION.md): every question got the recommended option
+- Q1 game end: first to 21, 21-20 counts, no game clock or quarters, 24 s shot clock stays.
+- Q2 length: test build to 21; Road Trip early cities 11, middle 15, late + tournament 21.
+- Q3 fouls: bad timing only (badly timed block jump reaching the shooter, or poking a shielded ball), 3-6 per game.
+- Q4 after a foul: 1 FT inside the arc, 2 beyond, and-one 1; reaching = sideline ball; missed last FT = live rebound.
+- Q5 out of bounds: simple (only a loose ball crossing a line).
+- Q6 Easy/Normal: the CPU is less sharp, not slower (shooting, reactions, timing, more fake bites, less help).
+- Q7 picking the level: start + game-over panel with big EASY/NORMAL/HARD buttons, remembered.
 
 ## Owner answers
 (none yet; the coordinator records them here and in `docs/VISION.md`)
