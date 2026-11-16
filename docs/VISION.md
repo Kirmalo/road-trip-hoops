@@ -61,6 +61,7 @@ tablet with a joystick and two buttons.
 | Player sprites | Our own original 3/4-view players, drawn by the team (scripts in tools/), designed with the owner step by step and improved over time |
 | Asset licenses (Phase 4) | CC0 and CC-BY only; no share-alike (CC-BY-SA, OGA-BY) art or music |
 | Swish and bounce | Synthesized by script (like the referee whistle), replacing the stand-ins |
+| Player art direction | Original characters in an angled 3/4 view, inspired by the 90s arcade fighting-game look (owner: "similar to the Street Fighter games"): muscular athletic builds, bold dark outlines, rich shading (3-4 shades per color, light from the upper left), dynamic poses, expressive faces. Never copy characters, costumes or art from any existing game. Arcade athletic proportions (head about 1/4 of height, long limbs), base size about 24x40 px drawn 2x. Streetball mix of outfits with a shared team color theme plus a soft team-colored ring under each player. 8 directions (5 drawn, 3 mirrored). Medium animation: run 6, dribble 4, shoot 4, dunk 5, block jump 3, celebrate 4, idle 2. Step 1: a style sample sheet for owner review |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
