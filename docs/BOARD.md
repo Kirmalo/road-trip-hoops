@@ -282,5 +282,16 @@ starts before Q3 and Q4.
 ## Doing
 
 ## Review
+- P3-01, P3-02, P3-03 (trial merge trial-p3w1): lead review APPROVE, with these notes.
+  - Follow-up for the coordinator (player.gd, not in P3-02's files): B1 mirrors the `reset_positions` rows and the
+    inbound spot by attack direction, but `player.spot_pos()` still uses the absolute `SPOTS` y. The team inbounding
+    at the right hoop now lines up on the opposite side from its offense spots (player 1 at +12 ft, his spot at -16 ft).
+    Mirror `s.y` by `inward(hoop)` too, or the halves still play differently.
+  - Note for P3-08: `Difficulty.level` defaults to HARD (per the contract). The board says first launch = Normal, so
+    the panel must pick Normal when `user://settings.cfg` has no saved level.
+  - BLUE bias check: `FIRST_BALL_TEAM` 0 means BLUE always gets the first ball (quarters used to alternate it), and
+    `players` update team 0 first every frame (older code). For balance tests, alternate or randomize the first ball
+    in `--autoplay` only.
+  - `is_game_point` counts a 2 as "one basket away", so GAME POINT shows from 19 even though 2s are rare.
 
 ## Done
