@@ -140,9 +140,11 @@ def player_palette(p):
         "seam": pal(["#5a2a14", "#3a1a0e", "#2a120a", "#1a0a06"]),
         "lip": None,
     }
-    for k in ("sleeve_pal", "band_pal", "cap_pal", "brim_pal", "tight_pal"):
+    for k in ("sleeve_pal", "band_pal", "cap_pal", "brim_pal", "tight_pal", "chain_pal", "wrist_pal"):
         if p.get(k):
             d[k[:-4]] = pal(p[k])
+    if p.get("top") == "bib" and "chain" not in d:
+        d["chain"] = pal(["#ffe68a", "#f2b62c", "#b87818", "#6e420e"])   # overall buckles (Phase 5)
     sk = d["skin"]
     d["lip"] = [sk[2], sk[2], sk[3], sk[3]]
     return d
@@ -319,6 +321,32 @@ def build(p, pose, expr="focus", portrait=False):
         x, y, z = q
         ax = abs(x)
         num = p["number"]
+        if p.get("chain"):  # new part (Phase 5): a chain resting on the chest, back of the neck behind
+            cy = (9.0 if top == "hoodie" else 8.45) * tk
+            if z > 0 and ax < 2.8 * W and abs(y - (cy + 0.30 * x * x)) < 0.5:
+                return "chain"
+            if z <= 0 and ax < 2.4 * W and abs(y - (9.9 * tk + 0.10 * x * x)) < 0.3:
+                return "chain"
+        if top == "bib":  # new top (Phase 5): overalls bib and straps (top_pal) over a tee (trim_pal)
+            neck = 9.4 * tk + 0.4 * x * x if z > 0 else 9.9 * tk + 0.3 * x * x
+            if y > neck:
+                return "skin"
+            if y > neck - 0.6:
+                return "trim+1"
+            strap = abs(ax - 1.9 * W) < 0.6
+            if z > 0:
+                if y < 7.6 * tk and ax < 2.9 * W:
+                    if abs(y - 7.6 * tk + 0.35) < 0.35 or (ax < 1.0 and abs(y - 5.4 * tk) < 0.35):
+                        return "top+1"   # top hem and the bib pocket
+                    return "top"
+                if strap:
+                    return "top"
+                if abs(ax - 1.9 * W) < 0.9 and abs(y - 7.9 * tk) < 0.45:
+                    return "chain"       # buckles
+            else:
+                if y < 4.6 * tk or strap:
+                    return "top"
+            return "trim"
         if top in ("tank", "hoodie"):
             arm_x = (3.25 if top == "tank" else 3.5) * W
             arm_y = 5.6 * tk
@@ -409,6 +437,12 @@ def build(p, pose, expr="focus", portrait=False):
         elif hair in ("buzz", "hightop"):  # new styles (make_players)
             if y > hairline(l) + (0.25 if hair == "buzz" else 0.0):
                 return "hair"
+        elif hair in ("afro", "beanie", "capf"):  # new styles (Phase 5): short hair under the big shape
+            if y > hairline(l) + 0.2:
+                return "hair"
+        elif hair == "mohawk":  # new style (Phase 5): shaved sides, faint stubble ring
+            if y > hairline(l) + 0.4 and abs(x) > 1.0:
+                return "skin+1"
         if portrait:
             f = face_features(l, expr, p)
             if f:
@@ -439,6 +473,26 @@ def build(p, pose, expr="focus", portrait=False):
     if hair == "hightop":  # new style (make_players): tall flat-topped hair, textured like the twists
         pl = (head_c + Rh @ vec(0, HY + 2.1, 0), Rh @ unit(0, -1.0, 0.15))
         prims.append(ell(head_c + Rh @ vec(0, 3.1, -0.35), Rh, HX + 0.1, 3.6, HZ - 0.1, "hair_tw", "hair", clip=pl))
+    if hair == "afro":  # new style (Phase 5): a big round afro, textured like the twists
+        pl = (head_c + Rh @ vec(0, 0.7, 0), Rh @ unit(0, 1.0, -0.75))
+        prims.append(ell(head_c + Rh @ vec(0, 1.7, -0.5), Rh, HX + 1.35, HY + 0.7, HZ + 1.0, "hair_tw", "hair", clip=pl))
+    if hair == "mohawk":  # new style (Phase 5): a tall ridge from the forehead to the nape
+        pl = (head_c + Rh @ vec(0, 0.9, 0), Rh @ unit(0, 1.0, -0.5))
+        prims.append(ell(head_c + Rh @ vec(0, 2.1, -0.4), Rh, 1.05, HY + 0.2, HZ + 0.5, "hair_tw", "hair", clip=pl))
+    if hair == "beanie":  # new style (Phase 5): knit cap (cap_pal) with a folded cuff and a pom (brim_pal)
+        bp0, bn = vec(0, 0.95, 0), unit(0, 1.0, -0.2)
+
+        def beanie_mat(h, prim, bp0=bp0, bn=bn):
+            q = head_local(h)
+            return "brim" if (q - bp0) @ bn < 0.75 else "cap"
+
+        pl = (head_c + Rh @ bp0, Rh @ bn)
+        prims.append(ell(head_c + Rh @ vec(0, 0.9, -0.15), Rh, HX + 0.4, HY + 0.45, HZ + 0.4, beanie_mat, "hair", clip=pl))
+        prims.append(Sphere(head_c + Rh @ vec(0, HY + 1.2, -0.4), 1.05, "brim", "hair"))
+    if hair == "capf":  # new style (Phase 5): cap worn forward, the brim over the eyes' line
+        pl = (head_c + Rh @ vec(0, 1.15, 0), Rh @ unit(0, 1.0, 0.12))
+        prims.append(ell(head_c + Rh @ vec(0, 0.55, -0.1), Rh, HX + 0.35, HY + 0.15, HZ + 0.35, "cap", "hair", clip=pl))
+        prims.append(ell(head_c + Rh @ vec(0, 1.35, 3.7), Rh @ rot_x(0.22), 2.6, 0.45, 2.0, "brim", "hair"))
     if hair == "cap":
         pl = (head_c + Rh @ vec(0, 0.75, 0), Rh @ unit(0, 1.0, -0.3))
         prims.append(ell(head_c + Rh @ vec(0, 0.55, -0.1), Rh, HX + 0.35, HY + 0.15, HZ + 0.35, "cap", "hair", clip=pl))
@@ -476,6 +530,10 @@ def build(p, pose, expr="focus", portrait=False):
 
         def arm_mat(h, prim, sleeve_side=sleeve_side, part=None):
             t = prim.t
+            if p.get("wrist") and prim.part == "fore" and 0.64 < t < 0.9:
+                return "wrist"   # new part (Phase 5): wristbands on both arms
+            if top == "bib" and (prim.part == "delt" or (prim.part == "upper" and t < 0.5)):
+                return "trim" if prim.part == "delt" or t < 0.4 else "trim+1"
             if top == "tee" and prim.part == "upper" and t < 0.55:
                 return "trim" if t > 0.42 else "top"
             if top == "longtee" and prim.part == "upper" and t < 0.95:
@@ -823,6 +881,9 @@ def stamp_face(px, cv, info, p, pp, yaw, expr="focus"):
     yaw_n = ((yaw + 180) % 360) - 180
     if abs(yaw_n) > 120:
         return  # back view: no face
+    if p.get("shades"):
+        stamp_shades(vis, put, skin, yaw_n, expr)
+        return
     if expr == "celebrate":
         stamp_cheer(vis, put, skin, brow, eye_dark, yaw_n)
         return
@@ -891,3 +952,52 @@ def stamp_cheer(vis, put, skin, brow, eye_dark, yaw_n):
             i, j = m
             put(i, j - 1, teeth)
             put(i, j, mouth_in)
+
+
+SHADE_LENS = (20, 18, 30)
+SHADE_GLINT = (150, 190, 235)
+
+
+def stamp_shades(vis, put, skin, yaw_n, expr):
+    """New (Phase 5): dark wraparound shades with a glint; a flat mouth, or the shout when celebrating."""
+    if abs(yaw_n) < 30:
+        l, r = vis((1.45, 0.05, 3.2)), vis((-1.45, 0.05, 3.2))
+        if l and r:
+            j = min(l[1], r[1])
+            a, b = sorted((l[0], r[0]))
+            for i in range(a - 1, b + 2):
+                put(i, j, SHADE_LENS)
+            put(a - 1, j - 1, SHADE_LENS)
+            put(b + 1, j - 1, SHADE_LENS)
+            put(a, j, SHADE_GLINT)
+            put(b - 1, j, SHADE_GLINT)
+        m = vis((0, -2.05, 3.0))
+        if m:
+            i, j = m
+            if expr == "celebrate":
+                put(i - 1, j - 1, FLAT["teeth"])
+                put(i, j - 1, FLAT["teeth"])
+                put(i - 1, j, FLAT["mouth_in"])
+                put(i, j, FLAT["mouth_in"])
+            else:
+                put(i - 1, j, darker(skin[3], 0.8))
+                put(i, j, darker(skin[3], 0.8))
+    else:
+        sx = -1.0 if yaw_n > 0 else 1.0
+        fwd = 1 if yaw_n > 0 else -1
+        e = vis((sx * 1.35, 0.05, 3.0))
+        if e:
+            i, j = e
+            put(i, j, SHADE_GLINT)
+            put(i + fwd, j, SHADE_LENS)
+            put(i - fwd, j, SHADE_LENS)
+            put(i - 2 * fwd, j, SHADE_LENS)   # the arm of the shades toward the ear
+            put(i - fwd, j - 1, SHADE_LENS)
+        m = vis((sx * 0.6, -2.05, 3.0))
+        if m:
+            i, j = m
+            if expr == "celebrate":
+                put(i, j - 1, FLAT["teeth"])
+                put(i, j, FLAT["mouth_in"])
+            else:
+                put(i, j, darker(skin[3], 0.8))
