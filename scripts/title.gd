@@ -19,7 +19,7 @@ const Difficulty = preload("res://scripts/difficulty.gd")
 const Cities = preload("res://scripts/cities.gd")
 
 const TRIP_PATH := "res://scripts/trip.gd"     # P5-05: new_trip(level), continue_trip(), set_level(level) optional
-const SAVE_PATH := "res://scripts/save.gd"     # P5-05: has_trip()
+const SAVE_PATH := "res://scripts/save.gd"     # P5-05: exists()
 const TRIP_FILE := "user://trip.json"          # the trip save (board "Save format"), read for the summary and crew
 const SFX_KEY := "sfx_volume"                  # settings.cfg key of the sound volume (P5-07 reads it at launch)
 const SFX_DEFAULT := 1.0
@@ -259,10 +259,18 @@ func _on_continue() -> void:
 	_stat("title_continue")
 	var trip: GDScript = _script(TRIP_PATH)
 	var before: String = str(Flow.screen)
+	var loaded: bool = false
 	if trip != null and trip.has_method("continue_trip"):
-		trip.call("continue_trip")
+		loaded = bool(trip.call("continue_trip"))
 	if not _busy and str(Flow.screen) == before:
-		_go("map")   # continue_trip() didn't pick a screen: the trip map
+		# continue where the trip left off (map, points, recruit or bracket); a finished trip stays on the title
+		var where: String = "map"
+		if loaded and trip.has_method("resume_screen"):
+			where = str(trip.call("resume_screen"))
+		if where == "title":
+			_show_panel("trip")
+		else:
+			_go(where)
 
 func _on_new_trip() -> void:
 	_show_panel("confirm" if _has_trip() else "level")
@@ -463,10 +471,13 @@ static func _script(path: String) -> GDScript:
 	return load(path) as GDScript
 
 static func _has_trip() -> bool:
+	var t: GDScript = _script(TRIP_PATH)
+	if t != null and t.has_method("has_save"):
+		return bool(t.call("has_save"))
 	var s: GDScript = _script(SAVE_PATH)
-	if s == null or not s.has_method("has_trip"):
-		return false
-	return bool(s.call("has_trip"))
+	if s != null and s.has_method("exists"):
+		return bool(s.call("exists"))
+	return false
 
 # the trip save as a Dictionary ({} = none); read only when save.gd says there is a trip
 static func _read_save() -> Dictionary:
@@ -485,6 +496,9 @@ static func _trip_summary() -> String:
 		return "Saved trip"
 	var city: String = str(Cities.city(str(s.get("city", ""))).get("name", str(s.get("city", "")).to_upper()))
 	var rec: Dictionary = s.get("record", {}) if s.get("record", {}) is Dictionary else {}
+	if str(s.get("phase", "")) == "done":
+		return "TRIP COMPLETE - CHAMPIONS!  %d-%d  -  %s  -  start a NEW TRIP to go again" % [int(rec.get("wins", 0)),
+				int(rec.get("losses", 0)), str(s.get("level", "normal")).to_upper()]
 	return "%s, GAME %d  -  %d-%d  -  %s" % [city, int(s.get("game", 1)), int(rec.get("wins", 0)),
 			int(rec.get("losses", 0)), str(s.get("level", "normal")).to_upper()]
 
