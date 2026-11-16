@@ -577,7 +577,11 @@ func _view_lift_of(p) -> float:
 func _hand_point(p, kind: String):
 	if _hands == null or p == null or not ("_v_sheet" in p) or not p._v_sheet or p._v_spr == null:
 		return null
+	# hands.json is keyed by sheet id: the file the player actually loaded (a trip crew sheet, a _crew recolor, or
+	# blue_n / red_n in Quick Game)
 	var id := "%s_%d" % ["blue" if p.team == 0 else "red", p.index + 1]
+	if p.has_method("sheet_path"):
+		id = String(p.sheet_path()).get_file().get_basename()
 	if not _hands.has(id):
 		return null
 	var spr: Sprite2D = p._v_spr
