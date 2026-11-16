@@ -323,8 +323,10 @@ func _clear_around(inbounder) -> void:
 # ---------------- game start and the side switch ----------------
 
 func start_game() -> void:
-	game.reset_positions(FIRST_BALL_TEAM)
-	game.give_ball(game.teams[FIRST_BALL_TEAM][0])
+	# CPU-vs-CPU test games pick the first ball at random so balance tests aren't tilted by it (about +0.25 points)
+	var first: int = game.rng.randi() % 2 if game.autoplay else FIRST_BALL_TEAM
+	game.reset_positions(first)
+	game.give_ball(game.teams[first][0])
 	game.show_message("FIRST TO %d" % target, START_MSG_TIME)
 
 # P3-02: after the made basket's pause, stop SWITCH_PAUSE s, whistle, flip the hoops and line both teams up on their

@@ -317,3 +317,13 @@ starts before Q3 and Q4.
   - Lead runs: autoplay 21-14, 19-21 (1 switch each, OOB 2 and 3, fouls 3 and 2); humantest 21-18, OOB 2. No errors.
 
 ## Done
+- P3-01/02 rules.gd, first to 21, 1s and 2s, side switch (merged a2860e2); P3-03 difficulty plumbing (merged).
+- P3-05/06 fouls and free throws (merged 16ce490).
+- P3-07 out of bounds (incl. unrequested rare long/wide rim bounces, owner to confirm), P3-08 difficulty panel,
+  coordinator fixes: foul popup only on an accepted call, SWITCH_SKIPS_FT_REBOUND false (owner Q4) (merged 7a2a6da).
+- P3-10 Normal/Easy values, P3-11 README and CLAUDE.md (merged). RED win share vs a Hard BLUE: Hard 62%, Normal 30%,
+  Easy 20% (40 games each; Hard's 62% is within noise per P3-04).
+- P3-04 game length + balance (docs/qa/phase3-length.md): to 21 about 13 min / 90 shots; to 15 about 9 min; to 11
+  about 6.5 min. No team bias over ~2,180 games (BLUE 48-51%); B1 gone (right/left hoop points level). 2-pointers
+  are only ~10% of points (P3-09). Coordinator: --autoplay now picks the first ball at random; CLAUDE.md says to
+  judge balance on 200+ games.

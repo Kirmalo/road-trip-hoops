@@ -45,6 +45,8 @@ After gameplay changes, run several `--autoplay` games and check the stats look 
 75-120 shots and 10-15 minutes of game time (`GAME LENGTH`), ends 21-x (the loser usually 12-20), has about 2-6
 fouls and 2-3 out of bounds, one side switch, and few interceptions or shot-clock violations.
 Look at a screenshot after visual changes.
+Judge team balance on 200+ `--autoplay` games: 40-game batches swing up to about 65/35 by chance
+(docs/qa/phase3-length.md). `--autoplay` picks the first ball at random.
 
 ## Web build (how the owner plays)
 The owner plays the web version at https://kirmalo.github.io/road-trip-hoops/ (GitHub Pages, served from the
