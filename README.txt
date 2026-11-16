@@ -10,6 +10,65 @@ OPEN IT ON THE TABLET
 2. Open Godot, tap Import, and pick the project.godot file inside RoadTripHoops.
 3. Open the project and press the Play button (top right). The first open takes a moment while Godot imports the images.
 
+THE TITLE SCREEN
+The game opens on the title screen with four buttons:
+- ROAD TRIP: the campaign (see THE ROAD TRIP below). It shows CONTINUE (your saved trip, lit gold) and NEW TRIP.
+  NEW TRIP then asks for the level: EASY, NORMAL or HARD. If you already have a saved trip, NEW TRIP first asks
+  START OVER (your old trip is gone) or KEEP MY TRIP.
+- QUICK GAME: one game to 21, the same as before: the panel picks the level (EASY / NORMAL / HARD), the COURT and the
+  MUSIC, then you play. After the game the panel comes back; its TITLE button goes back to the title.
+- SETTINGS: MUSIC on or off, the SOUND volume slider and the LEVEL (for Quick Game and new trips; with a saved trip
+  it also changes that trip's level). More settings come in a later update.
+- CREW & CREDITS: your crew and their stats (from your saved trip, if any) and the art and music credits. Drag the
+  list to scroll.
+BACK on each screen goes back to the title.
+
+THE ROAD TRIP
+You are the Cornfield Kings, three underdogs from a small town in Indiana: Deuce (shooting wing, the leader), Jojo
+(quick point guard) and Tank (big man). You drive your van, The Biscuit, across the country to a streetball
+tournament in New York.
+- The map: the USA with a pin for every city. Gold = where you play next, a trophy = beaten, grey = coming soon.
+  The card at the bottom left shows the city, the game (1, 2 or 3), the points to win and the crew you face. Tap a
+  pin to look at that city; tap the map to go back to yours. GO plays on. MENU (top right) goes to the title.
+- Each city has one local crew, and you play them 3 times, each time stronger:
+  game 1 to 11 points (1 good player and 2 average ones), game 2 to 15 (2 good, 1 average), game 3 to 21 against
+  2 good players and the crew's BOSS. Win all 3 to move on. A city's first visit starts with a short story scene.
+- Lose a game? No penalty: tap RETRY and play that same game again.
+- Story scenes: big portraits and a text box. Tap to see the whole line, tap again for the next one. SKIP (top
+  right) skips the rest of the scene.
+- After each game a result screen shows the score, WIN or LOSS and a few stats for both crews. NEXT plays on.
+- Stat points: every win earns 2 stat points. After a city you spend them on the points screen: pick a player, then
+  tap +3 next to one of his stats (Speed, Shooting, Finishing, Defense, Stamina). Each point adds 3; no stat goes
+  above 90. UNDO takes back the last point. DONE moves on (points you don't spend are kept for later).
+- Recruit: after a city you pick ONE of its 3 best players (its 2 good players or the boss) to join your bench.
+  Tap his card, then tap SIGN (his name) to confirm. He keeps his ratings and wears your blue and gold.
+- Lineup: before every game you pick your 3 starters from the whole crew. Tap a card to put him in; the FIRST one
+  you pick is you (he gets the YOU badge), the next two are your teammates. Tap a starter again to bench him. The
+  game remembers your lineup for the next game. PLAY starts the game.
+- New York: the tournament, a bracket of 3 rounds (quarterfinal, semifinal, final), all to 21. The final is against
+  the champions and their boss, King. A loss just replays that round. Wins still earn stat points; when you have
+  some, the bracket shows a POINTS button to spend them between rounds. Win the final for the ending.
+- Saving: the trip saves by itself after every game and every choice. One trip at a time. Close the game whenever
+  you like; ROAD TRIP > CONTINUE on the title brings you back to where you were.
+
+THE PAUSE SCREEN
+In every game a pause button (two bars) sits in the top right corner. Tap it to stop the game. The pause screen
+shows the score and the stats of both teams, and has:
+- RESUME: back to the game (the controls wait a moment, so the tap doesn't leak into the game)
+- RESTART: the same game again from 0-0 (tap twice to confirm)
+- QUIT: to the title in a Quick Game, to the trip map in a trip game; the quit game doesn't count and starts again at
+  0-0 next time (tap twice to confirm)
+- MUSIC on/off and the SOUND volume (both remembered)
+
+WHAT IS STILL A PLACEHOLDER (until Phase 6)
+- Only Hometown, Chicago and New York can be played. Memphis, New Orleans, Denver, Seattle and Los Angeles are grey
+  "coming soon" pins; the van drives past them.
+- New York is a stub: the bracket works, but only King has his own art; the other New York players use the plain
+  red Quick Game players, and there is no special court yet.
+- The story text, the names of the city crews and their players, and the tournament name are placeholders. The
+  courts and music are borrowed (Hometown plays on the blacktop, Chicago in the gym, New York on the blacktop).
+- City twists (wind, crowd, humid air, ...) come in Phase 6. Your 3 underdogs, the crew name and the van are final.
+
 THE VIEW
 You see the court at an angle from the near sideline, like a TV camera in the stands: the far sideline is at the
 top of the screen, the players stand upright and jump up toward the top. The camera follows the ball left and
@@ -50,8 +109,9 @@ THE RULES
   sometimes flies out over the baseline.
 
 DIFFICULTY
-- EASY / NORMAL / HARD: big buttons on a panel when the game opens and again after every game, under the final
-  score. Tap one to play. The game remembers your choice (the lit button) the next time you open it. The first
+- EASY / NORMAL / HARD: big buttons on the Quick Game panel, before the game and again after every game, under the
+  final score. Tap one to play. On the Road Trip you pick the level when you start a new trip (change it later in
+  SETTINGS). The game remembers your choice (the lit button) the next time you open it. The first
   time it starts on NORMAL.
 - Under the levels are two more buttons:
   - COURT: GYM or COURT: BLACKTOP. Tap it to pick the other court (an indoor gym with bleachers, or an outdoor
@@ -124,6 +184,34 @@ through. Switch the music off with the MUSIC button on the panel. Credits are in
 No sound in the browser? Make sure the tablet's media volume is up (not just the ringer), then tap the screen once.
 
 EASY THINGS TO CHANGE (at the top of each file)
+The Road Trip:
+scripts/cities.gd (the cities, crews and players, all plain data):
+- STAGE_AVG: the rating of an average player at each stop of the trip (1 = Hometown 40 ... 8 = New York 70)
+- TIER: what good players and bosses add on top: "good" +4 on everything and +12 on their two specialties ("spec"),
+  "boss" +20 on everything
+- CITY_TARGETS: points to win games 1, 2 and 3 in a city ([11, 15, 21]); TOURNAMENT_TARGET: New York rounds (21)
+- CITIES: one block per city: "name", "state", "look" (the court: "gym" or "blacktop"), "music", "built" (false =
+  "coming soon" pin, the trip skips it), and its "crew" ("name", "style": inside / outside / balanced, the good,
+  boss and average players). New York's "rounds" list the 3 tournament crews.
+- PLAYERS: one block per player: "name", "role", "number", "tier", "spec", "steal_bias" / "block_bias" (steal and
+  block = defense + bias). Your 3 underdogs have their "ratings" written out (speed, shooting, finishing, defense,
+  stamina; 0-100, 50 = a Quick Game player).
+- CREW_NAME / VAN_NAME: "CORNFIELD KINGS" and "THE BISCUIT"
+scripts/trip.gd (the trip rules):
+- POINTS_PER_WIN: stat points for each win (2)
+- POINT_GAIN: how much one point adds to a stat (3)
+- STAT_CAP: no stat goes above this by spending points (90)
+- TOURNAMENT_POINTS: true = New York wins earn points too
+- DEFAULT_LEVEL: the level of a trip when none is picked ("normal")
+scripts/story_text.gd (the story):
+- SCENES: every scene as a list of lines. Each line has "who" (a player id from cities.gd, or "narrator"), "side"
+  ("left" or "right"), "text" and maybe "mood" ("happy" or "smug"). In the text, {crew} becomes Cornfield Kings,
+  {van} The Biscuit and {city} the city's name. Keep a line to about 2 short sentences.
+  Scenes: trip_start, hometown_arrive, hometown_won, chicago_arrive, chicago_won, first_loss, final_before, ending.
+scripts/trip_map.gd: DRIVE_TIME: seconds the van drives to the next city (3.0)
+scripts/story.gd: TYPE_CPS: how fast the story text types out (48 letters per second)
+
+The game:
 scripts/view.gd (the angled view):
 - DEFAULT_MODE: ANGLED (the game's view) or FLAT (the old straight-down view)
 - TILT_Y: how flat the court looks (0.48; 1.0 = straight down, smaller = lower camera)
@@ -227,8 +315,25 @@ FILES
 - touch_controls.gd: joystick and buttons
 - audio.gd: plays the sound effects (files in assets/sfx) and the music (files in assets/music)
 - fx.gd: popups, screen shake, fire trail
+The Road Trip:
+- flow.gd: moves between the screens (title, map, story, lineup, game, result, points, recruit, bracket)
+- trip.gd: the trip's rules and progress (games, retries, stat points, recruits, starters, New York, CONTINUE)
+- save.gd: writes and reads the trip save (user://trip.json) safely
+- cities.gd: the cities, crews and players (data)
+- ratings.gd: what the five stats do in a game
+- ui_kit.gd: the shared look of the buttons and panels on the screens
+- title.gd: the title screen, SETTINGS and CREW & CREDITS
+- trip_map.gd: the trip map with the van
+- story.gd: the story scenes (the lines are in story_text.gd)
+- lineup.gd: picking your 3 starters
+- after_game.gd: the result screen and the stat points screen
+- recruit.gd: signing a player after a city
+- bracket.gd: the New York tournament bracket
+- pause.gd: the pause button and screen
+- trip_test.gd: a test that plays a whole trip by itself (for the team, not used in play)
 
-Art: the players, courts and ball are original pixel art made for this game by the scripts in tools/art. The
+Art: the players, courts, ball, trip map and story portraits are original art made for this game by the scripts
+in tools/art. The
 old Kenney Sports Pack sprites (www.kenney.nl, CC0) in assets/ are only a fallback if a new picture is missing.
 Sounds and music: see CREDITS.md.
 
@@ -240,5 +345,7 @@ The pictures are drawn by scripts, not by hand, so they can be changed and made 
   the script again. "--only ID" makes just one player.
 - python3 tools/art/make_courts.py    makes the court floors and backdrops in assets/courts and the ball in
   assets/ball.
+- python3 tools/art/make_portraits_v2.py   makes the story portraits in assets/portraits (comic style).
+- python3 tools/art/make_map.py       makes the trip map, pins and van in assets/map.
 - Preview pictures go to docs/art (not used by the game). Copy the new files into the project on the tablet and
   Godot picks them up when it re-imports.

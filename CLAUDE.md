@@ -8,7 +8,8 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
 - `project.godot`: 1280x720 landscape, stretch `canvas_items` + `expand`, GL Compatibility renderer, nearest filtering.
   The features version is "4.3" so older Android editors open it without a warning. Keep code compatible with Godot 4.3+.
 - `main.tscn`: a single Node2D with `scripts/main.gd`. Everything else is built in code (no other scenes).
-- `scripts/main.gd`: game manager. Clocks, possession, HUD, camera, input routing, the test modes.
+- `scripts/main.gd`: game manager. Clocks, possession, HUD, camera, input routing, the test modes. Builds the game
+  when `Flow.screen == "game"`, else asks `flow.gd` for the current screen; plays a trip game from `Flow.match`.
 - `scripts/rules.gd`: first to 21, scoring, switching sides, dead balls and inbounds, fouls, free throws, out of bounds.
 - `scripts/difficulty.gd`: EASY / NORMAL / HARD values for RED, and the saved settings (`user://settings.cfg`).
 - `scripts/menu.gd`: the launch and game-over panel (levels, COURT and MUSIC buttons).
@@ -24,11 +25,29 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
 - `scripts/court_looks.gd`: court looks as data (gym, blacktop): colors, textures, music track.
 - `scripts/fx.gd`: popups, screen shake, fire trail. `scripts/audio.gd`: sound effects and music (crossfade, ducking).
 - `scripts/touch_controls.gd`: floating joystick on the left half, A and B buttons on the right.
+- Road Trip (Phase 5): static data and logic, and screens built in code (each a CanvasLayer from its own script):
+  - `scripts/flow.gd`: scene flow (static). `Flow.go(screen, args)` reloads `main.tscn` into a screen; `Flow.match`
+    is the next trip game, `Flow.last_result` the last one. Screen table in `SCREENS`.
+  - `scripts/trip.gd`: the trip's progress and rules (static): games per city, retries, stat points, recruits,
+    starters, the New York bracket, where CONTINUE resumes, `match_for()`. `scripts/save.gd`: the save file
+    `user://trip.json` (temp file + rename; tests use `user://trip_test.json`).
+  - `scripts/cities.gd`: route, cities, crews and players as const data (stage ratings, tiers, game targets).
+    `scripts/ratings.gd`: the five stats (speed, shooting, finishing, defense, stamina) and how they map onto play.
+  - `scripts/ui_kit.gd`: the shared look for the screens (buttons, panels, sliders).
+  - `scripts/title.gd`: screens "title", "settings", "crew" (ROAD TRIP / QUICK GAME / SETTINGS / CREW & CREDITS).
+  - `scripts/trip_map.gd`: "map" (USA map, pins, the van, GO). `scripts/story.gd`: "story" (portraits and text box);
+    the lines are data in `scripts/story_text.gd`. `scripts/lineup.gd`: "lineup" (pick 3 starters, the first is you).
+  - `scripts/after_game.gd`: "result" (score, RETRY / NEXT) and "points" (spend stat points).
+    `scripts/recruit.gd`: "recruit" (sign one of 3). `scripts/bracket.gd`: "bracket" (New York, 3 rounds).
+  - `scripts/pause.gd`: the pause button (top-right) and panel in every human game.
+  - `scripts/trip_test.gd`: the `--trip-test` driver (plays a whole trip headless through each screen's
+    `auto_step()`).
 - `assets/`: original art made by `tools/art/` (`players/` sprite sheets + `hands.json`, `courts/` floors and
-  backdrops, `ball/`), `sfx/` and `music/` (see `CREDITS.md`). The old Kenney Sports Pack sprites (`assets/*.png`,
-  facing +x) are only a fallback when a new file is missing.
+  backdrops, `ball/`, `portraits/` story portraits, `map/` trip map), `sfx/` and `music/` (see `CREDITS.md`).
+  The old Kenney Sports Pack sprites (`assets/*.png`, facing +x) are only a fallback when a new file is missing.
 - `tools/`: `art/make_players.py` (players from `art/crews.json`, renderer `art/pixel3d.py`), `art/make_courts.py`
-  (courts and ball), `make_sfx.sh` / `make_music.sh` (sound and music processing), `build_web.sh`. Python 3 with
+  (courts and ball), `art/make_portraits_v2.py` (portraits, drawing kit `art/comic.py`), `art/make_map.py` (trip
+  map), `make_sfx.sh` / `make_music.sh` (sound and music processing), `build_web.sh`. Python 3 with
   Pillow and numpy; rerun a generator and commit its output in `assets/`.
 
 ## Conventions
@@ -68,6 +87,29 @@ Test flags (after `--`, combine with the modes above):
 - `--ballshots [DIR]` (xvfb, angled): screenshots of the ball (dribble, lob, rim, dunk, loose) to DIR, default `/tmp`.
 - `--viewtest`: checks the projection round trip and stick mapping, prints the result and quits.
 - `--fps`: prints the frame rate every few seconds.
+
+Road Trip tests (Phase 5). Every test mode above skips the title screen and plays a Quick Game as before; the trip
+tests use `user://trip_test.json`, never the owner's save:
+```
+# a whole trip headless through every screen: title, Hometown (3 games), points, recruit, Chicago, New York, ending.
+# Prints TRIP lines and ends with "TRIP END" (exit 0) or "TRIP ERROR: <why>" (exit 1)
+godot --headless --path . --fixed-fps 60 --quit-after 2000000 -- --trip-test --target 3
+# trip data and save round trip: every city game's lineups and save checks, then a second process loads and compares
+godot --headless --path . -- --triptest-data
+godot --headless --path . -- --triptest-data --load
+# prints the ratings table (what each stat does on today's values; checks that 50 = exactly today) and quits
+godot --headless --path . -- --ratingtest
+# taps through the title, settings and crew screens, ends on QUICK GAME (screenshots /tmp/hoops_title*.png,
+# /tmp/hoops_settings.png, /tmp/hoops_crew*.png when run under xvfb without --headless)
+godot --headless --path . --fixed-fps 60 --quit-after 20000 -- --titletest
+```
+- `--trip-force-loss N` (with `--trip-test`): the Nth trip game of this run is lost, to test the retry.
+- `--trip-stop-after <city>` (with `--trip-test`): quits on the map once that city is done ("TRIP STOP", saved).
+- `--trip-resume` (with `--trip-test`, a new process): loads the test save and plays on from there.
+- `--screens` (with `--trip-test`, xvfb): screenshots of every screen to `/tmp/hoops_screen_NN_<screen>.png`; each trip
+  game is then decided at once.
+- `--city <id> --cgame N` (N = 1..3, default 1): play that city game's matchup (crews, ratings, target, court, music)
+  CPU vs CPU, or with `--humantest` / a screenshot mode. Ids are the `cities.gd` keys (`hometown`, `chicago`, ...).
 
 After gameplay changes, run several `--autoplay` games and check the stats look sane. A typical game to 21 is about
 75-120 shots and 10-15 minutes of game time (`GAME LENGTH`), ends 21-x (the loser usually 12-20), has about 2-6
