@@ -52,7 +52,7 @@ const FB_CPU_FT_WAIT_MIN := 0.8      # fallback CPU shooter (until P3-06): secon
 const FB_CPU_FT_WAIT_MAX := 1.4
 const FB_CPU_FT_QUALITY_MIN := 0.97  # ... and his quality (x main.FT_BASE 0.72 = about 70-78% made), through
 const FB_CPU_FT_QUALITY_MAX := 1.08  # Difficulty.value(team, "ft_quality", ...)
-const SWITCH_SKIPS_FT_REBOUND := true # a missed last free throw while the side switch waits: no live rebound, the
+const SWITCH_SKIPS_FT_REBOUND := false # a missed last free throw while the side switch waits: no live rebound, the
                                      # defense gets the ball after "SWITCH SIDES" (false: live rebound, the switch waits
                                      # for the next dead ball)
 
