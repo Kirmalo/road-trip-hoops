@@ -57,6 +57,7 @@ tablet with a joystick and two buttons.
 | Easy / Normal | Today's CPU = Hard. Easy and Normal make the CPU less sharp, not slower: worse shooting, slower reactions, worse steal/block timing, more bites on fakes, less help defense |
 | Picking the level | Big EASY / NORMAL / HARD buttons on a start panel and after each game; the choice is remembered |
 | Phase 3 check-in | Difficulty levels well spaced. Keep games to 21 in the test build. Keep the long rim bounces that go out of bounds. Crossovers beating the assisted defender: fine on Hard, but on Easy/Normal a CPU crossover beats you less often (difficulty knob cross_beat_human: Hard 1.0, Normal 0.75, Easy 0.5) |
+| Camera view | Angled 3/4 view (court seen at an angle from the sideline, upright players, visible backboards, like classic arcade basketball). The game simulation stays 2D top-down underneath; only drawing and joystick mapping change. Decided before Phase 4 art (owner, Phase 4 start) |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
@@ -98,7 +99,7 @@ ball. Skill-based steals and blocks; close guarding slows the driver. Retune the
 meter), out of bounds, Easy / Normal / Hard. Check game length: if full-court games to 21 run past about 8 minutes,
 propose a fix (e.g. a shorter target in early cities).
 
-**Phase 4: pixel art and audio.** Replace the Kenney sprites with CC0 pixel art: players (team colors through recolor or
+**Phase 4: 3/4 view, pixel art and audio.** First switch the camera to the angled 3/4 view (court drawn with depth, depth-sorted upright sprites, new hoops with backboards, joystick mapped to the view). Replace the Kenney sprites with CC0 pixel art: players (team colors through recolor or
 a palette shader), ball, courts, effects. Court art is set per city by data. Music player with a track per city. Fill in
 `CREDITS.md`.
 
