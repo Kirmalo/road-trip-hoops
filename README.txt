@@ -10,6 +10,12 @@ OPEN IT ON THE TABLET
 2. Open Godot, tap Import, and pick the project.godot file inside RoadTripHoops.
 3. Open the project and press the Play button (top right). The first open takes a moment while Godot imports the images.
 
+THE VIEW
+You see the court at an angle from the near sideline, like a TV camera in the stands: the far sideline is at the
+top of the screen, the players stand upright and jump up toward the top. The camera follows the ball left and
+right and shows about two thirds of the court. The baselines stay left and right, so "right" on the stick is
+toward the right hoop and "up" on the stick is toward the far sideline, as you see it.
+
 HOW TO PLAY
 You are BLUE (the player with the yellow ring). BLUE starts on the RIGHT hoop; the arrow next to BLUE in the top
 bar shows which way you attack (it flips when the teams switch sides).
@@ -47,6 +53,11 @@ DIFFICULTY
 - EASY / NORMAL / HARD: big buttons on a panel when the game opens and again after every game, under the final
   score. Tap one to play. The game remembers your choice (the lit button) the next time you open it. The first
   time it starts on NORMAL.
+- Under the levels are two more buttons:
+  - COURT: GYM or COURT: BLACKTOP. Tap it to pick the other court (an indoor gym with bleachers, or an outdoor
+    blacktop with a fence and the street behind it). The panel comes back with the new court behind it; then tap a
+    level to play. The game remembers the court.
+  - MUSIC: ON / MUSIC: OFF. Tap it to switch the music on or off at once. The game remembers it.
 - Only the CPU team (RED) changes; it is never slower. On NORMAL and EASY the CPU shoots worse, reacts later to
   crossovers and shots, times its steals and blocks worse, bites on pump fakes more and helps less on defense.
 
@@ -106,11 +117,31 @@ ON FIRE
 - First miss: "He's cooling down." A second miss (or block) puts the fire out. A make in between makes him fully hot
   again. CPU players can catch fire too.
 
-SOUND
-The game now has sound effects (swish, rim, bounce, dunk, block, crowd, whistle, fire). Credits are in CREDITS.md.
+SOUND AND MUSIC
+The game has sound effects (swish, rim, bounce, dunk, block, crowd, whistle, fire) and music. The panels play the
+menu music; in a game each court has its own track (gym or blacktop), played softer so the game sounds come
+through. Switch the music off with the MUSIC button on the panel. Credits are in CREDITS.md.
 No sound in the browser? Make sure the tablet's media volume is up (not just the ringer), then tap the screen once.
 
 EASY THINGS TO CHANGE (at the top of each file)
+scripts/view.gd (the angled view):
+- DEFAULT_MODE: ANGLED (the game's view) or FLAT (the old straight-down view)
+- TILT_Y: how flat the court looks (0.48; 1.0 = straight down, smaller = lower camera)
+- PERSPECTIVE: 0 = no narrowing; 0.1-0.2 makes the far side narrower than the near side (sprites shimmer more)
+- HEIGHT_SCALE: how tall jumps, the ball's height and the rims look (1.0)
+- SIDE_FLIP: false = the camera stays on the same sideline when the teams switch sides; true = it moves to the
+  other sideline
+scripts/main.gd (the camera):
+- CAM_ZOOM: how close the camera is in the angled view (1.68; bigger = closer, less court on screen)
+- CAM_ZOOM_MIN: how far it may zoom out on a short screen (1.2)
+- CAM_ZOOM_FLAT: the zoom of the flat view (1.15)
+- CAM_FOLLOW_X / CAM_FOLLOW_Y: how much the camera follows the ball left/right (1 = fully) and up/down (0 = not)
+- CAM_SMOOTHING: how quickly the camera catches up (4.0)
+scripts/court_looks.gd (the courts):
+- LOOKS: one block per court ("gym", "blacktop"): its name on the button, its music track, the floor and backdrop
+  pictures, and the colors of the floor, lines, paint, backboard, rim, net and pole. Colors are
+  Color(red, green, blue) from 0 to 1, an optional fourth number is see-through (1 = solid).
+- DEFAULT: the court the first game uses ("gym")
 scripts/rules.gd (the rules):
 - TARGET_SCORE: points to win (21)
 - WIN_BY: 1 = 21-20 wins; 2 = play on until a team leads by 2
@@ -175,21 +206,39 @@ scripts/difficulty.gd:
 scripts/ball.gd:
 - RIM_LONG_CHANCE / RIM_WIDE_CHANCE: how often a miss bounces hard off the back or side of the rim (0 = never)
 scripts/audio.gd:
-- MASTER_DB: sound volume (lower = quieter, e.g. -6.0)
+- MASTER_DB: sound effects volume (lower = quieter, e.g. -6.0)
+- MUSIC_DB: music volume (-14.0; lower = quieter, e.g. -20.0)
+- MUSIC_DUCK_DB: how much softer the music plays during a game than on the panels (-8.0; 0.0 = just as loud)
 Shooting odds are in shot_probability() in main.gd. CPU behavior is in scripts/player.gd and scripts/defense.gd.
 
 FILES
 - main.gd: game loop, shot clock, HUD, input routing, steals, on fire, the test modes
 - rules.gd: first to 21, scoring, switching sides, dead balls and inbounds, fouls and free throws, out of bounds
 - difficulty.gd: EASY / NORMAL / HARD values for the CPU, and saving your choice
-- menu.gd: the EASY / NORMAL / HARD panel
+- menu.gd: the EASY / NORMAL / HARD panel, with the COURT and MUSIC buttons
 - human_input.gd: your controls (crossover flicks, pump fake taps, CALL, STEAL/BLOCK button)
 - player.gd: movement, turbo, crossovers, pump fakes, dunks, layups, alley-oops, ratings, CPU offense
 - defense.gd: CPU defense (man-to-man, pokes, block jumps) and block rules
 - ball.gd: dribbling, passes, shot arcs, rebounds
-- court.gd: draws the court, rims and nets
+- court.gd: draws the court, rims and nets (through view.gd)
+- view.gd: the angled view: turns positions on the court into spots on the screen (the game itself still plays on a
+  flat top-down court), and the stick into a direction on the court
+- court_looks.gd: the court looks (gym, blacktop): colors, pictures and music of each court
 - touch_controls.gd: joystick and buttons
-- audio.gd: plays the sound effects (files in assets/sfx)
+- audio.gd: plays the sound effects (files in assets/sfx) and the music (files in assets/music)
 - fx.gd: popups, screen shake, fire trail
 
-Art: Kenney Sports Pack (www.kenney.nl), CC0. Sounds: see CREDITS.md.
+Art: the players, courts and ball are original pixel art made for this game by the scripts in tools/art. The
+old Kenney Sports Pack sprites (www.kenney.nl, CC0) in assets/ are only a fallback if a new picture is missing.
+Sounds and music: see CREDITS.md.
+
+MAKING THE ART AGAIN (for the curious; needs a computer with Python 3, Pillow and numpy)
+The pictures are drawn by scripts, not by hand, so they can be changed and made again:
+- python3 tools/art/make_players.py   makes the player sheets in assets/players (and hands.json, where the ball
+  sits in each frame). Each player is described in tools/art/crews.json: body, skin, hair, top, shorts, colors,
+  number. A new player is one more entry there (the help text at the top of the file lists the choices); then run
+  the script again. "--only ID" makes just one player.
+- python3 tools/art/make_courts.py    makes the court floors and backdrops in assets/courts and the ball in
+  assets/ball.
+- Preview pictures go to docs/art (not used by the game). Copy the new files into the project on the tablet and
+  Godot picks them up when it re-imports.
