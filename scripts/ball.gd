@@ -36,6 +36,8 @@ var lob_start := Vector2.ZERO
 var lob_takeoff_sent := false
 var next_alley := false    # set by the alley-oop dunker just before release (like next_shot_kind)
 var shot_alley := false    # the shot in flight is an alley-oop dunk
+var last_touch_team := -1  # team that touched the ball last (P3-07): the other team gets it if it goes out
+var loose_cause := ""      # why the ball is loose: "steal", "block", "rebound", "pass" (out-of-bounds stats)
 
 # ---- dunk and layup flight (tuning) ----
 const DUNK_FLIGHT := 0.12      # seconds from the hand to the rim on a dunk (a quick slam)
@@ -78,6 +80,18 @@ const LOB_CATCH_Z := 50.0         # height where the jumping receiver catches it
 const LOB_PICK_FRAC := 0.4        # only the first 40% of the flight can be picked off (then it's over everyone)
 const ALLEY_POPUP_COLOR := Color(0.35, 0.85, 1.0)
 
+# ---- out of bounds (P3-07, owner Q5: simple, only a loose ball crossing a sideline or baseline is out) ----
+const OOB_MARGIN_PX := 2.0        # the ball's center must be this far past the line (on the line is still in)
+const RIM_LONG_CHANCE := 0.08     # a missed shot kicks long off the back of the rim (toward the baseline, usually out)
+const RIM_LONG_ANGLE := 0.7       # radians either side of straight back
+const RIM_LONG_SPEED_MIN := 230.0 # px/s
+const RIM_LONG_SPEED_MAX := 340.0
+const RIM_WIDE_CHANCE := 0.06     # ... or hard off the side of the rim, a long rebound toward a sideline
+const RIM_WIDE_ANGLE_MIN := 1.15  # radians from straight out toward the court (PI / 2 = along the baseline)
+const RIM_WIDE_ANGLE_MAX := 1.55
+const RIM_WIDE_SPEED_MIN := 430.0 # px/s
+const RIM_WIDE_SPEED_MAX := 540.0
+
 const PASS_SPEED := 720.0
 const GRAVITY := 900.0
 
@@ -92,6 +106,7 @@ func setup(g) -> void:
 func hold(p) -> void:
 	state = HELD
 	holder = p
+	last_touch_team = p.team
 	receiver = null
 	lob = false
 	shooter = null
@@ -104,6 +119,8 @@ func pass_to(from_p, to_p, lob_mode := -1) -> void:
 	var make_lob := lob_mode == 1 or (lob_mode < 0 and is_lob_target(to_p, from_p))
 	state = PASS
 	passer = from_p
+	if from_p != null:
+		last_touch_team = from_p.team
 	receiver = to_p
 	holder = null
 	intercept_checked = {}
@@ -192,7 +209,19 @@ func shoot(p, hoop: Vector2, made: bool, points: int) -> void:
 	shot_points = points
 	blocked_checked = false
 
+# Who knocked it loose is judged from the state before (main.attempt_steal and main.block_shot call this while the
+# handler still holds it or the shot is still in the air): a held ball or a shot came loose off a defender's hand.
+# The rim-out below overrides it with the shooter's team.
 func make_loose(from: Vector2, v: Vector2, height := 20.0, up := 150.0) -> void:
+	if state == HELD and holder != null:
+		last_touch_team = 1 - holder.team
+		loose_cause = "block" if holder.rim_kind != "" else "steal"
+	elif state == SHOT and shooter != null:
+		last_touch_team = 1 - shooter.team
+		loose_cause = "block"
+	elif state == PASS and passer != null:
+		last_touch_team = passer.team
+		loose_cause = "pass"
 	state = LOOSE
 	holder = null
 	receiver = null
@@ -277,7 +306,20 @@ func update(delta: float) -> void:
 					var inward := 1.0 if shot_hoop.x < game.COURT_W / 2 else -1.0
 					var ang: float = game.rng.randf_range(-1.2, 1.2)
 					var v: Vector2 = Vector2(inward, 0).rotated(ang) * game.rng.randf_range(140.0, 280.0)
+					var ft_miss: bool = game.rules != null and game.rules.ft_shot_live   # free throws: a soft miss
+					if game.rng.randf() < RIM_LONG_CHANCE and not ft_miss:
+						# off the back iron: long toward the baseline (P3-07: these are most baseline out-of-bounds)
+						ang = game.rng.randf_range(-RIM_LONG_ANGLE, RIM_LONG_ANGLE)
+						v = Vector2(-inward, 0).rotated(ang) * game.rng.randf_range(RIM_LONG_SPEED_MIN, RIM_LONG_SPEED_MAX)
+						game.stat("rim_long")
+					elif game.rng.randf() < RIM_WIDE_CHANCE and not ft_miss:
+						ang = game.rng.randf_range(RIM_WIDE_ANGLE_MIN, RIM_WIDE_ANGLE_MAX) * (1.0 if game.rng.randf() < 0.5 else -1.0)
+						v = Vector2(inward, 0).rotated(ang) * game.rng.randf_range(RIM_WIDE_SPEED_MIN, RIM_WIDE_SPEED_MAX)
+						game.stat("rim_wide")
 					make_loose(shot_hoop + v.normalized() * 10.0, v, 30.0, 220.0)
+					if shooter != null:
+						last_touch_team = shooter.team   # off the rim: the shooter's team touched it last
+					loose_cause = "rebound"
 					_rim_feedback()
 					game.on_shot_missed(shooter)
 				return
@@ -294,7 +336,10 @@ func update(delta: float) -> void:
 				vz = abs(vz) * 0.55
 				if vz < 40.0:
 					vz = 0.0
-			# bounce off the edges of the court
+			# out of bounds (P3-07): rules.ball_out makes it dead and gives it to the other team
+			if _went_out():
+				return
+			# bounce off the edges of the court (only when rules.gd can't call it out)
 			if position.x < 0 or position.x > game.COURT_W:
 				vel.x = -vel.x
 				position.x = clamp(position.x, 0.0, game.COURT_W)
@@ -317,6 +362,21 @@ func update(delta: float) -> void:
 	var s := 1.1 + z / 160.0
 	sprite.scale = Vector2(s, s)
 	queue_redraw()
+
+# A loose ball past a sideline or baseline: tell the rules. True if it was called out (the ball is dead now).
+func _went_out() -> bool:
+	var W: float = game.COURT_W
+	var H: float = game.COURT_H
+	var m := OOB_MARGIN_PX
+	if position.x >= -m and position.x <= W + m and position.y >= -m and position.y <= H + m:
+		return false
+	if game.rules == null or not game.rules.has_method("ball_out"):
+		return false
+	if not game.rules.ball_out(position, last_touch_team):
+		return false
+	sprite.position = Vector2(0, -z)
+	queue_redraw()
+	return true
 
 # The lob's flight: a high, slow arc that homes on the receiver. Only the first LOB_PICK_FRAC can be picked off.
 # Near the end the receiver is told to take off (player.start_alley_dunk) so he catches it in the air.
