@@ -12,3 +12,12 @@ $M "$D/Gregor Quendel - Crowd Cheering Sounds - 03 - Strong cheering - I.mp3" \
 $M "$D/metal_slam_01.ogg"  assets/sfx/dunk.ogg   --start 0.0  --end 0.57 --fade-out 0.12
 $M "$D/impact.7.ogg"       assets/sfx/block.ogg  --start 0.26 --end 0.60 --fade-out 0.08
 $M "$D/flame_0.ogg"        assets/sfx/fire.ogg   --start 0.0  --end 0.45 --fade-out 0.08
+# Phase 6 twist sounds (P6-A5), synthesized by tools/make_twist_sfx.py (no downloads). Loops: rain, wind,
+# crowd_loud (built circularly, so they wrap with no seam). crowd_loud layers assets/sfx/crowd.ogg (above), so make
+# crowd.ogg first.
+python3 tools/make_twist_sfx.py rain       assets/sfx/rain.ogg
+python3 tools/make_twist_sfx.py wind       assets/sfx/wind.ogg
+python3 tools/make_twist_sfx.py crowd_loud assets/sfx/crowd_loud.ogg
+python3 tools/make_twist_sfx.py fence      assets/sfx/fence.ogg
+python3 tools/make_twist_sfx.py splash     assets/sfx/splash.ogg
+python3 tools/make_twist_sfx.py sand_step  assets/sfx/sand_step.ogg
