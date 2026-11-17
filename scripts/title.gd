@@ -3,9 +3,12 @@ extends CanvasLayer
 #   title     the game name, the Cornfield Kings and their van The Biscuit on the road, and four buttons:
 #             ROAD TRIP -> CONTINUE / NEW TRIP (NEW TRIP over a saved trip asks to confirm) -> EASY / NORMAL / HARD
 #             QUICK GAME -> today's game (its start panel picks the level and court, as before)
-#             SETTINGS, CREW & CREDITS (their own Flow screens)
-#   settings  MUSIC on/off, FULL SCREEN on/off (P6-T2), SOUND volume, the default LEVEL (Quick Game and new trips)
-#   crew      your crew (from the trip save if there is one) and the art and music credits, in a scrolling list
+#             SETTINGS, CREW & CREDITS (their own Flow screens), HOW TO PLAY (Flow screen "howto", P7-H3)
+#             and the version ("v1.0.0", from project.godot application/config/version) bottom-right (P7-04)
+#   settings  MUSIC on/off and the MUSIC volume (P7-04), SOUND volume, the default LEVEL (Quick Game and new trips),
+#             FULL SCREEN on/off (P6-T2) and LEFT-HANDED on/off (P7-04: Difficulty.set_left_handed, from the next game)
+#   crew      the version, your crew (from the trip save if there is one), the art and music credits (every CC-BY item
+#             with title, author, license, source and changes) and the Godot license notice, in a scrolling list
 # The Road Trip sub-panels swap in place (no reload); every other move is Flow.go(). Each panel ignores taps for
 # PANEL_ARM s, so a quick double tap can't fall through onto the next panel's button in the same spot.
 # trip.gd / save.gd (P5-05) and audio.set_sfx_volume (P5-07) are called only if they exist, so this runs alone:
@@ -13,7 +16,8 @@ extends CanvasLayer
 # FULL SCREEN (P6-T2): Difficulty.set_fullscreen() inside the tap (a browser needs the gesture); the label follows the
 # real window mode every frame (the browser's Esc / back gesture). The first tap of a run puts a saved ON back
 # (Difficulty.restore_fullscreen(), from _input here and in pause.gd).
-# Desktop testing: Escape = BACK. Test: -- --titletest walks every screen and button (screenshots with xvfb).
+# Desktop testing: Escape = BACK. Test: -- --titletest walks every screen and button (screenshots with xvfb), puts every
+# setting back and restores settings.cfg byte for byte at the end.
 
 const UI = preload("res://scripts/ui_kit.gd")
 const Flow = preload("res://scripts/flow.gd")
@@ -37,10 +41,18 @@ const NAME_COLOR := Color(1.0, 0.82, 0.25)     # gold, like the lit button
 const CREW_FONT := 36                          # "THE CORNFIELD KINGS"
 const VAN_FONT := 24                           # "on the road in The Biscuit"
 const MAIN_BTN := Vector2(400, 130)            # ROAD TRIP / QUICK GAME
-const SIDE_BTN := Vector2(400, 110)            # SETTINGS / CREW & CREDITS
+const SIDE_BTN := Vector2(360, 110)            # SETTINGS / HOW TO PLAY / CREW & CREDITS (three fit 1280 px)
 const LEVEL_BTN := Vector2(240, 110)           # EASY / NORMAL / HARD in Settings
 const BACK_POS := Vector2(24, 20)              # BACK, top-left on Settings and Crew
 const ROW_LABEL_W := 220                       # left column of the Settings rows
+const SETTINGS_GAP := 18                       # px between the Settings rows (6 rows fit 720 px high)
+const MUSIC_BTN := Vector2(200, 110)           # MUSIC ON / OFF, left of the music volume slider
+const TOGGLE_BTN := Vector2(380, 110)          # FULL SCREEN / LEFT-HANDED, side by side
+const AUDIO_PATH := "res://scripts/audio.gd"   # music_volume, read_settings(), save_music_volume() (P7-02)
+const VERSION_FONT := 22                       # "v1.0.0" on the title
+const VERSION_MARGIN := 14                     # px from the bottom-right corner
+const LICENSE_FONT := 18                       # the Godot license text in CREW & CREDITS
+const CREDITS_FILE := "res://CREDITS.md"       # --titletest checks every CC-BY row in it is shown here
 const STUB_COLOR := Color(0.65, 0.65, 0.7)
 const SCROLL_SIZE := Vector2(1180, 560)        # the crew & credits list
 const SCROLL_BAR_W := 36                       # wide enough to drag with a thumb
@@ -78,34 +90,63 @@ const VAN_BOB_HZ := 3.0
 const BALL_COLOR := Color(0.92, 0.45, 0.12)
 const SIGN_POS := Vector2(1080, 470)
 
-# Credits (kept here as a const list, board P5-06; copy new rows from CREDITS.md): [what, title, author, license, source]
+# Credits (kept here as a const list, board P5-06; copy new rows from CREDITS.md):
+#   [what, title, author, license, source, changes]   (changes: "" = none; every CC-BY item says what was changed)
+# --titletest checks that every CC-BY row of CREDITS.md has an entry here with its source URL and license.
 const CREDITS_LIST := [
-	["Players, courts, ball (pixel art)", "Original art made for this project", "Road Trip Hoops project",
-		"Original", "tools/art/make_players.py, tools/art/make_courts.py"],
-	["Fallback sprites", "Sports Pack", "Kenney", "CC0 1.0", "kenney.nl"],
+	["Players, courts, ball, portraits, trip map, icon", "Original pixel art made for this project",
+		"Road Trip Hoops project", "Original",
+		"tools/art (make_players_v2.py, make_courts.py, make_portraits_v2.py, make_map.py, make_icon.py)", ""],
+	["Fallback sprites", "Sports Pack", "Kenney", "CC0 1.0", "https://www.kenney.nl", ""],
 	["Menu music", "Stage 1 (4 Chiptunes, Adventure)", "Juhani Junkala (SubspaceAudio)", "CC0",
-		"opengameart.org/content/4-chiptunes-adventure"],
+		"https://opengameart.org/content/4-chiptunes-adventure", ""],
 	["Gym music", "Stage 2 (4 Chiptunes, Adventure)", "Juhani Junkala (SubspaceAudio)", "CC0",
-		"opengameart.org/content/4-chiptunes-adventure"],
+		"https://opengameart.org/content/4-chiptunes-adventure", ""],
 	["Blacktop music", "Level 1 (5 Chiptunes, Action)", "Juhani Junkala (SubspaceAudio)", "CC0",
-		"opengameart.org/content/5-chiptunes-action"],
-	["Hometown music", "Medieval: Minstrel Dance", "RandomMind", "CC0",
-		"opengameart.org/content/chiptune-medieval-minstrel-dance"],
+		"https://opengameart.org/content/5-chiptunes-action", ""],
+	["Hometown music", "[Chiptune] Medieval: Minstrel Dance", "RandomMind", "CC0",
+		"https://opengameart.org/content/chiptune-medieval-minstrel-dance", ""],
 	["Chicago music", "8-Bit Bluesy Battle Theme", "emanresU", "CC0",
-		"opengameart.org/content/8-bit-bluesy-battle-theme"],
+		"https://opengameart.org/content/8-bit-bluesy-battle-theme", ""],
+	["Memphis music", "New Blue Shoes", "congusbongus", "CC-BY 4.0",
+		"https://opengameart.org/content/new-blue-shoes",
+		"Cut to a loop (41.90-76.46 s), loop crossfade, mono, loudness levelled, Ogg Vorbis"],
+	["New Orleans music", "NES chiptune \"Swingshot\" (Swing Jazz)", "Haley Halcyon", "CC0",
+		"https://opengameart.org/content/nes-chiptune-swingshot-swing-jazz", ""],
+	["Denver music", "Lasso Lady (seamless loop)", "congusbongus", "CC0",
+		"https://opengameart.org/content/lasso-lady-seamless-loop", ""],
+	["Seattle music", "My Friends Will Cry. (title theme)", "Music by Christovix Games", "CC-BY 3.0",
+		"https://opengameart.org/content/my-friends-will-cry",
+		"Cut to a loop (11.20-93.25 s), loop crossfade, mono, loudness levelled, Ogg Vorbis"],
+	["Los Angeles music", "Happy Ukelele Island Surfing Theme", "Tarush Singhal", "CC0",
+		"https://opengameart.org/content/happy-ukelele-island-surfing-theme", ""],
 	["New York music", "NES chiptune \"Slam-Funk\"", "Haley Halcyon", "CC-BY 4.0",
-		"opengameart.org/content/nes-chiptune-slam-funk"],
-	["Crowd", "Free Crowd Cheering Sounds", "Gregor Quendel (www.gregorquendel.com)", "CC-BY 4.0",
-		"opengameart.org/content/free-crowd-cheering-sounds"],
-	["Rim", "Metal Impact Sounds", "BMacZero", "CC0", "opengameart.org/content/metal-impact-sounds"],
+		"https://opengameart.org/content/nes-chiptune-slam-funk",
+		"Cut to a loop (6.10-45.45 s), loop crossfade, mono, loudness levelled, Ogg Vorbis"],
+	["Crowd", "Free Crowd Cheering Sounds (03 - Strong cheering - I)", "Gregor Quendel (www.gregorquendel.com)",
+		"CC-BY 4.0", "https://opengameart.org/content/free-crowd-cheering-sounds",
+		"Cut 5.5-10.5 s into a seamless loop, mono, normalized, Ogg Vorbis"],
+	["Loud crowd (Memphis)", "Free Crowd Cheering Sounds (03 - Strong cheering - I)",
+		"Gregor Quendel (www.gregorquendel.com)", "CC-BY 4.0",
+		"https://opengameart.org/content/free-crowd-cheering-sounds",
+		"The crowd loop layered 4 times with a synthesized roar, claps and stomps (tools/make_twist_sfx.py)"],
+	["Rim", "Metal Impact Sounds", "BMacZero", "CC0", "https://opengameart.org/content/metal-impact-sounds", ""],
 	["Dunk", "100 CC0 metal and wood SFX", "rubberduck", "CC0",
-		"opengameart.org/content/100-cc0-metal-and-wood-sfx"],
-	["Block", "10 Impact/Shield Blocks", "StarNinjas", "CC0", "opengameart.org/content/10-impactshield-blocks"],
-	["On fire", "Catching fire", "themightyglider", "CC0", "opengameart.org/content/catching-fire"],
-	["Swish, bounce, whistle", "Synthesized sounds made for this project", "Road Trip Hoops project", "Original",
-		"tools/make_swish.py, tools/make_bounce.py, tools/make_whistle.py"],
-	["Game engine", "Godot Engine", "Juan Linietsky, Ariel Manzur and contributors", "MIT", "godotengine.org"],
+		"https://opengameart.org/content/100-cc0-metal-and-wood-sfx", ""],
+	["Block", "10 Impact/Shield Blocks", "StarNinjas", "CC0",
+		"https://opengameart.org/content/10-impactshield-blocks", ""],
+	["On fire", "Catching fire", "themightyglider", "CC0", "https://opengameart.org/content/catching-fire", ""],
+	["Swish, bounce, whistle, rain, wind, fence, splash, sand", "Synthesized sounds made for this project",
+		"Road Trip Hoops project", "Original",
+		"tools/make_swish.py, tools/make_bounce.py, tools/make_whistle.py, tools/make_twist_sfx.py", ""],
+	["Game engine", "Godot Engine", "Juan Linietsky, Ariel Manzur and contributors", "MIT",
+		"https://godotengine.org", ""],
 ]
+# the license text each CC-BY version points to (shown under every CC-BY item)
+const LICENSE_URLS := {
+	"CC-BY 4.0": "https://creativecommons.org/licenses/by/4.0/",
+	"CC-BY 3.0": "https://creativecommons.org/licenses/by/3.0/",
+}
 
 var main                     # main.gd (set by Flow.build_screen)
 var audio                    # this screen's audio.gd
@@ -123,6 +164,9 @@ var _fs_shown := false       # the real state the label shows
 var _level_btns: Array = []
 var _sfx_slider: HSlider
 var _sfx_dirty_t := -1.0
+var _lh_btn: Button          # LEFT-HANDED: ON / OFF (Settings, P7-04)
+var _music_slider: HSlider   # the music volume (Settings, P7-04)
+var _music_dirty_t := -1.0
 var _scroll: ScrollContainer
 var _art: Control
 
@@ -131,6 +175,9 @@ static var _test_step := 0
 var _test_on := false
 var _test_t := 0
 var _test_fs := false        # the saved FULL SCREEN before the test pressed it
+static var _test_cfg_taken := false            # settings.cfg as it was before the test (restored at the end)
+static var _test_cfg_had := false
+static var _test_cfg_bytes := PackedByteArray()
 
 func _ready() -> void:
 	MenuScript.start_done = false   # a Quick Game from here shows its start panel (level, court) again
@@ -156,6 +203,10 @@ func _process(delta: float) -> void:
 		_sfx_dirty_t -= delta
 		if _sfx_dirty_t <= 0.0:
 			_save_sfx()
+	if _music_dirty_t > 0.0:
+		_music_dirty_t -= delta
+		if _music_dirty_t <= 0.0:
+			_save_music_volume()
 	if _art != null:
 		_art.queue_redraw()
 	if _fs_btn != null and Difficulty.is_fullscreen() != _fs_shown:
@@ -195,7 +246,18 @@ func _build_title() -> void:
 	UI.label(head, "ROAD TRIP HOOPS", NAME_FONT, NAME_COLOR)
 	UI.label(head, "THE " + Cities.CREW_NAME, CREW_FONT)
 	UI.label(head, "on the road in " + Cities.VAN_NAME.capitalize(), VAN_FONT)
+	var v: String = version()
+	if v != "":
+		var vl := UI.label(_root, "v" + v, VERSION_FONT, STUB_COLOR)
+		vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		vl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, VERSION_MARGIN)
+		vl.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		vl.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_show_panel("main")
+
+# the game's version, single source project.godot (P7-08); "" = no label
+static func version() -> String:
+	return str(ProjectSettings.get_setting("application/config/version", ""))
 
 func _show_panel(which: String) -> void:
 	_panel = which
@@ -237,6 +299,7 @@ func _show_panel(which: String) -> void:
 			_btn(r1, "QUICK GAME", _on_quick_game, UI.KIND_MAIN, MAIN_BTN)
 			var r2 := UI.hbox(box)
 			_btn(r2, "SETTINGS", _go.bind("settings"), UI.KIND_OPT, SIDE_BTN)
+			_btn(r2, "HOW TO PLAY", _on_how_to_play, UI.KIND_OPT, SIDE_BTN)
 			_btn(r2, "CREW & CREDITS", _go.bind("crew"), UI.KIND_OPT, SIDE_BTN)
 	_arm(PANEL_ARM)
 
@@ -267,6 +330,10 @@ func _go(to: String, to_args := {}) -> void:
 func _on_quick_game() -> void:
 	_stat("title_quick_game")
 	_go(Flow.GAME)
+
+func _on_how_to_play() -> void:
+	_stat("title_how_to_play")
+	_go("howto", {"back": "title"})
 
 func _on_continue() -> void:
 	if not _has_trip() or _trip_finished():
@@ -305,16 +372,20 @@ func _on_trip_level(lv: int) -> void:
 
 func _build_settings() -> void:
 	_back_button()
-	var box := UI.vbox(_root)
+	var box := UI.vbox(_root, SETTINGS_GAP)
 	box.offset_top = 20
 	UI.title(box, "SETTINGS")
+	# MUSIC: ON / OFF, then its volume (the sliders line up: SOUND has a gap where MUSIC has its button)
 	var r1 := _row(box, "MUSIC")
-	_music_btn = UI.button(r1, "", _tap.bind(_toggle_music), UI.KIND_OPT)
+	_music_btn = UI.button(r1, "", _tap.bind(_toggle_music), UI.KIND_OPT, MUSIC_BTN)
 	_buttons.append(_music_btn)
-	var r2 := _row(box, "SCREEN")
-	_fs_btn = UI.button(r2, "", _tap.bind(_toggle_fullscreen), UI.KIND_OPT)
-	_buttons.append(_fs_btn)
-	_sfx_slider = UI.slider_row(box, "SOUND", _saved_sfx(), _on_sfx)
+	_music_slider = UI.slider(r1, _saved_music(), _on_music_volume)
+	var r2 := _row(box, "SOUND")
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(MUSIC_BTN.x, 0)
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r2.add_child(gap)
+	_sfx_slider = UI.slider(r2, _saved_sfx(), _on_sfx)
 	var r3 := _row(box, "LEVEL")
 	for lv in [Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD]:
 		var b: Button = UI.button(r3, String(Difficulty.NAMES[lv]).to_upper(), _tap.bind(_pick_level.bind(lv)),
@@ -323,6 +394,11 @@ func _build_settings() -> void:
 		_buttons.append(b)
 	UI.label(box, "LEVEL is for Quick Game and new trips" + (", and your saved trip" if _has_trip() else ""),
 			UI.SUB_FONT, STUB_COLOR)
+	var r4 := UI.hbox(box)
+	_fs_btn = UI.button(r4, "", _tap.bind(_toggle_fullscreen), UI.KIND_OPT, TOGGLE_BTN)
+	_buttons.append(_fs_btn)
+	_lh_btn = UI.button(r4, "", _tap.bind(_toggle_left_handed), UI.KIND_OPT, TOGGLE_BTN)
+	_buttons.append(_lh_btn)
 	_refresh_settings()
 	_arm(PANEL_ARM)
 
@@ -338,6 +414,9 @@ func _refresh_settings() -> void:
 	_fs_shown = Difficulty.is_fullscreen()
 	_fs_btn.text = "FULL SCREEN: ON" if _fs_shown else "FULL SCREEN: OFF"
 	UI.set_text_color(_fs_btn, UI.OFF_TEXT if _fs_shown else UI.OPT_OFF_TEXT)
+	var lh: bool = Difficulty.is_left_handed()
+	_lh_btn.text = "LEFT-HANDED: ON" if lh else "LEFT-HANDED: OFF"
+	UI.set_text_color(_lh_btn, UI.OFF_TEXT if lh else UI.OPT_OFF_TEXT)
 	for i in _level_btns.size():
 		UI.set_kind(_level_btns[i], UI.KIND_LIT if i == Difficulty.level else UI.KIND_MAIN)
 
@@ -354,6 +433,13 @@ func _toggle_fullscreen() -> void:
 	var on: bool = not Difficulty.is_fullscreen()
 	Difficulty.set_fullscreen(on)
 	_stat("title_fullscreen_" + ("on" if on else "off"))
+	_refresh_settings()
+
+# joystick on the right, buttons on the left from the next game (touch_controls.gd reads it); saved at once
+func _toggle_left_handed() -> void:
+	var on: bool = not Difficulty.is_left_handed()
+	Difficulty.set_left_handed(on)
+	_stat("title_left_handed_" + ("on" if on else "off"))
 	_refresh_settings()
 
 func _pick_level(lv: int) -> void:
@@ -383,6 +469,31 @@ func _save_sfx() -> void:
 	if audio != null:
 		audio.play(SFX_PREVIEW)
 
+static func _audio_script() -> GDScript:
+	return _script(AUDIO_PATH)
+
+# the saved music volume (audio.gd reads it once per run); 1.0 = the music as before P7-02
+static func _saved_music() -> float:
+	var a: GDScript = _audio_script()
+	if a == null or not a.has_method("read_settings"):
+		return 1.0
+	a.call("read_settings")
+	return clampf(float(a.get("music_volume")), 0.0, 1.0)
+
+# previews on the playing menu music at once; saved SFX_SAVE_DELAY s after the last move
+func _on_music_volume(v: float) -> void:
+	if audio != null and audio.has_method("set_music_volume"):
+		audio.call("set_music_volume", v, false)
+	_music_dirty_t = SFX_SAVE_DELAY
+
+# a test run keeps the volume for the run only (like the left-handed switch), so it never writes the owner's file
+func _save_music_volume() -> void:
+	_music_dirty_t = -1.0
+	var a: GDScript = _audio_script()
+	if not Difficulty.is_test_run() and a != null and a.has_method("save_music_volume"):
+		a.call("save_music_volume")
+	_stat("title_music_volume_saved")
+
 func _back_button() -> void:
 	var b: Button = UI.button(_root, "BACK", _tap.bind(_go.bind("title")), UI.KIND_OPT, UI.SMALL_SIZE)
 	b.position = BACK_POS
@@ -391,6 +502,8 @@ func _back_button() -> void:
 func _exit_tree() -> void:
 	if _sfx_dirty_t > 0.0 and _sfx_slider != null:
 		_save_sfx()   # leaving right after a slider move still keeps it
+	if _music_dirty_t > 0.0 and _music_slider != null:
+		_save_music_volume()
 
 # ---------------- crew & credits ----------------
 
@@ -419,18 +532,30 @@ func _build_crew() -> void:
 	list.add_theme_constant_override("separation", 10)
 	list.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_scroll.add_child(list)
+	var v: String = version()
+	if v != "":
+		_left(list, "ROAD TRIP HOOPS  v" + v, ENTRY_FONT, NAME_COLOR)
+		_spacer(list, 12)
 	_crew_section(list)
 	_spacer(list, 24)
 	_section(list, "CREDITS")
 	for row in CREDITS_LIST:
 		var e: Array = row
 		_left(list, str(e[0]).to_upper(), ENTRY_FONT, NAME_COLOR)
-		_left(list, "%s  -  %s  (%s)" % [e[1], e[2], e[3]], DETAIL_FONT)
-		_left(list, str(e[4]), DETAIL_FONT, STUB_COLOR)
+		_left(list, "\"%s\"  -  %s  (%s)" % [e[1], e[2], e[3]], DETAIL_FONT)
+		_left(list, "Source: " + str(e[4]), DETAIL_FONT, STUB_COLOR)
+		if LICENSE_URLS.has(str(e[3])):
+			_left(list, "License: %s  %s" % [e[3], LICENSE_URLS[str(e[3])]], DETAIL_FONT, STUB_COLOR)
+		if e.size() > 5 and str(e[5]) != "":
+			_left(list, "Changes: " + str(e[5]), DETAIL_FONT, STUB_COLOR)
 		_spacer(list, 6)
-	_left(list, "Only CC0 and CC-BY assets are used. The CC-BY crowd sound and New York music need the credit above.",
-			DETAIL_FONT, STUB_COLOR)
+	_left(list, "Only CC0 and CC-BY assets are used. The CC-BY crowd sounds and the Memphis, Seattle and New York " +
+			"music need the credit above.", DETAIL_FONT, STUB_COLOR)
 	_left(list, "Full list: CREDITS.md in the game folder.", DETAIL_FONT, STUB_COLOR)
+	_spacer(list, 24)
+	_section(list, "GODOT ENGINE LICENSE")
+	_left(list, "This game uses Godot Engine, available under the following license:", DETAIL_FONT)
+	_left(list, Engine.get_license_text(), LICENSE_FONT, STUB_COLOR)
 	_spacer(list, 20)
 	_arm(PANEL_ARM)
 
@@ -560,7 +685,12 @@ func auto_step() -> bool:
 
 # ---------------- -- --titletest: taps every screen's buttons (screenshots with xvfb) ----------------
 
-const TEST_WAIT := 30   # frames between test steps
+const TEST_WAIT := 30          # frames between test steps
+const TEST_HOWTO_WAIT := 1.0   # s on the How to Play screen before paging (its PANEL_ARM has passed)
+const TEST_HOWTO_PAGE := 0.5   # s on the next page before BACK
+const TEST_MUSIC_VOL := 0.3    # where the test moves the MUSIC slider (and back)
+
+static var _test_errors := 0
 
 func _test_tick() -> void:
 	_test_t += 1
@@ -573,7 +703,9 @@ func _test_tick() -> void:
 	print("TITLE TEST step %d on %s/%s" % [s, scr, _panel])
 	match s:
 		1:
+			_test_keep_settings_file()
 			_shot("title")
+			print("TITLE TEST version label: %s" % ("v" + version() if version() != "" else "(none)"))
 			_press("ROAD TRIP")
 		2:
 			_shot("title_trip")
@@ -591,31 +723,47 @@ func _test_tick() -> void:
 		6:
 			_shot("settings")
 			_press("ON" if MenuScript.music_on else "OFF")
+			_press(_lh_btn.text)                              # LEFT-HANDED: ON (kept on to reach the game)
 		7:
-			print("TITLE TEST music_on=%s" % MenuScript.music_on)
+			print("TITLE TEST music_on=%s left_handed=%s (%s)" % [MenuScript.music_on, Difficulty.is_left_handed(),
+					_lh_btn.text])
+			_check(Difficulty.is_left_handed() and _lh_btn.text == "LEFT-HANDED: ON", "LEFT-HANDED did not turn on")
+			_shot("settings_left_handed")
 			_press("ON" if MenuScript.music_on else "OFF")   # back to how it was
 			_test_fs = Difficulty.fullscreen_saved()
 			_press(_fs_btn.text)                              # FULL SCREEN (headless: no window, stays OFF)
 			var keep: float = _sfx_slider.value
 			_sfx_slider.value = 0.5
 			_sfx_slider.value = keep
+			var keep_music: float = _music_slider.value
+			_music_slider.value = TEST_MUSIC_VOL
+			var a: GDScript = _audio_script()
+			var now: float = float(a.get("music_volume")) if a != null else -1.0
+			print("TITLE TEST music volume slider %.2f -> audio %.2f" % [_music_slider.value, now])
+			_check(absf(now - TEST_MUSIC_VOL) < 0.001, "the MUSIC slider did not reach audio.gd")
+			_music_slider.value = keep_music
 		8:
-			print("TITLE TEST music_on=%s sfx=%.2f level=%s fullscreen=%s (%s, saved %s)" % [MenuScript.music_on,
-					_sfx_slider.value, Difficulty.level_name(), Difficulty.is_fullscreen(), _fs_btn.text,
-					Difficulty.fullscreen_saved()])
+			print("TITLE TEST music_on=%s sfx=%.2f music_volume=%.2f level=%s fullscreen=%s (%s, saved %s)" % [
+					MenuScript.music_on, _sfx_slider.value, _music_slider.value, Difficulty.level_name(),
+					Difficulty.is_fullscreen(), _fs_btn.text, Difficulty.fullscreen_saved()])
 			Difficulty.set_fullscreen(_test_fs)   # back to how it was
 			_press(Difficulty.level_name().to_upper())
 			_press("BACK")
 		9:
-			_press("CREW & CREDITS")
+			_test_howto(get_tree())
+			_press("HOW TO PLAY")
 		10:
-			_shot("crew")
-			_scroll.scroll_vertical = 100000
+			_check(scr == "title", "How to Play BACK did not come back to the title")
+			_press("CREW & CREDITS")
 		11:
+			_shot("crew")
+			_test_check_credits()
+			_scroll.scroll_vertical = 100000
+		12:
 			_shot("crew_end")
 			print("TITLE TEST crew list scrolled to %d" % _scroll.scroll_vertical)
 			_press("BACK")
-		12:
+		13:
 			_test_quick_game(get_tree())
 			_press("QUICK GAME")
 
@@ -624,7 +772,13 @@ func _press(text: String) -> void:
 		if is_instance_valid(b) and b.text == text and not b.disabled:
 			b.emit_signal("pressed")
 			return
-	push_error("TITLE TEST: no button '%s'" % text)
+	_check(false, "no button '%s'" % text)
+
+static func _check(ok: bool, what: String) -> void:
+	if ok:
+		return
+	_test_errors += 1
+	push_error("TITLE TEST: " + what)
 
 static func _shot(name: String) -> void:
 	if DisplayServer.get_name() == "headless":
@@ -634,11 +788,127 @@ static func _shot(name: String) -> void:
 	if img != null:
 		img.save_png("/tmp/hoops_%s.png" % name)
 
-# after QUICK GAME: the start panel (with its TITLE button) is up, then quit
+# settings.cfg as it is now (or that there is none), so the end of the test puts it back byte for byte: the test
+# presses MUSIC, FULL SCREEN, SOUND and LEVEL, which save at once (each pressed back, but the file is rewritten)
+static func _test_keep_settings_file() -> void:
+	if _test_cfg_taken:
+		return
+	_test_cfg_taken = true
+	_test_cfg_had = FileAccess.file_exists(Difficulty.SAVE_PATH)
+	if _test_cfg_had:
+		_test_cfg_bytes = FileAccess.get_file_as_bytes(Difficulty.SAVE_PATH)
+
+static func _test_restore_settings_file() -> void:
+	if not _test_cfg_taken:
+		return
+	if _test_cfg_had:
+		var f := FileAccess.open(Difficulty.SAVE_PATH, FileAccess.WRITE)
+		if f != null:
+			f.store_buffer(_test_cfg_bytes)
+			f.close()
+	elif FileAccess.file_exists(Difficulty.SAVE_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Difficulty.SAVE_PATH))
+	var same: bool = FileAccess.file_exists(Difficulty.SAVE_PATH) == _test_cfg_had
+	if same and _test_cfg_had:
+		same = FileAccess.get_file_as_bytes(Difficulty.SAVE_PATH) == _test_cfg_bytes
+	print("TITLE TEST settings.cfg put back as it was: %s" % same)
+	_check(same, "settings.cfg was not put back")
+
+# How to Play (P7-H3): on its screen, page once (its auto_step()), then tap its BACK (Escape if it has none)
+static func _test_howto(tree: SceneTree) -> void:
+	tree.create_timer(TEST_HOWTO_WAIT).timeout.connect(func():
+		var node: Node = Flow.current_screen()
+		print("TITLE TEST how to play: screen=%s back=%s node=%s" % [str(Flow.screen), str(Flow.args.get("back", "")),
+				node.get_script().resource_path if node != null and node.get_script() != null else "none"])
+		_check(str(Flow.screen) == "howto", "HOW TO PLAY did not open the howto screen")
+		_shot("howto")
+		print("TITLE TEST how to play: next page %s" % Flow.auto_step())
+		tree.create_timer(TEST_HOWTO_PAGE).timeout.connect(func():
+			_shot("howto_page2")
+			var back: Button = _find_back(Flow.current_screen())
+			if back != null:
+				print("TITLE TEST how to play: BACK")
+				back.emit_signal("pressed")
+			else:
+				print("TITLE TEST how to play: Escape")
+				var k := InputEventKey.new()
+				k.keycode = KEY_ESCAPE
+				k.pressed = true
+				Input.parse_input_event(k)
+			tree.create_timer(TEST_HOWTO_WAIT).timeout.connect(func():
+				if str(Flow.screen) == "howto":
+					_check(false, "How to Play BACK did not leave the screen")
+					Flow.go("title"))))
+
+static func _find_back(node: Node) -> Button:
+	if node == null:
+		return null
+	if node is Button and (node as Button).text.strip_edges().to_upper().ends_with("BACK"):
+		return node as Button
+	for c in node.get_children():
+		var b: Button = _find_back(c)
+		if b != null:
+			return b
+	return null
+
+# Every CC-BY row of CREDITS.md has a CREDITS_LIST entry with the same source URL and license (as many entries as
+# rows per URL: the crowd and the loud crowd share one), with an author and the changes made
+static func _test_check_credits() -> void:
+	if not FileAccess.file_exists(CREDITS_FILE):
+		print("TITLE TEST credits: %s not found, not checked" % CREDITS_FILE)
+		return
+	var url_re := RegEx.new()
+	url_re.compile("https?://[^\\s,)`]+")
+	var rows := {}       # "url|license" -> CC-BY rows in CREDITS.md
+	for line in FileAccess.get_file_as_string(CREDITS_FILE).split("\n"):
+		var cells: PackedStringArray = line.split("|")
+		if cells.size() < 8 or not cells[5].contains("CC-BY"):
+			continue
+		var m: RegExMatch = url_re.search(cells[4])
+		var lic: String = cells[5].strip_edges().split(" (")[0]
+		var key: String = (m.get_string() if m != null else cells[4].strip_edges()) + "|" + lic
+		rows[key] = int(rows.get(key, 0)) + 1
+	var shown := {}
+	for row in CREDITS_LIST:
+		var e: Array = row
+		if not str(e[3]).begins_with("CC-BY"):
+			continue
+		_check(str(e[2]) != "" and str(e[5]) != "" and LICENSE_URLS.has(str(e[3])),
+				"credit '%s' lacks the author, changes or license link" % e[0])
+		var key: String = str(e[4]) + "|" + str(e[3])
+		shown[key] = int(shown.get(key, 0)) + 1
+	var n := 0
+	for key in rows:
+		n += int(rows[key])
+		_check(int(shown.get(key, 0)) >= int(rows[key]), "CC-BY credit missing on screen: " + str(key))
+	print("TITLE TEST credits: %d CC-BY rows in CREDITS.md, %d CC-BY entries shown" % [n, _sum(shown)])
+
+static func _sum(d: Dictionary) -> int:
+	var n := 0
+	for k in d:
+		n += int(d[k])
+	return n
+
+# after QUICK GAME: the start panel (with its TITLE button) is up, and the LEFT-HANDED choice made in Settings
+# reached the game; then every setting is put back and the test quits
 static func _test_quick_game(tree: SceneTree) -> void:
 	tree.create_timer(1.5).timeout.connect(func():
 		print("TITLE TEST quick game: screen=%s start panel=%s" % [str(Flow.screen), not MenuScript.start_done])
+		var game: Node = tree.current_scene
+		var controls = game.get("controls") if game != null else null
+		var ctl_lh = controls.get("left_handed") if controls != null else null
+		print("TITLE TEST quick game: left_handed=%s, touch controls left_handed=%s" % [Difficulty.is_left_handed(),
+				"n/a (before P7-03)" if ctl_lh == null else str(ctl_lh)])
+		_check(Difficulty.is_left_handed(), "the LEFT-HANDED choice did not reach the game")
+		if ctl_lh != null:
+			_check(bool(ctl_lh), "the touch controls are not left-handed")
 		_shot("quick_start")
+		Difficulty.set_left_handed(false)   # back to how it was (a test run never saves it)
+		_test_restore_settings_file()
+		if _test_errors > 0:
+			print("TITLE TEST FAILED: %d errors" % _test_errors)
+			tree.quit(1)
+			return
 		print("TITLE TEST DONE")
 		tree.quit())
 
