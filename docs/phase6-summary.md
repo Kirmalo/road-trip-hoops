@@ -49,11 +49,13 @@ takes a few seconds longer than before, because the new players are bigger.
   - A third of all passes are bounce passes.
 - **Speed and size**:
   - The web game runs about as fast as Phase 5 (2.5% slower in our test, inside the normal spread).
-  - The download is **34.2 MB**, about 3 MB over the 31 MB you OK'd.
-- One small bug was found and fixed: the BALL! call could be cut off at the screen edge.
+  - The download is **30.8 MB**, inside the 31 MB you OK'd.
+- Two small bugs were found and fixed: the BALL! call could be cut off at the screen edge, and a trip saved in
+  Phase 5 would have skipped the new cities (it now continues in Memphis).
 
 ## How to try it
-- On the title, ROAD TRIP > NEW TRIP plays every city from the start (it replaces your Phase 5 trip).
+- On the title, ROAD TRIP > CONTINUE picks up your Phase 5 trip at Memphis, the first new city. NEW TRIP starts
+  over from Hometown.
 - Quick Game still has the gym and the blacktop. A city court shows up there after you beat that city's boss.
 
 ## Questions while you play
@@ -68,7 +70,6 @@ takes a few seconds longer than before, because the new players are bigger.
 5. **Small calls.** For each, tell us yes or no:
    - Recruits' joining lines: keep them?
    - Quick Game: the computer team wears the Bridge Runners (a New York crew). OK?
-   - The 34 MB download: OK, or trim about 2 MB?
 6. **Next.** (a) Start Phase 7, the release phase: settings (volume, difficulty, a left-handed layout), a How to Play
    screen, the itch.io web and Android versions, store page text and screenshots. (b) A tuning round on Phase 6
    first.
