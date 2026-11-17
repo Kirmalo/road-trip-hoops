@@ -322,8 +322,19 @@ drawn in the hand of every held-ball frame**, including run_dribble, cross, catc
   on a blue jersey), and push the running-dribble ball a bit more to the side so it doesn't cover the legs.
 
 ## Todo
-- **P6-42** | Web publish (`tools/build_web.sh --publish`) and the lead's phase summary | coordinator, lead | - |
-  published, summary sent | P6-41 | none
+(Phase 6 tuning round, from the owner's Phase 6 check-in; see VISION "Phase 6 check-in". Then publish and Phase 7.)
+
+## Doing
+- **P6-T1** | Camera closer: back to about the Phase 5 zoom with the taller players, HUD readable | programmer |
+  main.gd camera code only | zoom >= Phase 5 at 1280x720 and 16:10, screenshots | - | none
+- **P6-T2** | FULL SCREEN button in Settings and on the pause panel, remembered; works in the web build | programmer |
+  title.gd, pause.gd, difficulty.gd (end of file) | Chromium test, screenshots | - | none
+- **P6-T3** | Quick Game team pick, both sides: the Cornfield Kings, the Bridge Runners and every crew beaten on the
+  trip (unlocked for good like the courts); boss-game lineups, each player's stats shifted to a 50 average |
+  programmer | menu.gd, difficulty.gd (near unlock_court), trip.gd, main.gd Quick Game setup | `--quick-teams`
+  runs to FINAL, trip tests, menushots | - | none
+- **P6-42** | Web publish and summary: published 57032ac (Phase 6 build), summary sent; republish after P6-T1..T3 |
+  coordinator | - | published | P6-T1..T3 | none
 
 ## Parallel plan
 
@@ -348,8 +359,6 @@ Why this split:
 - Nothing waits on art: sheets fall back to v1 and then Kenney, looks fall back to colors, missing music or sound is
   silent.
 - Nothing in the cities waits on G2: P6-A1 makes v1 sheets so every city plays now.
-
-## Doing
 
 ## Review
 
