@@ -6,6 +6,7 @@ const Defense = preload("res://scripts/defense.gd")
 const Difficulty = preload("res://scripts/difficulty.gd")   # CPU skill knobs by level (P3-03; Hard = the constant)
 const View = preload("res://scripts/view.gd")               # projection (Phase 4): FLAT draws as before, ANGLED below
 const Ratings = preload("res://scripts/ratings.gd")         # stat -> gameplay multipliers (P5; rating 50 = 1.0)
+const Twists = preload("res://scripts/twists.gd")           # Phase 6 city twists (speed, turbo, stamina, wet grip)
 
 var game
 var team := 0
@@ -152,6 +153,16 @@ const CPU_BREAK_FT := 20.0        # CPU fast break: sprint when at least this fa
 const TURBO_SHOT_WINDOW := 0.6    # seconds after sprinting that a jump shot is still "shaky"
 const TURBO_SHOT_PENALTY := 0.8   # shot quality multiplier for a jumper right after sprinting
 const TURBO_SHOT_EXEMPT_FT := 6.0 # shots this close to the rim (dunks, layups) get no penalty
+
+# ---- wet court (P6-03, Seattle twist): a sharp turn at speed slides before the new direction grips. The numbers
+# (cut_grip, cut_min_speed, cut_angle_deg) are in twists.gd; without that twist cut_grip is 1.0 and nothing slides.
+const SLIDE_END_DEG := 20.0       # the slide ends once he is moving within this of where he wants to go ...
+const SLIDE_END_SPEED := 0.3      # ... or has slowed under this fraction of top speed ...
+const SLIDE_MAX_TIME := 0.6       # ... or after this many seconds
+const SLIDE_MIN_WANT := 0.5       # a cut is a slide only if he wants to go the new way at this fraction of top speed
+                                  # or more (easing into a spot or stopping is not a hard cut)
+var sliding := false              # read-only for the effects (twist_fx, P6-23 dust): a hard cut is sliding now
+var _slide_t := 0.0
 
 var stamina := 1.0
 var turbo := false                # sprinting this frame
@@ -330,7 +341,7 @@ func setup(g, t: int, i: int, tex: Texture2D, pdict: Dictionary = {}) -> void:
 	def = Defense.new(self, g)
 	ratings = (RATINGS_BY_INDEX[i] as Dictionary).duplicate()
 	_apply_pdict(pdict)
-	speed = Ratings.speed_px(BASE_SPEED, rating("speed"))
+	speed = Ratings.speed_px(BASE_SPEED, rating("speed")) * Twists.value("speed_mult", 1.0)   # crowd 1.04, sand 0.9
 	if t == Difficulty.CPU_TEAM and i == 0:
 		Difficulty.init_once()   # saved level, then --difficulty (autoplay/humantest default to Hard)
 		game.stat("difficulty_" + Difficulty.level_name(Difficulty.effective_level()))
@@ -439,9 +450,10 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		desired *= GUARD_SLOW
 		game.stat("guard_slow_frames_t%d" % team)
 	if update_turbo(delta, want_turbo, is_human):
-		desired *= TURBO_SPEED_MULT * (TURBO_BALL_MULT if has_ball() else 1.0)
+		desired *= Twists.value("turbo_mult", TURBO_SPEED_MULT) * (TURBO_BALL_MULT if has_ball() else 1.0)
 	desired *= Difficulty.value(team, "speed_mult", 1.0)   # Q6 b knob (1.0 on every level until answered)
 	update_dribble_hand(delta)
+	accel *= wet_grip(delta, desired)
 	velocity = velocity.move_toward(desired, accel * delta)
 	position += velocity * delta
 	position = game.clamp_to_court(position)
@@ -807,7 +819,7 @@ func update_turbo(delta: float, want: bool, is_human: bool) -> bool:
 			game.stat("fire_turbo_frames")   # on fire: stamina doesn't drain
 		else:
 			stamina = maxf(0.0, stamina - Ratings.stamina_drain(Difficulty.value(team, "stamina_drain", STAMINA_DRAIN),
-					rating("stamina")) * delta)
+					rating("stamina")) * Twists.value("stamina_drain_mult", 1.0) * delta)   # thin air 1.2
 		refill_wait = REFILL_DELAY
 		game.stat("turbo_frames_t%d" % team)
 		if stamina <= 0.0:
@@ -817,8 +829,37 @@ func update_turbo(delta: float, want: bool, is_human: bool) -> bool:
 		since_turbo += delta
 		refill_wait -= delta
 		if refill_wait <= 0.0:
-			stamina = minf(1.0, stamina + Ratings.stamina_refill(STAMINA_REFILL, rating("stamina")) * delta)
+			var refill_mult: float = Twists.value("stamina_refill_mult", 1.0)   # humid 0.7
+			stamina = minf(1.0, stamina + Ratings.stamina_refill(STAMINA_REFILL, rating("stamina")) * refill_mult * delta)
+			if refill_mult != 1.0 and stamina < 1.0:
+				game.stat("twist_refill_frames")
 	return turbo
+
+# Wet court: the acceleration multiplier this frame (1.0 = full grip). A slide starts on a turn of cut_angle_deg or more
+# at cut_min_speed of top speed or faster, and lasts until he moves the new way, slows down, or SLIDE_MAX_TIME. A
+# crossover burst keeps its grip (and ends a slide); in the air, reaching or at the free-throw line nothing slides.
+func wet_grip(delta: float, desired: Vector2) -> float:
+	var grip: float = Twists.value("cut_grip", 1.0)
+	if grip >= 1.0 or cross_t > 0.0 or is_airborne() or poke_t > 0.0 or ft_frozen():
+		sliding = false
+		return 1.0
+	var v: float = velocity.length()
+	var turn_deg: float = 0.0
+	if v > 1.0 and desired.length() >= SLIDE_MIN_WANT * speed:
+		turn_deg = rad_to_deg(absf(velocity.angle_to(desired)))
+	if sliding:
+		_slide_t += delta
+		game.stat("slide_frames")
+		if turn_deg < SLIDE_END_DEG or v < SLIDE_END_SPEED * speed or _slide_t >= SLIDE_MAX_TIME:
+			sliding = false
+	elif turn_deg >= Twists.value("cut_angle_deg", 60.0) and v >= Twists.value("cut_min_speed", 0.8) * speed:
+		sliding = true
+		_slide_t = 0.0
+		game.stat("slides")
+		game.stat("slides_t%d" % team)
+		if game.is_human(self):
+			game.stat("human_slides")
+	return grip if sliding else 1.0
 
 # opponents closer to this hoop than me (0 or 1 means a fast break)
 func opponents_ahead(hoop: Vector2) -> int:
@@ -1303,7 +1344,8 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		game.stat("pullups_t%d" % team)
 		start_shot()
 	elif three_set and dist_ft <= CPU_THREE_MAX_FT and open_ft >= CPU_THREE_OPEN_FT \
-			and game.rng.randf() < Difficulty.value(team, "three_chance", CPU_THREE_CHANCE):
+			and game.rng.randf() < Difficulty.value(team, "three_chance", CPU_THREE_CHANCE) * Twists.value("long_shot_mult", 1.0):
+		# (a twist that makes long shots harder or easier makes the CPU take them less or more: wind, thin air)
 		game.stat("cpu_threes")
 		start_shot()
 		cpu_three_try = shooting

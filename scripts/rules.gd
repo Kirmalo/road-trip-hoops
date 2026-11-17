@@ -59,6 +59,7 @@ const OOB_BASELINE_KEY_FT := 9.5     # baseline inbound: at least this far to th
 const OOB_CORNER_FT := 4.0           # ... and this far from the sidelines
 const OOB_MIN_CLOCK := 5.0           # the team that had the ball keeps it: the shot clock runs on, but is at least this
 const OOB_CLEAR_FT := 6.0            # opponents closer than this to the inbounder are moved back to this distance
+const Twists = preload("res://scripts/twists.gd")   # Phase 6: the cage twist has a sideline fence (no sideline out)
 
 var game
 var target := TARGET_SCORE
@@ -250,6 +251,10 @@ func inbound(team: int, spot := Vector2.INF) -> void:
 # ignored (dead ball, free throws, game over); ball.gd then bounces it back in.
 func ball_out(pos: Vector2, last_team: int) -> bool:
 	if game.game_over or dead_timer > 0.0 or ft_phase != "" or game.ball.state != game.ball.LOOSE:
+		return false
+	# the cage (P6-04, owner Q2 a): a sideline is a fence, never out; ball.gd bounces it back in. Baselines as always
+	if Twists.flag("sideline_fence") and maxf(-pos.y, pos.y - game.COURT_H) > maxf(-pos.x, pos.x - game.COURT_W):
+		game.stat("fence_calls_ignored")
 		return false
 	if pending_foul and _pf_shooter != null:
 		resolve_pending_foul(_pf_shooter, false)   # a fouled shooter lost it out: his free throws first

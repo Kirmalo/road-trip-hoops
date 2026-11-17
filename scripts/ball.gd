@@ -3,6 +3,7 @@ extends Node2D
 # FLAT draws with `sprite` and _draw() here; ANGLED draws with the view nodes at the end of the file (P4-10).
 
 const View = preload("res://scripts/view.gd")   # projection (Phase 4)
+const Twists = preload("res://scripts/twists.gd")   # Phase 6 city twists: wind drift, thin air, the cage's fence
 
 enum { HELD, PASS, SHOT, LOOSE, DEAD }
 
@@ -41,6 +42,8 @@ var next_alley := false    # set by the alley-oop dunker just before release (li
 var shot_alley := false    # the shot in flight is an alley-oop dunk
 var last_touch_team := -1  # team that touched the ball last (P3-07): the other team gets it if it goes out
 var loose_cause := ""      # why the ball is loose: "steal", "block", "rebound", "pass" (out-of-bounds stats)
+var lob_drift := Vector2.ZERO   # wind (P6-04): where the lob lands, off its receiver (sim px), set at the throw
+var shot_curve := Vector2.ZERO  # wind (P6-04): how far a long jump shot bows downwind mid-flight (drawn only)
 
 # ---- dunk and layup flight (tuning) ----
 const DUNK_FLIGHT := 0.12      # seconds from the hand to the rim on a dunk (a quick slam)
@@ -82,6 +85,10 @@ const LOB_PEAK := 70.0            # extra arc height in pixels
 const LOB_CATCH_Z := 50.0         # height where the jumping receiver catches it
 const LOB_PICK_FRAC := 0.4        # only the first 40% of the flight can be picked off (then it's over everyone)
 const ALLEY_POPUP_COLOR := Color(0.35, 0.85, 1.0)
+const LOB_REACH_FT := 1.9         # wind: a lob blown further than this off its receiver is out of his reach (loose).
+                                  # The drift is 1-2 ft (half to full gust), so only the strongest gusts beat him
+const LOB_BLOWN_SPEED := 70.0     # px/s downwind a lob he can't reach keeps as a loose ball
+const FENCE_SFX := "fence"        # cage (P6-04): the rattle when a loose ball hits the sideline fence (silent if missing)
 
 # ---- out of bounds (P3-07, owner Q5: simple, only a loose ball crossing a sideline or baseline is out) ----
 const OOB_MARGIN_PX := 2.0        # the ball's center must be this far past the line (on the line is still in)
@@ -181,6 +188,16 @@ func throw_lob(from_p, to_p) -> void:
 	lob_start = position
 	lob_takeoff_sent = false
 	lob_time = clampf(position.distance_to(to_p.position) / LOB_SPEED, LOB_TIME_MIN, LOB_TIME_MAX)
+	# thin air: the lob hangs longer (receivers, CPU lob readers and the take-off all use lob_time)
+	var time_mult: float = Twists.value("lob_time_mult", 1.0)
+	if time_mult != 1.0:
+		lob_time *= time_mult
+		game.stat("%s_lobs" % Twists.current)
+	# wind: it lands downwind of the receiver, more in a strong gust
+	lob_drift = Twists.wind * Twists.value("lob_drift_ft", 0.0) * game.FT
+	if lob_drift != Vector2.ZERO:
+		game.stat("wind_lobs")
+		game.stat_add("wind_drift_px", int(lob_drift.length()))
 	game.stat("alleyoops_t%d" % from_p.team)
 	if game.is_human(from_p):
 		game.stat("human_alleyoop_lobs")
@@ -213,6 +230,14 @@ func shoot(p, hoop: Vector2, made: bool, points: int) -> void:
 	shot_made = made
 	shot_points = points
 	blocked_checked = false
+	# wind: a jump shot beyond the arc bows downwind in the air (drawn only; the make was rolled in main.shot_probability)
+	shot_curve = Vector2.ZERO
+	var free_throw: bool = game.rules != null and game.rules.ft_shot_live
+	if shot_kind == "" and not free_throw and Twists.wind != Vector2.ZERO and game.is_three(p.position, hoop):
+		shot_curve = Twists.wind * Twists.value("shot_curve_ft", 0.0) * game.FT
+		if shot_curve != Vector2.ZERO:
+			game.stat("wind_curved_shots")
+			game.stat_add("wind_curve_px", int(shot_curve.length()))
 
 # Who knocked it loose is judged from the state before (main.attempt_steal and main.block_shot call this while the
 # handler still holds it or the shot is still in the air): a held ball or a shot came loose off a defender's hand.
@@ -375,6 +400,11 @@ func _went_out() -> bool:
 	var m := OOB_MARGIN_PX
 	if position.x >= -m and position.x <= W + m and position.y >= -m and position.y <= H + m:
 		return false
+	# the cage (owner Q2 a): past a sideline (further past it than past a baseline, as rules.ball_out judges the line)
+	# the ball hits the fence and comes back into play. Baselines are out as always.
+	if Twists.flag("sideline_fence") and maxf(-position.y, position.y - H) > maxf(-position.x, position.x - W):
+		_fence_bounce()
+		return false
 	if game.rules == null or not game.rules.has_method("ball_out"):
 		return false
 	if not game.rules.ball_out(position, last_touch_team):
@@ -383,11 +413,21 @@ func _went_out() -> bool:
 	queue_redraw()
 	return true
 
+# Cage: a loose ball off the sideline fence. It comes back in with fence_bounce of its speed, plus the rattle.
+func _fence_bounce() -> void:
+	var keep: float = Twists.value("fence_bounce", 0.6)
+	position.y = clampf(position.y, 0.0, game.COURT_H)
+	vel = Vector2(vel.x, -vel.y) * keep
+	game.stat("fence_bounces")
+	_fence_t = 0.0
+	if game.audio:
+		game.audio.play(FENCE_SFX, 0.0, 0.1)
+
 # The lob's flight: a high, slow arc that homes on the receiver. Only the first LOB_PICK_FRAC can be picked off.
 # Near the end the receiver is told to take off (player.start_alley_dunk) so he catches it in the air.
 func _update_lob(delta: float) -> void:
 	lob_t = minf(1.0, lob_t + delta / lob_time)
-	var aim: Vector2 = receiver.position
+	var aim: Vector2 = receiver.position + lob_drift   # wind: it drifts off the receiver as it flies (else + zero)
 	position = lob_start.lerp(aim, lob_t)
 	var end_z: float = LOB_CATCH_Z if receiver.is_airborne() else 26.0
 	z = 18.0 * (1.0 - lob_t) + end_z * lob_t + 4.0 * LOB_PEAK * lob_t * (1.0 - lob_t)
@@ -397,6 +437,11 @@ func _update_lob(delta: float) -> void:
 		receiver.start_alley_dunk()
 	if lob_t >= 1.0:
 		var r = receiver
+		if lob_drift.length() > LOB_REACH_FT * game.FT:
+			# wind: blown out of his reach. It drops loose by him, the closest player picks it up
+			game.stat("wind_lob_drops")
+			make_loose(position, lob_drift.normalized() * LOB_BLOWN_SPEED, z, 0.0)
+			return
 		var in_air: bool = r.has_method("is_alley_jumping") and r.is_alley_jumping()
 		if in_air:
 			game.stat("alleyoop_catches")
@@ -648,12 +693,19 @@ func _view_target(delta: float) -> Vector2:
 				var done: float = position.distance_to(_v_from)
 				var end_h: float = _view_lift_of(receiver) + (REACH_VIEW_Z if receiver.is_airborne() else CATCH_VIEW_Z)
 				if lob:
-					_v_h = lerpf(_v_h0, end_h, lob_t) + 4.0 * LOB_PEAK * LOB_VIEW_ARC * lob_t * (1.0 - lob_t)
+					var lob_arc: float = LOB_VIEW_ARC * Twists.value("arc_mult", 1.0)   # thin air: drawn higher
+					_v_h = lerpf(_v_h0, end_h, lob_t) + 4.0 * LOB_PEAK * lob_arc * lob_t * (1.0 - lob_t)
 				else:
 					_v_h = lerpf(_v_h0, end_h, done / maxf(done + to_end, 1.0))
 		SHOT:
 			var t: float = clampf(shot_t, 0.0, 1.0)
-			_v_h = lerpf(_v_h0, View.RIM_Z + RIM_END_Z, t) + 4.0 * shot_peak * SHOT_VIEW_ARC * t * (1.0 - t)
+			var arc: float = SHOT_VIEW_ARC * Twists.value("arc_mult", 1.0)   # thin air: drawn higher
+			_v_h = lerpf(_v_h0, View.RIM_Z + RIM_END_Z, t) + 4.0 * shot_peak * arc * t * (1.0 - t)
+			if shot_curve != Vector2.ZERO:
+				# wind: the drawn path bows downwind and comes back onto the rim
+				var bow: Vector2 = position + shot_curve * 4.0 * t * (1.0 - t)
+				_v_floor = View.to_screen(bow, 0.0)
+				return View.to_screen(bow, _v_h)
 		LOOSE:
 			var fade: float = maxf(0.0, 1.0 - _v_t / maxf(_v_extra_time, 0.01))
 			_v_h = r / k + z + _v_extra * fade
@@ -763,7 +815,9 @@ func _draw_view_shadow() -> void:
 var _bs_done := {}
 var _bs_on := -1
 var _bs_dir := "/tmp"   # -- --ballshots DIR saves there instead
+var _fence_t := 99.0    # seconds since the last fence bounce (the cage's "fence" ball shot)
 func _ball_shots() -> void:
+	_fence_t += get_process_delta_time()
 	if _bs_on < 0:
 		var args: PackedStringArray = OS.get_cmdline_user_args()
 		var i: int = args.find("--ballshots")
@@ -773,7 +827,20 @@ func _ball_shots() -> void:
 	if _bs_on == 0:
 		return
 	var tag := ""
-	if state == HELD and holder != null and holder._v_anim == "dribble" and _v_t > 1.0 and game.is_human(holder):
+	var need: int = 9   # tags to collect before quitting (+1 for each twist shot below)
+	var twist_tag := ""
+	if Twists.wind != Vector2.ZERO:
+		twist_tag = "wind_curve"   # a long shot bowing downwind, mid-flight
+	elif Twists.value("arc_mult", 1.0) != 1.0:
+		twist_tag = "thin_air_arc" # the higher drawn arc, mid-flight
+	if twist_tag != "":
+		need += 1
+	if twist_tag != "" and state == SHOT and shot_kind == "" and shot_t > 0.45 and shot_t < 0.6 \
+			and (twist_tag != "wind_curve" or shot_curve != Vector2.ZERO):
+		tag = twist_tag
+	elif Twists.flag("sideline_fence") and state == LOOSE and _fence_t < 0.15:
+		tag = "fence"              # just off the fence (not counted in `need`: it may never happen)
+	elif state == HELD and holder != null and holder._v_anim == "dribble" and _v_t > 1.0 and game.is_human(holder):
 		tag = "dribble"
 	elif state == PASS and lob and lob_t > 0.45 and lob_t < 0.6:
 		tag = "lob"
@@ -795,5 +862,5 @@ func _ball_shots() -> void:
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("%s/hoops_ball_%s.png" % [_bs_dir, tag])
 	print("BALLSHOT ", tag)
-	if _bs_done.size() >= 9:
+	if _bs_done.size() - (1 if _bs_done.has("fence") else 0) >= need:
 		get_tree().quit()

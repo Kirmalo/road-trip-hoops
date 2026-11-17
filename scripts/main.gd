@@ -34,11 +34,13 @@ const Flow = preload("res://scripts/flow.gd")       # screens and the trip match
                                                     # a bare `match` is the GDScript keyword
 const Ratings = preload("res://scripts/ratings.gd") # stat formulas: rating 50 = x1.0 (Quick Game unchanged)
 const Cities = preload("res://scripts/cities.gd")   # city data (names, targets) for the --city test flags
+const Twists = preload("res://scripts/twists.gd")   # Phase 6 city twists: every twist hook is Twists.value(key, today)
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
 const COURT_H := 50.0 * FT
-const SHOT_CLOCK_LENGTH := 24.0      # seconds; the shot clock stays with first to 21 (Q1). Format: rules.gd
+const SHOT_CLOCK_LENGTH := 24.0      # seconds; the shot clock stays with first to 21 (Q1). Format: rules.gd. A twist
+                                     # may change it (Twists "shot_clock": Memphis 18): read shot_clock_length()
 const HUMAN_TEAM := 0
 # Team names in the top bar and the messages. A var (rules.gd, menu.gd read game.TEAM_NAMES): a trip game puts the
 # crew names from Flow.match here (owner Q11 a); Quick Game and the tests keep BLUE / RED.
@@ -163,6 +165,13 @@ const TEST_MATCH := {
 				"finishing": 40, "defense": 40, "stamina": 40, "steal": 35, "block": 50}}]},
 	],
 }
+# Phase 6 hooks (P6-02): the twist, its banner and effects, the camera punch, the --anim-test driver
+const TWIST_FX_PATH := "res://scripts/twist_fx.gd"    # P6-14: added to the game when a twist is on (if the file exists)
+const ANIM_TEST_PATH := "res://scripts/anim_test.gd"  # P6-24: -- --anim-test adds it to the game (if the file exists)
+const TWIST_LINE_SIZE := 28          # the twist's banner line under the tip-off message (font size)
+const TWIST_LINE_TIME := 3.5         # seconds it shows at tip-off (fades out over the last TWIST_LINE_FADE)
+const TWIST_LINE_FADE := 0.6
+const TWIST_LINE_COLOR := Color(1.0, 0.9, 0.55)
 # Quick Game settings a trip game overrides (static, so they survive reload_current_scene): put back when a game
 # without a trip match starts, so a Quick Game after a trip game has the saved court and level again
 static var _quick_look := ""
@@ -262,6 +271,10 @@ var force_fouls := false            # test only: -- --force-fouls fouls some fie
 var ht_ft_t := 0.0                  # humantest: seconds the human has had the ball at the line
 var ht_ft_n := 0                    # humantest: free throws the scripted thumb started (every 2nd is "good")
 var ht_ft_kind := ""                # humantest: "good" or "early" for the free throw on the meter now
+var twist_fx                         # P6-14 twist_fx.gd node (null: no twist or no file)
+var anim_test := false               # test only (-- --anim-test): the animation driver runs on this game
+var twist_label: Label               # the twist's banner line under the tip-off message
+var _twist_line_t := 0.0
 
 func stat(k: String) -> void:
 	stats[k] = stats.get(k, 0) + 1
@@ -297,6 +310,22 @@ func _ready() -> void:
 		set_process(false)
 		get_tree().quit()
 		return
+	if OS.get_cmdline_user_args().has("--twisttest"):
+		var ok_t: bool = Twists.self_test()   # test only: the twist table's defaults (P6-01)
+		set_physics_process(false)
+		set_process(false)
+		get_tree().quit(0 if ok_t else 1)
+		return
+	# test only (-- --anim-test, P6-24): a game is built (CPU vs CPU, no panels) and the driver added to it
+	anim_test = OS.get_cmdline_user_args().has("--anim-test")
+	if anim_test:
+		if not ResourceLoader.exists(ANIM_TEST_PATH):
+			print("ANIM TEST: %s is missing" % ANIM_TEST_PATH)
+			set_physics_process(false)
+			set_process(false)
+			get_tree().quit(1)
+			return
+		Flow.screen = Flow.GAME
 	# screen hand-off (Phase 5): the test modes play a game at once, as before; otherwise Flow decides the screen
 	if Flow.skip_title():
 		Flow.screen = Flow.GAME
@@ -307,7 +336,7 @@ func _ready() -> void:
 		Flow.build_screen(self)   # title, map, story, ...: that screen's node and its music; no court
 		return
 	_parse_city_args()   # --city <id> --cgame N: Flow.match = that trip matchup
-	autoplay = OS.get_cmdline_user_args().has("--autoplay") or _city_autoplay()
+	autoplay = OS.get_cmdline_user_args().has("--autoplay") or _city_autoplay() or anim_test
 	humantest = OS.get_cmdline_user_args().has("--humantest")
 	force_fouls = OS.get_cmdline_user_args().has("--force-fouls")
 	menushot = OS.get_cmdline_user_args().has("--menushot")
@@ -315,6 +344,7 @@ func _ready() -> void:
 	MenuScript.prepare_level()   # before the players: first launch = Normal, then the saved level, then --difficulty
 	MenuScript.prepare_settings()   # before the court: the saved court look (-- --court wins) and music on/off
 	_apply_match_settings()      # a trip game: its court look and level (a Quick Game gets the saved ones back)
+	_apply_twist()               # before the players and the ball: the twist's numbers are read at setup
 
 	rules = RulesScript.new()
 	rules.game = self
@@ -383,12 +413,15 @@ func _ready() -> void:
 	(decals if View.angled() else overlay).add_child(_steal_node)
 
 	_build_hud()
+	_add_twist_fx()
 	menu = MenuScript.new()
 	menu.game = self
 	add_child(menu)
+	shot_clock = shot_clock_length()
 	start_game()
 	if Flow.in_trip() and str(Flow.match.get("label", "")) != "":
 		show_message(str(Flow.match.get("label", "")), rules.START_MSG_TIME)   # instead of "FIRST TO N"
+	_add_anim_test()
 	if View.angled():
 		_update_camera()               # set the ANGLED zoom and limits and start on the ball
 		camera.reset_smoothing()
@@ -405,6 +438,7 @@ func _ready() -> void:
 		MenuScript.start_done = true
 	if not menu_wait:
 		_play_court_music()
+		_show_twist_banner()   # (behind the launch panel it would be hidden: the reloaded game shows it)
 
 # in play: the court's track, softly (owner Q5 a). The panels play the menu music (menu.gd)
 func _play_court_music() -> void:
@@ -477,13 +511,129 @@ func _has_difficulty_flag() -> bool:
 	return false
 
 func _difficulty_flag_value() -> String:
+	return _flag_value("--difficulty")
+
+# the value of a test flag given as `--name value` or `--name=value` (lower case), or ""
+func _flag_value(flag_name: String) -> String:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	for i in args.size():
-		if args[i].begins_with("--difficulty="):
+		if args[i].begins_with(flag_name + "="):
 			return args[i].get_slice("=", 1).to_lower()
-		if args[i] == "--difficulty" and i + 1 < args.size():
+		if args[i] == flag_name and i + 1 < args.size():
 			return args[i + 1].to_lower()
 	return ""
+
+# ---------------- Phase 6: the twist (P6-02) ----------------
+
+# the twist of this game: Flow.match.twist (trip.gd adds it, P6-10; {} = Quick Game = "none"), or the test flag
+# -- --twist <id> (also in a Quick Game)
+func _twist_id() -> String:
+	var id: String = str(Flow.match.get("twist", "none"))
+	var flag: String = _flag_value("--twist")
+	if flag != "":
+		id = flag
+	return id
+
+# before the players and the ball are made: Twists.current (static, so set on every game build) and the wind
+func _apply_twist() -> void:
+	Twists.set_current(_twist_id())
+	Twists.new_game(rng)
+	if Twists.active():
+		stat("twist_" + Twists.current)
+		if autoplay or humantest:
+			print("TWIST %s: %s | %s" % [Twists.current, Twists.info().name, Twists.info().banner])
+
+# the shot clock's length: 24 s, or the twist's (Memphis 18)
+func shot_clock_length() -> float:
+	return Twists.value("shot_clock", SHOT_CLOCK_LENGTH)
+
+# P6-14's effects node (rain, wind streaks, banner ...), only when a twist is on and the file exists
+func _add_twist_fx() -> void:
+	if not Twists.active() or not ResourceLoader.exists(TWIST_FX_PATH):
+		return
+	var s: GDScript = load(TWIST_FX_PATH) as GDScript
+	if s == null:
+		return
+	var node = s.new()
+	if not (node is Node):
+		return
+	if "game" in node:
+		node.set("game", self)
+	twist_fx = node
+	add_child(node)
+
+# at tip-off: the twist's line under the "FIRST TO N" / match label message, plus twist_fx's own banner
+func _show_twist_banner() -> void:
+	if not Twists.active():
+		return
+	var line: String = str(Twists.info().banner)
+	if twist_label != null and line != "":
+		twist_label.text = line
+		twist_label.visible = true
+		twist_label.modulate.a = 1.0
+		_twist_line_t = TWIST_LINE_TIME
+	if twist_fx != null and twist_fx.has_method("show_banner"):
+		twist_fx.show_banner()
+
+# test only (-- --anim-test): P6-24's driver, like the trip test's (it gets `main`)
+func _add_anim_test() -> void:
+	if not anim_test:
+		return
+	var s: GDScript = load(ANIM_TEST_PATH) as GDScript
+	if s == null:
+		print("ANIM TEST: %s did not load" % ANIM_TEST_PATH)
+		return
+	var node = s.new()
+	if not (node is Node):
+		print("ANIM TEST: %s is not a Node" % ANIM_TEST_PATH)
+		return
+	if "main" in node:
+		node.set("main", self)
+	if "game" in node:
+		node.set("game", self)
+	add_child(node)
+
+# camera punch (P6-23): fx.zoom_punch() is 1.0 at rest, a little more on a big dunk
+func _zoom_punch() -> float:
+	if fx != null and fx.has_method("zoom_punch"):
+		return float(fx.zoom_punch())
+	return 1.0
+
+# the TWIST line of the test printout: what the twist did this game
+func _twist_summary() -> String:
+	var g := func(k: String) -> int:
+		return int(stats.get(k, 0))
+	var secs: int = int(rules.play_time)
+	var line: String = "TWIST %s (%s) | game %d:%02d" % [Twists.current, Twists.info().name, secs / 60, secs % 60]
+	var long_shots: int = g.call("jumper_threes_t0") + g.call("jumper_threes_t1")
+	var long_makes: int = g.call("jumper_three_makes_t0") + g.call("jumper_three_makes_t1")
+	var turbo_s: float = float(g.call("turbo_frames_t0") + g.call("turbo_frames_t1")) / 60.0
+	match Twists.current:
+		"wind":
+			line += " | long shots %d/%d (wind-hit %d) | shots curved %d, avg %.2f ft | lobs %d, avg drift %.2f ft, blown out of reach %d" % [
+					long_makes, long_shots, g.call("wind_long_shots"), g.call("wind_curved_shots"),
+					float(g.call("wind_curve_px")) / FT / maxf(1.0, float(g.call("wind_curved_shots"))),
+					g.call("wind_lobs"), float(g.call("wind_drift_px")) / FT / maxf(1.0, float(g.call("wind_lobs"))),
+					g.call("wind_lob_drops")]
+		"crowd":
+			line += " | shot clock %d s, violations %d, possessions %d" % [int(shot_clock_length()), g.call("shotclock"),
+					g.call("possessions_t0") + g.call("possessions_t1")]
+		"humid":
+			line += " | stamina ran empty %d, turbo %.0f s, slow refill frames %d" % [g.call("stamina_empty"), turbo_s,
+					g.call("twist_refill_frames")]
+		"thin_air":
+			line += " | long shots %d/%d (thin-air %d) | lobs %d (longer flight) | stamina ran empty %d, turbo %.0f s" % [
+					long_makes, long_shots, g.call("thin_air_long_shots"), g.call("thin_air_lobs"),
+					g.call("stamina_empty"), turbo_s]
+		"wet":
+			line += " | slides %d (%.1f s), crossovers %d (keep their grip)" % [g.call("slides"),
+					float(g.call("slide_frames")) / 60.0, g.call("crossovers_t0") + g.call("crossovers_t1")]
+		"sand":
+			line += " | turbo %.0f s, stamina ran empty %d" % [turbo_s, g.call("stamina_empty")]
+		"cage":
+			line += " | fence bounces %d, out of bounds %d (sideline %d, baseline %d)" % [g.call("fence_bounces"),
+					g.call("out_of_bounds"), g.call("oob_sideline"), g.call("oob_baseline")]
+	return line
 
 # after rules.gd is made: a trip game's target (side switch at (target + 1) / 2, as --target does; a --target flag
 # wins) and the crew names for the top bar and the messages
@@ -546,8 +696,8 @@ func _parse_city_args() -> void:
 	var names: Array = []
 	for tm in tms:
 		names.append(str((tm as Dictionary).get("name", "?")))
-	print("MATCH %s | to %d | %s | level %s" % [str(built.get("label", "")), int(built.get("target", 21)),
-			" vs ".join(PackedStringArray(names)), str(built.get("level", ""))])
+	print("MATCH %s | to %d | %s | level %s | twist %s" % [str(built.get("label", "")), int(built.get("target", 21)),
+			" vs ".join(PackedStringArray(names)), str(built.get("level", "")), _twist_id()])
 
 # --city plays CPU vs CPU unless the run is a --humantest or a screenshot mode
 func _city_autoplay() -> bool:
@@ -684,6 +834,13 @@ func _build_hud() -> void:
 	msg_label.offset_bottom = -60
 	ft_label = _make_label(root, 26, Control.PRESET_TOP_WIDE, 62)   # "FREE THROW 1 OF 2" under the top bar
 	ft_label.modulate = FT_LABEL_COLOR
+	twist_label = _make_label(root, TWIST_LINE_SIZE, Control.PRESET_CENTER, 0)   # under msg_label (-160..-60)
+	twist_label.offset_left = -560
+	twist_label.offset_right = 560
+	twist_label.offset_top = -58
+	twist_label.offset_bottom = -18
+	twist_label.modulate = TWIST_LINE_COLOR
+	twist_label.visible = false
 
 	controls = ControlsScript.new()
 	root.add_child(controls)
@@ -780,6 +937,7 @@ func shot_probability(p, quality: float) -> float:
 		base = 0.52 - (d - 5.0) * 0.0075
 	else:
 		base = 0.38 - max(0.0, d - 23.75) * 0.025
+		base *= Twists.value("long_shot_mult", 1.0)   # wind (gusting) and thin air; 1.0 without a twist
 	base = max(base, 0.02)
 	var cont := openness(p)
 	if cont < 3.0:
@@ -798,7 +956,7 @@ func give_ball(p) -> void:
 
 func on_ball_held(p) -> void:
 	if p.team != possession or not shot_clock_running:
-		shot_clock = SHOT_CLOCK_LENGTH
+		shot_clock = shot_clock_length()
 	shot_clock_running = true
 	possession = p.team
 	rules.on_possession(p.team)
@@ -824,6 +982,8 @@ func release_shot(p, quality: float) -> void:
 	stat("shots_t%d" % p.team)
 	stat("shots_half%d_t%d" % [2 if rules.sides_swapped else 1, p.team])
 	stat("shot_d%d" % int(p.position.distance_to(hoop) / FT / 5) )
+	if Twists.base_value("long_shot_mult", 1.0) != 1.0 and p.rim_kind == "" and is_three(p.position, hoop):
+		stat(Twists.current + "_long_shots")   # a long shot the twist moved (wind_long_shots, thin_air_long_shots)
 	if made:
 		stat("makes")
 		stat("makes_t%d" % p.team)
@@ -1190,6 +1350,7 @@ func _physics_process(delta: float) -> void:
 	_update_message(delta)
 	if game_over or menu_wait:
 		return
+	Twists.tick(delta)   # the wind's gusts (nothing for the other twists)
 
 	if not rules.update(delta):
 		if shot_clock_running and ball.state != ball.DEAD:
@@ -1266,6 +1427,7 @@ func _update_camera() -> void:
 	var target: Vector2 = View.to_screen(ball.position, 0.0)
 	if not View.angled():
 		camera.position = target
+		camera.zoom = Vector2(CAM_ZOOM_FLAT, CAM_ZOOM_FLAT) * _zoom_punch()
 		return
 	var corners := [View.to_screen(Vector2(0, 0)), View.to_screen(Vector2(COURT_W, 0)),
 			View.to_screen(Vector2(0, COURT_H)), View.to_screen(Vector2(COURT_W, COURT_H))]
@@ -1278,10 +1440,10 @@ func _update_camera() -> void:
 	var need_y: float = hi.y - lo.y + CAM_TOP_FT * FT * View.HEIGHT_SCALE + CAM_MARGIN_FT * FT
 	var zm: float = clampf((screen.y - CAM_HUD_PX) / need_y, CAM_ZOOM_MIN, CAM_ZOOM)
 	camera.zoom = Vector2(zm, zm)
-	var vis: Vector2 = screen / camera.zoom
+	var vis: Vector2 = screen / Vector2(zm, zm)
 	var left: float = lo.x - CAM_MARGIN_FT * FT
 	var right: float = hi.x + CAM_MARGIN_FT * FT
-	var top: float = lo.y - CAM_TOP_FT * FT * View.HEIGHT_SCALE - CAM_HUD_PX / camera.zoom.y
+	var top: float = lo.y - CAM_TOP_FT * FT * View.HEIGHT_SCALE - CAM_HUD_PX / zm
 	var bottom: float = hi.y + CAM_MARGIN_FT * FT
 	var mid := Vector2((left + right) / 2.0, (top + bottom) / 2.0)
 	var follow_y: float = CAM_FOLLOW_Y
@@ -1299,6 +1461,7 @@ func _update_camera() -> void:
 	camera.limit_top = int(floorf(top))
 	camera.limit_bottom = int(ceilf(bottom))
 	camera.position = Vector2(lerpf(mid.x, target.x, CAM_FOLLOW_X), lerpf(mid.y, target.y, follow_y))
+	camera.zoom = Vector2(zm, zm) * _zoom_punch()   # the limits above use the zoom without the punch
 
 func _process(delta: float) -> void:
 	if not fps_print:
@@ -1615,6 +1778,8 @@ func on_game_over(winner: int) -> void:
 			return "%s %d pts, shots %d/%d, dunks %d, steals %d, blocks %d" % [TEAM_NAMES[t], d.points, d.makes,
 					d.shots, d.dunks, d.steals, d.blocks]
 		print("TEAMS %s | %s" % [ts.call(0), ts.call(1)])   # the pause screen's numbers (team_stats)
+		if Twists.active():
+			print(_twist_summary())
 		print(stats)
 		if humantest:
 			print(_ht_summary())
@@ -1669,6 +1834,11 @@ func show_message(text: String, time := 1.2, color := Color.WHITE) -> void:
 	msg_label.scale = Vector2(MSG_POP_SCALE, MSG_POP_SCALE)
 
 func _update_message(delta: float) -> void:
+	if _twist_line_t > 0.0:
+		_twist_line_t -= delta
+		twist_label.modulate.a = clampf(_twist_line_t / TWIST_LINE_FADE, 0.0, 1.0)
+		if _twist_line_t <= 0.0:
+			twist_label.visible = false
 	if msg_timer > 0.0:
 		msg_timer -= delta
 		msg_age += delta
