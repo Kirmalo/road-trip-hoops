@@ -497,6 +497,7 @@ func _quick_player(t: int, i: int) -> Dictionary:
 
 func _apply_quick_teams() -> void:
 	quick_teams = []
+	MenuScript.Difficulty.quick_styles = []
 	if Flow.in_trip() or not ResourceLoader.exists(TRIP_PATH):
 		return
 	var trip: GDScript = load(TRIP_PATH) as GDScript
@@ -513,6 +514,7 @@ func _apply_quick_teams() -> void:
 	quick_teams = built
 	for t in 2:
 		TEAM_NAMES[t] = str((built[t] as Dictionary).get("name", TEAM_NAMES[t]))
+		MenuScript.Difficulty.quick_styles.append(str((built[t] as Dictionary).get("style", "")))
 	if autoplay or humantest:
 		var lines: Array = []
 		for t in 2:
@@ -522,7 +524,8 @@ func _apply_quick_teams() -> void:
 				ps.append("%s %d/%d/%d/%d/%d" % [str(p.get("name", "")), int(r.get("speed", 0)), int(r.get("shooting", 0)),
 						int(r.get("finishing", 0)), int(r.get("defense", 0)), int(r.get("stamina", 0))])
 			lines.append("%s (%s)" % [TEAM_NAMES[t], ", ".join(PackedStringArray(ps))])
-		print("QUICK TEAMS %s vs %s | spd/sht/fin/def/sta" % [lines[0], lines[1]])
+		print("QUICK TEAMS %s vs %s | spd/sht/fin/def/sta | RED style %s" % [lines[0], lines[1],
+				MenuScript.Difficulty.team_style(1) if MenuScript.Difficulty.team_style(1) != "" else "-"])
 
 # the top bar shows crew names (smaller font): a trip game, or a Quick Game with its crews
 func _crew_names() -> bool:

@@ -19,7 +19,7 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
 - `scripts/menu.gd`: the Quick Game panel (levels, YOUR TEAM / OPPONENT, COURT and MUSIC buttons). COURT cycles the
   gym, the blacktop and every unlocked city court; a city court brings its city's twist (`quick_twist()`). The team
   buttons cycle the Kings, the Bridge Runners and every beaten crew (`Trip.quick_team()`: the boss game's lineup,
-  own colors, each player's stats shifted to average 50).
+  own colors, each player's stats shifted to average 50; RED plays its crew's style).
 - `scripts/human_input.gd`: the human's controls (flicks, pump-fake taps, CALL, the STEAL/BLOCK button).
 - `scripts/player.gd`: movement and CPU offense (spots, ball handler drive/shoot/pass); picks the animation (running
   dribble, 4 dunk styles, rim hang, ankle-breaker falls, ...) and draws its sheet through `view.gd`, with the motion

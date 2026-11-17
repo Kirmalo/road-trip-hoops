@@ -108,7 +108,8 @@ static var _inited := false
 # multiplies CPU tendency keys (Ratings.STYLES) after the level rule, for CPU_TEAM only. Quick Game (Flow.match
 # empty) has neither, so value() returns exactly what it did before.
 # (`match` is a GDScript keyword: always written Flow.match, with the dot.)
-const STYLE_TEAM := CPU_TEAM          # the only team a play style changes (board: "Play style (team 1 only)")
+const STYLE_TEAM := CPU_TEAM
+static var quick_styles: Array = []   # Quick Game: [blue style, red style] of the picked crews ("" = none)          # the only team a play style changes (board: "Play style (team 1 only)")
 
 # The level's value for `key`, given today's (Hard) value. Hard, and the human's team on any level, get hard_value;
 # then team 1's play style (if any) multiplies it.
@@ -144,7 +145,8 @@ static func effective_level() -> int:
 static func team_style(team: int) -> String:
 	var m: Dictionary = Flow.match
 	if m.is_empty():
-		return ""
+		# Quick Game: the picked crews' road-trip styles (owner, Phase 6 tuning check-in); set by main.gd
+		return str(quick_styles[team]) if team >= 0 and team < quick_styles.size() else ""
 	var teams: Array = m.get("teams", [])
 	if team < 0 or team >= teams.size() or not (teams[team] is Dictionary):
 		return ""
