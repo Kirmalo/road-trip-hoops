@@ -119,21 +119,34 @@ Hook points. Each is one `Twists.value(...)` call around today's constant; the d
 
 Every hook acts on **all players and both teams the same way**; no hook reads `team`.
 
-### City data (`scripts/cities.gd`, P6-10)
-- All 8 cities get `built: true`, a `look` (new look ids `barn`, `rooftop`, `soul_gym`, `bayou`, `mountain`,
+### City data (`scripts/cities.gd`, P6-10; done)
+- All 8 cities have `built: true`, a `look` (new look ids `barn`, `rooftop`, `soul_gym`, `bayou`, `mountain`,
   `rain_park`, `beach`, `cage`), `music` (track ids `hometown`, `chicago`, `memphis`, `new_orleans`, `denver`,
   `seattle`, `los_angeles`, `newyork`) and `twist` (`none`, `wind`, `crowd`, `humid`, `thin_air`, `wet`, `sand`,
-  `cage` (Q2)).
+  `cage` (Q2)). The known ids are `Cities.LOOK_IDS`, `MUSIC_IDS`, `TWIST_IDS`; `Cities.twist(id)` reads one.
+- Each city also has `"fallback": {"look", "music"}`: `trip.gd` `look_for()` / `music_for()` put the city's own look
+  in the match once `court_looks.gd` has it (P6-12) and its own track once `assets/music/<id>.ogg` exists (P6-A3);
+  until then the fallback (gym / blacktop, an existing track). No code change is needed when the art lands.
 - Crew data is as in Phase 5: name, style, colors, ui_color, good, boss, avg, and `look` text per player for the art
-  agent.
-- Id prefixes: `mem_`, `nol_`, `den_`, `sea_`, `la_` (`<p>_g1`, `_g2`, `_boss`, `_a1`, `_a2`).
-- New York keeps `ny_q*`, `ny_s*`, `ny_f*` and `ny_boss`, now with their own sheets and portraits.
+  agent (body and skin words from `tools/art/crews.json`). New palette names for P6-A1: `ORANGE`, `TEAL`, `LIME`,
+  `SKY`, `SAND` (the others exist).
+- Id prefixes: `mem_`, `nol_`, `den_`, `sea_`, `la_` (`<p>_g1`, `_g2`, `_boss`, `_a1`, `_a2`). Every player's
+  `sheet` and `portrait` is his own id; until P6-A1 / P6-A4 draw them they fall back (sheet -> `red_n`, portrait ->
+  a silhouette in the crew's ui_color).
+- New York keeps `ny_q*`, `ny_s*`, `ny_f*` and `ny_boss`, now with their own sheet / portrait ids. The semifinal
+  crew "Subway Sparks" is renamed **BODEGA BANDITS** (grey and plum).
 - STAGE_AVG and TIER stay (owner Q3). QA may nudge STAGE_AVG within "about 40 rising to about 70" (P6-30).
 - `trip.gd` (P6-10):
-  - `match_for()` adds `"twist"`.
-  - New test flag `--expected-roster`: a `--city` game uses the crew a trip would have at that point. That means the
-    recruit picks and stat points that `auto_step()` makes, applied for every city before this one, with the
-    starters chosen by the lineup's default. QA measures the ramp with it.
+  - `match_for()` adds `"twist"` (the city's; `"none"` in Hometown).
+  - Test flag `--expected-roster` (with `--city <id> --cgame N`): the match uses the crew a trip would have there
+    (`Trip.expected_roster()`): every earlier game won at once, the points spent as after_game.gd's `auto_step()`
+    does (one at a time on the lowest stat of the first roster player who can take one), the first recruit
+    candidate signed, and the lineup's default starters (the 3 underdogs; the trip test's one-off pick check is not
+    replayed). Prints an `EXPECTED ROSTER` line. QA measures the ramp with it.
+  - After a city's boss game (game 3, or the New York final) is won, `Difficulty.unlock_court(city)` is called if
+    difficulty.gd has it (P6-17), never in the in-memory test trips.
+  - `--triptest-data` checks every city's ids, story scenes, crew shape, recruitable flags, the expected roster at
+    each city, and the full route to New York.
 
 ### Court looks (`scripts/court_looks.gd`, P6-12; art from `tools/art/make_courts.py`, P6-A2)
 - New look entries use the same keys as `gym` and `blacktop`, plus these optional keys (`court.gd` ignores a missing
@@ -146,39 +159,62 @@ Every hook acts on **all players and both teams the same way**; no hook reads `t
 - `gym` and `blacktop` stay for Quick Game.
 - `names()` returns the order the COURT button cycles (Q9).
 
-### Player sheet format v2 (P6-A0 proposes the numbers, P6-05 reads them; the JSON file is the truth)
+### Player sheet format v2 (numbers from the owner-approved animation sample v1; the JSON file is the truth)
+The sample (`docs/art/anim_sample_v1.md`, `_points.json`) replaced the guessed 56 x 80 numbers:
 ```
-assets/players2/<sheet>.png         v2 sheets, same ids as today (ud_deuce, ht_g1, ht_g1_crew, ...)
-assets/players2/format.json         {"version": 2, "frame": [56, 80], "feet_row": 74, "head_px": 50,
-                                     "cols": 32, "rows_per_dir": 5, "dirs": ["S", "SE", "E", "NE", "N"],
-                                     "anims": {"idle": {"start": 0, "frames": 4, "fps": 3, "loop": true}, ...}}
-assets/players2/hands.json          {"frame": [56, 80], "feet_row": 74,
-                                     "bodies": {"<body>": [[{"L": [x, y], "R": [x, y]}, ...per slot], ...per dir]},
-                                     "sheets": {"<sheet>": "<body>"}}       # recolors share their body's hands
-assets/players2/cards/<sheet>.png   the idle frame facing the camera (lineup, recruit, bracket cards)
+assets/players2/format.json         {"version": 2, "frame": [64, 96], "feet_row": 88, "center_x": 32, "head_px": 50,
+                                     "draw_scale": 2.0, "dirs": ["S", "SE", "E", "NE", "N"],
+                                     "cols": <logical columns per direction>, "page_cols": 64,
+                                     "anims": {"idle": {"start": 0, "frames": 6, "fps": 6, "loop": true}, ...}}
+assets/players2/<sheet>.png         one page (when cols <= 64); <sheet>_p0.png is accepted too
+assets/players2/<sheet>_p0.png ...  pages when cols > 64: page p holds logical columns p*64 .. p*64+63
+assets/players2/hands.json          {"frame": [64, 96], "feet_row": 88,
+                                     "bodies": {"<body>": {"<anim>": {"<DIR>": [{"hands": {"L": [x, y], "R": [x, y]},
+                                        "ball": [x, y, front] or null, "ball_floor": [x, y], "ball_h": h}, ...]}}},
+                                     "sheets": {"<sheet>": "<body>"}}       # recolors share their body's points
+assets/players2/cards/<sheet>.png   one 64 x 96 frame: the idle frame facing the camera (lineup, recruit, bracket)
 ```
-- Proposed numbers:
-  - Frame 56 x 80, feet on row 74, character about 50 px tall drawn 2x (today 40 x 64 frames with a 40 px
-    character), so the same pixel density with 25% more height and more room for detail.
-  - 32 columns x 5 rows per direction = 160 slots per direction, 25 rows in all: a 1792 x 2000 sheet (under 2048).
-  - P6-A0 measures today's on-screen height in a screenshot and sets the scale so the new player is about 1.25x
-    today's. The "80 px" the owner quotes may be measured differently, so the ratio is the target.
-- **Fallback chain** (sheets.gd): `assets/players2/<sheet>.png` with format v2, then `assets/players/<sheet>.png`
-  (v1, today's layout, today's `hands.json`), then the Kenney top-down sprite. v1 and v2 players can share a court.
-  An animation a v1 sheet doesn't have maps to the nearest v1 one, using today's table (run_dribble -> dribble,
-  slide -> run, dunk_* -> dunk, pass_* -> pass, fall -> stumble, land -> idle).
-- `scripts/sheets.gd` (P6-05, static):
-  - `load_sheet(sheet_id) -> Dictionary {texture, fmt}`;
-  - `frame_index(fmt, dir_row, anim, k) -> int`;
-  - `anim_frames(fmt, anim) -> int`;
-  - `anim_fps(fmt, anim) -> float`;
-  - `hand(fmt, sheet_id, frame) -> Dictionary` (L/R in frame pixels, or {});
-  - `feet_y(fmt)`, `frame_size(fmt)`, `head_px(fmt)`;
-  - `card(sheet_id) -> Texture2D`: the card image, else the idle frame cut from whichever sheet exists.
-  - player.gd, ball.gd, lineup.gd, recruit.gd and bracket.gd all go through it, so nothing else hardcodes 40 x 64
-    or 37 columns.
+- Numbers: frame 64 x 96 art px, art scale 1.25, drawn 2x in the game (an average body is 50 art px = 100 px on the
+  720 px screen; today 40 art px). The floor point under the pelvis is row 88, x 32. Ids are today's (`ud_deuce`,
+  `ht_g1`, `ht_g1_crew`, ...).
+- Layout: each direction is one row of `cols` logical columns (animation `start` + frame); rows 0-4 = S, SE, E, NE,
+  N (SW, W, NW mirrored: `x' = 63 - x`, L and R swap). The columns are stored in pages of up to `page_cols` = 64
+  columns, so a page is at most 4096 x 480 px (the coordinator's limit for player sheets, after the sample: about
+  180 columns = 3 pages). An animation may cross a page edge; `Sheets.frame_region()` finds the page.
+- hands.json is keyed by animation and direction, like the sample's `_points.json` (so it doesn't depend on the column
+  layout). `ball` is the ball centre for the game's 11 px ball, `front` 1 = drawn over the sprite; null = the ball is
+  free (after a dunk's slam). Directions without points (the sample has SE and E only) return `{}`.
+- **Fallback chain** (sheets.gd): each id the caller lists, v2 (`assets/players2/`, needs `format.json`) then v1
+  (`assets/players/<sheet>.png`, 37 x 5 frames of 40 x 64, today's `hands.json`); nothing at all = the caller draws
+  the Kenney sprite (player.gd) or a silhouette (screens). v1 and v2 players can share a court. A page or sheet of
+  the wrong size is refused (a warning), so a half-made sheet falls back instead of drawing garbage.
+- Animation names: an animation a sheet doesn't have maps to the nearest one it has (`Sheets.ALIASES`): on a v1
+  sheet run_dribble / cross / catch -> dribble, hold / land -> idle, slide -> run, dunk_* / rim_hang -> dunk, pass_* ->
+  pass, steal -> poke, fall -> stumble, celebrate_a/b -> celebrate; on a v2 sheet today's names map the other way
+  (dunk -> dunk_two, pass -> pass_chest, poke -> steal, celebrate -> celebrate_a). The sample's `rundribble` =
+  `run_dribble`.
+- `scripts/sheets.gd` (P6-05, static, no game state; `const Sheets = preload("res://scripts/sheets.gd")`):
+  - `load_sheet(sheet_id) -> {id, version, fmt, texture (page 0), pages}` (v2 then v1, {} if neither);
+    `load_first(ids)`; `with_base(sheet_id)` = `[id]` plus the plain id after a `_crew` one;
+  - `frame_index(fmt, dir_row, anim, k) -> int` (`dir_row * cols + start + k`; k wraps if the anim loops, else
+    clamps); `progress_index(fmt, dir_row, anim, f)` for f in 0..1; `frame_region(sheet, index) -> {texture, region}`;
+  - `resolve(fmt, anim)`, `has_anim()`, `anim_frames(fmt, anim) -> int`, `anim_fps(fmt, anim) -> float` (0 = driven by a
+    progress), `anim_loops()`;
+  - `hand(fmt, sheet_id, frame, flip = false) -> {L, R: Vector2, ball: Vector2, ball_front: bool, ball_h}` or {};
+  - `feet_y(fmt)`, `center_x(fmt)`, `frame_size(fmt)`, `head_px(fmt)`, `draw_scale(fmt)`, `cols()`, `page_cols()`;
+  - `card(sheet_id) -> Texture2D`: `cards/<sheet>.png`, else the idle S frame cut from its v2 or v1 sheet;
+    `card_info(sheet_id)` / `card_first(ids)` add the floor point and height, and `card_rect(info, v1_pos, v1_scale)`
+    places any card where today's 40 x 64 card stood (same floor point and character height).
+  - `self_test()` (prints `SHEETS ... OK`): v1 numbers against player.gd and hands.json, then a 2-page v2 sheet built
+    in `user://sheets_test/` with the sample's points. Run it with a one-line `SceneTree` script, or from
+    `--anim-test` (P6-24).
+  - lineup.gd, recruit.gd and bracket.gd go through it (P6-06); player.gd (P6-21) and ball.gd (P6-22) next, so
+    nothing else hardcodes 40 x 64 or 37 columns.
 
-### Animation table (names fixed; frame counts are P6-A0's proposal and are read from `format.json`)
+### Animation table (names fixed; frame counts are read from `format.json`)
+The counts below were the plan's guess. The approved sample has run 12, run_dribble 10, dribble 8, dunk_two 10 (and
+proposes idle 6, cross 8, shoot 10, layup 10, the passes 6, catch 4, slide 8, steal 6, block 8, fall 8, land 4,
+celebrate 12, stumble 8); the code reads whatever `format.json` says.
 Today = what the v1 sheet does. "Phase" = what picks the frame.
 
 | Anim | Frames | Plays when (player.gd reads) | Frame phase |

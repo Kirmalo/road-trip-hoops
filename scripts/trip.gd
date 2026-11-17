@@ -23,11 +23,19 @@ extends RefCounted
 # Test: godot --headless --path . -- --triptest-data           prints every city game's lineups + save checks,
 #       godot --headless --path . -- --triptest-data --load    (a second process) loads that save and compares.
 # Both use user://trip_test.json (save.gd), never the owner's save.
+# Phase 6 (P6-10): match_for() adds the city's "twist"; a city look or track that doesn't exist yet falls back to the
+# city's "fallback" look / music; --expected-roster (with --city) plays a city game with the crew a trip would have
+# there (expected_roster()); a won boss game unlocks the city's court for Quick Game (P6-17, Difficulty.unlock_court).
 
 const Flow = preload("res://scripts/flow.gd")
 const Cities = preload("res://scripts/cities.gd")
 const Ratings = preload("res://scripts/ratings.gd")
 const Save = preload("res://scripts/save.gd")
+const Looks = preload("res://scripts/court_looks.gd")      # which look ids exist (city look or its fallback)
+const StoryText = preload("res://scripts/story_text.gd")   # the data check: every scene a city names exists
+const DIFFICULTY_PATH := "res://scripts/difficulty.gd"     # loaded at call time: unlock_court() (P6-17) if it exists
+const MUSIC_DIR := "res://assets/music/"                   # <music>.ogg (audio.gd); missing = the city's fallback
+const EXPECTED_ROSTER_FLAG := "--expected-roster"          # test flag (with --city): the crew a trip would have there
 
 const LEVELS := ["easy", "normal", "hard"]   # difficulty.gd NAMES
 const DEFAULT_LEVEL := "normal"     # a trip with no level given; also the --city test matches
@@ -399,6 +407,8 @@ static func match_for(city_id: String = "", n: int = 0) -> Dictionary:
 	var c: Dictionary = Cities.city(city_id)
 	if c.is_empty() or not bool(c.get("built", false)):
 		return {}
+	if not active and OS.get_cmdline_user_args().has(EXPECTED_ROSTER_FLAG):
+		return _expected_match(city_id, n)
 	var stage: int = int(c.get("stage", 1))
 	var label: String = "%s - GAME %d OF %d" % [str(c.get("name", city_id)).to_upper(), n, GAMES_PER_CITY]
 	var crew: Dictionary = c.get("crew", {})
@@ -421,7 +431,7 @@ static func match_for(city_id: String = "", n: int = 0) -> Dictionary:
 		"mode": "trip",
 		"label": label,
 		"target": Cities.game_target(city_id, n),
-		"look": str(c.get("look", "")), "music": str(c.get("music", "")),
+		"look": look_for(city_id), "music": music_for(city_id), "twist": Cities.twist(city_id),
 		"level": level if active else DEFAULT_LEVEL,
 		"city": city_id, "game": n, "stage": stage,
 		"teams": [
@@ -430,6 +440,102 @@ static func match_for(city_id: String = "", n: int = 0) -> Dictionary:
 		],
 	}
 	Flow.match = m
+	return m
+
+# The city's court look: its own once court_looks.gd has it (P6-12), else the city's "fallback" look.
+static func look_for(city_id: String) -> String:
+	var c: Dictionary = Cities.city(city_id)
+	var own: String = str(c.get("look", ""))
+	if own != "" and Looks.LOOKS.has(own):
+		return own
+	var fb = c.get("fallback", {})
+	var alt: String = str((fb as Dictionary).get("look", "")) if fb is Dictionary else ""
+	return alt if alt != "" else own
+
+# The city's music track: its own once res://assets/music/<id>.ogg exists (P6-A3), else the city's "fallback" track.
+static func music_for(city_id: String) -> String:
+	var c: Dictionary = Cities.city(city_id)
+	var own: String = str(c.get("music", ""))
+	if own != "" and ResourceLoader.exists(MUSIC_DIR + own + ".ogg"):
+		return own
+	var fb = c.get("fallback", {})
+	var alt: String = str((fb as Dictionary).get("music", "")) if fb is Dictionary else ""
+	return alt if alt != "" else own
+
+# ---------------- --expected-roster (QA, P6-30) ----------------
+
+# Puts the trip state (in memory, nothing saved) where a trip would be at game n of city_id when every game is won
+# on the first try and every screen takes the trip test's default choice (each screen's auto_step()):
+#   - points (after_game.gd): one point at a time on the lowest stat (first in Ratings.STATS order on a tie) of the
+#     first roster player who can still take one, until none is left;
+#   - recruit (recruit.gd): the first candidate (the city's first good player);
+#   - lineup (lineup.gd): keeps the starters it opens with, so the 3 underdogs start every game;
+#   - New York: points won in earlier rounds stay unspent (the bracket's PLAY doesn't spend them).
+# False for an unknown or not-built city. The caller clears the state (_reset()) when done.
+static func expected_roster(city_id: String, n: int = 1) -> bool:
+	if not Cities.is_built(city_id):
+		return false
+	var was: bool = saving
+	saving = false
+	new_trip(DEFAULT_LEVEL)
+	var guard: int = Cities.ROUTE.size() + 1
+	while city != "" and city != city_id and guard > 0:
+		guard -= 1
+		for i in GAMES_PER_CITY:
+			record_result({"won": true})
+		_auto_spend_all()
+		finish_points()
+		if phase == "recruit":
+			var cands: Array = recruit_candidates()
+			if cands.size() > 0:
+				recruit(str((cands[0] as Dictionary).get("id", "")))
+	if city != city_id:
+		saving = was
+		return false
+	if is_tournament(city_id):
+		var rounds: int = maxi(1, _rounds(city_id).size())
+		for i in clampi(n, 1, rounds) - 1:
+			record_result({"won": true})   # the earlier rounds won: +2 points each, unspent
+		phase = "bracket"
+	else:
+		game = clampi(n, 1, GAMES_PER_CITY)
+		points = POINTS_PER_WIN * (game - 1)   # this city's earlier games, not spent yet
+	saving = was
+	return true
+
+# after_game.gd auto_step()'s points rule, until no point can be spent
+static func _auto_spend_all() -> void:
+	var spent := true
+	while spent and points > 0:
+		spent = false
+		for id in roster_ids():
+			var best := ""
+			var low: int = 1000
+			var r: Dictionary = _entry(str(id)).get("ratings", {})
+			for st in Ratings.STATS:
+				if can_spend(str(id), str(st)) and int(r.get(st, 0)) < low:
+					low = int(r.get(st, 0))
+					best = str(st)
+			if best != "":
+				spend(str(id), best)
+				spent = true
+				break
+	_spend_log = []
+
+# match_for() under --expected-roster with no trip loaded: the expected crew's match; the state is cleared after
+static func _expected_match(city_id: String, n: int) -> Dictionary:
+	if not expected_roster(city_id, n):
+		_reset()
+		return {}
+	var m: Dictionary = match_for(city_id, n)
+	var lines: Array = []
+	for e in roster_data:
+		var rt: Dictionary = e["ratings"]
+		lines.append("%s %d/%d/%d/%d/%d" % [str(e["id"]), int(rt["speed"]), int(rt["shooting"]),
+				int(rt["finishing"]), int(rt["defense"]), int(rt["stamina"])])
+	print("EXPECTED ROSTER %s | starters %s | roster (spd/sht/fin/def/sta) %s" % [str(m.get("label", "")),
+			", ".join(PackedStringArray(starters)), " | ".join(PackedStringArray(lines))])
+	_reset()
 	return m
 
 # Records a finished trip game (flow.gd's game_finished calls it with Flow.last_result) and saves. Returns and keeps
@@ -474,7 +580,18 @@ static func record_result(result: Dictionary) -> Dictionary:
 		phase = "map"   # retry the same game, no penalty
 	last_outcome = out
 	save()
+	if bool(out["city_done"]):
+		_unlock_court(str(out["city"]))
 	return out
+
+# P6-17 hook: a won boss game (a city's game 3, or the New York final) unlocks that city's court for Quick Game.
+# Only when difficulty.gd has unlock_court() (P6-17), and never in the in-memory test trips (saving off).
+static func _unlock_court(city_id: String) -> void:
+	if not saving or not ResourceLoader.exists(DIFFICULTY_PATH):
+		return
+	var d: GDScript = load(DIFFICULTY_PATH) as GDScript
+	if d != null and d.has_method("unlock_court"):
+		d.call("unlock_court", city_id)
 
 # Where the result screen goes next: {"screen": String, "args": Dictionary} (Flow.go(r.screen, r.args)).
 # Lost -> story "first_loss" once, then the lineup (retry). Won with games left -> lineup. City done -> the city's
@@ -618,7 +735,8 @@ static func self_test(load_only: bool = false) -> bool:
 				print("TRIPDATA %s game %d: NO MATCH" % [cid, n])
 				ok = false
 				continue
-			print("TRIPDATA %s | to %d | %s | %s | level %s" % [m.label, int(m.target), m.look, m.music, m.level])
+			print("TRIPDATA %s | to %d | %s | %s | twist %s | level %s" % [m.label, int(m.target), m.look, m.music,
+					m.twist, m.level])
 			for t in 2:
 				var tm: Dictionary = m.teams[t]
 				print("TRIPDATA   %-16s %-8s" % [tm.name, tm.style if tm.style != "" else "-"])
@@ -626,12 +744,13 @@ static func self_test(load_only: bool = false) -> bool:
 					print("TRIPDATA     " + _player_line(p))
 				if (tm.players as Array).size() != STARTERS:
 					ok = false
-			if not is_tournament(cid):
-				ok = ok and _check_tiers(cid, n)
+			ok = _check_tiers(cid, n) and ok
 	var rc: Array = []
 	for id in Cities.built_route():
 		rc.append("%s: %s" % [id, ", ".join(PackedStringArray(Cities.recruits(id)))])
 	print("TRIPDATA recruits %s" % " | ".join(PackedStringArray(rc)))
+	ok = _check_city_data() and ok
+	ok = _check_expected_rosters() and ok
 	ok = _check_rules() and ok
 	ok = _check_save_files() and ok
 	# the round trip: the scripted trip saved for the --load process
@@ -649,7 +768,74 @@ static func _player_line(p: Dictionary) -> String:
 	return "%-8s %-13s %-5s spd %2d sht %2d fin %2d def %2d sta %2d | stl %2d blk %2d" % [p.name, p.sheet, p.tier,
 			r.speed, r.shooting, r.finishing, r.defense, r.stamina, r.steal, r.block]
 
-# the 3-game rule: game 1 = 1 good + 2 avg, 2 = 2 good + 1 avg, 3 = 2 good + boss
+# Every city's data (P6-10): built, a known look / music / twist id, a fallback look that exists today, story scenes
+# that exist, a crew of 2 good + 2 avg + a boss (the good players and the boss recruitable, the avg not), no player
+# in two crews, and the New York rounds shaped like the 3 city games.
+static func _check_city_data() -> bool:
+	var ok := true
+	var owner_of: Dictionary = {}   # player id -> city id
+	for cid in Cities.ROUTE:
+		var c: Dictionary = Cities.city(cid)
+		var bad: Array = []
+		if not bool(c.get("built", false)):
+			bad.append("not built")
+		if not Cities.LOOK_IDS.has(str(c.get("look", ""))):
+			bad.append("look '%s'" % str(c.get("look", "")))
+		if not Cities.MUSIC_IDS.has(str(c.get("music", ""))):
+			bad.append("music '%s'" % str(c.get("music", "")))
+		if not Cities.TWIST_IDS.has(str(c.get("twist", ""))):
+			bad.append("twist '%s'" % str(c.get("twist", "")))
+		if not Looks.LOOKS.has(look_for(cid)):
+			bad.append("no playable look (fallback)")
+		var st: Dictionary = c.get("story", {})
+		for k in ["arrive", "won"]:
+			if not StoryText.has_scene(str(st.get(k, ""))):
+				bad.append("story %s '%s'" % [k, str(st.get(k, ""))])
+		var crew: Dictionary = c.get("crew", {})
+		if not is_tournament(cid):
+			if (crew.get("good", []) as Array).size() != 2 or (crew.get("avg", []) as Array).size() != 2 \
+					or str(crew.get("boss", "")) == "" or str(crew.get("name", "")) == "":
+				bad.append("crew shape")
+			for id in Cities.city_players(cid):
+				var p: Dictionary = Cities.player(str(id))
+				var want_rec: bool = str(p.get("tier", "")) != "avg"
+				if bool(p.get("recruitable", false)) != want_rec:
+					bad.append("%s recruitable" % str(id))
+				if str(p.get("look", "")) == "" or str(p.get("bio", "")) == "":
+					bad.append("%s look/bio" % str(id))
+		else:
+			for r in _rounds(cid):
+				if str(((r as Dictionary).get("crew", {}) as Dictionary).get("name", "")) == "":
+					bad.append("round crew name")
+			for id in Cities.city_players(cid):
+				if bool(Cities.player(str(id)).get("recruitable", false)):
+					bad.append("%s recruitable" % str(id))
+		for id in Cities.city_players(cid):
+			if owner_of.has(id) and str(owner_of[id]) != cid:
+				bad.append("%s also in %s" % [str(id), str(owner_of[id])])
+			owner_of[id] = cid
+		ok = _check(bad.is_empty(), "city %s data %s" % [cid, "" if bad.is_empty() else str(bad)]) and ok
+	ok = _check(StoryText.has_scene("trip_start") and StoryText.has_scene("first_loss"),
+			"story trip_start, first_loss") and ok
+	return ok
+
+# --expected-roster: for every city's game 1 the expected crew (one recruit per city before it); printed for QA
+static func _check_expected_rosters() -> bool:
+	var ok := true
+	var before := 0
+	for cid in Cities.built_route():
+		var good: bool = expected_roster(cid, 1)
+		var size: int = roster_ids().size()
+		var deuce: Dictionary = _entry("ud_deuce").get("ratings", {})
+		ok = _check(good and size == Cities.START_CREW.size() + before and starters == Cities.START_CREW,
+				"expected roster at %s: %d players, Deuce %d/%d/%d/%d/%d" % [cid, size, int(deuce.get("speed", 0)),
+				int(deuce.get("shooting", 0)), int(deuce.get("finishing", 0)), int(deuce.get("defense", 0)),
+				int(deuce.get("stamina", 0))]) and ok
+		before += 1
+		_reset()
+	return ok
+
+# the 3-game rule: game 1 = 1 good + 2 avg, 2 = 2 good + 1 avg, 3 = 2 good + boss (New York rounds the same)
 static func _check_tiers(cid: String, n: int) -> bool:
 	var want: Array = [["good", "avg", "avg"], ["good", "good", "avg"], ["good", "good", "boss"]][n - 1]
 	var got: Array = []
@@ -705,12 +891,24 @@ static func _check_rules() -> bool:
 			"starters: 3 different, the human first") and ok
 	ok = _check(match_for().teams[0].players[0].id == "ht_boss" and str(match_for().label) == "CHICAGO - GAME 1 OF 3",
 			"the match uses the lineup") and ok
+	ok = _check(str(match_for().twist) == "wind" and str(match_for("hometown", 1).twist) == "none",
+			"the match carries the twist (Chicago wind)") and ok
 	for i in 3:
 		record_result({"won": true})
 	finish_points()
 	recruit("chi_g2")
-	ok = _check(city == "new_york" and phase == "map" and next_city("chicago") == "new_york",
-			"Chicago beaten, the route skips the unbuilt cities") and ok
+	ok = _check(city == "memphis" and phase == "map" and str(match_for().label) == "MEMPHIS - GAME 1 OF 3"
+			and str(match_for().twist) == "crowd", "Chicago beaten, on to Memphis (crowd)") and ok
+	var guard := 10
+	while city != "new_york" and city != "" and guard > 0:
+		guard -= 1
+		for i in 3:
+			record_result({"won": true})
+		finish_points()
+		recruit(str(Cities.recruits(city)[0]))
+	ok = _check(city == "new_york" and phase == "map" and beaten.size() == 7 and roster_ids().size() == 10,
+			"all 7 cities beaten, 7 recruits, on to New York") and ok
+	ok = _check(str(match_for().twist) == "cage", "New York: the cage") and ok
 	ok = _check(int(match_for().target) == 21 and str(match_for().label) == "NEW YORK - QUARTERFINAL"
 			and match_for().teams[1].players.size() == 3, "tournament round 1 to 21") and ok
 	record_result({"won": false})
