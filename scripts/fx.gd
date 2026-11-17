@@ -45,7 +45,8 @@ const PUNCH_TIME := 0.25          # seconds of the punch: in fast, eased back ou
 const PUNCH_ATTACK := 0.2         # fraction of PUNCH_TIME spent zooming in
 const PUNCH_SHAKE := 4.0          # px of extra shake with a punch (stacks with ball.gd's dunk shake; the bigger wins)
 const PUNCH_SHAKE_TIME := 0.25
-const POPUP_HEAD_GAP := 6.0       # screen px between a player's head and the bottom of popup_head()'s text
+const POPUP_HEAD_GAP := 58.0      # screen px from a head to the bottom of popup_head()'s text: over main's CALL "!" bubble
+# (POPUP_HEAD_GAP: the bubble top is about 20 + 18 + 12 + 3 = 53 px over the head)
 const POPUP_HEAD_MAX := 1.5      # P6-23: taller (v2) players lift POPUP_HEAD_LIFT by their head scale, at most this
 
 var game
