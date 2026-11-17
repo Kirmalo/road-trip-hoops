@@ -109,7 +109,8 @@ const FLASH_H_MIN := 8.0          # ... at these heights (sim px), up to the top
 const FLASH_H_MAX := 190.0
 const FLASH_HUD_PX := 58.0        # screen px: no flashes under the HUD bar
 
-# player heights (sim px of height; HEIGHT_SCALE 1 = screen px): mouth and head of a v1 player (player.gd HEAD_PX 80)
+# player heights (sim px of height; HEIGHT_SCALE 1 = screen px): mouth and head of a v1 player (player.gd HEAD_PX 80).
+# Taller sheets (v2, about 100) scale both by the player's view_head_scale() (P6-26).
 const HEAD_H := 74.0
 const MOUTH_H := 62.0
 
@@ -438,7 +439,7 @@ func _update_humid(delta: float) -> void:
 			continue
 		f.sweat = SWEAT_EVERY
 		var dir: Vector2 = Vector2.from_angle(_rng.randf_range(0.0, TAU))
-		_parts.append({"c": "sweat", "p": p.position + dir * 5.0, "h": _lift(p) + HEAD_H, "v": dir * _rng.randf_range(30.0, 70.0),
+		_parts.append({"c": "sweat", "p": p.position + dir * 5.0, "h": _lift(p) + HEAD_H * _head_scale(p), "v": dir * _rng.randf_range(30.0, 70.0),
 				"vh": _rng.randf_range(40.0, 110.0), "g": true, "t": 0.0, "life": 0.7, "k": 1.0})
 
 # ---- thin air ----
@@ -458,7 +459,7 @@ func _update_thin_air(delta: float) -> void:
 		var hard: bool = bool(p.turbo) or float(p.stamina) < 0.5
 		f.breath = (BREATH_EVERY_HARD if hard else BREATH_EVERY) * _rng.randf_range(0.85, 1.15)
 		var fwd: Vector2 = Vector2.from_angle(float(p.facing))
-		_parts.append({"c": "breath", "g": false, "p": p.position + fwd * 8.0, "h": _lift(p) + MOUTH_H,
+		_parts.append({"c": "breath", "g": false, "p": p.position + fwd * 8.0, "h": _lift(p) + MOUTH_H * _head_scale(p),
 				"v": fwd * 14.0 + p.velocity * 0.3, "vh": 16.0, "t": 0.0, "life": BREATH_TIME, "k": 4.0})
 	# the arc trail: the ball's drawn point while a jump shot or a lob is in the air
 	var b = game.ball
@@ -498,6 +499,12 @@ func _update_crowd(delta: float) -> void:
 func _lift(p) -> float:
 	var l = p.get("_v_lift")
 	return float(l) if l != null else float(p.jump_z)
+
+# how much taller p is drawn than a v1 player (player.gd view_head_scale(): 1.0 on v1, about 1.25 on v2)
+func _head_scale(p) -> float:
+	if p.has_method("view_head_scale"):
+		return float(p.view_head_scale())
+	return 1.0
 
 # ---------------- drawing ----------------
 

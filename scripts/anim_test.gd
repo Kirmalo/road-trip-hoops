@@ -24,6 +24,10 @@ extends Node
 #     direction with points has exactly the format's frame count, every point is inside the frame, and the
 #     ball-holding animations have a ball point on their first frame (directions without points are only counted);
 #   - v2: a card in cards/ (missing = a note, the card is then cut from the sheet).
+#   - v2.1 indexed sheets (format.json "indexed": true): the gray pages are painted through the sheet's palette
+#     (Sheets.load_sheet()'s "palette", index 0 clear) before the checks and images, so an empty frame is one with only
+#     index 0 (or indexes the palette leaves clear), and the images show the real colors. A recolor (a palette only,
+#     drawn on its base sheet's pages) is checked and drawn too; pixels whose index the palette leaves clear are a note.
 #   Also Sheets.self_test() (SHEETS lines).
 # Images (CPU-made, the frames 2x on a plain court color like the game, the ball drawn in the hand):
 #   <out>/hoops_anim_<sheet>_<anim>.png        every frame (columns) in 8 directions (rows E, SE, S, SW, W, NW, N, NE);
@@ -80,6 +84,8 @@ var game
 var _problems: PackedStringArray = []
 var _notes: PackedStringArray = []
 var _images := {}                 # page texture -> Image (CPU copy)
+var _painted := {}                # v2.1: "page:palette" instance ids -> the page painted in the palette (RGBA Image)
+var _clear_ix := {}               # v2.1: sheet id -> pixels with an index > 0 that its palette leaves clear
 var _ball_img: Image
 var _out := OUT_DIR
 var _write := false
@@ -112,6 +118,7 @@ func _run() -> void:
 		Sheets.v2_dir = FAKE_DIR
 		Sheets.clear_cache()
 		_images.clear()
+		_painted.clear()
 		_check_set(["fake_v2"])
 		Sheets.v2_dir = Sheets.V2_DIR
 		Sheets.clear_cache()
@@ -162,9 +169,12 @@ func _check_set(only: Array) -> void:
 	for id in v2_ids:
 		var sh2: Dictionary = Sheets._load_v2(id)
 		if sh2.is_empty():
-			_problems.append("v2 %s: missing pages or a page of the wrong size" % id)
+			_problems.append("v2 %s: missing pages, a page of the wrong size%s" % [id,
+					" or no usable palette (indexed)" if Sheets.indexed(Sheets.v2_format()) else ""])
 			continue
 		_check_sheet(sh2)
+		if int(_clear_ix.get(id, 0)) > 0:
+			_notes.append("v2 %s: %d pixels have an index the palette leaves clear" % [id, int(_clear_ix[id])])
 		if not FileAccess.file_exists(Sheets.v2_dir + Sheets.CARD_SUBDIR + id + ".png") \
 				and not ResourceLoader.exists(Sheets.v2_dir + Sheets.CARD_SUBDIR + id + ".png"):
 			_notes.append("v2 %s: no card (cut from the sheet instead)" % id)
@@ -193,6 +203,12 @@ func _list_v2() -> Array:
 			id = id.substr(0, at)
 		if not out.has(id):
 			out.append(id)
+	# v2.1: a recolor has only a palette (palettes/<id>.png) drawn on its base sheet's pages
+	if Sheets.indexed(Sheets.v2_format()) and DirAccess.dir_exists_absolute(Sheets.v2_dir + Sheets.PALETTE_SUBDIR):
+		for f in DirAccess.get_files_at(Sheets.v2_dir + Sheets.PALETTE_SUBDIR):
+			var pn: String = f.trim_suffix(".import")
+			if pn.ends_with(".png") and not out.has(pn.get_basename()):
+				out.append(pn.get_basename())
 	out.sort()
 	return out
 
@@ -234,6 +250,8 @@ func _check_sheet(sh: Dictionary) -> void:
 	var id: String = sh["id"]
 	var v: int = int(sh["version"])
 	var tag: String = "v%d %s" % [v, id]
+	if bool(sh.get("indexed", false)):
+		tag += " (indexed, pages of %s)" % str(sh.get("pages_id", id))
 	var fs: Vector2 = Sheets.frame_size(fmt)
 	var empty := 0
 	var no_hands := 0
@@ -339,13 +357,89 @@ func _frame_image(sh: Dictionary, idx: int) -> Image:
 	var reg: Dictionary = Sheets.frame_region(sh, idx)
 	if reg.is_empty():
 		return null
-	var page: Image = _page_image(reg["texture"])
+	var page: Image = null
+	if bool(sh.get("indexed", false)):
+		page = _painted_page(sh, reg["texture"])
+	else:
+		page = _page_image(reg["texture"])
 	if page == null:
 		return null
 	var r: Rect2i = Rect2i(reg["region"])
 	if r.end.x > page.get_width() or r.end.y > page.get_height():
 		return null
 	return page.get_region(r)
+
+# v2.1: the CPU copy of an index page or a palette: the texture's own image, else (headless, or a scratch folder that
+# Sheets._texture() read into an ImageTexture without a path) the png at its resource path or at fallback.
+func _raw_image(tex: Texture2D, fallback: String) -> Image:
+	if tex == null:
+		return null
+	if _images.has(tex):
+		return _images[tex]
+	var img: Image = tex.get_image()
+	if img == null or img.is_empty():
+		img = null
+		for path in [tex.resource_path, fallback]:
+			if str(path).ends_with(".png") and FileAccess.file_exists(str(path)):
+				img = Image.load_from_file(str(path))
+				break
+	if img != null and not img.is_empty():
+		if img.is_compressed():
+			img.decompress()
+		img.convert(Image.FORMAT_RGBA8)   # gray (L8, or gray RGB) -> r = g = b = the index
+	else:
+		img = null
+	_images[tex] = img
+	return img
+
+# v2.1: an index page painted in the sheet's palette (index 0 and clear palette entries transparent), cached per page
+# and palette. Mapped byte by byte (a page is up to 2048 x 480).
+func _painted_page(sh: Dictionary, page_tex: Texture2D) -> Image:
+	var pal_tex: Texture2D = sh.get("palette", null)
+	var id: String = str(sh["id"])
+	var key: String = "%d:%d" % [page_tex.get_instance_id() if page_tex != null else 0,
+			pal_tex.get_instance_id() if pal_tex != null else 0]
+	if _painted.has(key):
+		return _painted[key]
+	var pages: Array = sh.get("pages", [])
+	var p: int = maxi(0, pages.find(page_tex))
+	var base: String = str(sh.get("pages_id", id))
+	var page_file: String = Sheets.v2_dir + base + Sheets.PAGE_SUFFIX + str(p) + ".png"
+	if pages.size() == 1 and not FileAccess.file_exists(page_file):
+		page_file = Sheets.v2_dir + base + ".png"
+	var src: Image = _raw_image(page_tex, page_file)
+	var pal: Image = _raw_image(pal_tex, Sheets.v2_dir + Sheets.PALETTE_SUBDIR + id + ".png")
+	if src == null or pal == null:
+		_problems.append("v2 %s: page %d or its palette could not be read" % [id, p])
+		_painted[key] = null
+		return null
+	var lut := PackedByteArray()
+	lut.resize(Sheets.PALETTE_SIZE * 4)   # zeros: index 0 (and any index past the palette) clear
+	var pd: PackedByteArray = pal.get_data()
+	for i in range(1, mini(pal.get_width(), Sheets.PALETTE_SIZE)):
+		for c in 4:
+			lut[i * 4 + c] = pd[i * 4 + c]
+	var sd: PackedByteArray = src.get_data()
+	var n: int = src.get_width() * src.get_height()
+	var out := PackedByteArray()
+	out.resize(n * 4)
+	var clear := 0
+	for i in n:
+		var o: int = sd[i * 4] * 4
+		if o == 0:
+			continue
+		if lut[o + 3] == 0:
+			clear += 1
+			continue
+		var j: int = i * 4
+		out[j] = lut[o]
+		out[j + 1] = lut[o + 1]
+		out[j + 2] = lut[o + 2]
+		out[j + 3] = lut[o + 3]
+	_clear_ix[id] = int(_clear_ix.get(id, 0)) + clear
+	var img: Image = Image.create_from_data(src.get_width(), src.get_height(), false, Image.FORMAT_RGBA8, out)
+	_painted[key] = img
+	return img
 
 func _load_ball() -> void:
 	var img: Image = null
