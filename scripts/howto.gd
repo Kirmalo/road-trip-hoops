@@ -328,6 +328,8 @@ func _show_page() -> void:
 func _refresh_arrows() -> void:
 	if _arm_t > 0.0:
 		return
+	for b in _buttons:
+		UI.set_enabled(b, true)   # BACK and the rest come back after the arm time
 	UI.set_enabled(_prev_btn, page > 0)
 	UI.set_enabled(_next_btn, page < PAGES.size() - 1)
 
