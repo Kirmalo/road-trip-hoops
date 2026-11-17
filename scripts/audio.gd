@@ -24,6 +24,13 @@ extends Node
 # saving (a slider being dragged); save_sfx_volume() writes it.
 # On the web, browsers keep audio locked until the first tap: the music waits until the page's audio context runs
 # (the head script in export_presets.cfg resumes it on tap/lift), then starts.
+#
+# Ambience (P6-15):  game.audio.play_ambience("rain")   game.audio.stop_ambience()   game.audio.set_ambience_paused(true)
+# One looped background sound at a time (a city twist's rain, wind or loud crowd; twist_fx.gd starts it). Files are
+# res://assets/sfx/<name>.ogg (or .wav), looped here; a missing file is silent (one print per name). It fades in and
+# out, follows the SOUND volume (sfx_volume) and is ducked with the music. A name starting with "crowd" also gets the
+# twist's Twists.value("crowd_db") (Memphis: much louder). The player is PROCESS_MODE_PAUSABLE, so it stops by itself
+# while the tree is paused (pause.gd); set_ambience_paused() does the same by hand. Counts a stat "ambience_<name>".
 
 const SFX_DIR := "res://assets/sfx/"
 const EXTENSIONS := ["ogg", "wav"]
@@ -40,6 +47,17 @@ const SETTINGS_SECTION := "settings"
 const SAVE_SFX_VOLUME := "sfx_volume"          # key of the effects volume (0..1)
 const SFX_VOLUME_DEFAULT := 1.0   # first launch: full volume
 const SFX_VOLUME_CURVE := 2.0     # gain = volume ^ this: a slider at half sounds about half as loud (not just -6 dB)
+const AMBIENCE_DB := -20.0        # ambience loop volume in dB. The loops are loud files (-1 dB peak, RMS about -13 to
+                                  # -16 dBFS): -20 here, -4 ducked, puts them about -40 dBFS RMS in play, a bed under the
+                                  # ducked music (-20 LUFS tracks at -22 dB) and well under the effects
+const AMBIENCE_TRIM := {          # dB per loop, evening out the measured RMS (P6-A5) to wind's -16 dBFS
+	"rain": -1.5, "wind": 0.0, "crowd_loud": -2.5,
+}
+const AMBIENCE_DUCK_DB := -4.0    # extra dB down while ducked (with the music during play)
+const AMBIENCE_FADE := 1.2        # seconds to fade an ambience loop in or out
+const AMBIENCE_CROWD_PREFIX := "crowd"   # ambience names starting with this get the twist's crowd_db
+
+const Twists = preload("res://scripts/twists.gd")   # crowd_db for the crowd loop (P6-15)
 
 static var sfx_volume := SFX_VOLUME_DEFAULT   # 0..1, the effects volume (survives reload_current_scene)
 static var _volume_read := false
@@ -65,6 +83,14 @@ var _unlocked := true             # web: false until the page's audio runs
 var _tap_seen := false
 var _poll_t := 0.0
 
+var ambience_name := ""           # the ambience loop asked for ("" = none)
+var ambience_db := 0.0            # its extra volume (play_ambience's db)
+var _amb: AudioStreamPlayer       # the ambience loop (PROCESS_MODE_PAUSABLE: silent while the tree is paused)
+var _amb_gain := 0.0              # 0..1 fade position
+var _amb_tween: Tween = null
+var _amb_paused := false
+var _amb_cache := {}              # name -> looped AudioStream (its own copy, so a one-shot of the same file stays one-shot)
+
 func _ready() -> void:
 	_rng.randomize()
 	read_settings()
@@ -78,6 +104,10 @@ func _ready() -> void:
 		m.volume_db = MUSIC_SILENT_DB
 		add_child(m)
 		_music.append(m)
+	_amb = AudioStreamPlayer.new()
+	_amb.volume_db = MUSIC_SILENT_DB
+	_amb.process_mode = Node.PROCESS_MODE_PAUSABLE   # the tree's pause (pause.gd) pauses the loop, resume continues it
+	add_child(_amb)
 	_unlocked = not OS.has_feature("web")
 	set_process(not _unlocked)
 	set_process_input(not _unlocked)
@@ -145,6 +175,7 @@ func set_sfx_volume(v: float, save := true) -> void:
 	sfx_volume = clampf(v, 0.0, 1.0)
 	if save:
 		save_sfx_volume()
+	_update_ambience_volume()
 
 # ---------------- music ----------------
 
@@ -225,6 +256,7 @@ func _set_duck(d: float) -> void:
 	_duck = d
 	_update_music_volume(0)
 	_update_music_volume(1)
+	_update_ambience_volume()
 
 func _update_music_volume(i: int) -> void:
 	var g: float = _music_gain[i]
@@ -263,6 +295,113 @@ func _set_loop(stream: AudioStream) -> void:
 	elif stream is AudioStreamMP3:
 		(stream as AudioStreamMP3).loop = true
 
+# ---------------- ambience (P6-15) ----------------
+
+# Start a looped ambience sound (fading in; the one before fades out). Same name again: only the volume changes.
+func play_ambience(amb_name: String, db := 0.0) -> void:
+	if amb_name == "":
+		stop_ambience()
+		return
+	ambience_db = db
+	if amb_name == ambience_name:
+		_update_ambience_volume()
+		return
+	ambience_name = amb_name
+	if game != null:
+		game.stat("ambience_" + amb_name)
+	_ambience_apply()
+
+# Fade the ambience out and stop it.
+func stop_ambience(fade := AMBIENCE_FADE) -> void:
+	ambience_name = ""
+	_amb_fade(0.0, fade)
+
+# Pause or resume the loop by hand (the tree's pause already does it: the player is PROCESS_MODE_PAUSABLE).
+func set_ambience_paused(paused: bool) -> void:
+	_amb_paused = paused
+	if _amb != null and _amb.playing:
+		_amb.stream_paused = paused
+
+func _ambience_apply() -> void:
+	var stream: AudioStream = _get_ambience(ambience_name)   # looked up headless too, so a missing file prints
+	if stream == null or _headless or not _unlocked or _amb == null:
+		_amb_fade(0.0, AMBIENCE_FADE)
+		return
+	if _amb.playing and _amb.stream == stream:
+		_amb_fade(1.0, AMBIENCE_FADE)
+		return
+	if _amb.playing and _amb_gain > 0.01:
+		# fade the old loop out, then start the new one
+		_amb_fade(0.0, AMBIENCE_FADE * 0.5, _ambience_start.bind(stream))
+		return
+	_ambience_start(stream)
+
+func _ambience_start(stream: AudioStream) -> void:
+	if ambience_name == "" or _get_ambience(ambience_name) != stream:
+		return   # changed (or stopped) while the old loop faded out
+	_amb.stop()
+	_amb.stream = stream
+	_amb_gain = 0.0
+	_update_ambience_volume()
+	_amb.play()
+	_amb.stream_paused = _amb_paused
+	_amb_fade(1.0, AMBIENCE_FADE)
+
+func _amb_fade(to: float, fade: float, then := Callable()) -> void:
+	if _amb_tween != null:
+		_amb_tween.kill()
+		_amb_tween = null
+	if _amb == null:
+		return
+	if fade <= 0.0 or not _amb.playing:
+		_set_amb_gain(to)
+		if to <= 0.0:
+			_amb.stop()
+		if then.is_valid():
+			then.call()
+		return
+	_amb_tween = create_tween()
+	_amb_tween.tween_method(_set_amb_gain, _amb_gain, to, fade)
+	if to <= 0.0:
+		_amb_tween.tween_callback(_amb.stop)
+	if then.is_valid():
+		_amb_tween.tween_callback(then)
+
+func _set_amb_gain(g: float) -> void:
+	_amb_gain = g
+	_update_ambience_volume()
+
+func _update_ambience_volume() -> void:
+	if _amb == null:
+		return
+	var db: float = MUSIC_SILENT_DB
+	var vol: float = pow(sfx_volume, SFX_VOLUME_CURVE)
+	if _amb_gain > 0.001 and vol > 0.0:
+		db = AMBIENCE_DB + float(AMBIENCE_TRIM.get(ambience_name, 0.0)) + ambience_db + linear_to_db(_amb_gain * vol) + AMBIENCE_DUCK_DB * _duck
+		if ambience_name.begins_with(AMBIENCE_CROWD_PREFIX):
+			db += Twists.value("crowd_db", 0.0)   # Memphis' full house (0 without a twist)
+		db = maxf(MUSIC_SILENT_DB, db)
+	_amb.volume_db = db
+
+# the looped stream of an ambience name (its own copy of the file), null when there is no file
+func _get_ambience(amb_name: String) -> AudioStream:
+	if _amb_cache.has(amb_name):
+		return _amb_cache[amb_name]
+	var stream: AudioStream = null
+	if amb_name.is_valid_filename():
+		for ext in EXTENSIONS:
+			var path: String = SFX_DIR + amb_name + "." + ext
+			if ResourceLoader.exists(path):
+				stream = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE) as AudioStream
+				if stream != null:
+					break
+	if stream == null:
+		print("audio: no ambience file for '%s' (looked in %s), silent" % [amb_name, SFX_DIR])
+	else:
+		_set_loop(stream)
+	_amb_cache[amb_name] = stream
+	return stream
+
 # ---------------- web audio unlock ----------------
 
 func _input(event: InputEvent) -> void:
@@ -280,6 +419,8 @@ func _process(delta: float) -> void:
 		set_process(false)
 		set_process_input(false)
 		_music_apply(1.0)
+		if ambience_name != "":
+			_ambience_apply()
 
 # true once the page's audio context runs; without the page hook, true after the first tap
 func _web_audio_running() -> bool:
@@ -294,3 +435,7 @@ func _web_audio_running() -> bool:
 func _exit_tree() -> void:
 	for m in _music:
 		m.stop()
+	if _amb != null:
+		_amb.stop()
+		_amb.stream = null   # (its own copy of the file: let it go with the node)
+	_amb_cache.clear()
