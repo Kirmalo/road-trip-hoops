@@ -31,6 +31,8 @@ in-betweens. Legs are two-bone IK to foot targets on the floor, arms IK to hand 
 
 Usage:  python3 tools/art/make_players_v2.py [--only ID[,ID...] | --all] [--jobs N] [--skip-render] [--no-preview]
         [--draft-strip]  (only docs/art/draft_recolors.png, the P8-05 draft recolors, from the written files)
+        [--jerseys]      (only the P8-09 jerseys: palettes/<id>_j<N>.png and cards/<id>_j<N>.png for every sheet in
+                         your colors, crews.json "jerseys", from the written palettes and pages; a full run makes them too)
         [--anims a,b --frames DIR]   (a quick look: strips of those animations to DIR, no files written)
 Output: assets/players2/format.json, hands.json, palettes.json, <id>_p<N>.png, palettes/<id>.png, cards/<id>.png;
         docs/art/players_preview_v3.png, docs/art/players_v3_moves.gif (the underdogs),
@@ -1311,12 +1313,130 @@ def write_palettes_json(groups):
     for base, variants in groups.items():
         for v in variants:
             data[v] = {"pages": base}
+    return _dump_palettes_json(path, data)
+
+
+def _dump_palettes_json(path, data):
+    """palettes.json: "palettes" (every id -> its pages) and "recolors" (only the ids drawn on another sheet's pages:
+    the form sheets.gd pages_id() reads, so a _j<N> jersey finds its base pages)."""
+    data = dict(sorted(data.items()))
     out = {"_help": "v2.1 (indexed): palettes.<id>.pages = the sheet whose index pages <id> draws with its own "
-                    "palette palettes/<id>.png (256 x 1 RGBA; index 0 = transparent). A _crew recolor has no pages "
-                    "of its own.", "palettes": dict(sorted(data.items()))}
+                    "palette palettes/<id>.png (256 x 1 RGBA; index 0 = transparent). A recolor (_crew, the _j<N> "
+                    "jerseys of P8-09) has no pages of its own; recolors = the same map for those ids only.",
+           "palettes": data,
+           "recolors": {k: v["pages"] for k, v in data.items() if v["pages"] != k}}
     with open(path, "w") as f:
         json.dump(out, f, indent=1)
     return path
+
+
+# ----------------------------------------------------------------------------- P8-09: alternate jerseys (palettes)
+
+def jersey_defs():
+    """crews.json "jerseys": [(n, name, {source ramp name: target 4 tones})], n = 1, 2, 3."""
+    raw = json.load(open(M.CREWS))
+    pals = raw["palettes"]
+    out = []
+    for key, j in sorted(raw.get("jerseys", {}).items()):
+        if not key.startswith("j"):
+            continue
+        swap = {s: (pals[t] if isinstance(t, str) else t) for s, t in j["swap"].items()}
+        out.append((int(key[1:]), j["name"], swap))
+    return out
+
+
+def _ramp_colors(tones):
+    """The colors pixel3d.render() makes from one 4-tone ramp: the 4 tones, the inner contour line (the deep tone
+    darkened) and the exterior outline (the deep tone mixed with the ink)."""
+    t = [P.hexc(c) for c in tones]
+    return t + [P.darker(t[3], 0.62), tuple(int(0.45 * d + 0.55 * o) for d, o in zip(t[3], P.OUTLINE_INK))]
+
+
+def jersey_color_map(swap):
+    """{rgb: rgb} for one jersey. Refuses a source color that another ramp (crews.json palettes, skins, the ball)
+    also makes: such a pixel could not be told apart in a palette."""
+    raw = json.load(open(M.CREWS))
+    others = dict(raw["palettes"])
+    others.update({"skin_" + k: v for k, v in raw["skins"].items()})
+    others.update({"skin_" + k: v for k, v in P.SKINS.items()})
+    others["ball"] = ["#ffa860", "#f0761e", "#b84a16", "#702a12"]
+    others["seam"] = ["#5a2a14", "#3a1a0e", "#2a120a", "#1a0a06"]
+    made = {}
+    for k, r in others.items():
+        if k in swap or r in [raw["palettes"][s] for s in swap]:
+            continue
+        for c in _ramp_colors(r):
+            made.setdefault(c, k)
+    cmap = {}
+    for s, target in swap.items():
+        for a, b in zip(_ramp_colors(raw["palettes"][s]), _ramp_colors(target)):
+            if a in made:
+                raise RuntimeError("jersey: %s color %s is also made by %s" % (s, a, made[a]))
+            if cmap.get(a, b) != b:
+                raise RuntimeError("jersey: %s color %s maps two ways" % (s, a))
+            cmap[a] = b
+    return cmap
+
+
+def crew_wearers():
+    """Every sheet id that wears your colors: the underdogs and every _crew recolor (crews.json crew 'U')."""
+    return [p["id"] for p in players_v2() if p["crew"] == "U"]
+
+
+def jersey_palette(pal, cmap):
+    """A 256 x 1 RGBA palette (numpy) with the jersey's colors swapped in (index 0 and clear entries kept)."""
+    out = pal.copy()
+    for i in range(1, out.shape[1]):
+        if out[0, i, 3] == 0:
+            continue
+        c = tuple(int(x) for x in out[0, i, :3])
+        if c in cmap:
+            out[0, i, :3] = cmap[c]
+    return out
+
+
+def card_from_pages(base, pal):
+    """The card (idle S, frame 0) cut from the index pages and painted with a palette: what the game draws."""
+    fmt = json.load(open(os.path.join(OUT_DIR, "format.json")))
+    c = int(fmt["anims"]["idle"]["start"])
+    r = fmt["dirs"].index("S")
+    pg = np.array(Image.open(os.path.join(OUT_DIR, "%s_p%d.png" % (base, c // PAGE_COLS))))
+    x, y = (c % PAGE_COLS) * FW, r * FH
+    return Image.fromarray(pal[0][pg[y:y + FH, x:x + FW]], "RGBA")
+
+
+def write_jerseys(ids=None):
+    """palettes/<id>_j<N>.png and cards/<id>_j<N>.png for every crew wearer (or these ids), from the written
+    palettes and pages (no render); palettes.json lists them as recolors of the base sheet, hands.json gives each
+    its sheet's body. Returns (files, bytes)."""
+    path = os.path.join(OUT_DIR, "palettes.json")
+    data = json.load(open(path)).get("palettes", {})
+    ids = ids or crew_wearers()
+    files, total = 0, 0
+    for n, name, swap in jersey_defs():
+        cmap = jersey_color_map(swap)
+        for sid in ids:
+            pal = np.array(Image.open(os.path.join(PAL_DIR, sid + ".png")).convert("RGBA"))
+            jp = jersey_palette(pal, cmap)
+            jid = "%s_j%d" % (sid, n)
+            ppath = os.path.join(PAL_DIR, jid + ".png")
+            Image.fromarray(jp, "RGBA").save(ppath, optimize=True)
+            base = data.get(sid, {"pages": sid})["pages"]
+            cpath = os.path.join(CARD_DIR, jid + ".png")
+            M.save_png(card_from_pages(base, jp), cpath)
+            data[jid] = {"pages": base}
+            files += 2
+            total += os.path.getsize(ppath) + os.path.getsize(cpath)
+    _dump_palettes_json(path, data)
+    hpath = os.path.join(OUT_DIR, "hands.json")     # a jersey shares its sheet's body (hand and ball points)
+    hands = json.load(open(hpath))
+    for n, _, _ in jersey_defs():
+        for sid in ids:
+            if sid in hands["sheets"]:
+                hands["sheets"]["%s_j%d" % (sid, n)] = hands["sheets"][sid]
+    with open(hpath, "w") as f:
+        json.dump(hands, f, separators=(",", ":"))
+    return files, total
 
 
 def write_format():
@@ -1670,6 +1790,10 @@ def main(argv):
     if "--draft-strip" in argv:      # only the P8-05 contact strip, from the written files
         print("wrote", draft_strip())
         return
+    if "--jerseys" in argv:          # only the P8-09 jersey palettes and cards, from the written files
+        nf, nb = write_jerseys()
+        print("wrote %d jersey palettes + cards for %d sheets (%d bytes); palettes.json" % (nf, len(crew_wearers()), nb))
+        return
     if "--only" in argv:
         only = argv[argv.index("--only") + 1].split(",")
     elif "--all" in argv:
@@ -1737,6 +1861,10 @@ def main(argv):
     print("wrote", os.path.relpath(write_palettes_json(groups), ROOT))
     hp = write_hands({v: cached_recs(v) for b in only for v in groups[b]}, fresh="--all" in argv)
     print("wrote %s %d bytes" % (os.path.relpath(hp, ROOT), os.path.getsize(hp)))
+    wear = [v for b in only for v in groups[b] if v in crew_wearers()]
+    if wear:      # P8-09: the jerseys follow the palettes and hands.json just written
+        nf, nb = write_jerseys(wear)
+        print("wrote %d jersey palettes + cards (%d bytes)" % (nf, nb))
     if "--no-preview" not in argv:
         if all(u in only for u in SHEETS) and "--v4-only" not in argv:
             fr3 = {u: cached_frames(u) for u in SHEETS}
