@@ -164,3 +164,7 @@ export and an Android export, store page text and screenshots.
 - Out of bounds is very rare on its own (about 0.15 per game). Phase 3 added rare hard bounces off the back or side
   of the rim (about 2 per game go out, almost all over the baseline, so the defense gets the ball). Keep them,
   make them rarer, or remove them? (`ball.RIM_LONG_CHANCE`, `ball.RIM_WIDE_CHANCE`.)
+- Progression after 1.0.0 (owner request 2026-11-17: points after every win for the players who played, stars per
+  level, a reason to replay): `docs/progression-plan.md` Q1-Q6. Open: points per win, whether the level changes
+  points, what stars attach to, star rewards, how replay works (today: no replays), and 1.0 vs a later update. The
+  proposed ramp rise depends on the answer to Q1 (the Phase 5 check-in said "leave the ramp as is").
