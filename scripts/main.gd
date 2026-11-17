@@ -43,8 +43,10 @@ const SHOT_CLOCK_LENGTH := 24.0      # seconds; the shot clock stays with first 
                                      # may change it (Twists "shot_clock": Memphis 18): read shot_clock_length()
 const HUMAN_TEAM := 0
 # Team names in the top bar and the messages. A var (rules.gd, menu.gd read game.TEAM_NAMES): a trip game puts the
-# crew names from Flow.match here (owner Q11 a); Quick Game and the tests keep BLUE / RED.
+# crew names from Flow.match here (owner Q11 a); a Quick Game its picked crews' names (P6-T3); BLUE / RED only when
+# trip.gd can't build the crews.
 var TEAM_NAMES: Array = ["BLUE", "RED"]
+var quick_teams: Array = []         # P6-T3: a Quick Game's two crews (Trip.quick_team() dicts); [] in a trip game
 const TEAM_COLORS := [Color(0.7, 0.88, 1.0), Color(1.0, 0.42, 0.38)]   # popups and score messages
 
 # game-event feedback (P1-06)
@@ -363,6 +365,7 @@ func _ready() -> void:
 	rules.game = self
 	add_child(rules)
 	_apply_match_rules()         # a trip game: its target and the crew names
+	_apply_quick_teams()         # a Quick Game: the picked crews (P6-T3), before the players
 
 	audio = AudioScript.new()
 	audio.game = self
@@ -467,7 +470,7 @@ func _play_court_music() -> void:
 # player i of team t from Flow.match ({} in Quick Game): {"id", "name", "sheet", "ratings": {...}}
 func _match_player(t: int, i: int) -> Dictionary:
 	if not Flow.in_trip():
-		return {}
+		return _quick_player(t, i)
 	var tms: Array = Flow.match.get("teams", [])
 	if t >= tms.size():
 		return {}
@@ -476,6 +479,54 @@ func _match_player(t: int, i: int) -> Dictionary:
 	if i >= ps.size() or not (ps[i] is Dictionary):
 		return {}
 	return ps[i]
+
+# ---------------- P6-T3: Quick Game teams ----------------
+# A Quick Game (no trip match) fields the two crews picked on the menu panel (menu.gd quick_team_ids(): the Kings vs
+# the Bridge Runners by default, --quick-teams <blue>,<red> in tests), built by Trip.quick_team(): the crew's
+# players, sheets in its own colors, ratings averaging 50 per player. The crew names go to the top bar like a trip
+# game's. Nothing else of the trip match is used (court, level, music and twist stay the Quick Game's).
+
+# player i of team t of the Quick Game crews ({} when there are none)
+func _quick_player(t: int, i: int) -> Dictionary:
+	if quick_teams.size() != 2:
+		return {}
+	var ps: Array = (quick_teams[t] as Dictionary).get("players", [])
+	if i >= ps.size() or not (ps[i] is Dictionary):
+		return {}
+	return ps[i]
+
+func _apply_quick_teams() -> void:
+	quick_teams = []
+	if Flow.in_trip() or not ResourceLoader.exists(TRIP_PATH):
+		return
+	var trip: GDScript = load(TRIP_PATH) as GDScript
+	if trip == null or not trip.has_method("quick_team"):
+		return
+	var ids: Array = MenuScript.quick_team_ids()
+	var built: Array = []
+	for t in 2:
+		var tm = trip.call("quick_team", str(ids[t]))
+		if not (tm is Dictionary) or ((tm as Dictionary).get("players", []) as Array).size() != 3:
+			print("QUICK TEAMS: no team '%s', playing BLUE vs RED" % str(ids[t]))
+			return
+		built.append(tm)
+	quick_teams = built
+	for t in 2:
+		TEAM_NAMES[t] = str((built[t] as Dictionary).get("name", TEAM_NAMES[t]))
+	if autoplay or humantest:
+		var lines: Array = []
+		for t in 2:
+			var ps: Array = []
+			for p in (built[t] as Dictionary).get("players", []):
+				var r: Dictionary = (p as Dictionary).get("ratings", {})
+				ps.append("%s %d/%d/%d/%d/%d" % [str(p.get("name", "")), int(r.get("speed", 0)), int(r.get("shooting", 0)),
+						int(r.get("finishing", 0)), int(r.get("defense", 0)), int(r.get("stamina", 0))])
+			lines.append("%s (%s)" % [TEAM_NAMES[t], ", ".join(PackedStringArray(ps))])
+		print("QUICK TEAMS %s vs %s | spd/sht/fin/def/sta" % [lines[0], lines[1]])
+
+# the top bar shows crew names (smaller font): a trip game, or a Quick Game with its crews
+func _crew_names() -> bool:
+	return Flow.in_trip() or quick_teams.size() == 2
 
 # player.setup() with the player dict (P5-03 adds the optional 5th argument: sheet and ratings). Called the old way
 # when the dict is empty or player.gd doesn't take it yet; then the dict's ratings are copied in here, so steal,
@@ -833,8 +884,8 @@ func _build_hud() -> void:
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(bar)
 
-	score_label = _make_label(root, TOP_BAR_FONT_TRIP if Flow.in_trip() else 30, Control.PRESET_TOP_WIDE, 8)
-	if Flow.in_trip():
+	score_label = _make_label(root, TOP_BAR_FONT_TRIP if _crew_names() else 30, Control.PRESET_TOP_WIDE, 8)
+	if _crew_names():
 		score_label.offset_top = 11   # same middle of the bar with the smaller font
 	clock_label = _make_label(root, 20, Control.PRESET_TOP_LEFT, 14)
 	clock_label.offset_left = 20

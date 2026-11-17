@@ -25,7 +25,9 @@ extends RefCounted
 # Both use user://trip_test.json (save.gd), never the owner's save.
 # Phase 6 (P6-10): match_for() adds the city's "twist"; a city look or track that doesn't exist yet falls back to the
 # city's "fallback" look / music; --expected-roster (with --city) plays a city game with the crew a trip would have
-# there (expected_roster()); a won boss game unlocks the city's court for Quick Game (P6-17, Difficulty.unlock_court).
+# there (expected_roster()); a won boss game unlocks the city's court for Quick Game (P6-17, Difficulty.unlock_court)
+# and its crew as a Quick Game team (P6-T3, Difficulty.unlock_team; a New York crew when its round is won).
+# quick_team(crew_id) builds such a team for main.gd.
 
 const Flow = preload("res://scripts/flow.gd")
 const Cities = preload("res://scripts/cities.gd")
@@ -48,6 +50,8 @@ const TOURNAMENT_POINTS := true     # tournament wins also earn points (owner: "
 const SPEND_PHASES := ["points", "bracket"]   # where spend() is allowed (the points screen; between NY rounds)
 const PHASES := ["map", "points", "recruit", "bracket", "done"]
 const MAX_POINTS := 999             # sanity cap for a loaded save
+const QUICK_KINGS := ["ud_jojo", "ud_tank", "ud_deuce"]   # P6-T3: the Kings in Quick Game (today's BLUE slots; Jojo = you)
+const QUICK_AVG := 50               # P6-T3: a Quick Game player's five stats average this (50 = today's Quick Game)
 
 # --- the trip (static: survives scene reloads) ---
 static var active := false          # a trip is loaded (new_trip / continue_trip)
@@ -591,6 +595,8 @@ static func record_result(result: Dictionary) -> Dictionary:
 	save()
 	if bool(out["city_done"]):
 		_unlock_court(str(out["city"]))
+	if won and (bool(out["city_done"]) or is_tournament(str(out["city"]))):
+		_unlock_team(str(out["city"]), int(out["game"]))
 	return out
 
 # P6-17 hook: a won boss game (a city's game 3, or the New York final) unlocks that city's court for Quick Game.
@@ -601,6 +607,75 @@ static func _unlock_court(city_id: String) -> void:
 	var d: GDScript = load(DIFFICULTY_PATH) as GDScript
 	if d != null and d.has_method("unlock_court"):
 		d.call("unlock_court", city_id)
+
+# P6-T3 hook: the crew just beaten is a Quick Game team from now on (a city's crew after its boss game, a New York
+# crew after its round). Same rules as _unlock_court().
+static func _unlock_team(city_id: String, n: int) -> void:
+	if not saving or not ResourceLoader.exists(DIFFICULTY_PATH):
+		return
+	var d: GDScript = load(DIFFICULTY_PATH) as GDScript
+	if d != null and d.has_method("unlock_team") and d.has_method("team_of"):
+		d.call("unlock_team", str(d.call("team_of", city_id, n)))
+
+# ---------------- Quick Game teams (P6-T3) ----------------
+
+# A crew as a Quick Game team (difficulty.gd all_teams() id): {"id", "name", "style", "color", "players"}, the
+# players as player_dict()s with "own_colors" (each crew wears its own palette, also as team 0). Lineup: the Kings
+# are Jojo, Tank, Deuce (today's BLUE); a city crew its boss game's three, a New York crew its round's three, the
+# boss first, then the good players (the first is the one the human controls on team 0). Ratings: each player's own
+# (the Kings' starting ratings, a city player's at his stage), shifted so his five stats average 50: the stat shape
+# stays, the level is today's Quick Game player (difficulty still changes RED only). {} for an unknown id.
+static func quick_team(crew_id: String) -> Dictionary:
+	if not ResourceLoader.exists(DIFFICULTY_PATH):
+		return {}
+	var d: GDScript = load(DIFFICULTY_PATH) as GDScript
+	if d == null or not d.has_method("team_info"):
+		return {}
+	var info: Dictionary = d.call("team_info", crew_id)
+	if info.is_empty():
+		return {}
+	var cid: String = str(info.get("city", ""))
+	var ids: Array = QUICK_KINGS.duplicate()
+	var style := ""
+	if cid != "":
+		ids = _star_first(crew_for_game(cid, int(info.get("game", GAMES_PER_CITY))))
+		var c: Dictionary = Cities.city(cid)
+		var crew: Dictionary = c.get("crew", {})
+		if is_tournament(cid):
+			var rs: Array = _rounds(cid)
+			crew = (rs[clampi(int(info.get("game", 1)) - 1, 0, rs.size() - 1)] as Dictionary).get("crew", {})
+		style = str(crew.get("style", ""))
+	var players: Array = []
+	for id in ids:
+		var pd: Dictionary = player_dict(str(id), quick_ratings(str(id)), false)
+		pd["own_colors"] = true
+		players.append(pd)
+	return {"id": crew_id, "name": str(info.get("name", "")), "style": style, "color": info.get("color", Color.GRAY),
+		"players": players}
+
+# a player's ratings shifted so the five stats average QUICK_AVG (each rounded, clamped to 0..100)
+static func quick_ratings(id: String) -> Dictionary:
+	var base: Dictionary = _start_ratings(id)
+	var sum := 0.0
+	for s in Ratings.STATS:
+		sum += float(base[s])
+	var shift: float = float(QUICK_AVG) - sum / float(Ratings.STATS.size())
+	var out: Dictionary = {}
+	for s in Ratings.STATS:
+		out[s] = clampi(roundi(float(base[s]) + shift), Ratings.MIN_RATING, Ratings.MAX_RATING)
+	return out
+
+# boss first, then good, then average players (stable within a tier)
+static func _star_first(ids: Array) -> Array:
+	var out: Array = []
+	for tier in ["boss", "good", "avg"]:
+		for id in ids:
+			if str(Cities.player(str(id)).get("tier", "")) == tier:
+				out.append(id)
+	for id in ids:
+		if not out.has(id):
+			out.append(id)
+	return out
 
 # Where the result screen goes next: {"screen": String, "args": Dictionary} (Flow.go(r.screen, r.args)).
 # Lost -> story "first_loss" once, then the lineup (retry). Won with games left -> lineup. City done -> the city's

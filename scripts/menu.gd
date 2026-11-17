@@ -14,6 +14,11 @@ extends CanvasLayer
 # P6-17 (owner Q9): COURT cycles the gym, the blacktop and the courts of the cities whose boss you have beaten on a
 # Road Trip (Difficulty.unlock_court; a locked city's court doesn't show). A city court brings its city's twist
 # (quick_twist(), read by main.gd), shown in a line under the buttons. Test flags: --unlock-all, --unlock-none.
+# P6-T3 (owner): YOUR TEAM and OPPONENT under the levels cycle through the Quick Game teams (Difficulty.quick_teams():
+# the Cornfield Kings, the Bridge Runners and every crew beaten on a Road Trip); each tap = the next team, saved, and
+# the scene reloads back to this panel with the new crews on the court. The same crew can't be on both sides: the
+# other side moves on to the next team. main.gd reads quick_team_ids(). Desktop: Y = YOUR TEAM, O = OPPONENT.
+# Test runs (autoplay, humantest, screenshots) play the Kings vs the Bridge Runners unless --quick-teams <blue>,<red>.
 
 const Difficulty = preload("res://scripts/difficulty.gd")
 const Looks = preload("res://scripts/court_looks.gd")
@@ -47,11 +52,23 @@ const ARM_TIME_OVER := 0.8               # seconds before the game-over panel ta
 const LAYER := 20                        # over the HUD (10)
 const TWIST_FONT := 28                   # the court's twist line under the buttons (P6-17)
 const TWIST_COLOR := Color(1.0, 0.9, 0.55)   # as main.gd's tip-off twist line
+const BOX_GAP := 18                      # px between the panel's rows (6 rows fit 720 px high)
+const TEAM_BTN_SIZE := Vector2(470, 110) # YOUR TEAM / OPPONENT (P6-T3): two lines, "BOARDWALK BOMBERS" fits
+const TEAM_FONT := 30
+const TEAM_DARKEN := 0.45                # the button wears its crew's ui color, darkened for white text
+const VS_FONT := 34
+const TITLE_FONT_LONG := 42              # the game-over line with long crew names
+const TITLE_LONG_CHARS := 30             # ... from this many characters
+const SAVE_TEAMS := ["quick_team", "quick_opponent"]   # keys in Difficulty.SAVE_PATH: BLUE's and RED's crew ids
+const QUICK_TEAMS_FLAG := "--quick-teams"   # test flag: --quick-teams <blue>,<red> (any known crew, locked or not)
+const TEST_RUN_FLAGS := ["--autoplay", "--humantest", "--shots", "--ballshots", "--menushot", "--twistshots",
+		"--anim-test"]
 
 static var start_done := false           # the launch panel was answered this run (survives reload_current_scene())
 static var _prepared := false
 static var _settings_done := false
 static var music_on := true              # the MUSIC choice (main.gd passes it to audio.set_music_on at launch)
+static var team_picks: Array = [Difficulty.KINGS, Difficulty.RUNNERS]   # P6-T3: BLUE's and RED's crew ids
 
 var game                                 # main.gd
 var showing := false
@@ -65,6 +82,7 @@ var _court_btn: Button
 var _music_btn: Button
 var _title_btn: Button
 var _twist_lbl: Label
+var _team_btns: Array = []               # [YOUR TEAM, OPPONENT]
 
 # Once per run, before the players are made (player.gd calls Difficulty.init_once() too, later, which is then a no-op):
 # first launch (nothing saved) plays Normal; a saved level wins; --difficulty (and autoplay/humantest = Hard) win over both.
@@ -88,6 +106,9 @@ static func prepare_settings() -> void:
 	if quick_courts().has(saved):   # a city court only while it is unlocked (else the default court)
 		Looks.set_current(saved)
 	music_on = bool(cfg.get_value(Difficulty.SAVE_SECTION, SAVE_MUSIC, music_on))
+	if not _test_run():   # the tests play the default teams (or --quick-teams), never the saved picks
+		for t in 2:
+			team_picks[t] = str(cfg.get_value(Difficulty.SAVE_SECTION, SAVE_TEAMS[t], team_picks[t]))
 
 # the MUSIC choice, saved (title.gd's Settings; the panel's own MUSIC button too)
 static func set_music(on: bool) -> void:
@@ -134,6 +155,62 @@ static func twist_line(twist_id: String) -> String:
 		return banner
 	return banner.substr(0, cut).to_upper() + banner.substr(cut)
 
+# ---------------- Quick Game teams (P6-T3) ----------------
+
+# BLUE's and RED's crew ids for this Quick Game: --quick-teams <blue>,<red> in a test run, else the picks, each one
+# open (else the Kings for BLUE, the Bridge Runners for RED) and never the same crew twice (RED moves on)
+static func quick_team_ids() -> Array:
+	var flag: Array = _flag_teams()
+	if flag.size() == 2:
+		return flag
+	var avail: Array = Difficulty.quick_teams()
+	var out: Array = [str(team_picks[0]), str(team_picks[1])]
+	if not avail.has(out[0]):
+		out[0] = Difficulty.KINGS
+	if not avail.has(out[1]):
+		out[1] = Difficulty.RUNNERS
+	if out[1] == out[0]:
+		out[1] = _next_team(avail, out[1])
+	return out
+
+# the team after `id` in `avail` (wraps; the first one for an id not in it)
+static func _next_team(avail: Array, id: String) -> String:
+	if avail.is_empty():
+		return id
+	return str(avail[(avail.find(id) + 1) % avail.size()])
+
+# --quick-teams blue,red (or --quick-teams=blue,red): two different known crew ids, else [] (with a warning line)
+static func _flag_teams() -> Array:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var v := ""
+	for i in args.size():
+		if args[i].begins_with(QUICK_TEAMS_FLAG + "="):
+			v = args[i].substr(QUICK_TEAMS_FLAG.length() + 1)
+		elif args[i] == QUICK_TEAMS_FLAG and i + 1 < args.size():
+			v = args[i + 1]
+	if v == "":
+		return []
+	var parts: PackedStringArray = v.to_lower().split(",")
+	if parts.size() != 2 or parts[0] == parts[1] or Difficulty.team_info(parts[0]).is_empty() \
+			or Difficulty.team_info(parts[1]).is_empty():
+		print("%s: want two different crews out of %s; playing the picks" % [QUICK_TEAMS_FLAG,
+				", ".join(PackedStringArray(_all_ids()))])
+		return []
+	return [parts[0], parts[1]]
+
+static func _all_ids() -> Array:
+	var out: Array = []
+	for t in Difficulty.all_teams():
+		out.append(str((t as Dictionary)["id"]))
+	return out
+
+static func _test_run() -> bool:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	for f in TEST_RUN_FLAGS:
+		if args.has(f):
+			return true
+	return false
+
 static func save_setting(key: String, value) -> void:
 	_save_setting(key, value)
 
@@ -159,7 +236,7 @@ func _ready() -> void:
 	var box := VBoxContainer.new()
 	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 26)
+	box.add_theme_constant_override("separation", BOX_GAP)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(box)
 	_title = _label(box, TITLE_FONT)
@@ -178,6 +255,22 @@ func _ready() -> void:
 		b.pressed.connect(_pick.bind(lv))
 		row.add_child(b)
 		_buttons.append(b)
+	var trow := HBoxContainer.new()   # YOUR TEAM  VS  OPPONENT (P6-T3)
+	trow.alignment = BoxContainer.ALIGNMENT_CENTER
+	trow.add_theme_constant_override("separation", BUTTON_GAP)
+	trow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(trow)
+	for side in 2:
+		var tb := _opt_button(trow, _pick_team.bind(side))
+		tb.custom_minimum_size = TEAM_BTN_SIZE
+		tb.add_theme_font_size_override("font_size", TEAM_FONT)
+		tb.clip_text = true
+		_team_btns.append(tb)
+		if side == 0:
+			var vs := _label(trow, VS_FONT)
+			vs.text = "VS"
+			vs.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			vs.size_flags_vertical = Control.SIZE_FILL
 	var opts := HBoxContainer.new()
 	opts.alignment = BoxContainer.ALIGNMENT_CENTER
 	opts.add_theme_constant_override("separation", BUTTON_GAP)
@@ -221,6 +314,7 @@ func _label(parent: Control, size: int) -> Label:
 # at launch: the game waits behind the panel
 func show_start() -> void:
 	_title.text = "ROAD TRIP HOOPS"
+	_title.label_settings.font_size = TITLE_FONT
 	_title.modulate = Color.WHITE
 	_sub.text = "Pick your level"
 	_open(0.0)
@@ -228,6 +322,7 @@ func show_start() -> void:
 # after a game: the final score on top, a tap on a level plays again (replaces "tap to play again")
 func show_game_over(score: Array, winner: int, color: Color) -> void:
 	_title.text = "FINAL  %d - %d   %s WINS!" % [score[0], score[1], game.TEAM_NAMES[winner]]
+	_title.label_settings.font_size = TITLE_FONT_LONG if _title.text.length() >= TITLE_LONG_CHARS else TITLE_FONT
 	_title.modulate = color
 	_sub.text = "Tap a level to play again"
 	_open(ARM_TIME_OVER)
@@ -243,6 +338,8 @@ func _open(arm: float) -> void:
 		if game.get("menushot"):
 			print("QUICK COURTS %s | court %s | twist %s" % [", ".join(PackedStringArray(quick_courts())), Looks.current,
 					quick_twist()])
+			print("QUICK TEAMS %s | picked %s" % [", ".join(PackedStringArray(Difficulty.quick_teams())),
+					" vs ".join(PackedStringArray(quick_team_ids()))])
 		game.audio.play_music("menu")   # menu music on the panels, full volume (owner Q5 a)
 		game.audio.set_music_ducked(false)
 
@@ -276,7 +373,21 @@ func _refresh() -> void:
 		_court_btn.add_theme_color_override(k, OFF_TEXT)
 		_music_btn.add_theme_color_override(k, mc)
 		_title_btn.add_theme_color_override(k, OFF_TEXT)
-	for b in [_court_btn, _music_btn, _title_btn]:
+	var ids: Array = quick_team_ids()
+	for side in _team_btns.size():
+		var tb: Button = _team_btns[side]
+		var info: Dictionary = Difficulty.team_info(str(ids[side]))
+		tb.text = "%s\n%s" % ["YOUR TEAM" if side == 0 else "OPPONENT", str(info.get("name", ids[side]))]
+		var crew_col: Color = info.get("color", OPT_COLOR)
+		var fill: Color = crew_col.darkened(TEAM_DARKEN)
+		var sb := _style(fill, OPT_BORDER, 3)
+		tb.add_theme_stylebox_override("normal", sb)
+		tb.add_theme_stylebox_override("hover", sb)
+		tb.add_theme_stylebox_override("pressed", _style(fill.lightened(0.2), LIT_BORDER, 6))
+		tb.add_theme_stylebox_override("disabled", sb)
+		for k in ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color"]:
+			tb.add_theme_color_override(k, OFF_TEXT)
+	for b in [_court_btn, _music_btn, _title_btn] + _team_btns:
 		b.disabled = _arm_t > 0.0
 		b.modulate.a = 0.6 if _arm_t > 0.0 else 1.0
 
@@ -305,6 +416,10 @@ func key(event: InputEventKey) -> void:
 			_pick_court()
 		KEY_M:
 			_toggle_music()
+		KEY_Y:
+			_pick_team(0)
+		KEY_O:
+			_pick_team(1)
 		KEY_T, KEY_ESCAPE:
 			_go_title()
 
@@ -331,6 +446,27 @@ func _pick_court() -> void:
 	start_done = false
 	if game != null:
 		game.stat("menu_court_" + Looks.current)
+	get_tree().call_deferred("reload_current_scene")
+
+# YOUR TEAM (side 0) / OPPONENT (side 1): that side's next open team, saved; the other side moves on if it would be
+# the same crew. Reload back to the start panel (the new crews behind it, the level still to pick), like COURT.
+func _pick_team(side: int) -> void:
+	if not showing or _arm_t > 0.0:
+		return
+	var avail: Array = Difficulty.quick_teams()
+	if avail.size() < 2:
+		return
+	showing = false
+	var ids: Array = quick_team_ids()
+	ids[side] = _next_team(avail, str(ids[side]))
+	if ids[1 - side] == ids[side]:
+		ids[1 - side] = _next_team(avail, str(ids[1 - side]))
+	for t in 2:
+		team_picks[t] = str(ids[t])
+		_save_setting(SAVE_TEAMS[t], team_picks[t])
+	start_done = false
+	if game != null:
+		game.stat("menu_team_%s_%s" % ["blue" if side == 0 else "red", str(ids[side])])
 	get_tree().call_deferred("reload_current_scene")
 
 # MUSIC: on/off at once, saved; the panel stays up
