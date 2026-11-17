@@ -1,28 +1,168 @@
-ROAD TRIP HOOPS - 3v3 full court basketball (Godot 4)
+ROAD TRIP HOOPS - 3v3 full court streetball (version 1.0.0)
 
-PLAY IT IN THE BROWSER (easiest, always the latest build)
-Open https://kirmalo.github.io/road-trip-hoops/ in Chrome on the tablet. Tap once to start (browsers keep sound off
-until you touch the screen). Chrome menu > Add to Home screen gives you an app-style icon. If an update doesn't show,
-pull down to refresh.
+Three underdogs from a small town in Indiana load up their van and drive across the USA to a streetball tournament
+in New York. Beat the local crew in every city, sign its best players, and win the cage in New York. Top-down 3v3
+full court basketball, first to 21, made for touch: a joystick and two buttons.
+Made with Godot 4 (GDScript). The version shows on the title screen (bottom right) and on CREW & CREDITS.
 
-OPEN IT ON THE TABLET
-1. Extract this zip (keep the RoadTripHoops folder together).
-2. Open Godot, tap Import, and pick the project.godot file inside RoadTripHoops.
-3. Open the project and press the Play button (top right). The first open takes a moment while Godot imports the images.
+=====================================================================================================================
+PART 1: FOR PLAYERS
+=====================================================================================================================
+
+WHERE TO PLAY
+- In the browser: open the game's itch.io page (or the test build at https://kirmalo.github.io/road-trip-hoops/) in
+  Chrome. Tap once to start (browsers keep sound off until you touch the screen). On a tablet, Chrome menu > Add to
+  Home screen gives you an app-style icon. If an update doesn't show, pull down to refresh.
+- On Android: download the APK from the itch.io page and open it. Android asks once to allow installs from your
+  browser or file app ("install unknown apps"); allow it, then tap Install. The game runs landscape and full screen.
+- In the Godot editor: see PART 2.
+
+HOW TO PLAY (THE SHORT VERSION)
+The title screen has a HOW TO PLAY button: nine pages with a picture each (controls, turbo, shooting, dunks and
+alley-oops, crossover, calling for the ball, defense, on fire, the Road Trip). Swipe left or right, or tap the big
+< > arrows, to turn the page; BACK goes back to the title.
+
+You are BLUE: the player with the arrow over his head. The arrow next to BLUE in the top bar shows which hoop you
+attack (it flips when the teams switch sides).
+- Move: put your thumb anywhere on the left half of the screen and drag. The joystick appears under your thumb.
+- A (orange button, bottom right): SHOOT with the ball; STEAL or BLOCK on defense.
+- B (blue button): PASS with the ball, CALL for it without the ball, SWITCH player on defense.
+- Sprint (turbo): pull your thumb past the joystick ring, out to the faint orange outer ring.
+- SHOOT: hold A and let go when the white marker is in the green zone. Perfect timing = much better odds.
+  Defenders nearby lower your odds. Near the rim A dunks or lays up right away.
+- PASS: throws to your most open teammate, or to the teammate in the direction you are pushing.
+- Left-handed? SETTINGS > LEFT-HANDED: ON swaps the sides (see LEFT-HANDED below).
+- Pause: the button with two bars in the top right corner (on Android the back gesture also pauses).
+On a computer: WASD moves, J is A, K is B (for testing; the game is made for touch).
+
+LEFT-HANDED
+SETTINGS > LEFT-HANDED: ON mirrors the controls: the joystick moves to the right half of the screen and the A and B
+buttons to the bottom left. It starts with the next game and the game remembers it. Everything else is the same.
 
 THE TITLE SCREEN
-The game opens on the title screen with four buttons:
+The game opens on the title screen:
 - ROAD TRIP: the campaign (see THE ROAD TRIP below). It shows CONTINUE (your saved trip, lit gold) and NEW TRIP.
   NEW TRIP then asks for the level: EASY, NORMAL or HARD. If you already have a saved trip, NEW TRIP first asks
   START OVER (your old trip is gone) or KEEP MY TRIP.
-- QUICK GAME: one game to 21, the same as before: the panel picks the level (EASY / NORMAL / HARD), the COURT and the
-  MUSIC, then you play. A city's court joins the COURT button once you beat that city's boss on a Road Trip (see
-  DIFFICULTY below). After the game the panel comes back; its TITLE button goes back to the title.
-- SETTINGS: MUSIC on or off, the SOUND volume slider and the LEVEL (for Quick Game and new trips; with a saved trip
-  it also changes that trip's level). More settings come in a later update.
-- CREW & CREDITS: your crew and their stats (from your saved trip, if any) and the art and music credits. Drag the
-  list to scroll.
-BACK on each screen goes back to the title.
+- QUICK GAME: one game to 21 against the CPU. Its panel has the level (EASY / NORMAL / HARD; tap one to play), the
+  teams, the COURT and the MUSIC (see QUICK GAME below). After the game the panel comes back; its TITLE button goes
+  back to the title.
+- SETTINGS (all remembered):
+  - MUSIC: ON / OFF, and the MUSIC volume slider next to it;
+  - SOUND: the volume of the sound effects;
+  - LEVEL: EASY / NORMAL / HARD for Quick Game and new trips (with a saved trip it also changes that trip's level);
+  - FULL SCREEN: ON / OFF. In the browser it fills the whole screen (the browser's back gesture or Esc leaves it;
+    if it is ON, your next tap in the game puts it back). The Android app is always full screen;
+  - LEFT-HANDED: ON / OFF (see above).
+- HOW TO PLAY: the picture pages (see above).
+- CREW & CREDITS: the version, your crew and their stats (from your saved trip, if any), the art, music and sound
+  credits, and the Godot Engine license. Drag the list to scroll.
+BACK on each screen goes back to the title (on Android the back gesture does the same; on the title it closes the
+app).
+
+QUICK GAME
+- EASY / NORMAL / HARD: big buttons on the panel, before the game and again after every game, under the final score.
+  Tap one to play. The game remembers your choice (the lit button). The first time it starts on NORMAL.
+- YOUR TEAM / OPPONENT: tap to pick the next team for each side. The Cornfield Kings (your crew) and the Bridge
+  Runners are always there; every crew you beat on a Road Trip joins the list for good (a city's crew when you beat
+  its boss, a New York crew when you win its round). Quick Game players are evened out (their stats average 50),
+  so any matchup is fair; each crew keeps its own colors. The same crew can't be on both sides.
+- COURT: GYM, COURT: BLACKTOP, ... Tap it to pick the next court (an indoor gym with bleachers, an outdoor
+  blacktop, and every city court you have unlocked). A city's court unlocks when you beat that city's boss on a Road
+  Trip, and stays unlocked (a new trip doesn't lock it again). A city court brings its city's twist, shown in a line
+  under the buttons; the gym and the blacktop have none.
+- MUSIC: ON / MUSIC: OFF switches the music at once.
+The panel comes back with the new teams or court behind it; then tap a level to play. The game remembers all of it.
+
+HOW TO PLAY (IN FULL)
+WITH THE BALL
+- Crossover: a quick flick of the stick to a new direction while dribbling. You cut sharply and the ball switches
+  hands. A defender close in front of you can stumble and get left behind. Smooth turns don't trigger it.
+  The ball crosses in front of you, so it is easier to steal during a crossover.
+- Pump fake: a quick tap of SHOOT (A), away from the rim where the meter shows. He raises the ball and hops.
+  Press SHOOT again to shoot for real. A defender who jumps at the fake is stuck in the air: shoot or drive past.
+  Near the rim SHOOT always dunks or lays up right away (no fake there).
+- Alley-oop: PASS to a teammate cutting to the rim and you throw a lob that he dunks in the air.
+- Close guarding: a defender right in front of you slows you down. Beat him with a crossover or a fake.
+- Keep your body between the ball and the defender: a shielded ball is very hard to steal.
+
+WITHOUT THE BALL
+- Who you control: after you pass, you take over the player who caught it. When a teammate gets the ball any other
+  way (rebound, steal, inbound, a pass from a teammate), he plays it and you keep your player.
+- CALL (B, the blue button): ask for the ball. A "!" shows over you and the button lights up; your teammate passes
+  as soon as the lane is clear. If nothing opens up the call ends after a moment.
+- Call while cutting hard to the rim and you get a lob: you go up and dunk it (alley-oop).
+
+DEFENSE
+- A (the orange button) switches between STEAL and BLOCK by itself. It says BLOCK (deeper orange, up arrow) when
+  your man starts a shot, or is near the rim with you close. Otherwise it says STEAL.
+- STEAL: poke at the ball. It works best just as the dribble hits the floor (the button lights up yellow then), and
+  when the ball is on your side of the handler, not behind his body. Every steal try freezes you for a moment, hit
+  or miss, so don't spam it.
+- BLOCK: a timed jump. Jump as he goes up; too early or too late and you miss. Jumping at a pump fake leaves you
+  in the air while he shoots or drives past.
+- SWITCH (B, the blue button): take over the teammate closest to the ball.
+
+TURBO
+- Moving the joystick normally never sprints. To sprint, pull your thumb past the joystick ring, out to the
+  faint orange outer ring. The knob turns orange while you sprint.
+- The bar under your player is your stamina. Sprinting drains it; ease off and it refills after a moment.
+  If it runs empty you can't sprint until it has refilled a bit.
+- You sprint slightly slower with the ball.
+- A jump shot right after sprinting is less accurate. Dunks and layups are not affected.
+
+DUNKS AND LAYUPS
+- Press SHOOT near the rim (within about 9 ft). There is no meter for these, the shot goes right away.
+- Very close and moving fast (or on turbo) = dunk. Otherwise it's a layup.
+- A defender close to you can block it, and lowers your odds.
+
+ON FIRE
+- Make 3 shots in a row with the same player (dunks and layups count) and he catches fire.
+- On fire: bigger orange green zone on the meter, stamina doesn't drain, a flaming ball trail and an orange ring.
+- First miss: "He's cooling down." A second miss (or block) puts the fire out. A make in between makes him fully hot
+  again. CPU players can catch fire too.
+
+THE RULES
+- First to 21 wins (21-20 counts, no need to win by 2; the first Road Trip games in a city go to 11 or 15).
+  Streetball scoring: a basket inside the arc is 1 point, beyond the arc 2, a free throw 1. GAME POINT shows in the
+  top bar when one more basket wins.
+- There is no game clock and there are no quarters, only a 24 second shot clock (18 in Memphis). It starts again
+  when your team gets the ball, and also after a shot hits the rim, even if your team gets the rebound.
+- Switch sides: when the first team reaches 11 (halfway in a shorter game) the game stops for a moment ("SWITCH
+  SIDES") and both teams attack the other hoop for the rest of the game. This happens once per game.
+- After a basket the other team inbounds from under the hoop it defends.
+- Fouls come from bad timing only:
+  - A badly timed block jump (too early, too late, or still in the air after biting on a pump fake) that hits the
+    shooter is a shooting foul. Missed shot: 1 free throw inside the arc, 2 beyond. Made shot: it counts, plus 1
+    free throw (and-one).
+  - Poking at a ball the handler shields with his body can be a reaching foul. The fouled team gets the ball from
+    the sideline (no free throws).
+  - The CPU fouls the same way, so you get free throws too.
+- Free throws: everyone lines up and stands still. To shoot one, hold SHOOT and let go when the white marker is in
+  the green zone, the same meter as a jump shot (a quick tap does nothing at the line). If you wait more than
+  10 seconds you shoot automatically. After a made last free throw the other team inbounds; a missed last free
+  throw is a live rebound.
+- Out of bounds: only a loose ball that crosses a line is out (you can't step out by accident). The team that
+  didn't touch it last gets the ball from that sideline or baseline. A hard bounce off the back of the rim
+  sometimes flies out over the baseline.
+
+DIFFICULTY
+- On the Road Trip you pick the level when you start a new trip (change it later in SETTINGS); in Quick Game on its
+  panel.
+- Only the CPU team (RED) changes; it is never slower. On NORMAL and EASY the CPU shoots worse, reacts later to
+  crossovers and shots, times its steals and blocks worse, bites on pump fakes more and helps less on defense.
+
+PLAYER RATINGS
+Every player has five stats from 0 to 100 (50 = average): SPEED (how fast he runs), SHOOTING (jump shots and free
+throws), FINISHING (dunks and layups), DEFENSE (his steals and blocks) and STAMINA (how long he can sprint). Good
+timing is what makes a steal or block possible; better defenders turn good timing into a steal or block more often.
+Badly timed tries almost never work. The stats only move the odds: the shot meter and the timing windows are the
+same for everyone. On the Road Trip you raise them with stat points; a recruit keeps his own.
+
+THE CPU
+CPU players use everything you can: pull-up jump shots and 2-pointers from beyond the arc, crossovers, pump fakes,
+cuts and alley-oop lobs.
+CPU defenders poke at exposed balls, jump at shots (and sometimes bite on fakes) and get beaten by crossovers.
 
 THE ROAD TRIP
 You are the Cornfield Kings, three underdogs from a small town in Indiana: Deuce (shooting wing, the leader), Jojo
@@ -57,15 +197,6 @@ tournament in New York.
 - Saving: the trip saves by itself after every game and every choice. One trip at a time. Close the game whenever
   you like; ROAD TRIP > CONTINUE on the title brings you back to where you were.
 
-THE PAUSE SCREEN
-In every game a pause button (two bars) sits in the top right corner. Tap it to stop the game. The pause screen
-shows the score, the stats of both teams and the court's twist, and has:
-- RESUME: back to the game (the controls wait a moment, so the tap doesn't leak into the game)
-- RESTART: the same game again from 0-0 (tap twice to confirm)
-- QUIT: to the title in a Quick Game, to the trip map in a trip game; the quit game doesn't count and starts again at
-  0-0 next time (tap twice to confirm)
-- MUSIC on/off and the SOUND volume (both remembered)
-
 THE CITIES AND THEIR TWISTS
 Each city's twist works the same for both teams. A banner shows it at the tip-off and again after the switch.
 - Hometown (County Line, a barn driveway hoop): no twist, the warm-up city.
@@ -82,8 +213,17 @@ Each city's twist works the same for both teams. A banner shows it at the tip-of
 - New York (the tournament, a fenced cage): THE CAGE. A loose ball bounces off the side fence back into play, so there
   is no out of bounds on the sidelines (the baselines are as usual).
 
+THE PAUSE SCREEN
+In every game a pause button (two bars) sits in the top right corner. Tap it to stop the game. The pause screen
+shows the score, the stats of both teams and the court's twist, and has:
+- RESUME: back to the game (the controls wait a moment, so the tap doesn't leak into the game)
+- RESTART: the same game again from 0-0 (tap twice to confirm)
+- QUIT: to the title in a Quick Game, to the trip map in a trip game; the quit game doesn't count and starts again at
+  0-0 next time (tap twice to confirm)
+- MUSIC on/off, FULL SCREEN on/off and the SOUND volume (all remembered)
+
 THE PLAYERS AND THEIR MOVES
-The players are bigger now (about 100 pixels tall) and have many more animation frames:
+The players are about 100 pixels tall and have many animation frames:
 - Dribbling: a standing dribble and a running dribble with the legs moving and the ball in time with the hand,
   and a crossover that switches hands.
 - Dunks: 4 styles (one-hand, two-hand, tomahawk, windmill), plus the alley-oop catch and slam. The style depends on
@@ -94,7 +234,7 @@ The players are bigger now (about 100 pixels tall) and have many more animation 
   down and gets back up (an "ankle-breaker", about 1-3 a game).
 - Motion effects: players squash and stretch on take-offs and landings, dust flies on hard cuts (sand on the
   beach, splashes in Seattle), and the camera punches in a little on big dunks.
-All of it is only the look: steal and block timing are the same as before.
+All of it is only the look: it never changes the odds or the timing.
 
 THE VIEW
 You see the court at an angle from the near sideline, like a TV camera in the stands: the far sideline is at the
@@ -102,116 +242,49 @@ top of the screen, the players stand upright and jump up toward the top. The cam
 right and shows about two thirds of the court. The baselines stay left and right, so "right" on the stick is
 toward the right hoop and "up" on the stick is toward the far sideline, as you see it.
 
-HOW TO PLAY
-You are BLUE (the player with the yellow ring). BLUE starts on the RIGHT hoop; the arrow next to BLUE in the top
-bar shows which way you attack (it flips when the teams switch sides).
-- Move: put your thumb anywhere on the left half of the screen and drag.
-- Orange button: SHOOT on offense, STEAL or BLOCK on defense. Blue button: PASS with the ball, CALL without it,
-  SWITCH on defense.
-- SHOOT: hold it down and let go when the white marker is in the green zone. Perfect timing = much better odds.
-  Defenders nearby lower your odds.
-- PASS: throws to your most open teammate, or to the teammate in the direction you are pushing.
-
-THE RULES
-- First to 21 wins (21-20 counts, no need to win by 2). Streetball scoring: a basket inside the arc is 1 point,
-  beyond the arc 2, a free throw 1. GAME POINT shows in the top bar when one more basket wins.
-- There is no game clock and there are no quarters. The 24 second shot clock stays. It starts again when your team
-  gets the ball, and also after a shot hits the rim, even if your team gets the rebound.
-- Switch sides: when the first team reaches 11 the game stops for a moment ("SWITCH SIDES") and both teams attack
-  the other hoop for the rest of the game. This happens once per game.
-- After a basket the other team inbounds from under the hoop it defends.
-- Fouls come from bad timing only:
-  - A badly timed block jump (too early, too late, or still in the air after biting on a pump fake) that hits the
-    shooter is a shooting foul. Missed shot: 1 free throw inside the arc, 2 beyond. Made shot: it counts, plus 1
-    free throw (and-one).
-  - Poking at a ball the handler shields with his body can be a reaching foul. The fouled team gets the ball from
-    the sideline (no free throws).
-  - The CPU fouls the same way, so you get free throws too.
-- Free throws: everyone lines up and stands still. To shoot one, hold SHOOT and let go when the white marker is in
-  the green zone, the same meter as a jump shot (a quick tap does nothing at the line). If you wait more than
-  10 seconds you shoot automatically. After a made last free throw the other team inbounds; a missed last free
-  throw is a live rebound.
-- Out of bounds: only a loose ball that crosses a line is out (you can't step out by accident). The team that
-  didn't touch it last gets the ball from that sideline or baseline. A hard bounce off the back of the rim
-  sometimes flies out over the baseline.
-
-DIFFICULTY
-- EASY / NORMAL / HARD: big buttons on the Quick Game panel, before the game and again after every game, under the
-  final score. Tap one to play. On the Road Trip you pick the level when you start a new trip (change it later in
-  SETTINGS). The game remembers your choice (the lit button) the next time you open it. The first
-  time it starts on NORMAL.
-- Under the levels are two more buttons:
-  - COURT: GYM, COURT: BLACKTOP, ... Tap it to pick the next court (an indoor gym with bleachers, an outdoor
-    blacktop with a fence and the street behind it, and every city court you have unlocked). A city's court unlocks
-    when you beat that city's boss on a Road Trip, and it stays unlocked (a new trip doesn't lock it again). A city
-    court brings its city's twist, shown in a line under the buttons; the gym and the blacktop have none. The panel
-    comes back with the new court behind it; then tap a level to play. The game remembers the court.
-  - MUSIC: ON / MUSIC: OFF. Tap it to switch the music on or off at once. The game remembers it.
-- Only the CPU team (RED) changes; it is never slower. On NORMAL and EASY the CPU shoots worse, reacts later to
-  crossovers and shots, times its steals and blocks worse, bites on pump fakes more and helps less on defense.
-
-WITH THE BALL
-- Crossover: a quick flick of the stick to a new direction while dribbling. You cut sharply and the ball switches
-  hands. A defender close in front of you can stumble and get left behind. Smooth turns don't trigger it.
-  The ball crosses in front of you, so it is easier to steal during a crossover.
-- Pump fake: a quick tap of SHOOT (away from the rim, where the meter shows). He raises the ball and hops.
-  Press SHOOT again to shoot for real. A defender who jumps at the fake is stuck in the air: shoot or drive past.
-  Near the rim SHOOT always dunks or lays up right away (no fake there).
-- Alley-oop: PASS to a teammate cutting to the rim and you throw a lob that he dunks in the air.
-- Close guarding: a defender right in front of you slows you down. Beat him with a crossover or a fake.
-- Keep your body between the ball and the defender: a shielded ball is very hard to steal.
-
-WITHOUT THE BALL
-- Who you control: after you pass, you take over the player who caught it. When a teammate gets the ball any other
-  way (rebound, steal, inbound, a pass from a teammate), he plays it and you keep your player.
-- CALL (blue button): ask for the ball. A "!" shows over you and the button lights up; your teammate passes as soon
-  as the lane is clear. If nothing opens up the call ends after a moment.
-- Call while cutting hard to the rim and you get a lob: you go up and dunk it (alley-oop).
-
-DEFENSE
-- The orange button switches between STEAL and BLOCK by itself. It says BLOCK (deeper orange, up arrow) when your man
-  starts a shot, or is near the rim with you close. Otherwise it says STEAL.
-- STEAL: poke at the ball. It works best just as the dribble hits the floor (the button lights up yellow then), and
-  when the ball is on your side of the handler, not behind his body. Every steal try freezes you for a moment, hit
-  or miss, so don't spam it.
-- BLOCK: a timed jump. Jump as he goes up; too early or too late and you miss. Jumping at a pump fake leaves you
-  in the air while he shoots or drives past.
-- SWITCH (blue button): take over the teammate closest to the ball.
-
-PLAYER RATINGS
-Each player has a steal rating and a block rating. Good timing is what makes a steal or block possible; better
-players turn good timing into a steal or block more often. Badly timed tries almost never work.
-Each team has a quick-hands guard, a shot-blocker and an all-round player, with the same totals for both teams.
-
-THE CPU
-CPU players use everything you can: pull-up jump shots and 2-pointers from beyond the arc, crossovers, pump fakes, cuts and alley-oop lobs.
-CPU defenders poke at exposed balls, jump at shots (and sometimes bite on fakes) and get beaten by crossovers.
-
-TURBO
-- Moving the joystick normally never sprints. To sprint, pull your thumb past the joystick ring, out to the
-  faint orange outer ring. The knob turns orange while you sprint.
-- The bar under your player is your stamina. Sprinting drains it; ease off and it refills after a moment.
-  If it runs empty you can't sprint until it has refilled a bit.
-- You sprint slightly slower with the ball.
-- A jump shot right after sprinting is less accurate. Dunks and layups are not affected.
-
-DUNKS AND LAYUPS
-- Press SHOOT near the rim (within about 9 ft). There is no meter for these, the shot goes right away.
-- Very close and moving fast (or on turbo) = dunk. Otherwise it's a layup.
-- A defender close to you can block it, and lowers your odds.
-
-ON FIRE
-- Make 3 shots in a row with the same player (dunks and layups count) and he catches fire.
-- On fire: bigger orange green zone on the meter, stamina doesn't drain, a flaming ball trail and an orange ring.
-- First miss: "He's cooling down." A second miss (or block) puts the fire out. A make in between makes him fully hot
-  again. CPU players can catch fire too.
-
 SOUND AND MUSIC
 The game has sound effects (swish, rim, bounce, dunk, block, crowd, whistle, fire) and music. The panels play the
 menu music; in a game each court has its own track (every city has its own), played softer so the game sounds come
 through. Some twists add a background sound: wind in Chicago, a loud crowd in Memphis, rain in Seattle, plus a fence
-rattle, splashes and sand steps. Switch the music off with the MUSIC button on the panel. Credits are in CREDITS.md.
+rattle, splashes and sand steps. Switch the music off with the MUSIC button (Quick Game panel, pause screen or
+SETTINGS); SETTINGS also has a MUSIC volume slider, and a SOUND slider for the effects. Credits are in CREDITS.md
+and on the CREW & CREDITS screen.
 No sound in the browser? Make sure the tablet's media volume is up (not just the ringer), then tap the screen once.
+
+SAVES
+The game saves by itself: the trip after every game and every choice (user://trip.json), and your settings and the
+unlocked courts and teams (user://settings.cfg). Where that is:
+- in the browser: in the browser's storage for that site (clearing the site's data or a private window loses it;
+  the itch.io page and the GitHub Pages build have separate saves);
+- in the Android app: in the app's own storage (an update keeps it; uninstalling the app deletes it);
+- in the Godot editor: Godot's user data folder for the project (Project > Open User Data Folder).
+
+=====================================================================================================================
+PART 2: FOR THE OWNER (building, releasing, changing things)
+=====================================================================================================================
+
+OPEN IT ON THE TABLET (Godot Android editor)
+1. Extract this zip (keep the RoadTripHoops folder together).
+2. Open Godot, tap Import, and pick the project.godot file inside RoadTripHoops.
+3. Open the project and press the Play button (top right). The first open takes a moment while Godot imports the
+   images.
+
+THE RELEASE FILES (version 1.0.0)
+The version lives in one place: project.godot, [application] config/version="1.0.0". The title screen, the credits,
+the file names below and the Android app all read it. For an update, raise it there (and, for Android, the version
+code in the Android export preset; see docs/release/ANDROID.md).
+The files are made on a computer with Godot 4.3 and its export templates (setup in docs/TEAM.md):
+- Web (itch.io): tools/build_web.sh --zip  writes build/release/road-trip-hoops-<version>-web.zip (index.html at its
+  root; on itch.io it is the file "played in the browser"). tools/build_web.sh --publish updates the GitHub Pages
+  test build; --zip --publish does both.
+- Android: tools/build_android.sh  writes the debug APK build/release/road-trip-hoops-<version>-debug.apk (for
+  testing). tools/build_android.sh --release  writes build/release/road-trip-hoops-<version>.apk, signed with YOUR
+  release key, which it only takes from the environment variables GODOT_ANDROID_KEYSTORE_RELEASE_PATH, _USER and
+  _PASSWORD. docs/release/ANDROID.md explains how to make the key once, back it up, and export the release APK on
+  the tablet or on a computer. Never put the key or its password in the project folder.
+- The itch.io page: docs/release/ has the cover (cover.png, 630 x 500), the screenshots (screenshots/), the page
+  text (itch_page.md) and UPLOAD.md, the step-by-step list for creating the page and uploading the files.
+- The icons are in assets/icon/ (made by tools/art/make_icon.py, which also makes the cover).
 
 EASY THINGS TO CHANGE (at the top of each file)
 The Road Trip:
@@ -256,8 +329,8 @@ scripts/view.gd (the angled view):
 - SIDE_FLIP: false = the camera stays on the same sideline when the teams switch sides; true = it moves to the
   other sideline
 scripts/main.gd (the camera):
-- CAM_ZOOM: how close the camera is in the angled view (1.68 at most; bigger = closer, less court on screen). With
-  the bigger players the camera zooms out to about 1.59 so the heads at the far sideline stay under the top bar
+- CAM_ZOOM: how close the camera is in the angled view (1.72 at most; bigger = closer, less court on screen). On
+  a short screen it zooms out a little, so the heads at the far sideline stay under the top bar
 - CAM_ZOOM_MIN: how far it may zoom out on a short screen (1.2)
 - CAM_ZOOM_FLAT: the zoom of the flat view (1.15)
 - CAM_FOLLOW_X / CAM_FOLLOW_Y: how much the camera follows the ball left/right (1 = fully) and up/down (0 = not)
@@ -283,10 +356,6 @@ scripts/main.gd:
 - SHOT_CLOCK_LENGTH: the shot clock (24)
 - FT_BASE / FT_CAP: free-throw make chance with a normal release (0.72), and at most (0.95)
 - REACH_FOULS = false turns reaching fouls off
-
-scripts/defense.gd:
-- REACH_FOUL_CHANCE / REACH_FOUL_HUMAN_CHANCE: chance that a poke at a ball the handler shields with his body is a
-  reaching foul, for the CPU (0.3) and for you (0.1)
 - FIRE_STREAK: makes in a row to catch fire (3)
 - FIRE_MISSES: misses that put the fire out (2)
 - STEAL_POKE_FREEZE: seconds you stand still after every steal try (0.3)
@@ -305,7 +374,7 @@ scripts/human_input.gd:
 - CALL_WINDOW: seconds a CALL stays alive before it times out (1.5)
 - CALL_COOLDOWN: seconds before you can call again (0.75)
 scripts/player.gd (values are being tuned, so check the file for the current numbers):
-- RATINGS_BY_INDEX: the steal and block rating of each of the 3 players (0-100, 50 = average)
+- RATINGS_BY_INDEX: the steal and block rating of each of the 3 players when a team brings no stats of its own
 - BLOCK_GOOD_BASE / BLOCK_RATING_SPAN: chance of a well-timed block, and how much the rating moves it
 - CROSS_STUN: how long a beaten defender stumbles after a crossover
 - GUARD_FT / GUARD_SLOW: how close a defender slows the handler, and by how much
@@ -328,7 +397,9 @@ scripts/defense.gd (CPU defense, also being tuned):
 - CPU_FAKE_BITE: how often he bites on a pump fake
 - CPU_POKE_CHANCE / CPU_POKE_ON_TIME: how often he pokes at the ball, and how often his poke is well timed
 - BLOCK_HEIGHT_MIN: how high in the jump a block has to be to count as well timed
-- FOUL_BAD_JUMP_CHANCE: chance that a badly timed block jump that hits the shooter is a foul (0.35)
+- REACH_FOUL_CHANCE / REACH_FOUL_HUMAN_CHANCE: chance that a poke at a ball the handler shields with his body is a
+  reaching foul, for the CPU (0.3) and for you (0.1)
+- FOUL_BAD_JUMP_CHANCE: chance that a badly timed block jump that hits the shooter is a foul (0.5)
 scripts/difficulty.gd:
 - LEVELS: how much weaker the CPU is on NORMAL and EASY. Each line changes one Hard value: ["mul", 0.9] multiplies
   it, ["add", 0.05] adds to it (seconds). A key left out plays like Hard.
@@ -336,7 +407,7 @@ scripts/ball.gd:
 - RIM_LONG_CHANCE / RIM_WIDE_CHANCE: how often a miss bounces hard off the back or side of the rim (0 = never)
 scripts/audio.gd:
 - MASTER_DB: sound effects volume (lower = quieter, e.g. -6.0)
-- MUSIC_DB: music volume (-14.0; lower = quieter, e.g. -20.0)
+- MUSIC_DB: music volume with the SETTINGS slider all the way up (-14.0; lower = quieter, e.g. -20.0)
 - MUSIC_DUCK_DB: how much softer the music plays during a game than on the panels (-8.0; 0.0 = just as loud)
 - AMBIENCE_DB: the volume of the twist background sounds (rain, wind, loud crowd) (-20.0; lower = quieter)
 Shooting odds are in shot_probability() in main.gd. CPU behavior is in scripts/player.gd and scripts/defense.gd.
@@ -344,8 +415,9 @@ Shooting odds are in shot_probability() in main.gd. CPU behavior is in scripts/p
 FILES
 - main.gd: game loop, shot clock, HUD, input routing, steals, on fire, the test modes
 - rules.gd: first to 21, scoring, switching sides, dead balls and inbounds, fouls and free throws, out of bounds
-- difficulty.gd: EASY / NORMAL / HARD values for the CPU, and saving your choice
-- menu.gd: the EASY / NORMAL / HARD panel, with the COURT and MUSIC buttons
+- difficulty.gd: EASY / NORMAL / HARD values for the CPU, and the saved settings (level, unlocked courts and
+  teams, LEFT-HANDED, FULL SCREEN)
+- menu.gd: the Quick Game panel (EASY / NORMAL / HARD, YOUR TEAM / OPPONENT, COURT and MUSIC)
 - human_input.gd: your controls (crossover flicks, pump fake taps, CALL, STEAL/BLOCK button)
 - player.gd: movement, turbo, crossovers, pump fakes, dunks, layups, alley-oops, ratings, CPU offense
 - defense.gd: CPU defense (man-to-man, pokes, block jumps) and block rules
@@ -358,8 +430,9 @@ FILES
 - twist_fx.gd: what you see and hear of a twist (banner, rain, wind streaks, sand puffs, background sound)
 - sheets.gd: reads the player pictures (assets/players2) and where the hands and the ball are in each frame;
   shaders/palette.gdshader colors them in
-- touch_controls.gd: joystick and buttons
-- audio.gd: plays the sound effects (files in assets/sfx) and the music (files in assets/music)
+- touch_controls.gd: joystick and buttons (and their mirrored LEFT-HANDED layout)
+- audio.gd: plays the sound effects (files in assets/sfx) and the music (files in assets/music), at the
+  SETTINGS volumes
 - fx.gd: popups, screen shake, fire trail
 The Road Trip:
 - flow.gd: moves between the screens (title, map, story, lineup, game, result, points, recruit, bracket)
@@ -368,7 +441,8 @@ The Road Trip:
 - cities.gd: the cities, crews and players (data)
 - ratings.gd: what the five stats do in a game
 - ui_kit.gd: the shared look of the buttons and panels on the screens
-- title.gd: the title screen, SETTINGS and CREW & CREDITS
+- title.gd: the title screen, SETTINGS and CREW & CREDITS (the credits list is CREDITS_LIST at the top)
+- howto.gd: the How to Play screen (the page text is in PAGES at the top; the pictures are in assets/howto)
 - trip_map.gd: the trip map with the van
 - story.gd: the story scenes (the lines are in story_text.gd)
 - lineup.gd: picking your 3 starters
@@ -378,10 +452,12 @@ The Road Trip:
 - pause.gd: the pause button and screen
 - trip_test.gd: a test that plays a whole trip by itself (for the team, not used in play)
 - anim_test.gd: a test that checks every player's pictures (for the team, not used in play)
+- howto_shots.gd: takes the game screenshots the How to Play pictures are made from (for the team, not used
+  in play)
 
-Art: the players, courts, ball, trip map and story portraits are original art made for this game by the scripts
-in tools/art. The old Kenney Sports Pack sprites (www.kenney.nl, CC0) in assets/ are only a fallback if a player
-has no picture at all.
+Art: the players, courts, ball, trip map, story portraits, icons and How to Play pictures are original art made
+for this game by the scripts in tools/art. The old Kenney Sports Pack sprites (www.kenney.nl, CC0) in assets/ are
+only a fallback if a player has no picture at all.
 Sounds and music: see CREDITS.md.
 
 MAKING THE ART AGAIN (for the curious; needs a computer with Python 3, Pillow and numpy)
@@ -397,5 +473,9 @@ The pictures are drawn by scripts, not by hand, so they can be changed and made 
   8 city courts) and the ball in assets/ball.
 - python3 tools/art/make_portraits_v2.py   makes the story portraits in assets/portraits (comic style).
 - python3 tools/art/make_map.py       makes the trip map, pins and van in assets/map.
+- python3 tools/art/make_icon.py      makes the app icons in assets/icon and the itch.io cover
+  docs/release/cover.png.
+- python3 tools/art/make_howto.py     makes the How to Play pictures in assets/howto from the game screenshots
+  in tools/art/howto_raw (the team takes new screenshots with the --howto-shots test; see CLAUDE.md).
 - Preview pictures go to docs/art (not used by the game). Copy the new files into the project on the tablet and
   Godot picks them up when it re-imports.
