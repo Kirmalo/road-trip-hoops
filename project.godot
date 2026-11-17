@@ -7,7 +7,10 @@ config_version=5
 
 config/name="Road Trip Hoops"
 run/main_scene="res://main.tscn"
+config/version="1.0.0"
 config/features=PackedStringArray("4.3", "GL Compatibility")
+config/icon="res://assets/icon/icon.png"
+config/quit_on_go_back=false
 
 [display]
 
