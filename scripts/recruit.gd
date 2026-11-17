@@ -6,18 +6,33 @@ extends CanvasLayer
 #   name, role, tier, specialty and the 5 ratings he would join with (Trip.recruit_candidates()).
 #   Tap a card to pick him (the card lights gold), then tap SIGN <NAME> to confirm. There is no SKIP or BACK, the
 #   screen ignores taps for ARM_T s when it opens and SIGN for PICK_ARM_T s after a pick, so it can't be skipped or
-#   confirmed by accident. Trip.recruit(id) adds him (saved) and moves the trip to the next city; then the map.
-# Touch only (Escape does nothing here on purpose). auto_step() (trip test) signs the first candidate.
+#   confirmed by accident. Trip.recruit(id) adds him (saved) and moves the trip to the next city.
+#   Then he says his joining line (story_text.gd RECRUIT_LINES, owner Q4) in a box with his portrait, over the
+#   "JOINS THE CORNFIELD KINGS!" title; a tap anywhere (after JOIN_ARM_T) goes on to the map. A player without a line
+#   gets the old banner for JOIN_SHOW s.
+# Touch only (Escape does nothing here on purpose). auto_step() (trip test) signs the first candidate, then taps
+# through his line.
 
 const UI = preload("res://scripts/ui_kit.gd")
 const Flow = preload("res://scripts/flow.gd")
 const Trip = preload("res://scripts/trip.gd")
 const Cities = preload("res://scripts/cities.gd")
 const Sheets = preload("res://scripts/sheets.gd")   # cards: v2 card / v2 sheet / v1 sheet (P6-06)
+const StoryText = preload("res://scripts/story_text.gd")   # RECRUIT_LINES: what he says when he joins
 
 const ARM_T := 0.5                       # s the screen ignores taps after it opens (a tap from the last screen)
 const PICK_ARM_T := 0.25                 # s SIGN stays off after a pick (a double tap on a card can't confirm)
-const JOIN_SHOW := 1.2                   # s the "joins the crew" banner shows before the map
+const JOIN_SHOW := 1.2                   # s the "joins the crew" banner shows before the map (no joining line)
+# the joining line (P6-25 part 2): a box with his portrait, the JOINS title and his line; tap to go on
+const JOIN_ARM_T := 0.8                  # s before a tap can leave (the SIGN tap can't skip the line)
+const JOIN_BOX := Vector2(1080, 350)     # px: the box, centred in the layout frame
+const JOIN_PAD := 26.0                   # px inside the box
+const JOIN_PORTRAIT_SCALE := 2.4         # x PORTRAIT_BOX (230 x 269), drawn smoothly like the cards
+const JOIN_MOOD := "happy"               # portrait expression: <portrait>_happy.png if it exists, else the plain one
+const JOIN_TITLE_FONT := 34
+const JOIN_LINE_FONT := 30
+const JOIN_HINT_FONT := 22
+const JOIN_HINT := "TAP TO GO ON"
 const FRAME_SIZE := Vector2(1280, 720)   # the layout box, centred on wider / taller screens
 const HEAD_TOP := 6.0                    # px: the title
 const CARD_TOP := 136.0                  # px: top of the cards
@@ -69,6 +84,8 @@ var _busy := false           # signed: waiting for the banner, then the map
 var _leave_t := -1.0
 var _leave_to := "map"
 var _ok := true              # false: nothing to recruit here (shows CONTINUE)
+var _join_t := -1.0          # s the joining line has been up (-1: not shown)
+var _join_hint: Label
 
 func _ready() -> void:
 	_root = UI.screen_root(self)
@@ -103,6 +120,10 @@ func _process(delta: float) -> void:
 		_leave_t -= delta
 		if _leave_t <= 0.0:
 			Flow.go(_leave_to)
+	if _join_t >= 0.0:
+		_join_t += delta
+		if _join_hint != null:
+			_join_hint.visible = _join_t >= JOIN_ARM_T
 
 func _stat(key: String) -> void:
 	if main != null and main.has_method("stat"):
@@ -219,8 +240,14 @@ func _on_sign() -> void:
 	_refresh()
 	_sfx("swish")
 	_sfx("crowd", -10.0)
-	_banner("%s JOINS THE %s!" % [str(p.get("full", p.get("name", id))).to_upper(), Cities.CREW_NAME])
-	_leave_t = JOIN_SHOW
+	var title: String = "%s JOINS THE %s!" % [str(p.get("full", p.get("name", id))).to_upper(), Cities.CREW_NAME]
+	var line: String = StoryText.recruit_line(id)
+	if line != "":
+		_join_line(id, title, line)
+		_stat("recruit_line")
+	else:
+		_banner(title)
+		_leave_t = JOIN_SHOW
 
 func _on_continue() -> void:
 	if _busy or _arm_t > 0.0:
@@ -239,12 +266,95 @@ func _banner(text: String) -> void:
 	p.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	UI.label(p, text, UI.BUTTON_FONT, UI.LIT_COLOR)
 
+# His joining line: dim the screen, a box with his portrait (happy if drawn), the JOINS title and the line in quotes;
+# a tap anywhere after JOIN_ARM_T goes on (_on_join_input).
+func _join_line(id: String, title: String, line: String) -> void:
+	var dim := ColorRect.new()
+	dim.color = UI.DIM_COLOR
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.gui_input.connect(_on_join_input.bind(dim))
+	_root.add_child(dim)
+	var frame := Control.new()   # the 1280 x 720 layout box, centred like _frame
+	frame.set_anchors_preset(Control.PRESET_CENTER)
+	frame.offset_left = -FRAME_SIZE.x / 2.0
+	frame.offset_top = -FRAME_SIZE.y / 2.0
+	frame.offset_right = FRAME_SIZE.x / 2.0
+	frame.offset_bottom = FRAME_SIZE.y / 2.0
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dim.add_child(frame)
+	var box := UI.panel(frame, JOIN_BOX)
+	box.position = (FRAME_SIZE - JOIN_BOX) / 2.0
+	box.size = JOIN_BOX
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", int(JOIN_PAD))
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(row)
+	var por: Texture2D = _join_portrait(id)
+	if por != null:
+		var tr := TextureRect.new()
+		tr.texture = por
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		tr.custom_minimum_size = PORTRAIT_BOX * JOIN_PORTRAIT_SCALE
+		tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(tr)
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 12)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(col)
+	var t := UI.label(col, title, JOIN_TITLE_FONT, UI.LIT_COLOR)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var said := UI.label(col, "\"%s\"" % _fill(line), JOIN_LINE_FONT)
+	said.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	said.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	said.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_join_hint = UI.label(col, JOIN_HINT, JOIN_HINT_FONT, DIM_TEXT)
+	_join_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_join_hint.visible = false
+	_join_t = 0.0
+
+func _on_join_input(event: InputEvent, dim: Control) -> void:
+	var mb := event as InputEventMouseButton
+	if mb != null and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+		dim.accept_event()
+		_join_done()
+
+# leave for the map (once the line has been up JOIN_ARM_T); false if it can't yet
+func _join_done() -> bool:
+	if _join_t < JOIN_ARM_T:
+		return false
+	_join_t = -1.0
+	_sfx("bounce", -8.0)
+	Flow.go(_leave_to)
+	return true
+
+# {crew} and {van} as in story.gd
+func _fill(s: String) -> String:
+	return s.replace("{crew}", Cities.CREW_NAME.capitalize()).replace("{van}", Cities.VAN_NAME.capitalize())
+
+# assets/portraits/<portrait>_<JOIN_MOOD>.png, else <portrait>.png, else null (no portrait in the box)
+func _join_portrait(id: String) -> Texture2D:
+	var base: String = PORTRAIT_DIR + str(Cities.player(id).get("portrait", id))
+	for path in [base + "_" + JOIN_MOOD + ".png", base + ".png"]:
+		if ResourceLoader.exists(path):
+			var tex: Texture2D = load(path) as Texture2D
+			if tex != null:
+				return tex
+	return null
+
 # ---------------- trip test (P5-15) ----------------
 
-# The default choice: sign the first candidate (or CONTINUE when there is nobody). False once signed.
+# The default choice: sign the first candidate (or CONTINUE when there is nobody), then tap through his joining line.
+# False while there is nothing to do (the line still arming, or the banner counting down).
 func auto_step() -> bool:
 	if _busy:
-		return false
+		return _join_t >= 0.0 and _join_done()
 	_arm_t = 0.0
 	_sign_arm_t = 0.0
 	if not _ok:

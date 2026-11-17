@@ -244,6 +244,45 @@ const SCENES := {
 	],
 }
 
+# The recruit's joining line (owner Q4: "the recruit joins with a funny line"): recruit.gd shows it with his portrait
+# right after you sign him. One per recruitable player (every city's 2 good players and its boss), in his own voice;
+# the same placeholders as the scenes. Keep a line to about 2 short sentences (the box holds 3 rows). A player
+# without a line here simply joins with the banner.
+const RECRUIT_LINES := {
+	# Hometown: County Line
+	"ht_g1": "I told the feed store I'd be back Monday. I didn't say which Monday. Let's go.",
+	"ht_g2": "I throw hay bales all summer. Throwing city boys out of the paint can't be much harder.",
+	"ht_boss": "I'm bringing the folding chair. And the whistle. Somebody has to keep you boys organized.",
+	# Chicago: Lakeshore Gusts
+	"chi_g1": "No wind inside a van, right? Good. My jumper's been waiting its whole life for still air.",
+	"chi_g2": "I'll ride in the van. But if traffic gets slow, I'm getting out and pedaling. Kidding. Mostly.",
+	"chi_boss": "You scored on me way more than twice. Better to be on your side. Make room in the back, I'm big.",
+	# Memphis: Riverside Soul
+	"mem_g1": "I'll warm up my voice in the van. Don't worry, I only know two songs, and both are about winning.",
+	"mem_g2": "A van with brakes? ALL of them working? Fellas, this is already the nicest ride of my life.",
+	"mem_boss": "I packed a cooler of brisket for the road. Low and slow, boys. The food, not the fast break.",
+	# New Orleans: Bayou Brass
+	"nol_g1": "I left the trumpet with my cousin. But if we win New York, I'm playing a parade on the van roof.",
+	"nol_g2": "This van got a turbo button? No? That's okay. I'll push. Been pushing boats my whole life.",
+	"nol_boss": "The trombone stayed home, like I promised. I brought a kazoo. Nobody said nothing about a kazoo.",
+	# Denver: Switchbacks
+	"den_g1": "Down at sea level my shots might come up short. Good thing I practice from the parking lot.",
+	"den_g2": "I've hung off a cliff by two fingers. A thousand miles in the back of your van? Easy.",
+	"den_boss": "I packed the oxygen tank. It's for {van}. And for Jojo, if he keeps talking this fast.",
+	# Seattle: Puddle Jumpers
+	"sea_g1": "I brought my espresso machine. It plugs into the lighter. Probably. Who wants a triple?",
+	"sea_g2": "Told all three of my bands I'm going on tour. Can my bass ride in the cup holder? ...Tank says no.",
+	"sea_boss": "The fish can wait a week. Fair warning: wherever I go, the rain comes too. Pack a towel.",
+	# Los Angeles: Boardwalk Bombers
+	"la_g1": "My board fits under the seat. If {van} breaks down again, I'll skate us to New York.",
+	"la_g2": "No waves in New York, huh? That's cool. I'll ride the crowd noise all the way to the rim.",
+	"la_boss": "Lifeguard's on duty, {crew}. Nobody goes under on my watch. Not in the sand, not in the big city.",
+}
+
+# a recruit's joining line ("" for a player without one)
+static func recruit_line(id: String) -> String:
+	return str(RECRUIT_LINES.get(id, ""))
+
 # a scene's lines ([] for an unknown id)
 static func scene(id: String) -> Array:
 	return SCENES.get(id, [])
