@@ -3,6 +3,7 @@ extends Node2D
 # FLAT draws with `sprite` and _draw() here; ANGLED draws with the view nodes at the end of the file (P4-10).
 
 const View = preload("res://scripts/view.gd")   # projection (Phase 4)
+const Sheets = preload("res://scripts/sheets.gd")   # v2 player sheets: hand and ball points (drawing only)
 const Twists = preload("res://scripts/twists.gd")   # Phase 6 city twists: wind drift, thin air, the cage's fence
 
 enum { HELD, PASS, SHOT, LOOSE, DEAD }
@@ -32,7 +33,7 @@ var shot_kind := ""
 var shot_z0 := 26.0        # height the shot leaves the hand
 var bounce_cooldown := 0.0
 var dribble_count := 0
-var dribble_phase := 0     # which half-cycle of the dribble the ball is in; a change means a floor touch
+var _dribble_half := 0     # which half-cycle of the dribble the ball is in; a change means a floor touch
 var lob := false           # the current PASS is an alley-oop lob (P2-09)
 var lob_t := 0.0           # 0..1 along the lob's flight
 var lob_time := 0.6        # seconds of the lob's flight
@@ -57,6 +58,8 @@ const HAND_FORWARD_PX := 13.0  # ball this far in front of the handler (main.STE
 const HAND_SIDE_PX := 9.0      # and this far to the side of the dribbling hand
 const CROSS_FRONT_PX := 6.0    # extra reach in front of the body while the ball crosses between the hands
 const PUMP_BALL_LIFT := 1.6     # pump fake: the ball rises this many times the hop height (P2-06)
+const DRIBBLE_RATE := 9.0       # the sim's dribble: z = 4 + |sin(anim_time x this)| x 16 (one bounce per PI / 9 s;
+                                # steal timing reads it, so don't change it; the animation follows it, dribble_phase())
 
 # ---- ball and rim sounds (tuning) ----
 const BOUNCE_MIN_SPEED := 120.0   # a loose ball must hit the floor at least this fast (px/s down) to make a sound
@@ -287,7 +290,7 @@ func update(delta: float) -> void:
 			elif holder.shooting:
 				z = 26.0
 			else:
-				z = 4.0 + abs(sin(anim_time * 9.0)) * 16.0
+				z = 4.0 + abs(sin(anim_time * DRIBBLE_RATE)) * 16.0
 				_dribble_sound()
 		PASS:
 			if receiver == null:
@@ -489,12 +492,17 @@ func _bounce_sound(impact: float) -> void:
 	var k := clampf((impact - BOUNCE_MIN_SPEED) / (BOUNCE_LOUD_SPEED - BOUNCE_MIN_SPEED), 0.0, 1.0)
 	game.audio.play("bounce", lerpf(BOUNCE_QUIET_DB, 0.0, k), 0.08)
 
+# Where the sim's dribble is (read-only, P6-22): 0 = in the hand at the top of the bounce, 0.5 = on the floor, back to
+# 1 at the top. The players' dribble animations lock to it (player.gd _v2_phase_x).
+func dribble_phase() -> float:
+	return fposmod(anim_time * DRIBBLE_RATE / PI - 0.5, 1.0)
+
 func _dribble_sound() -> void:
 	# soft dribble, only for the ball handler the human controls, on every DRIBBLE_EVERY-th floor touch
-	var phase := int(anim_time * 9.0 / PI)
-	if phase == dribble_phase:
+	var phase := int(anim_time * DRIBBLE_RATE / PI)
+	if phase == _dribble_half:
 		return
-	dribble_phase = phase
+	_dribble_half = phase
 	if not game.is_human(holder) or not game.audio:
 		return
 	dribble_count += 1
@@ -560,8 +568,19 @@ const SPIN_PX_PER_FRAME := 7.0
 const SHOT_SPIN_FPS := 14.0
 # floor dust when a loose or dead ball hits the floor hard (drawn by fx in game.decals)
 const DUST_MIN_SPEED := 160.0     # px/s down
+# v2 sheets (P6-22): the held ball sits on the frame's own ball point (hands.json "ball"); passes get a look
+const BOUNCE_PASS_AT := 0.6       # a bounce pass hits the floor this far along its way (drawn only)
+const BOUNCE_MIN_FT := 6.0        # a bounce pass is between these lengths ...
+const BOUNCE_MAX_FT := 26.0
+const BOUNCE_SHORT_FT := 12.0     # ... and either this short ...
+const BOUNCE_LANE_FT := 4.0       # ... or with a defender this close to the middle of the passing lane
+const BOUNCE_LANE_FROM := 0.2     # "the middle": between these fractions of the way
+const BOUNCE_LANE_TO := 0.8
 
 static var _hands = null          # hands.json "players" (null: missing, the held ball uses the heights above)
+var _pass_look := ""              # the pass in flight looks like: "chest", "bounce" or "lob" ("" = not picked yet)
+var _v_front := true              # v2: the held ball is drawn in front of the holder (hands.json "ball" front flag)
+var _v_holder_anim := ""          # v2: the holder's animation last frame (a change blends the drawn ball over)
 
 var v_screen := Vector2.ZERO      # where the ball is drawn (screen): fx's fire trail follows it
 var v_sort_y := 0.0               # its sort y in game.world
@@ -618,8 +637,81 @@ func _view_lift_of(p) -> float:
 		return p._view_lift()
 	return p.jump_z
 
+# v2: the player draws a v2 sheet (pages, format.json)
+func _is_v2(p) -> bool:
+	return p != null and ("_v_ver" in p) and int(p._v_ver) == 2 and p._v_spr != null
+
+# a point in the player's drawn frame (frame pixels, already mirrored) -> screen
+func _frame_to_screen(p, pt: Vector2) -> Vector2:
+	var spr: Sprite2D = p._v_spr
+	var fmt: Dictionary = p._v_fmt
+	var local: Vector2 = (pt - Vector2(Sheets.center_x(fmt), Sheets.feet_y(fmt))) * spr.scale
+	return p._v_body.position + spr.position + local.rotated(spr.rotation)
+
+# v2: the ball point of the holder's drawn frame, blended toward the next frame by how far into this one he is
+# (the dribble is phase-locked, so the ball meets the floor on the floor frame). {"pos": screen, "front": bool} or {}.
+func _v2_ball(p) -> Dictionary:
+	var fmt: Dictionary = p._v_fmt
+	var a: Dictionary = Sheets.hand(fmt, p._v_sheet_id, p.v_frame, p.v_flip)
+	if not a.has("ball"):
+		return {}
+	var pt: Vector2 = a["ball"]
+	if p.v_frame_frac > 0.0 and p.v_next_frame != p.v_frame:
+		var b: Dictionary = Sheets.hand(fmt, p._v_sheet_id, p.v_next_frame, p.v_flip)
+		if b.has("ball"):
+			pt = pt.lerp(b["ball"], p.v_frame_frac)
+	return {"pos": _frame_to_screen(p, pt), "front": bool(a.get("ball_front", true))}
+
+# how much taller than a v1 player p is drawn (catch and reach heights scale with it; 1.0 on v1)
+func _head_k(p) -> float:
+	if p != null and p.has_method("view_head_scale"):
+		return p.view_head_scale()
+	return 1.0
+
+# What the pass in flight looks like (drawing only; the sim's pass is the same): "lob" (ball.lob), "bounce" (a v2
+# passer, a pass of BOUNCE_MIN_FT..BOUNCE_MAX_FT that is short or has a defender in the middle of the lane) or
+# "chest". "" when no pass is in flight. player.gd plays the matching throw; the drawn ball bounces once.
+func pass_look() -> String:
+	if state != PASS:
+		return ""
+	if lob:
+		return "lob"
+	if _pass_look != "":
+		return _pass_look
+	_pass_look = "chest"
+	if not _is_v2(passer) or receiver == null:
+		return _pass_look
+	var a: Vector2 = passer.position
+	var b: Vector2 = receiver.position
+	var FT: float = game.FT
+	var d_ft: float = a.distance_to(b) / FT
+	if d_ft < BOUNCE_MIN_FT or d_ft > BOUNCE_MAX_FT:
+		return _pass_look
+	if d_ft <= BOUNCE_SHORT_FT:
+		_pass_look = "bounce"
+		return _pass_look
+	for o in game.teams[1 - passer.team]:
+		var t: float = clampf((o.position - a).dot(b - a) / maxf(a.distance_squared_to(b), 1.0), 0.0, 1.0)
+		if t >= BOUNCE_LANE_FROM and t <= BOUNCE_LANE_TO and o.position.distance_to(a.lerp(b, t)) < BOUNCE_LANE_FT * FT:
+			_pass_look = "bounce"
+			break
+	return _pass_look
+
 # the screen point of the holder's hand from his sheet frame and hands.json (null without data)
 func _hand_point(p, kind: String):
+	if _is_v2(p):
+		# v2 without a ball point in this frame: the hands of the frame (Sheets.hand, already mirrored)
+		var hd: Dictionary = Sheets.hand(p._v_fmt, p._v_sheet_id, p.v_frame, p.v_flip)
+		if hd.is_empty():
+			return null
+		var hl: Vector2 = hd["L"]
+		var hr: Vector2 = hd["R"]
+		var g: Vector2 = (hl + hr) / 2.0
+		if kind == "dribble":
+			g = hl if hl.y > hr.y else hr           # the lower hand
+		elif kind == "up":
+			g = hl if hl.y < hr.y else hr           # the higher hand
+		return _frame_to_screen(p, g)
 	if _hands == null or p == null or not ("_v_sheet" in p) or not p._v_sheet or p._v_spr == null:
 		return null
 	# hands.json is keyed by sheet id: the file the player actually loaded (a trip crew sheet, a _crew recolor, or
@@ -663,6 +755,16 @@ func _view_target(delta: float) -> Vector2:
 		HELD:
 			if holder != null:
 				var base: Vector2 = View.to_screen(holder.position, 0.0)
+				if _is_v2(holder):
+					# v2: the ball point of the drawn frame (every held-ball frame has one)
+					var vb: Dictionary = _v2_ball(holder)
+					if not vb.is_empty():
+						var s2: Vector2 = vb["pos"]
+						_v_front = vb["front"]
+						_v_floor = Vector2(s2.x, base.y + DRIBBLE_FLOOR_DY)
+						_v_h = (fl.y - s2.y) / k
+						return s2
+					_v_front = true
 				var anim: String = holder._v_anim if "_v_anim" in holder else ""
 				var up: bool = holder.rim_kind != "" or holder.shooting or holder.fake_t > 0.0
 				var dribble: bool = not up and not holder.at_free_throw() and (anim == "dribble" or anim == "")
@@ -680,21 +782,31 @@ func _view_target(delta: float) -> Vector2:
 					_v_floor = Vector2(hand.x, base.y + DRIBBLE_FLOOR_DY)
 					_v_h = (fl.y - s.y) / k
 					return s
-				# no hand data: the sim's spot at a drawn height
+				# no hand data: the sim's spot at a drawn height (scaled for a taller v2 player)
+				var hk: float = _head_k(holder)
 				if up:
-					_v_h = _view_lift_of(holder) + REACH_VIEW_Z
+					_v_h = _view_lift_of(holder) + REACH_VIEW_Z * hk
 				elif dribble:
-					_v_h = r / k + (DRIBBLE_VIEW_Z - r / k) * frac
+					_v_h = r / k + (DRIBBLE_VIEW_Z * hk - r / k) * frac
 				else:
-					_v_h = CATCH_VIEW_Z
+					_v_h = CATCH_VIEW_Z * hk
 		PASS:
 			if receiver != null:
 				var to_end: float = position.distance_to(receiver.position)
 				var done: float = position.distance_to(_v_from)
-				var end_h: float = _view_lift_of(receiver) + (REACH_VIEW_Z if receiver.is_airborne() else CATCH_VIEW_Z)
+				var end_h: float = _view_lift_of(receiver) + (REACH_VIEW_Z if receiver.is_airborne() else CATCH_VIEW_Z) \
+						* _head_k(receiver)
 				if lob:
 					var lob_arc: float = LOB_VIEW_ARC * Twists.value("arc_mult", 1.0)   # thin air: drawn higher
 					_v_h = lerpf(_v_h0, end_h, lob_t) + 4.0 * LOB_PEAK * lob_arc * lob_t * (1.0 - lob_t)
+				elif pass_look() == "bounce":
+					# a bounce pass: down to the floor at BOUNCE_PASS_AT of the way, then up into his hands
+					var u: float = done / maxf(done + to_end, 1.0)
+					var low: float = r / k
+					if u < BOUNCE_PASS_AT:
+						_v_h = lerpf(_v_h0, low, u / BOUNCE_PASS_AT)
+					else:
+						_v_h = lerpf(low, end_h, (u - BOUNCE_PASS_AT) / (1.0 - BOUNCE_PASS_AT))
 				else:
 					_v_h = lerpf(_v_h0, end_h, done / maxf(done + to_end, 1.0))
 		SHOT:
@@ -739,9 +851,16 @@ func _update_view(delta: float) -> void:
 			_v_extra_time = (vz + sqrt(maxf(0.0, vz * vz + 2.0 * GRAVITY * z))) / GRAVITY
 	else:
 		_v_t += delta
+	if state != PASS:
+		_pass_look = ""
 	var target: Vector2 = _view_target(delta)
 	if changed and _v_ready:
 		_v_off = v_screen - target
+	# v2: a new animation in the holder's hands (say the end of a crossover into the dribble) blends over too
+	var v2_anim: String = String(holder._v_anim) if state == HELD and _is_v2(holder) else ""
+	if v2_anim != _v_holder_anim and v2_anim != "" and _v_holder_anim != "" and not changed and _v_ready:
+		_v_off = v_screen - target
+	_v_holder_anim = v2_anim
 	_v_ready = true
 	_v_off *= exp(-BLEND_RATE * delta)
 	if _v_off.length() < 0.25:
@@ -764,7 +883,9 @@ func _update_view(delta: float) -> void:
 	# sort: the projected floor point; held, by the holder (in front, behind when his back is to the camera);
 	# near the rim in the air, exactly the hoop's sort y
 	v_sort_y = View.to_screen(position, 0.0).y
-	if state == HELD and holder != null:
+	if state == HELD and holder != null and _is_v2(holder):
+		v_sort_y = View.to_screen(holder.position, 0.0).y + (0.5 if _v_front else -0.5)   # the frame says in front or not
+	elif state == HELD and holder != null:
 		var row := 0
 		if "_v_sheet" in holder and holder._v_sheet:
 			row = int(holder._v_spr.frame) / SHEET_COLS
@@ -840,8 +961,23 @@ func _ball_shots() -> void:
 		tag = twist_tag
 	elif Twists.flag("sideline_fence") and state == LOOSE and _fence_t < 0.15:
 		tag = "fence"              # just off the fence (not counted in `need`: it may never happen)
-	elif state == HELD and holder != null and holder._v_anim == "dribble" and _v_t > 1.0 and game.is_human(holder):
+	# v2 sheets only (not counted in `need`): the running dribble, a crossover, a catch, a bounce pass on its way down
+	elif state == HELD and _is_v2(holder) and String(holder._v_anim).begins_with("run_dribble") and _v_t > 1.0 \
+			and game.is_human(holder) and not _bs_done.has("v2_run_dribble"):
+		tag = "v2_run_dribble"
+	elif state == HELD and holder != null and String(holder._v_anim).begins_with("dribble") and _v_t > 1.0 \
+			and game.is_human(holder):
 		tag = "dribble"
+	elif state == HELD and _is_v2(holder) and String(holder._v_anim).begins_with("run_dribble") and _v_t > 1.0 \
+			and game.is_human(holder):
+		tag = "dribble"            # a v2 handler who never stands still: his running dribble counts as the dribble
+	elif state == HELD and _is_v2(holder) and String(holder._v_anim).begins_with("cross") and holder.cross_t > 0.1 \
+			and holder.cross_t < 0.2:
+		tag = "v2_cross"
+	elif state == HELD and _is_v2(holder) and holder._v_anim == "catch" and holder._v_catch_t < 0.1:
+		tag = "v2_catch"
+	elif state == PASS and not lob and _is_v2(passer) and _pass_look == "bounce" and _v_h < 20.0:
+		tag = "v2_bounce_pass"
 	elif state == PASS and lob and lob_t > 0.45 and lob_t < 0.6:
 		tag = "lob"
 	elif state == SHOT and shot_kind == "dunk":
@@ -862,5 +998,9 @@ func _ball_shots() -> void:
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("%s/hoops_ball_%s.png" % [_bs_dir, tag])
 	print("BALLSHOT ", tag)
-	if _bs_done.size() - (1 if _bs_done.has("fence") else 0) >= need:
+	var extra: int = 0
+	for t in _bs_done:
+		if t == "fence" or String(t).begins_with("v2_"):
+			extra += 1
+	if _bs_done.size() - extra >= need:
 		get_tree().quit()
