@@ -8,6 +8,8 @@ extends RefCounted
 
 const Flow = preload("res://scripts/flow.gd")         # Flow.match: the trip game's level and team styles (P5-03)
 const Ratings = preload("res://scripts/ratings.gd")   # Ratings.style_mult(): play style multipliers
+const Cities = preload("res://scripts/cities.gd")     # the crews Quick Game can field (P6-T3)
+const Save = preload("res://scripts/save.gd")         # Save.path(): a trip test run keeps its unlocks in a test file
 
 const EASY := 0
 const NORMAL := 1
@@ -24,6 +26,17 @@ const SAVE_KEY := "difficulty"
 const UNLOCK_KEY := "unlocked_courts"    # an Array of city ids in SAVE_SECTION
 const UNLOCK_ALL_FLAG := "--unlock-all"
 const UNLOCK_NONE_FLAG := "--unlock-none"
+# P6-T3 (owner): Quick Game team pick. A city crew is a Quick Game team once its boss game is won on any Road Trip
+# (trip.gd calls unlock_team() at the same moment as unlock_court()); each New York bracket crew once you beat it in
+# its round. The Cornfield Kings (your crew) and the Bridge Runners are always open. Kept for good, like the courts;
+# --unlock-all / --unlock-none cover the teams too. Trip test runs (Save.path() is the test save) read and write both
+# kinds of unlock in UNLOCK_TEST_PATH, never the owner's settings.
+const TEAM_UNLOCK_KEY := "unlocked_teams"   # an Array of crew ids in SAVE_SECTION
+const UNLOCK_TEST_PATH := "user://settings_test.cfg"
+const KINGS := "cornfield_kings"            # crew ids: the crew name in lower case, "_" for spaces
+const RUNNERS := "bridge_runners"
+const ALWAYS_TEAMS := [KINGS, RUNNERS]
+const KINGS_UI_COLOR := Color(0.16, 0.3, 0.6)   # your crew's blue (cities.gd gives each city crew a ui_color)
 
 # P3-10 values (owner Q6: the CPU is less sharp, not slower: worse shooting, slower reactions, worse steal/block
 # timing, bites on fakes more, less help defense; speed and stamina stay Hard on every level). Each entry is
@@ -196,14 +209,15 @@ static func init_once() -> void:
 static func unlock_court(city_id: String) -> void:
 	if city_id == "":
 		return
+	var path: String = unlock_path()
 	var cfg := ConfigFile.new()
-	cfg.load(SAVE_PATH)   # keep the other settings in the file
+	cfg.load(path)   # keep the other settings in the file
 	var got: Array = _as_ids(cfg.get_value(SAVE_SECTION, UNLOCK_KEY, []))
 	if got.has(city_id):
 		return
 	got.append(city_id)
 	cfg.set_value(SAVE_SECTION, UNLOCK_KEY, got)
-	cfg.save(SAVE_PATH)
+	cfg.save(path)
 	print("COURT UNLOCKED %s" % city_id)
 
 # The city ids whose court is open (saved; every city in `all_ids` under --unlock-all, none under --unlock-none)
@@ -214,12 +228,98 @@ static func unlocked_cities(all_ids: Array = []) -> Array:
 	if args.has(UNLOCK_NONE_FLAG):
 		return []
 	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) != OK:
+	if cfg.load(unlock_path()) != OK:
 		return []
 	return _as_ids(cfg.get_value(SAVE_SECTION, UNLOCK_KEY, []))
 
 static func is_court_unlocked(city_id: String) -> bool:
 	return unlocked_cities([city_id]).has(city_id)
+
+# the file the unlocks (courts and teams) live in: the settings, or the test file in a trip test run
+static func unlock_path() -> String:
+	return UNLOCK_TEST_PATH if Save.path() == Save.TEST_PATH else SAVE_PATH
+
+# ---------------- Quick Game teams (P6-T3) ----------------
+
+# a crew's id from its name: "BAYOU BRASS" -> "bayou_brass"
+static func crew_id(crew_name: String) -> String:
+	return crew_name.strip_edges().to_lower().replace(" ", "_")
+
+# Every crew Quick Game knows, in route order: {"id", "name", "city" ("" = your crew), "game" (the city game or New
+# York round whose lineup it plays: a city's boss game, 3), "color" (its ui color)}. The Kings first.
+static func all_teams() -> Array:
+	var out: Array = [{"id": KINGS, "name": Cities.CREW_NAME, "city": "", "game": 0, "color": KINGS_UI_COLOR}]
+	for cid in Cities.built_route():
+		var c: Dictionary = Cities.city(cid)
+		if bool(c.get("tournament", false)):
+			var rs: Array = c.get("rounds", [])
+			for i in rs.size():
+				var rcrew: Dictionary = (rs[i] as Dictionary).get("crew", {})
+				out.append({"id": crew_id(str(rcrew.get("name", ""))), "name": str(rcrew.get("name", "")), "city": cid,
+						"game": i + 1, "color": rcrew.get("ui_color", Color.GRAY)})
+		else:
+			var crew: Dictionary = c.get("crew", {})
+			out.append({"id": crew_id(str(crew.get("name", ""))), "name": str(crew.get("name", "")), "city": cid,
+					"game": 3, "color": crew.get("ui_color", Color.GRAY)})
+	return out
+
+# one crew's entry of all_teams() ({} for an unknown id)
+static func team_info(id: String) -> Dictionary:
+	for t in all_teams():
+		if str((t as Dictionary)["id"]) == id:
+			return t
+	return {}
+
+# the crew a won game unlocks (trip.gd): a city's crew (any n), or New York round n's crew; "" if none
+static func team_of(city_id: String, n: int) -> String:
+	for t in all_teams():
+		var d: Dictionary = t
+		if str(d["city"]) != city_id:
+			continue
+		if not bool(Cities.city(city_id).get("tournament", false)) or int(d["game"]) == n:
+			return str(d["id"])
+	return ""
+
+# A beaten crew (trip.gd): a Quick Game team from now on. Saved at once; a crew already open changes nothing.
+static func unlock_team(id: String) -> void:
+	if id == "" or ALWAYS_TEAMS.has(id) or team_info(id).is_empty():
+		return
+	var path: String = unlock_path()
+	var cfg := ConfigFile.new()
+	cfg.load(path)   # keep the other settings in the file
+	var got: Array = _as_ids(cfg.get_value(SAVE_SECTION, TEAM_UNLOCK_KEY, []))
+	if got.has(id):
+		return
+	got.append(id)
+	cfg.set_value(SAVE_SECTION, TEAM_UNLOCK_KEY, got)
+	cfg.save(path)
+	print("TEAM UNLOCKED %s" % id)
+
+# open in Quick Game: always the Kings and the Bridge Runners; every known crew under --unlock-all, only those two
+# under --unlock-none; else the saved unlocks
+static func team_unlocked(id: String) -> bool:
+	if ALWAYS_TEAMS.has(id):
+		return true
+	if team_info(id).is_empty():
+		return false
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	if args.has(UNLOCK_ALL_FLAG):
+		return true
+	if args.has(UNLOCK_NONE_FLAG):
+		return false
+	var cfg := ConfigFile.new()
+	if cfg.load(unlock_path()) != OK:
+		return false
+	return _as_ids(cfg.get_value(SAVE_SECTION, TEAM_UNLOCK_KEY, [])).has(id)
+
+# the crew ids the Quick Game pickers offer, in all_teams() order
+static func quick_teams() -> Array:
+	var out: Array = []
+	for t in all_teams():
+		var id: String = str((t as Dictionary)["id"])
+		if team_unlocked(id):
+			out.append(id)
+	return out
 
 static func _as_ids(v) -> Array:
 	var out: Array = []

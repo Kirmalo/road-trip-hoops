@@ -13,9 +13,13 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
   (crews, court, music, twist).
 - `scripts/rules.gd`: first to 21, scoring, switching sides, dead balls and inbounds, fouls, free throws, out of bounds.
 - `scripts/difficulty.gd`: EASY / NORMAL / HARD values for RED, and the saved settings (`user://settings.cfg`),
-  including the Quick Game court unlocks (`unlock_court(city)` after a city's boss game is won; kept for good).
-- `scripts/menu.gd`: the Quick Game panel (levels, COURT and MUSIC buttons). COURT cycles the gym, the blacktop and
-  every unlocked city court; a city court brings its city's twist (`quick_twist()`).
+  including the Quick Game court unlocks (`unlock_court(city)` after a city's boss game is won; kept for good) and
+  team unlocks (`unlock_team(crew_id)`, same moment; a New York crew when its round is won; `quick_teams()`). Trip
+  test runs keep both kinds of unlock in `user://settings_test.cfg`.
+- `scripts/menu.gd`: the Quick Game panel (levels, YOUR TEAM / OPPONENT, COURT and MUSIC buttons). COURT cycles the
+  gym, the blacktop and every unlocked city court; a city court brings its city's twist (`quick_twist()`). The team
+  buttons cycle the Kings, the Bridge Runners and every beaten crew (`Trip.quick_team()`: the boss game's lineup,
+  own colors, each player's stats shifted to average 50).
 - `scripts/human_input.gd`: the human's controls (flicks, pump-fake taps, CALL, the STEAL/BLOCK button).
 - `scripts/player.gd`: movement and CPU offense (spots, ball handler drive/shoot/pass); picks the animation (running
   dribble, 4 dunk styles, rim hang, ankle-breaker falls, ...) and draws its sheet through `view.gd`, with the motion
@@ -108,7 +112,11 @@ Test flags (after `--`, combine with the modes above):
   `blacktop` or a city look (`barn`, `rooftop`, `soul_gym`, `bayou`, `mountain`, `rain_park`, `beach`, `cage`).
 - `--twist <id>`: play with this twist (`none`, `wind`, `crowd`, `humid`, `thin_air`, `wet`, `sand`, `cage`); wins over
   the city's or court's twist.
-- `--unlock-all` / `--unlock-none`: Quick Game courts as if every city's boss was beaten / as on a fresh install.
+- `--unlock-all` / `--unlock-none`: Quick Game courts and teams as if every city's boss was beaten / as on a fresh
+  install.
+- `--quick-teams <blue>,<red>` (or `--quick-teams=a,b`): the Quick Game crews (ids: the crew name in lower case with
+  `_`, e.g. `cornfield_kings`, `county_line`, `concrete_crowns`; any crew, locked or not). Test runs otherwise play
+  the Kings vs the Bridge Runners, never the saved picks.
 - `--perspective k`: try a far-side narrowing of k (e.g. 0.15; the game uses 0).
 - `--shots-dir DIR`: where `--shots` and `--menushot` save their images (default `/tmp`).
 - `--ballshots [DIR]` (xvfb, angled): screenshots of the ball (dribble, lob, rim, dunk, loose) to DIR, default `/tmp`.

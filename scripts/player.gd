@@ -2026,12 +2026,13 @@ var _v_celebrate_b := false
 var _v_texmem_frames := -1
 var _v_slide_hold := 0.0
 
-# the sheet ids to try, in order: team 0 his _crew recolor, his own sheet, then his slot's Quick Game sheet
+# the sheet ids to try, in order: team 0 his _crew recolor, his own sheet, then his slot's Quick Game sheet. A Quick
+# Game team (P6-T3, "own_colors" in the dict) wears its own colors on either side: no _crew recolor.
 func sheet_ids() -> Array:
 	var out: Array = []
 	var sheet: String = str(pdata.get("sheet", ""))
 	if sheet != "":
-		if team == 0:
+		if team == 0 and not bool(pdata.get("own_colors", false)):
 			out.append(sheet + CREW_SHEET_SUFFIX)
 		out.append(sheet)
 	var slot: Array = QUICK_SHEETS[clampi(team, 0, 1)]
