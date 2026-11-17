@@ -16,7 +16,9 @@ Usage:  python3 tools/art/make_portraits_v2.py              every portrait + the
         python3 tools/art/make_portraits_v2.py ht_g1 ...    a quick row of those characters (ROW_OUT), writes nothing
 Output: assets/portraits/<id>.png           288 x 336 (the 96 x 112 contract at 3x), base portrait
         assets/portraits/<id>_<mood>.png    the moods story_text.gd uses (happy; bosses also smug)
-        docs/art/portraits_full_v2.png      two story mock-ups and every portrait, labeled
+        docs/art/portraits_full_v2.png      two story mock-ups and every portrait, labeled (Phase 5 cast)
+        docs/art/portraits_p6.png           the same for the Phase 6 cast (P6-A4: the five new city crews and the
+                                            New York crews, specs in P6 below)
 Needs:  Pillow, numpy
 """
 import json
@@ -1076,13 +1078,14 @@ def terrell(cv, pal, skins, expr):
 
 
 def king(cv, pal, skins, expr):
+    """Black and gold (Phase 6: cities.gd look), a gold arm sleeve; headband, shades rim and chain in gold too."""
     skin = C.ramp(skins["umber"])
-    black, silver, hair = C.ramp(pal["BLACK"]), C.ramp(pal["SILVER"]), C.ramp(pal["HAIR_BLACK"])
+    black, silver, hair = C.ramp(pal["BLACK"]), C.ramp(pal["GOLD"]), C.ramp(pal["HAIR_BLACK"])
     T = C.Xf(150, 140, 1.0, 1.02, tilt(expr, 0.0), pivot=(0, 40), front=FRONT)
     Tn = C.Xf(150, 140, 1.12, 1.02, 0)
     body, X = skin_body(cv, skin, 1.16, T, Tn, 2)
     cv.ink(cv.line([(X(70), 250), (X(86), 236), (X(102), 232)], 1.4, taper=(0.4, 0.4)))   # trapezius
-    arm_sleeve(cv, X, body, black, near=True)
+    arm_sleeve(cv, X, body, silver, near=True)
     tank_top(cv, X, black, silver, scoop=294, strap=16)
     face(cv, T, Tn, skin, expr, jaw=2, chin=2, crown=0, brow_col=(14, 8, 10), brow_w=1.2, neck=False,
          nose=1.0, wide=0.7, lips=True)
@@ -1092,7 +1095,579 @@ def king(cv, pal, skins, expr):
     chain(cv, X, silver, pendant="crown", links=(4.6, 3.4), sp=7.5, drop=272)
 
 
+# ----------------------------------------------------------------------------- Phase 6 cast (P6-A4): new parts
+# Memphis, New Orleans, Denver, Seattle, Los Angeles and the three New York crews, drawn with the same kit, parts
+# and lighting as the cast above; each matches his sprite in tools/art/crews.json (skin, hair, outfit, colors).
+
+class Shift:
+    """A head transform moved up or down by dy head-local px (e.g. shades pushed up on the forehead)."""
+
+    def __init__(self, T, dy):
+        self.T, self.dy = T, dy
+
+    def __call__(self, pts):
+        return self.T([(p[0], p[1] + self.dy) + tuple(p[2:]) for p in pts])
+
+    def scale(self):
+        return self.T.scale()
+
+
+HAIRLINE_CAP = [(-58, -6), (-64, -30), (-53, -62), (-23, -85), (14, -88), (44, -77), (60, -56), (61, -46), (48, -49),
+                (26, -56), (6, -52), (-6, -40), (-9, -16), (-13, -13), (-24, -18), (-36, -16), (-48, -6)]
+
+
+def tone_is(cv, tones, keys=("hi", "lt", "base", "sh", "dp")):
+    """Masks of the pixels painted exactly in each tone of a ramp."""
+    return {k: np.all(np.abs(cv.rgb - np.array(tones[k], np.float32)) < 0.01, axis=-1) & cv.a & ~cv.k for k in keys}
+
+
+def cornrows(cv, T, hair, skin, rows=6, seed=11):
+    """Cornrows: braided rows running from the forehead over the crown to the nape (concentric in 3/4 view)."""
+    cm = cv.poly(T(HAIRLINE_CAP))
+    cv.paint(cm, skin["sh"])
+    cv.rgb[cv.crescent(cm, 8)] = skin["dp"]
+    sc = T.scale()
+    rng = np.random.default_rng(seed)
+    radii = np.linspace(14, 64, rows)
+    w = (radii[1] - radii[0]) * 0.78
+    for r in radii:
+        pts = [(-4 + r * 1.04 * math.cos(a), -30 - r * 0.9 * math.sin(a)) for a in np.linspace(0.05, 3.5, 24)]
+        m = cv.line(T(pts), w * sc, taper=(0.15, 0.15)) & cm
+        cv.cel(m, hair, shadow=cv.crescent(m, 2.5), hi=cv.sheen(m, 0.6, 1.4), ink=1.0, dots=False)
+        for a in np.arange(0.12 + rng.uniform(0, 0.1), 3.5, 9.0 / max(r, 1.0)):
+            x, y = -4 + r * 1.04 * math.cos(a), -30 - r * 0.9 * math.sin(a)
+            nx, ny = math.cos(a), -math.sin(a)
+            tx, ty = -math.sin(a), -math.cos(a)
+            p0 = (x - nx * w * 0.45 - tx * 1.5, y - ny * w * 0.45 - ty * 1.5)
+            p1 = (x + nx * w * 0.45 + tx * 1.5, y + ny * w * 0.45 + ty * 1.5)
+            tk = cv.line(T([p0, p1]), 1.0, taper=(0.3, 0.3)) & m
+            cv.rgb[tk & ~cv.k] = hair["dp"]
+    return cm
+
+
+def braids_back(cv, T, hair, n=4):
+    """Braids hanging down behind the neck (drawn before the head)."""
+    for k in range(n):
+        x0 = -40 - k * 6
+        pts = [(x0, -30), (x0 - 10 - k * 2, 10), (x0 - 14 - k * 3, 50 + k * 6)]
+        m = cv.line(T(pts), 7.5 * T.scale(), taper=(0.0, 0.5))
+        cv.cel(m, hair, shadow=cv.crescent(m, 2.5), hi=cv.sheen(m, 0.6, 1.2), ink=1.4, dots=False)
+        for t in np.linspace(0.1, 0.9, 9):
+            x = x0 + (-14 - k * 3) * t
+            y = -30 + (80 + k * 6) * t
+            cv.rgb[cv.line(T([(x - 3, y - 2), (x + 3, y + 2)]), 1.0, taper=(0.3, 0.3)) & m & ~cv.k] = hair["dp"]
+
+
+def locs_tail(cv, T, hair):
+    """Short locs tied back: the tail behind the head (drawn before the head)."""
+    for k, (dx, dy) in enumerate(((-30, 26), (-36, 16), (-26, 36), (-40, 4))):
+        pts = [(-58, -48), (-58 + dx * 0.6, -48 + dy * 0.4 - 4), (-58 + dx, -48 + dy)]
+        m = cv.line(T(pts), 8.5 * T.scale(), taper=(0.1, 0.5))
+        cv.cel(m, hair, shadow=cv.crescent(m, 2.5), hi=cv.sheen(m, 0.6, 1.2), ink=1.4, dots=False)
+        for t in (0.35, 0.6, 0.82):
+            x, y = -58 + dx * t, -48 + dy * t
+            cv.rgb[cv.line(T([(x - 2, y - 3), (x + 2, y + 3)]), 0.9, taper=(0.3, 0.3)) & m & ~cv.k] = hair["dp"]
+
+
+def locs_tied(cv, T, hair, tie):
+    """Locs pulled back over the scalp to a tie at the back of the head."""
+    base = cv.poly(T([(-58, -6), (-64, -34), (-54, -66), (-24, -90), (14, -92), (46, -80), (60, -58), (61, -46),
+                      (48, -50), (26, -56), (6, -52), (-6, -40), (-9, -16), (-13, -13), (-24, -18), (-36, -16),
+                      (-48, -6)]))
+    cv.cel(base, hair, shadow=cv.crescent(base, 8), ink=2.0, dots=False)
+    for k, (x, y) in enumerate(((56, -50), (44, -58), (30, -62), (14, -60), (0, -54), (-8, -40), (-10, -24))):
+        mid = ((x - 58) / 2 + 2, (y - 50) / 2 - 18 + abs(k - 3) * 2)
+        m = cv.line(T([(x, y), mid, (-58, -48)]), 7.5 * T.scale(), taper=(0.3, 0.1)) & base
+        cv.cel(m, hair, shadow=cv.crescent(m, 2), hi=cv.sheen(m, 0.5, 1.0), ink=1.0, dots=False)
+    tm = cv.ellipse(*T([(-58, -47)])[0], 6.5 * T.scale(), 8.5 * T.scale())
+    cv.cel(tm, tie, shadow=cv.crescent(tm, 3), hi=cv.sheen(tm, 0.6, 1.2), ink=1.6, dots=False)
+
+
+def shaggy(cv, T, hair, seed=6, swoop=False):
+    """Shaggy hair: a rough mass over the crown and ears, locks falling over the forehead (swoop: swept forward)."""
+    back = [(-8, -14), (-14, -26), (-28, -12), (-40, -6), (-54, 6), (-68, -4), (-75, -28), (-71, -60), (-50, -88),
+            (-14, -102), (24, -100), (54, -84), (70, -62)]
+    if swoop:
+        front = [(80, -50), (74, -40, 0), (64, -42), (58, -32, 0), (46, -40), (34, -32, 0), (24, -42), (10, -38, 0),
+                 (2, -46)]
+    else:
+        front = [(70, -42), (62, -32, 0), (54, -42), (46, -28, 0), (36, -40), (26, -28, 0), (16, -40), (6, -32, 0),
+                 (2, -44)]
+    hm = cv.poly(T(rough(back, 2.4, 7, seed) + front))
+    sh = cv.crescent(hm, 10) | cv.poly(T([(-76, -40), (-50, -36), (-30, -14), (-56, 6)]))
+    cv.cel(hm, hair, shadow=sh, hi=None, ink=2.2, dots=True, dot_sp=3.0)
+    hi = cv.poly(T([(-48, -72), (-24, -92), (10, -96), (-4, -86), (-30, -74)]))
+    cv.rgb[hi & hm & ~cv.k] = hair["lt"]
+    rng = np.random.default_rng(seed)
+    for _ in range(46):
+        x, y = rng.uniform(-66, 64), rng.uniform(-96, -20)
+        dx, dy = x + 8, y + 60
+        n = math.hypot(dx, dy) or 1.0
+        p = [(x, y), (x + dx / n * 6 + 1, y + dy / n * 6), (x + dx / n * 11 + 1, y + dy / n * 11 + 1)]
+        m = cv.line(T(p), 1.1, taper=(0.4, 0.6)) & hm & ~cv.k
+        cv.rgb[m] = hair["dp"] if (m & sh).any() or rng.random() < 0.55 else hair["hi"]
+    return hm
+
+
+def bun(cv, T, hair):
+    """Long hair pulled back into a bun on the back of the crown."""
+    cap = cv.poly(T([(-58, -6), (-66, -34), (-56, -70), (-24, -94), (14, -96), (46, -82), (62, -60), (62, -46),
+                     (48, -50), (26, -56), (6, -52), (-6, -40), (-9, -16), (-13, -13), (-24, -18), (-36, -16),
+                     (-48, -6)]))
+    cv.cel(cap, hair, shadow=cv.crescent(cap, 8), hi=cv.sheen(cap, 3, 3), ink=2.0, dots=False)
+    for x, y in ((56, -52), (40, -60), (22, -60), (6, -54), (-6, -40), (-10, -22), (-30, -16), (-50, -10)):
+        m = cv.line(T([(x, y), ((x - 34) / 2, (y - 98) / 2 + 6), (-34, -98)]), 1.0, taper=(0.4, 0.4)) & cap
+        cv.rgb[m & ~cv.k] = hair["dp"]
+    bm = cv.ellipse(*T([(-34, -104)])[0], 21 * T.scale(), 17 * T.scale())
+    cv.cel(bm, hair, shadow=cv.crescent(bm, 6), hi=cv.sheen(bm, 2, 2.5), ink=2.0, dots=True, dot_sp=3.0)
+    for a0 in (0.4, 1.9, 3.4):
+        pts = [(-34 + 15 * math.cos(a0 + t), -104 + 12 * math.sin(a0 + t)) for t in np.linspace(0, 2.0, 8)]
+        cv.rgb[cv.line(T(pts), 1.1, taper=(0.4, 0.4)) & bm & ~cv.k] = hair["dp"]
+    cv.ink(cv.line(T([(-46, -92), (-34, -88), (-22, -92)]), 2.4, taper=(0.2, 0.2)))     # the hair tie
+
+
+def slick(cv, T, hair):
+    """Slicked-back hair: a smooth, shiny cap with comb lines running to the back."""
+    cap = cv.poly(T([(-58, -6), (-66, -34), (-56, -70), (-24, -95), (18, -99), (50, -86), (65, -64), (64, -50),
+                     (50, -52), (28, -58), (6, -52), (-6, -40), (-9, -16), (-13, -13), (-24, -18), (-36, -16),
+                     (-48, -6)]))
+    cv.cel(cap, hair, shadow=cv.crescent(cap, 9), ink=2.0, dots=False)
+    shine = cv.line(T([(-40, -70), (-14, -88), (20, -92), (44, -80)]), 4.0 * T.scale(), taper=(0.5, 0.5)) & cap
+    cv.rgb[shine & ~cv.k] = hair["hi"]
+    for r in (24, 36, 48, 58):
+        pts = [(-6 + r * 1.06 * math.cos(a), -36 - r * 0.92 * math.sin(a)) for a in np.linspace(0.25, 3.3, 20)]
+        m = cv.line(T(pts), 1.0, taper=(0.3, 0.3)) & cap & ~shine
+        cv.rgb[m & ~cv.k] = hair["dp"]
+
+
+def waves(cv, T, hair):
+    """Short waves: a buzz cut with rippled rings round the crown."""
+    hm = buzz_hair(cv, T, hair)
+    for r in (10, 18, 26, 34, 42):
+        pts = [(-12 + (r + 1.6 * math.sin(a * 9)) * math.cos(a), -56 - (r + 1.6 * math.sin(a * 9)) * 0.8 * math.sin(a))
+               for a in np.linspace(-0.6, 3.6, 40)]
+        cv.rgb[cv.line(T(pts), 1.4, taper=(0.3, 0.3)) & hm & ~cv.k] = hair["dp"]
+        pts2 = [(x + 1.2, y - 1.2) for x, y in pts]
+        cv.rgb[cv.line(T(pts2), 0.8, taper=(0.3, 0.3)) & hm & ~cv.k] = hair["lt"]
+    return hm
+
+
+def side_part(cv, T, hair, skin):
+    """A fade with a shaved part line on the near side."""
+    hm = buzz_hair(cv, T, hair)
+    cv.rgb[cv.line(T([(42, -68), (16, -80), (-14, -80), (-34, -72)]), 2.0 * T.scale(), taper=(0.4, 0.3)) & hm] = \
+        skin["lt"]
+    return hm
+
+
+def curls(cv, T, hair, seed=8, rx=60.0, ry=50.0, cy=-44.0):
+    """Short curly hair: a bumpy cap a little bigger than the skull, textured with curl loops."""
+    cx = -4.0
+    arc = []
+    for k, a in enumerate(np.linspace(math.radians(-10), math.radians(206), 34)):
+        bump = 1.0 + 0.06 * math.cos(k * 2.3)
+        arc.append((cx + rx * bump * math.cos(a), cy - ry * bump * math.sin(a)))
+    line = [(-62, -20), (-56, -4), (-46, -6), (-32, -16), (-16, -14), (-8, -22), (-4, -40), (6, -52), (26, -58),
+            (46, -54), (56, -46)]
+    hm = cv.poly(T(arc + line))
+    sh = cv.crescent(hm, 12) | cv.poly(T([(-70, -36), (-46, -32), (-30, -16), (-56, 0)]))
+    cv.cel(hm, hair, shadow=sh, hi=None, ink=2.2, dots=True, dot_sp=3.0)
+    rng = np.random.default_rng(seed)
+    for _ in range(int(rx * ry / 26)):
+        x, y = rng.uniform(cx - rx, cx + rx), rng.uniform(cy - ry - 4, -6)
+        r = rng.uniform(1.8, 3.0)
+        a0 = rng.uniform(0, 2 * math.pi)
+        pts = [(x + r * math.cos(a0 + t), y + r * math.sin(a0 + t)) for t in np.linspace(0, 3.8, 6)]
+        m = cv.line(T(pts), 1.1, taper=(0.4, 0.4)) & hm & ~cv.k
+        cv.rgb[m] = hair["dp"] if (m & sh).any() or rng.random() < 0.5 else hair["lt"]
+    hi = cv.poly(T([(-44, cy - ry * 0.55), (-24, cy - ry * 0.85), (4, cy - ry * 0.95), (-8, cy - ry * 0.75),
+                    (-30, cy - ry * 0.55)]))
+    cv.rgb[cv.dots(np.full(hm.shape, 0.45, np.float32), 2.6, 0.6, 30) & hi & hm & ~cv.k] = hair["hi"]
+    return hm
+
+
+def backcap_brim(cv, T, brim):
+    """The brim of a backwards cap, pointing back (drawn before the head)."""
+    b = cv.poly(T([(-44, -42), (-64, -50), (-98, -44), (-110, -34), (-104, -26), (-70, -28), (-46, -26)]))
+    cv.cel(b, brim, shadow=cv.poly(T([(-110, -34), (-104, -26), (-70, -28), (-46, -26), (-50, -34), (-80, -36)])),
+           hi=cv.sheen(b, 1.5, 2.5), ink=2.0, dots=False)
+
+
+def backcap(cv, T, cap, brim, hair):
+    """A backwards cap (Jojo's), the strap opening at the front."""
+    sb = cv.poly(T([(-9, -34), (-4, -30), (-6, -14), (-10, -18), (-14, -32)]))
+    cv.cel(sb, hair, shadow=cv.crescent(sb, 3), ink=1.4, dots=False)
+    nape = cv.poly(T([(-52, -36), (-44, -36), (-50, -18), (-58, -8), (-62, -26)]))
+    cv.cel(nape, hair, shadow=cv.crescent(nape, 4), ink=1.6, dots=False)
+    dm = cv.poly(T([(-60, -30), (-60, -58), (-38, -84), (-4, -96), (32, -90), (56, -72), (66, -50), (68, -32),
+                    (40, -38), (0, -40), (-36, -34)]))
+    dsh = cv.crescent(dm, 9) | cv.poly(T([(-62, -40), (-30, -42), (0, -44), (40, -42), (68, -36), (68, -30),
+                                         (40, -36), (0, -38), (-36, -32), (-62, -26)]))
+    dhi = cv.poly(T([(-46, -62), (-30, -80), (-6, -90), (-14, -80), (-34, -66)]))
+    cv.cel(dm, cap, shadow=dsh, hi=dhi | cv.sheen(dm, 3, 3), ink=2.4)
+    op = cv.poly(T([(30, -38), (34, -52), (44, -58), (54, -52), (58, -40)]))
+    cv.cel(op & dm, hair, shadow=cv.crescent(op, 3), ink=1.6, dots=False)
+    cv.cel(cv.poly(T([(28, -40), (60, -41), (60, -36), (28, -35)])) & dm, brim, ink=1.2, dots=False)
+    cv.ink(cv.line(T([(-8, -95), (10, -82), (34, -64), (44, -58)]), 1.4, taper=(0.2, 0.3)) & dm)
+    cv.ink(cv.line(T([(-8, -95), (-26, -74), (-40, -50), (-44, -36)]), 1.4, taper=(0.2, 0.3)) & dm)
+    cv.cel(cv.ellipse(*T([(-7, -96)])[0], 4.5, 3), cap, ink=1.4, dots=False)
+
+
+def towel(cv, X, cloth, stripe):
+    """A towel slung over the near shoulder, two stripes near its end."""
+    m = cv.poly([(X(28), 238), (X(60), 222), (X(100), 224), (X(118), 244), (X(122), 300), (X(118), 352),
+                 (X(76), 352), (X(72), 300), (X(56), 266), (X(34), 258)])
+    cv.cel(m, cloth, shadow=cv.crescent(m, 10) | cv.poly([(X(30), 244), (X(70), 236), (X(74), 262), (X(36), 262)]),
+           hi=cv.sheen(m, 2.5, 3), ink=2.2, dots=True, dot_sp=3.0)
+    for y0 in (318, 332):
+        s = cv.poly([(X(70), y0), (X(126), y0 - 2), (X(126), y0 + 6), (X(70), y0 + 8)]) & m
+        cv.rgb[s & ~cv.k] = stripe["base"]
+        cv.rgb[s & cv.crescent(s, 3) & ~cv.k] = stripe["sh"]
+    for x0 in (88, 100, 110):
+        cv.ink(cv.line([(X(x0), 252), (X(x0 + 2), 290)], 1.0, taper=(0.5, 0.5)) & m)
+
+
+def whistle(cv, X, cord, metal, drop=300):
+    """A whistle on a cord round the neck."""
+    for xs in (108, 192):
+        m = cv.line([(X(xs), 236), (X((xs + 150) / 2), drop - 22), (X(150), drop - 6)], 2.6, taper=(0, 0))
+        cv.cel(m, cord, ink=0.9, dots=False)
+    body = cv.poly([(X(134), drop - 4, 0), (X(160), drop - 6, 0), (X(166), drop + 4), (X(160), drop + 14),
+                    (X(140), drop + 14), (X(132), drop + 6)])
+    cv.cel(body, metal, shadow=cv.crescent(body, 5), hi=cv.sheen(body, 1, 2), ink=1.8, dots=False)
+    mp = cv.poly([(X(160), drop - 2, 0), (X(178), drop, 0), (X(178), drop + 7, 0), (X(162), drop + 6, 0)])
+    cv.cel(mp, metal, shadow=cv.crescent(mp, 2), ink=1.6, dots=False)
+    cv.ink(cv.ellipse(X(146), drop + 2, 3.0, 2.2))
+
+
+def gold_grin(cv, T, gold, expr):
+    """Gator's gold-rimmed grin: gold caps on the teeth when he grins, a gold glint at the corner otherwise."""
+    sc = T.scale()
+    if expr == "happy":
+        top = [(32, 41), (46, 44.5), (60, 43), (67, 40)]
+        bot = [(66, 42), (58, 54), (46, 58), (34, 46)]
+        M = cv.poly(T(top + bot))
+        tm = cv.poly(T(top + [(66, 46), (46, 50), (33, 44.5)])) & M & ~cv.k
+        cv.rgb[cv.line(T([(34, 44), (46, 47.5), (60, 46), (66, 43)]), 1.6 * sc, taper=(0.2, 0.2)) & tm] = gold["base"]
+        for x0 in (40, 46, 52, 58, 63):
+            cv.rgb[cv.line(T([(x0, 42.5), (x0 + 0.5, 48)]), 1.3 * sc, taper=(0, 0)) & tm] = gold["sh"]
+        for x0, w in ((49, 3.0), (55, 2.8)):
+            g = cv.ellipse(*T([(x0, 45.5)])[0], w * sc, 2.4 * sc) & tm
+            cv.rgb[g] = gold["base"]
+            cv.rgb[g & cv.sheen(g, 0.2, 0.8)] = gold["hi"]
+    else:
+        lift = 3.0 if expr == "smug" else 0.0
+        g = cv.ellipse(*T([(61, 45.5 - lift)])[0], 2.8 * sc, 2.2 * sc)
+        cv.paint(g, gold["base"])
+        cv.rgb[g & cv.sheen(g, 0.2, 0.8)] = gold["hi"]
+        cv.ink(cv.band(g, 0.7, 0.6, 1.3, dirs=16))
+
+
+def collar_shades(cv, X, frame, y=296):
+    """A pair of shades hooked on the collar by one arm."""
+    lens = cv.ellipse(X(136), y + 4, 10, 7.5) | cv.ellipse(X(162), y + 3, 10, 7.5)
+    cv.paint(lens, (22, 20, 34))
+    cv.rgb[lens & ~cv.samp(lens, 0, 4)] = (52, 50, 74)
+    cv.rgb[cv.line([(X(130), y + 8), (X(138), y - 1)], 1.8, taper=(0, 0)) & lens] = (150, 160, 200)
+    fr = cv.band(lens, 1.8, 0.8, 1.3, dirs=24)
+    cv.paint(fr, frame["base"])
+    cv.rgb[fr & cv.crescent(fr, 1.2)] = frame["sh"]
+    cv.paint(cv.line([(X(146), y + 2), (X(152), y + 1)], 2.2, taper=(0, 0)), frame["base"])
+    cv.paint(cv.line([(X(170), y), (X(176), y - 14), (X(180), y - 30)], 2.0, taper=(0, 0.3)), frame["sh"])
+    cv.ink(cv.band(lens | fr, 1.0, 0.7, 1.3, dirs=24))
+
+
+def goggle_tan(cv, T, skin, head):
+    """A pale band where ski goggles sit (the rest of the face is sunburnt a shade darker)."""
+    band = cv.poly(T([(-8, -20), (30, -28), (68, -20), (70, 6), (30, 12), (-8, 8)])) & head
+    t = tone_is(cv, skin, ("lt", "base", "sh"))
+    cv.rgb[band & t["base"]] = skin["lt"]
+    cv.rgb[band & t["sh"]] = skin["base"]
+    cv.rgb[band & t["lt"]] = skin["hi"]
+    cv.ink(cv.line(T([(-6, 9), (30, 13), (66, 7)]), 0.9, taper=(0.5, 0.5)) & head)
+
+
+def chalk_dust(cv, X, chalk, seed=12):
+    """Climbing chalk: dusty hand smudges on the tee."""
+    rng = np.random.default_rng(seed)
+    for x0, y0, rx, ry in ((112, 300, 15, 11), (124, 322, 9, 13), (196, 288, 12, 9)):
+        m = cv.ellipse(X(x0), y0, rx, ry) & cv.a & ~cv.k
+        f = cv.soft(m, 3.0) * m
+        d = cv.dots(np.clip(f * 1.4, 0, 1), 2.4, 0.7, 25 + rng.uniform(0, 30)) & m
+        cv.rgb[d] = cv.rgb[d] * 0.35 + np.array(chalk["lt"], np.float32) * 0.65
+
+
+def cross_patch(cv, X, cloth, x0=114, y0=304):
+    """A sewn-on cross patch on the chest."""
+    m = cv.poly([(X(x0 - 5), y0 - 16, 0), (X(x0 + 5), y0 - 16, 0), (X(x0 + 5), y0 - 5, 0), (X(x0 + 16), y0 - 5, 0),
+                 (X(x0 + 16), y0 + 5, 0), (X(x0 + 5), y0 + 5, 0), (X(x0 + 5), y0 + 16, 0), (X(x0 - 5), y0 + 16, 0),
+                 (X(x0 - 5), y0 + 5, 0), (X(x0 - 16), y0 + 5, 0), (X(x0 - 16), y0 - 5, 0), (X(x0 - 5), y0 - 5, 0)])
+    cv.cel(m, cloth, shadow=cv.crescent(m, 4), hi=cv.sheen(m, 0.8, 1.4), ink=1.6, dots=False)
+    inner = cv.samp(m, 2.5, 0, fill=False) & cv.samp(m, -2.5, 0, fill=False) & cv.samp(m, 0, 2.5, fill=False) & \
+        cv.samp(m, 0, -2.5, fill=False)
+    dash = cv.hatch(np.ones(m.shape, np.float32), spacing=3.5, ang=50.0, wmax=1.0)
+    cv.rgb[m & ~inner & cv.samp(m, 1.2, 0, fill=False) & cv.samp(m, -1.2, 0, fill=False) & dash & ~cv.k] = cloth["sh"]
+
+
+def flannel(cv, M, top, line):
+    """Flannel checks on a top: crossing darker bands, thin lines in the trim color."""
+    t = tone_is(cv, top)
+    order = ["hi", "lt", "base", "sh", "dp"]
+    xx, yy = cv.xx, cv.yy
+    n = ((np.floor((xx - 2) / 13) % 2 == 0).astype(int) + (np.floor((yy + 3) / 13) % 2 == 0).astype(int))
+    new = cv.rgb.copy()
+    for i, k in enumerate(order):
+        for add in (1, 2):
+            sel = t[k] & M & (n == add)
+            new[sel] = top[order[min(4, i + add)]]
+    cv.rgb[:] = new
+    thin = ((np.abs(((xx - 2) % 26) - 13) < 0.7) | (np.abs(((yy + 3) % 26) - 13) < 0.7)) & M & ~cv.k
+    for k in ("hi", "lt", "base", "sh", "dp"):
+        cv.rgb[thin & t[k]] = line["sh"] if k in ("sh", "dp") else line["base"]
+
+
+# characters (Phase 6) ------------------------------------------------------------
+
+def cast_member(s):
+    """A draw function from a spec (see P6 below): body and top, head, beard, hair, extras."""
+
+    def draw(cv, pal, skins, expr):
+        P = lambda n: C.ramp(pal[n])       # noqa: E731
+        skin = C.ramp(skins[s["skin"]])
+        top, trim = P(s["top_pal"]), P(s["trim_pal"])
+        hair = P(s["hair_pal"]) if s.get("hair_pal") else None
+        sx, sy, cx, cy = s.get("sx", 1.0), s.get("sy", 1.0), s.get("cx", 150), s.get("cy", 136)
+        jaw = s.get("jaw", 0)
+        T = C.Xf(cx, cy, sx, sy, tilt(expr, s.get("tilt", 3.0)), pivot=(0, 40), front=FRONT)
+        Tn = C.Xf(cx, cy, s.get("sxn", sx * 1.04), sy, 0)
+        broad = s.get("broad", 1.0)
+        kind = s["top"]
+        if kind == "tee":
+            X, tm = tee_body(cv, skin, top, trim, broad, T, Tn, jaw)
+            body = cv.poly(body_shape(broad)[0]) & ~tm
+            M = tm
+        else:
+            body, X = skin_body(cv, skin, broad, T, Tn, jaw)
+            if kind == "hoodie":
+                hood_back(cv, X, Tn, top, jaw)
+        if s.get("sleeve"):
+            arm_sleeve(cv, X, body, P(s["sleeve"]), near=s.get("sleeve_near", True))
+        if kind != "tee":
+            M = tank_top(cv, X, top, trim, scoop=s.get("scoop", 286 if kind == "hoodie" else 290),
+                         strap=s.get("strap", 14 if kind == "hoodie" else 18))
+            if kind == "hoodie":
+                drawstrings(cv, X, P(s.get("strings", s["trim_pal"])), P(s.get("tips", "WHITE")))
+        ex = s.get("extras", {})
+        if "flannel" in ex:
+            flannel(cv, M, top, trim)
+        if "patch" in ex:
+            cross_patch(cv, X, P(ex["patch"]))
+        if "chalk" in ex:
+            chalk_dust(cv, X, P(ex["chalk"]))
+        style = s.get("hair", "bald")
+        if style == "braids":
+            braids_back(cv, T, hair)
+        if style == "locs_tied":
+            locs_tail(cv, T, hair)
+        if style == "backcap":
+            backcap_brim(cv, T, P(s["brim"]))
+        beard = s.get("beard")
+        head = face(cv, T, Tn, skin, expr, jaw=jaw, chin=s.get("chin", 0), crown=s.get("crown", 0),
+                    beard=bool(beard), brow_col=s.get("brow") or (hair["dp"] if hair else (20, 12, 14)),
+                    brow_w=s.get("brow_w", 1.0), neck=False, nose=s.get("nose", 0.0), wide=s.get("wide", 0.0),
+                    lips=s.get("lips", False), iris=s.get("iris", (60, 36, 30)), mouth=not s.get("goatee"))
+        if "stubble" in ex:
+            stubble(cv, T, skin, head, expr)
+        if "freckles" in ex:
+            freckles(cv, T, skin, seed=ex["freckles"])
+        if "goggle_tan" in ex:
+            goggle_tan(cv, T, skin, head)
+        if "gold_grin" in ex:
+            gold_grin(cv, T, P(ex["gold_grin"]), expr)
+        if beard:
+            beard_and_hair(cv, T, P(beard), skin, expr, grey=True)
+        if style == "bald":
+            bald_shine(cv, T)
+            cv.ink(cv.line(T([(14, -62), (30, -64), (44, -58)]), 1.0, taper=(0.5, 0.5)))
+        elif style == "shaved":
+            buzz_hair(cv, T, hair, sparse=True)
+            bald_shine(cv, T)
+        elif style == "buzz":
+            buzz_hair(cv, T, hair)
+        elif style == "waves":
+            waves(cv, T, hair)
+        elif style == "part":
+            side_part(cv, T, hair, skin)
+        elif style in ("cornrows", "braids"):
+            cornrows(cv, T, hair, skin)
+        elif style == "locs_tied":
+            locs_tied(cv, T, hair, P(s.get("tie", "WHITE")))
+        elif style == "twists":
+            twists(cv, T, hair, seed=s.get("seed", 5))
+        elif style == "curls":
+            curls(cv, T, hair, seed=s.get("seed", 8), rx=s.get("curl_rx", 60.0), ry=s.get("curl_ry", 50.0))
+        elif style == "afro":
+            afro(cv, T, hair, seed=s.get("seed", 4))
+        elif style == "flattop":
+            flattop(cv, T, hair, top=s.get("flat_top", -108), flare=s.get("flare", 0.0), fade=s.get("fade", True),
+                    seed=s.get("seed", 1))
+        elif style == "shaggy":
+            shaggy(cv, T, hair, seed=s.get("seed", 6), swoop=s.get("swoop", False))
+        elif style == "bun":
+            bun(cv, T, hair)
+        elif style == "slick":
+            slick(cv, T, hair)
+        elif style == "beanie":
+            beanie(cv, T, P(s["cap"]), P(s["cuff"]), hair)
+        elif style == "backcap":
+            backcap(cv, T, P(s["cap"]), P(s["brim"]), hair)
+        if s.get("goatee"):
+            goatee(cv, T, hair, expr, chin=s.get("chin", 0))
+            draw_mouth(cv, T, skin, expr, beard=True)
+        if s.get("headband"):
+            headband(cv, T, P(s["headband"]))
+        if "shades_up" in ex:
+            shades(cv, Shift(T, -40), rim_col=P(ex["shades_up"])["lt"])
+        if "shades" in ex:
+            shades(cv, T, rim_col=P(ex["shades"])["hi"] if ex["shades"] else None)
+        if "ear_stud" in ex:
+            ear_stud(cv, T, P(ex["ear_stud"]))
+        if "chain" in ex:
+            chain(cv, X, P(ex["chain"]), pendant=ex.get("pendant"), links=(4.4, 3.3), sp=7.2,
+                  drop=ex.get("drop", 284))
+        if "towel" in ex:
+            towel(cv, X, P(ex["towel"][0]), P(ex["towel"][1]))
+        if "whistle" in ex:
+            whistle(cv, X, P(ex["whistle"][0]), P(ex["whistle"][1]))
+        if "collar_shades" in ex:
+            collar_shades(cv, X, P(ex["collar_shades"]))
+
+    return draw
+
+
+# Each spec matches the player's crews.json entry and his cities.gd look text.
+P6 = {
+    # Memphis: Riverside Soul, orange and black
+    "mem_g1": dict(name="HONEY", skin="deep", top="tank", top_pal="ORANGE", trim_pal="BLACK", broad=1.1, sx=1.04,
+                   sxn=1.12, jaw=3, chin=1, wide=1.0, lips=True, tilt=2.0, hair="waves", hair_pal="HAIR_BLACK",
+                   brow=(16, 8, 10), brow_w=1.2),
+    "mem_g2": dict(name="LAMONT", skin="brown", top="tee", top_pal="BLACK", trim_pal="ORANGE", broad=0.92, sx=0.92,
+                   sy=1.04, jaw=-2, chin=2, wide=0.6, tilt=4.0, hair="cornrows", hair_pal="HAIR_BLACK",
+                   brow=(18, 10, 12)),
+    "mem_boss": dict(name="SMOKE", skin="umber", top="hoodie", top_pal="BLACK", trim_pal="ORANGE", broad=1.18,
+                     sx=1.1, sxn=1.2, cy=130, jaw=6, chin=2, crown=-2, wide=1.2, lips=True, tilt=0.0, hair="bald",
+                     beard="HAIR_FLECK", brow=(150, 146, 146), brow_w=1.4, strings="ORANGE", tips="WHITE",
+                     extras={"towel": ("WHITE", "ORANGE")}),
+    "mem_a1": dict(name="BOOKER", skin="tan", top="tee", top_pal="ORANGE", trim_pal="BLACK", broad=1.06, sx=1.0,
+                   sy=0.97, jaw=2, chin=-1, nose=1.0, tilt=2.0, hair="flattop", hair_pal="HAIR_DARK", fade=False,
+                   flat_top=-104, seed=3, brow=(22, 14, 16), brow_w=1.2),
+    "mem_a2": dict(name="WENDELL", skin="deep", top="tank", top_pal="BLACK", trim_pal="ORANGE", broad=0.94, sx=0.92,
+                   sy=1.07, cy=132, jaw=-1, chin=2, crown=2, wide=0.9, lips=True, tilt=4.0, hair="curls",
+                   hair_pal="HAIR_BLACK", curl_rx=66.0, curl_ry=58.0, seed=14, brow=(14, 8, 10)),
+    # New Orleans: Bayou Brass, teal and white
+    "nol_g1": dict(name="LUCIEN", skin="brown", top="tank", top_pal="TEAL", trim_pal="WHITE", broad=0.88, sx=0.9,
+                   sy=1.0, jaw=-3, chin=1, wide=0.5, tilt=4.0, hair="locs_tied", hair_pal="HAIR_DARK", tie="TEAL",
+                   headband="WHITE", brow=(20, 12, 12)),
+    "nol_g2": dict(name="BEAU", skin="light", top="tee", top_pal="WHITE", trim_pal="TEAL", broad=0.94, sx=0.92,
+                   sy=1.04, jaw=-2, chin=3, nose=2.0, tilt=3.0, hair="shaggy", hair_pal="HAIR_BROWN", seed=21,
+                   iris=(62, 120, 110)),
+    "nol_boss": dict(name="GATOR", skin="deep", top="hoodie", top_pal="TEAL", trim_pal="WHITE", broad=1.16, sx=1.08,
+                     sxn=1.18, cy=132, jaw=5, chin=2, crown=-1, wide=1.3, lips=True, tilt=0.0, hair="flattop",
+                     hair_pal="HAIR_INK", flat_top=-96, fade=True, seed=6, brow=(14, 8, 10), brow_w=1.3,
+                     strings="WHITE", tips="GOLD", extras={"gold_grin": "GOLD", "chain": "GOLD", "drop": 290}),
+    "nol_a1": dict(name="PIERRE", skin="tan", top="tee", top_pal="WHITE", trim_pal="TEAL", broad=1.0, sx=1.0, sy=0.96,
+                   jaw=1, chin=-1, nose=1.0, wide=0.6, tilt=2.0, hair="curls", hair_pal="HAIR_INK", seed=9,
+                   brow=(20, 12, 14), brow_w=1.2, extras={"stubble": True}),
+    "nol_a2": dict(name="MOOSE", skin="light", top="tank", top_pal="TEAL", trim_pal="WHITE", broad=1.16, sx=1.1,
+                   sxn=1.18, cy=132, jaw=5, chin=2, wide=0.8, tilt=1.0, hair="buzz", hair_pal="HAIR_RUST",
+                   beard="HAIR_RUST", brow_w=1.3, iris=(70, 110, 150)),
+    # Denver: Switchbacks, forest and silver
+    "den_g1": dict(name="WES", skin="light", top="tank", top_pal="FOREST", trim_pal="SILVER", broad=0.92, sx=0.9,
+                   sy=1.04, cy=140, jaw=-2, chin=3, nose=1.5, tilt=4.0, hair="beanie", hair_pal="HAIR_SANDY",
+                   cap="FOREST", cuff="SILVER", iris=(80, 110, 140)),
+    "den_g2": dict(name="THEO", skin="umber", top="tee", top_pal="SILVER", trim_pal="GREEN", broad=0.9, sx=0.9,
+                   sy=1.0, jaw=-3, chin=1, wide=0.7, tilt=4.0, hair="twists", hair_pal="HAIR_BLACK", seed=17,
+                   brow=(18, 10, 12), extras={"chalk": "CHALK"}),
+    "den_boss": dict(name="RIDGE", skin="light", top="hoodie", top_pal="FOREST", trim_pal="SILVER", broad=1.16,
+                     sx=1.08, sxn=1.16, cy=132, jaw=6, chin=2, crown=0, nose=1.0, tilt=0.0, hair="shaggy",
+                     hair_pal="HAIR_BLOND", beard="HAIR_BLOND", seed=31, brow_w=1.4, iris=(70, 120, 160),
+                     strings="SILVER", tips="FOREST", extras={"patch": "SILVER"}),
+    "den_a1": dict(name="GUS", skin="tan", top="tee", top_pal="SILVER", trim_pal="FOREST", broad=1.04, sx=1.0,
+                   sy=0.97, jaw=2, chin=0, nose=1.0, wide=0.8, tilt=2.0, hair="backcap", hair_pal="HAIR_DARK",
+                   cap="FOREST", brim="SILVER", brow=(22, 14, 16), brow_w=1.2),
+    "den_a2": dict(name="CODY", skin="light", top="tank", top_pal="GREEN", trim_pal="SILVER", broad=0.94, sx=0.92,
+                   sy=1.07, cy=134, jaw=-1, chin=2, nose=0.5, tilt=3.0, hair="shaggy", hair_pal="HAIR_BROWN",
+                   seed=44, iris=(96, 120, 70), extras={"goggle_tan": True}),
+    # Seattle: Puddle Jumpers, navy and lime
+    "sea_g1": dict(name="DEX", skin="deep", top="tank", top_pal="NAVY", trim_pal="LIME", broad=0.88, sx=0.9,
+                   sy=0.99, jaw=-2, chin=0, wide=0.8, lips=True, tilt=4.0, hair="buzz", hair_pal="HAIR_BLACK",
+                   brow=(14, 8, 10)),
+    "sea_g2": dict(name="IGGY", skin="light", top="tank", top_pal="NAVY", trim_pal="LIME", broad=0.94, sx=0.92,
+                   sy=1.05, cy=140, jaw=-1, chin=3, nose=1.5, tilt=3.0, hair="bun", hair_pal="HAIR_DARK",
+                   iris=(90, 110, 80), extras={"flannel": True, "stubble": True}),
+    "sea_boss": dict(name="DOWNPOUR", skin="tan", top="hoodie", top_pal="NAVY", trim_pal="LIME", broad=1.12,
+                     sx=1.04, sxn=1.12, cy=132, jaw=3, chin=1, nose=0.5, wide=0.6, tilt=0.0, hair="buzz",
+                     hair_pal="HAIR_INK", headband="LIME", brow=(20, 14, 18), brow_w=1.3, strings="LIME",
+                     tips="YELLOW", extras={"ear_stud": "SILVER"}),
+    "sea_a1": dict(name="MILO", skin="light", top="tee", top_pal="LIME", trim_pal="NAVY", broad=1.02, sx=1.0, sy=0.96,
+                   jaw=1, chin=-2, nose=-1.5, tilt=2.0, hair="curls", hair_pal="HAIR_RUST", seed=27,
+                   iris=(70, 120, 70), extras={"freckles": 5}),
+    "sea_a2": dict(name="RAY", skin="light", top="tee", top_pal="NAVY", trim_pal="LIME", broad=0.98, sx=0.93,
+                   sy=1.07, cy=132, jaw=0, chin=3, crown=2, nose=1.0, tilt=1.0, hair="buzz", hair_pal="HAIR_BLOND",
+                   iris=(80, 120, 170)),
+    # Los Angeles: Boardwalk Bombers, sky and sand
+    "la_g1": dict(name="TREY", skin="brown", top="tank", top_pal="SKY", trim_pal="SAND", broad=0.92, sx=0.92,
+                  sy=1.02, jaw=-2, chin=1, wide=0.7, tilt=4.0, hair="curls", hair_pal="HAIR_DARK", seed=33,
+                  curl_rx=58.0, curl_ry=46.0, brow=(18, 10, 12)),
+    "la_g2": dict(name="KAI", skin="tan", top="tee", top_pal="SAND", trim_pal="SKY", broad=1.06, sx=1.0, sy=1.0,
+                  jaw=2, chin=1, nose=1.0, wide=0.5, tilt=3.0, hair="shaggy", hair_pal="HAIR_SUN", seed=52,
+                  brow=(150, 110, 70), iris=(60, 46, 34)),
+    "la_boss": dict(name="SUNSET", skin="deep", top="hoodie", top_pal="SKY", trim_pal="SAND", broad=1.14, sx=1.02,
+                    sxn=1.12, cy=138, jaw=2, chin=2, wide=0.8, lips=True, tilt=0.0, hair="twists",
+                    hair_pal="HAIR_BLACK", seed=41, brow=(14, 8, 10), brow_w=1.2, strings="SAND", tips="WHITE",
+                    extras={"whistle": ("WHITE", "SILVER")}),
+    "la_a1": dict(name="BRODY", skin="light", top="tee", top_pal="SKY", trim_pal="SAND", broad=0.9, sx=0.92, sy=1.0,
+                  jaw=-2, chin=2, nose=1.0, tilt=3.0, hair="shaggy", hair_pal="HAIR_BLOND", swoop=True, seed=61,
+                  iris=(70, 130, 180)),
+    "la_a2": dict(name="DUKE", skin="umber", top="tank", top_pal="SAND", trim_pal="SKY", broad=1.18, sx=1.1,
+                  sxn=1.2, cy=132, jaw=6, chin=1, wide=1.2, lips=True, tilt=1.0, hair="buzz", hair_pal="HAIR_BLACK",
+                  brow=(14, 8, 10), brow_w=1.3,
+                  extras={"shades": "SKY", "shades_up": "RED", "collar_shades": "GOLD"}),
+    # New York quarterfinal: Bridge Runners, red and black
+    "ny_q1": dict(name="ACE", skin="tan", top="tank", top_pal="RED", trim_pal="BLACK", broad=1.08, sx=1.02, sxn=1.1,
+                  jaw=3, chin=1, nose=2.0, wide=0.4, tilt=1.0, hair="slick", hair_pal="HAIR_INK", brow=(20, 14, 18),
+                  brow_w=1.2, extras={"stubble": True}),
+    "ny_q2": dict(name="DASH", skin="deep", top="tee", top_pal="BLACK", trim_pal="RED", broad=0.9, sx=0.9, sy=1.0,
+                  jaw=-3, chin=0, wide=0.6, tilt=4.0, hair="part", hair_pal="HAIR_BLACK", brow=(14, 8, 10)),
+    "ny_q3": dict(name="KNOX", skin="light", top="tank", top_pal="RED", trim_pal="BLACK", broad=0.94, sx=0.92,
+                  sy=1.07, cy=132, jaw=0, chin=2, crown=2, nose=-1.0, tilt=3.0, hair="buzz", hair_pal="HAIR_RUST",
+                  iris=(80, 110, 70), extras={"freckles": 9}),
+    # New York semifinal: Bodega Bandits, grey and plum
+    "ny_s1": dict(name="JAX", skin="umber", top="tank", top_pal="GREYW", trim_pal="PLUM", broad=0.92, sx=0.92,
+                  sy=1.02, cy=140, jaw=-2, chin=1, wide=0.6, lips=True, tilt=4.0, hair="flattop",
+                  hair_pal="HAIR_BLACK", flat_top=-112, fade=True, seed=13, brow=(14, 8, 10)),
+    "ny_s2": dict(name="OMAR", skin="brown", top="tee", top_pal="PLUM", trim_pal="GREYW", broad=0.96, sx=0.94,
+                  sy=1.04, jaw=2, chin=1, nose=1.0, tilt=2.0, hair="buzz", hair_pal="HAIR_DARK", beard="HAIR_DARK",
+                  sleeve="PLUM", sleeve_near=False, brow_w=1.2),
+    "ny_s3": dict(name="BRUNO", skin="light", top="hoodie", top_pal="GREYW", trim_pal="PLUM", broad=1.18, sx=1.1,
+                  sxn=1.2, cy=132, jaw=6, chin=2, crown=-2, nose=0.5, wide=1.0, tilt=1.0, hair="buzz",
+                  hair_pal="HAIR_DARK", brow_w=1.4, strings="PLUM", tips="GREYW", iris=(90, 80, 60)),
+    # New York final: Concrete Crowns, black and gold
+    "ny_f1": dict(name="SLIM", skin="tan", top="tank", top_pal="BLACK", trim_pal="GOLD", broad=0.88, sx=0.9,
+                  sy=1.02, jaw=-3, chin=2, nose=1.0, wide=0.4, tilt=4.0, hair="braids", hair_pal="HAIR_INK",
+                  brow=(20, 14, 18), extras={"ear_stud": "GOLD"}),
+    "ny_f2": dict(name="HAMMER", skin="light", top="hoodie", top_pal="BLACK", trim_pal="GOLD", broad=1.2, sx=1.12,
+                  sxn=1.22, cy=130, jaw=6, chin=3, crown=-2, nose=0.0, wide=1.0, tilt=0.0, hair="shaved",
+                  hair_pal="HAIR_BROWN", brow_w=1.5, strings="GOLD", tips="BLACK", iris=(70, 90, 110)),
+}
+
+
 GOLD_RIM, HT_RIM, CHI_RIM, NY_RIM = (255, 214, 110), (150, 240, 150), (200, 160, 255), (226, 230, 244)
+P6_RIM = {"MEM": (255, 172, 96), "NOL": (120, 232, 220), "DEN": (176, 226, 186), "SEA": (214, 250, 120),
+          "LA": (176, 224, 255), "NYQ": (255, 136, 130), "NYS": (214, 184, 236), "NYF": (255, 214, 110)}
+# anchor y per hair height (see CAST): tall hair is drawn lower
+P6_ANCHOR = {"flattop": 110, "beanie": 110, "bun": 110, "curls": 160, "shaggy": 170, "backcap": 200,
+             "locs_tied": 220, "twists": 220, "cornrows": 240, "braids": 240}
 
 # the whole cast: id -> (name, draw function, back light, [(mood, file suffix)], drawing anchor y)
 # The first mood is the base portrait (<id>.png). A lower anchor y draws the bust lower (room for tall hair).
@@ -1110,9 +1685,23 @@ CAST = {
     "chi_g2": ("RIO", rio, CHI_RIM, [("focus", ""), ("happy", "_happy")], 110),
     "chi_a1": ("MARCO", marco, CHI_RIM, [("focus", ""), ("happy", "_happy")], 200),
     "chi_a2": ("TERRELL", terrell, CHI_RIM, [("focus", ""), ("happy", "_happy")], 250),
-    "ny_boss": ("KING", king, NY_RIM, [("neutral", ""), ("happy", "_happy"), ("smug", "_smug")], 110),
+    "ny_boss": ("KING", king, P6_RIM["NYF"], [("neutral", ""), ("happy", "_happy"), ("smug", "_smug")], 110),
 }
-CREW_CARD = {"U": (64, 150, 255), "HT": (60, 160, 80), "CHI": (124, 68, 208), "NY": (150, 150, 170)}
+P6_CREWS = [("MEMPHIS: RIVERSIDE SOUL", "MEM", "mem_"), ("NEW ORLEANS: BAYOU BRASS", "NOL", "nol_"),
+            ("DENVER: SWITCHBACKS", "DEN", "den_"), ("SEATTLE: PUDDLE JUMPERS", "SEA", "sea_"),
+            ("LOS ANGELES: BOARDWALK BOMBERS", "LA", "la_"), ("NEW YORK QUARTERFINAL: BRIDGE RUNNERS", "NYQ", "ny_q"),
+            ("NEW YORK SEMIFINAL: BODEGA BANDITS", "NYS", "ny_s"), ("NEW YORK FINAL: CONCRETE CROWNS", "NYF", "ny_f")]
+for _title, _crew, _pre in P6_CREWS:
+    for _pid, _s in P6.items():
+        if _pid.startswith(_pre):
+            _moods = [("neutral", ""), ("happy", "_happy"), ("smug", "_smug")] if _pid.endswith("_boss") else \
+                [("focus", ""), ("happy", "_happy")]
+            CAST[_pid] = (_s["name"], cast_member(_s), P6_RIM[_crew], _moods,
+                          P6_ANCHOR.get(_s.get("hair", ""), 250))
+CREW_CARD = {"U": (64, 150, 255), "HT": (60, 160, 80), "CHI": (124, 68, 208), "NY": (150, 150, 170),
+             "MEM": (240, 122, 30), "NOL": (30, 166, 160), "DEN": (38, 92, 54), "SEA": (120, 170, 40),
+             "LA": (108, 188, 240), "NYQ": (216, 40, 58), "NYS": (110, 70, 130), "NYF": (190, 150, 40)}
+P6_SHEET = os.path.join(ROOT, "docs", "art", "portraits_p6.png")
 
 
 # ----------------------------------------------------------------------------- the sample sheet
@@ -1207,14 +1796,31 @@ def main():
     if sample:
         sample_sheet(made, players)
     full_sheet(made)
+    p6_crews = [(t, c, [p for p in P6 if p.startswith(pre)]) for t, c, pre in P6_CREWS]
+    for _, _, ids in p6_crews:          # boss first, like the full sheet
+        ids.sort(key=lambda p: (not p.endswith("_boss"), p))
+    full_sheet(made, crews=p6_crews, path=P6_SHEET,
+               heading="Story portraits, Phase 6 cast (P6-A4) - drawn comic style v2, 288 x 336 (shown 1:1); "
+                     "the first of each character is the base portrait",
+               mocks=[(("ud_deuce", "focus"), ("nol_boss", "happy"), "right", "GATOR",
+                       "Welcome to the bayou, cornfield boys.", "Hope y'all brought your running shoes."),
+                      (("ud_tank", "focus"), ("la_a2", "happy"), "right", "DUKE",
+                       "Three pairs. One for every quarter.", "...We play to 21, man. There are no quarters.")])
 
 
-def full_sheet(made):
-    """docs/art/portraits_full_v2.png: two story mock-ups, then every portrait (base + moods) labeled, by crew."""
-    crews = [("YOUR CREW: CORNFIELD KINGS", "U", ["ud_deuce", "ud_jojo", "ud_tank"]),
-             ("HOMETOWN: COUNTY LINE", "HT", ["ht_boss", "ht_g1", "ht_g2", "ht_a1", "ht_a2"]),
-             ("CHICAGO: LAKESHORE GUSTS", "CHI", ["chi_boss", "chi_g1", "chi_g2", "chi_a1", "chi_a2"]),
-             ("NEW YORK: CONCRETE CROWNS", "NY", ["ny_boss"])]
+def full_sheet(made, crews=None, mocks=None, path=FULL_SHEET,
+               heading="Story portraits v2 - the full set, drawn comic style, 288 x 336 (shown 1:1); "
+                     "the first of each character is the base portrait"):
+    """docs/art/portraits_full_v2.png: two story mock-ups, then every portrait (base + moods) labeled, by crew.
+    Phase 6 calls it with its crews, mock-ups and path (docs/art/portraits_p6.png)."""
+    crews = crews or [("YOUR CREW: CORNFIELD KINGS", "U", ["ud_deuce", "ud_jojo", "ud_tank"]),
+                      ("HOMETOWN: COUNTY LINE", "HT", ["ht_boss", "ht_g1", "ht_g2", "ht_a1", "ht_a2"]),
+                      ("CHICAGO: LAKESHORE GUSTS", "CHI", ["chi_boss", "chi_g1", "chi_g2", "chi_a1", "chi_a2"]),
+                      ("NEW YORK: CONCRETE CROWNS", "NY", ["ny_boss"])]
+    mocks = mocks or [(("ud_jojo", "focus"), ("chi_boss", "smug"), "right", "BIG LOU",
+                       "Easy, Nico. Let 'em play. I'm Big Lou.", "Nobody scores on me twice in Chicago."),
+                      (("ud_deuce", "focus"), ("ny_boss", "neutral"), "right", "KING",
+                       "So you're the Cornfield Kings.", "Heard you came all the way from a cornfield.")]
     cols, cw, ch = 7, 304, PH + 44
     width = cols * cw + 32
     rows = []          # (title or None, [(pid, expr)])
@@ -1228,12 +1834,8 @@ def full_sheet(made):
     height = 80 + mock_h + 30 + sum(46 if t else ch for t, _, _ in rows) + 50
     sheet = Image.new("RGBA", (width, height), (24, 22, 34, 255))
     d = ImageDraw.Draw(sheet)
-    d.text((24, 22), "Story portraits v2 - the full set, drawn comic style, 288 x 336 (shown 1:1); "
-                     "the first of each character is the base portrait", font=font(28, True), fill=(240, 240, 250))
-    m1 = story_mock(made[("ud_jojo", "focus")], made[("chi_boss", "smug")], "right", "BIG LOU",
-                    "Easy, Nico. Let 'em play. I'm Big Lou.", "Nobody scores on me twice in Chicago.")
-    m2 = story_mock(made[("ud_deuce", "focus")], made[("ny_boss", "neutral")], "right", "KING",
-                    "So you're the Cornfield Kings.", "Heard you came all the way from a cornfield.")
+    d.text((24, 22), heading, font=font(28, True), fill=(240, 240, 250))
+    m1, m2 = [story_mock(made[a], made[b], side, nm, l1, l2) for a, b, side, nm, l1, l2 in mocks]
     sheet.alpha_composite(m1.resize((mock_w, mock_h), Image.LANCZOS), (16, 70))
     sheet.alpha_composite(m2.resize((mock_w, mock_h), Image.LANCZOS), (width // 2 + 8, 70))
     y = 70 + mock_h + 30
@@ -1256,8 +1858,8 @@ def full_sheet(made):
                               "crew-colored back light, game palette (tools/art/crews.json). Original, drawn by "
                               "tools/art/make_portraits_v2.py.", font=font(18), fill=(154, 154, 176))
     sheet = sheet.convert("RGB").quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
-    sheet.save(FULL_SHEET, optimize=True)
-    print("wrote", FULL_SHEET)
+    sheet.save(path, optimize=True)
+    print("wrote", path)
 
 
 def sample_sheet(made, players):
