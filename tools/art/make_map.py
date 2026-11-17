@@ -10,12 +10,14 @@ Usage:  python3 tools/art/make_map.py
 Output: assets/map/usa.png       640 x 360 map (drawn 2x = 1280 x 720), no labels or pins baked in
         assets/map/map.json      city points and road polylines (source px), see "_help" inside
         assets/map/van.png       "The Biscuit": 2 frames x facing right (row 0) / left (row 1), 48 x 32 each
+        assets/map/van_1..3.png  the star-reward paint jobs (VAN_PAINTS), same layout, size and anchor as van.png
         assets/map/pin.png       16 x 20 pin: a city not reached yet (blue)
         assets/map/pin_current.png   the city you are at / going to next (gold, basketball)
         assets/map/pin_locked.png    "coming soon" (grey, padlock)
         assets/map/pin_done.png      beaten city: the trophy marker
         docs/art/map_preview_v1.png      1280 x 720 mock-up (header, labels, van, trophies, GO button)
         docs/art/map_preview_v1_800.png  the same at 1280 x 800
+        docs/art/van_paints.png          the stock van and the 3 paint jobs at 4x (review strip)
 Needs:  Pillow, numpy
 """
 import json
@@ -611,10 +613,18 @@ VGOLD = ["#ffe68a", "#f2b62c", "#b87818", "#6e420e"]
 PRIMER = ["#c9c9c4", "#a3a39e", "#7d7d7a", "#555553"]
 RUST = ["#c0642e", "#8a3e1e", "#5e2614"]
 GLASS = ["#a8d0ff", "#5a7ab8", "#2a3a66", "#18203c"]
+# The stock paint (assets/map/van.png): biscuit body, primer-grey replacement door, blue stripe, gold pinstripes,
+# rust, a dent and one odd hubcap. The paint jobs (VAN_PAINTS, below) are dicts with the same keys.
+STOCK = {"body": BISCUIT, "door": PRIMER, "stripe": VBLUE, "trim": VGOLD, "worn": True,
+         "hubs": (["#f0d898", "#c8a060", "#8a6a3a"], ["#e6e8f0", "#a8acb8", "#6a6e7a"]),
+         "label": "#fff4d0", "deco": None}
 
 
-def van_frame(frame):
-    """One frame facing right (+x), no lettering. Returns (image, body_y_offset)."""
+def van_frame(frame, paint=None):
+    """One frame facing right (+x), no lettering, in the given paint (default: the stock Biscuit).
+    Returns (image, body_y_offset)."""
+    p = paint or STOCK
+    BISCUIT, PRIMER, VBLUE, VGOLD = p["body"], p["door"], p["stripe"], p["trim"]
     im = Image.new("RGBA", (VAN_W, VAN_H), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
     bob = -1 if frame == 1 else 0
@@ -660,9 +670,12 @@ def van_frame(frame):
     d.point((20, 16 + bob), fill=C(VGOLD[3]))
     d.point((36, 16 + bob), fill=C(PRIMER[3]))
     for (x, y, k) in ((5, 21, 1), (6, 22, 0), (7, 21, 2), (16, 22, 1), (17, 21, 0), (26, 22, 1),
-                      (41, 21, 1), (42, 22, 0), (4, 13, 1), (28, 12, 2)):
+                      (41, 21, 1), (42, 22, 0), (4, 13, 1), (28, 12, 2)) if p["worn"] else ():
         d.point((x, y + bob), fill=C(RUST[k]))
-    d.line([(24, 17 + bob), (26, 18 + bob)], fill=C(VBLUE[3]))   # a dent across the stripe
+    if p["worn"]:
+        d.line([(24, 17 + bob), (26, 18 + bob)], fill=C(VBLUE[3]))   # a dent across the stripe
+    if p["deco"]:
+        p["deco"](d, bob, C)
     # lights and bumpers
     d.rectangle([43, 19 + bob, 44, 20 + bob], fill=C("#fff2a0"))
     d.point((44, 19 + bob), fill=C("#ffffff"))
@@ -679,9 +692,9 @@ def van_frame(frame):
     d.line([(9, 3 + bob), (17, 3 + bob)], fill=C("#c08a52"))
     d.line([(9, 7 + bob), (17, 7 + bob)], fill=C("#6a4426"))
     d.line([(13, 3 + bob), (13, 7 + bob)], fill=C("#f2b62c"))
-    d.rectangle([19, 4 + bob, 26, 7 + bob], fill=C(VBLUE[2]))
-    d.line([(20, 4 + bob), (25, 4 + bob)], fill=C(VBLUE[1]))
-    d.point((22, 5 + bob), fill=C(VGOLD[1]))
+    d.rectangle([19, 4 + bob, 26, 7 + bob], fill=C(STOCK["stripe"][2]))     # the crew's blue duffel, every paint
+    d.line([(20, 4 + bob), (25, 4 + bob)], fill=C(STOCK["stripe"][1]))
+    d.point((22, 5 + bob), fill=C(STOCK["trim"][1]))
     d.ellipse([28, 3 + bob, 32, 7 + bob], fill=C("#e8782a"))
     d.point((29, 4 + bob), fill=C("#ffb070"))
     d.line([(30, 3 + bob), (30, 7 + bob)], fill=C("#7a3410"))
@@ -697,7 +710,7 @@ def van_frame(frame):
         d.ellipse([wx - 4, 22, wx + 4, 30], fill=C("#1a1420"))
         d.ellipse([wx - 3, 23, wx + 3, 29], fill=C("#2e2a36"))
         d.point((wx - 2, 24), fill=C("#4a4656"))
-        hub = ["#e6e8f0", "#a8acb8", "#6a6e7a"] if n == 1 else ["#f0d898", "#c8a060", "#8a6a3a"]  # odd hubcap
+        hub = p["hubs"][n]   # stock: one odd hubcap
         d.ellipse([wx - 2, 24, wx + 2, 28], fill=C(hub[1]))
         d.point((wx - 1, 25), fill=C(hub[0]))
         d.point((wx + 1, 27), fill=C(hub[2]))
@@ -720,22 +733,113 @@ def van_frame(frame):
     return Image.fromarray(a, "RGBA"), bob
 
 
-def make_van():
+def make_van(paint=None):
+    p = paint or STOCK
     sheet = Image.new("RGBA", (VAN_W * 2, VAN_H * 2), (0, 0, 0, 0))
     label = "BISCUIT"
     tw = text3_w(label)
     for f in range(2):
-        im, bob = van_frame(f)
+        im, bob = van_frame(f, p)
         right = im.copy()
         px = right.load()
-        text3(px, label, 4 + (27 - tw) // 2, 15 + bob, hexc("#fff4d0") + (255,))
+        sh = hexc(p["shadow"]) + (255,) if p.get("shadow") else None
+        text3(px, label, 4 + (27 - tw) // 2, 15 + bob, hexc(p["label"]) + (255,), sh)
         left = im.transpose(Image.FLIP_LEFT_RIGHT)
         px = left.load()
         x0 = VAN_W - 31 + (27 - tw) // 2
-        text3(px, label, x0, 15 + bob, hexc("#fff4d0") + (255,))
+        text3(px, label, x0, 15 + bob, hexc(p["label"]) + (255,), sh)
         sheet.paste(right, (f * VAN_W, 0))
         sheet.paste(left, (f * VAN_W, VAN_H))
     return sheet
+
+
+# ----------------------------------------------------------------------------- van paint jobs (P8-07)
+# Star rewards: assets/map/van_<N>.png, the same sheet layout, size and anchor as van.png (only the paint changes;
+# same body, rack, wheels and BISCUIT lettering). A fresh paint job has no rust, dent or odd hubcap.
+
+def _deco_flames(d, bob, C):
+    """Hot-rod flames: they start on the nose and lick back along the side, over the door and under the stripe."""
+    Y, O, R = C("#ffe68a"), C("#f2a02c"), C("#e8602a")
+    # (row, back end x): long tongues low and near the stripe ends, short ones between
+    tongues = [(11, 38), (12, 34), (13, 37), (14, 32), (15, 35), (16, 31), (17, 33), (18, 30), (19, 34),
+               (20, 26), (21, 19), (22, 29)]
+    for y, x0 in tongues:
+        if y in (14, 15, 16, 17, 18, 19) and x0 < 31:
+            x0 = 31                          # the black stripe stays clear for the lettering
+        x1 = 41 if y < 15 else 43
+        d.line([(x0, y + bob), (x1, y + bob)], fill=O)
+        d.line([(x0 + 3, y + bob), (x1, y + bob)], fill=Y)
+        d.point((x0, y + bob), fill=R)
+    d.point((36, 16 + bob), fill=C("#5c1418"))   # door handle over the flames
+
+
+def _deco_woodie(d, bob, C):
+    """A surf woodie: a varnished wood side panel with cream frame rails, the door panel to match."""
+    W = ["#e8b070", "#c07c44", "#8e5630", "#5a341c"]
+    F = C("#f6ecd0")
+    for x0, x1 in ((3, 30), (31, 38)):
+        d.rectangle([x0, 14 + bob, x1, 21 + bob], fill=C(W[2]))   # dark varnish, so the cream lettering reads
+        d.line([(x0, 20 + bob), (x1, 20 + bob)], fill=C(W[3]))
+        for x in range(x0 + 2, x1, 4):                       # grain flecks
+            d.point((x, 15 + bob + (x % 4)), fill=C(W[1]))
+            d.point((x + 1, 15 + bob + (x % 4)), fill=C(W[1]))
+        d.line([(x0, 14 + bob), (x1, 14 + bob)], fill=F)      # frame rails
+        d.line([(x0, 21 + bob), (x1, 21 + bob)], fill=F)
+        d.line([(x0, 14 + bob), (x0, 21 + bob)], fill=F)
+        d.line([(x1, 14 + bob), (x1, 21 + bob)], fill=F)
+    d.line([(13, 14 + bob), (13, 21 + bob)], fill=F)          # the sliding door seams are frame posts too
+    d.line([(22, 14 + bob), (22, 21 + bob)], fill=F)
+    d.line([(40, 17 + bob), (44, 17 + bob)], fill=F)          # a cream line on the nose
+    d.line([(40, 18 + bob), (44, 18 + bob)], fill=C(W[1]))
+    d.point((36, 17 + bob), fill=C(W[3]))                     # door handle
+
+
+def _deco_gold(d, bob, C):
+    """Champion gold: a white star on the door and a black-and-white checker band on the nose."""
+    K, Wt = C("#16121a"), C("#ffffff")
+    for (x, y) in ((35, 15), (34, 16), (35, 16), (36, 16), (33, 17), (34, 17), (35, 17), (36, 17), (37, 17),
+                   (34, 18), (36, 18), (33, 19), (37, 19)):
+        d.point((x, y + bob), fill=Wt)
+    for x in range(40, 45):
+        d.point((x, 17 + bob), fill=K if x % 2 == 0 else Wt)
+        d.point((x, 18 + bob), fill=Wt if x % 2 == 0 else K)
+    d.line([(4, 22 + bob), (30, 22 + bob)], fill=C("#7a5212"))
+
+
+CHROME = ["#ffffff", "#c8ccd8", "#7a7e8a"]
+VAN_PAINTS = {
+    # van_1: candy red with a black stripe and hot-rod flames from the nose
+    1: {"name": "HOT SAUCE", "body": ["#ff8a6a", "#d8382c", "#9a2020", "#5c1418"],
+        "door": ["#ff8a6a", "#d8382c", "#9a2020", "#5c1418"],
+        "stripe": ["#4a4048", "#2a2228", "#1a1418", "#100c10"], "trim": ["#ffe68a", "#f2b62c", "#f2a02c", "#6e420e"],
+        "worn": False, "hubs": (CHROME, CHROME), "label": "#ffe68a", "deco": _deco_flames},
+    # van_2: a surf woodie: sea-green paint over a varnished wood side panel, cream trim, white-wall hubs
+    2: {"name": "SURF WOODIE", "body": ["#b4f4e4", "#4cc4b0", "#2a8c84", "#16585a"],
+        "door": ["#b4f4e4", "#4cc4b0", "#2a8c84", "#16585a"],
+        "stripe": ["#e8b070", "#c07c44", "#8e5630", "#5a341c"], "trim": ["#f6ecd0", "#f6ecd0", "#f6ecd0", "#c8bc98"],
+        "worn": False, "hubs": (["#ffffff", "#f6ecd0", "#b8ae90"], ["#ffffff", "#f6ecd0", "#b8ae90"]),
+        "label": "#fff4d0", "deco": _deco_woodie},
+    # van_3: champion gold with a black racing stripe, white pinstripes, a door star and chrome hubs
+    3: {"name": "GOLD RUSH", "body": ["#fff4b0", "#f2c23c", "#c08a1c", "#7a5212"],
+        "door": ["#fff4b0", "#f2c23c", "#c08a1c", "#7a5212"],
+        "stripe": ["#4a4450", "#24202a", "#16121a", "#0c0a10"], "trim": ["#ffffff", "#ffffff", "#e8e8f0", "#7a7e8a"],
+        "worn": False, "hubs": (CHROME, CHROME), "label": "#ffe68a", "deco": _deco_gold},
+}
+
+
+def van_paints_preview(stock, paints, out):
+    """docs/art/van_paints.png: the stock van and each paint job, both frames facing right, then facing left,
+    at 4x on the map's plains colour, with the paint name under each."""
+    Z, PAD, LAB = 4, 8, 22
+    vans = [("STOCK", stock)] + [(VAN_PAINTS[n]["name"] + "  (van_%d)" % n, paints[n]) for n in sorted(paints)]
+    cw = VAN_W * 2 * Z + PAD
+    img = Image.new("RGB", (PAD + cw * len(vans), PAD + VAN_H * 2 * Z + LAB), hexc("#cdc05c"))
+    d = ImageDraw.Draw(img)
+    for i, (name, sheet) in enumerate(vans):
+        big = sheet.resize((VAN_W * 2 * Z, VAN_H * 2 * Z), Image.NEAREST)
+        img.paste(big, (PAD + i * cw, PAD), big)
+        d.text((PAD + i * cw + 4, PAD + VAN_H * 2 * Z + 2), name, font=font(16), fill="#1b2418")
+    img.save(out, optimize=True)
 
 
 # ----------------------------------------------------------------------------- pins and the trophy
@@ -924,6 +1028,10 @@ def main():
         json.dump(data, fh, indent=1)
     van = make_van()
     van.save(os.path.join(OUT, "van.png"), optimize=True)
+    paints = {n: make_van(p) for n, p in VAN_PAINTS.items()}
+    for n, sheet in paints.items():
+        sheet.save(os.path.join(OUT, "van_%d.png" % n), optimize=True)
+    van_paints_preview(van, paints, os.path.join(DOCS, "van_paints.png"))
     pins = {"open": pin_image("open"), "current": pin_image("current"), "locked": pin_image("locked"),
             "done": trophy_image()}
     for k, fn in data["pins"].items():
