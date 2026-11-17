@@ -174,12 +174,21 @@ static func from_dict(d: Dictionary) -> bool:
 	if beaten.has(city) and (phase == "map" or phase == "bracket"):
 		city = next_city(city)   # a beaten city is never replayed (Q7)
 		phase = "map"
+	# an older save (Phase 5 had Hometown -> Chicago -> New York) can point past cities added since: go back to the
+	# first unbeaten city on today's route, from its first game
+	var moved_back := false
+	if city != "" and not beaten.has(city):
+		var first: String = _first_unbeaten()
+		if first != "" and first != city:
+			city = first
+			phase = "map"
+			moved_back = true
 	if city == "":
 		phase = "done"
 	var bd = d.get("bracket", {})
-	var br: int = int(bd.get("round", 0)) if bd is Dictionary else 0
+	var br: int = int(bd.get("round", 0)) if bd is Dictionary and not moved_back else 0
 	bracket = {"round": clampi(br, 0, _rounds(city).size())}
-	var gv = d.get("game", 1)
+	var gv = d.get("game", 1) if not moved_back else 1
 	game = clampi(int(gv) if (gv is int or gv is float) else 1, 1, GAMES_PER_CITY)
 	if is_tournament(city):
 		game = clampi(int(bracket["round"]) + 1, 1, maxi(1, _rounds(city).size()))
