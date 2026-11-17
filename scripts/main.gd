@@ -64,6 +64,7 @@ const SIDE_ARROW_LEFT := "<<"
 # doesn't move up and down), and it stays on the same sideline at the side switch (Q2 a, View.SIDE_FLIP false).
 # View.TILT_Y 0.48 makes the court 288 px deep; with zoom 1.68 the 1280x720 screen shows 762 px = 63.5 ft (68% of the
 # court length) and 429 px of height: HUD bar 32 + far players' heads 84 + court 288 + near margin 24 = 428.
+# v2 sheets (heads about 100 px, P6-26) need 104 over the far sideline: 1280x720 then zooms out to about 1.59.
 # 1280x800 (stretch expand) shows more height: the framing grows evenly and the court stays centered.
 const CAM_ZOOM_FLAT := 1.15          # FLAT: the old zoom
 const CAM_ZOOM := 1.68               # ANGLED zoom (at most; a screen too short for both sidelines zooms out to fit)
@@ -73,7 +74,10 @@ const CAM_FOLLOW_X := 1.0            # ANGLED: 1 = the camera follows the ball l
 const CAM_FOLLOW_Y := 0.0            # ANGLED: 0 = fixed depth (both sidelines in view), 1 = follows the ball up/down
                                      # (it follows anyway on a screen too short to show both sidelines)
 const CAM_MARGIN_FT := 2.0           # ANGLED: room past the baselines and the near sideline (feet, floor)
-const CAM_TOP_FT := 7.0              # ANGLED: room above the far sideline for the players standing on it (feet, height)
+const CAM_TOP_FT := 7.0              # ANGLED: room above the far sideline for the players standing on it (feet, height),
+                                     # at least: taller sheets (v2) raise it to their head plus CAM_TOP_PAD_PX (P6-26)
+const CAM_TOP_PAD_PX := 4.0          # ANGLED: room over the tallest far head (sim px of height), under the HUD bar
+                                     # (v1: 80 + 4 = CAM_TOP_FT exactly; v2 about 104, so the zoom is ~1.59, not 1.68)
 const CAM_HUD_PX := 54.0             # the HUD top bar (screen px): the far sideline stays below it
 const FPS_PRINT_EVERY := 5.0         # -- --fps: seconds between "FPS n" lines
 
@@ -134,7 +138,9 @@ const FT_LABEL_COLOR := Color(1.0, 0.92, 0.45)
 const CONTROL_FOLLOWS_CATCH := false # false: a teammate who gets the ball (inbound, rebound, steal, CPU pass) runs it
                                      # and you keep your player and CALL for it; true: you always take over the ball
                                      # (Phase 1 behavior). Your own PASS always hands control to the receiver.
-const CALL_CUE_RISE := 4.0 * FT      # the "!" bubble floats this far above the caller's feet
+const CALL_CUE_GAP := 20.0           # the "!" bubble's tail tip: this far (screen px) over the caller's drawn head, above
+                                     # player.gd's arrow (head - 16..6); the head is read from the sheet (v1 80, v2 ~100)
+const CALL_CUE_TAIL := 18.0          # the bubble's center this far above its tail tip (screen px)
 const CALL_CUE_COLOR := Color(1.0, 0.92, 0.3)
 const MENUSHOT_FRAMES := 40          # test only (--menushot): frames the panel is up before its screenshot
 
@@ -564,9 +570,13 @@ func _add_twist_fx() -> void:
 	twist_fx = node
 	add_child(node)
 
-# at tip-off: the twist's line under the "FIRST TO N" / match label message, plus twist_fx's own banner
+# at tip-off: twist_fx's banner (icon, name and line); without twist_fx, the twist's line under the "FIRST TO N" /
+# match label message instead (one banner, never both)
 func _show_twist_banner() -> void:
 	if not Twists.active():
+		return
+	if twist_fx != null and twist_fx.has_method("show_banner"):
+		twist_fx.show_banner()
 		return
 	var line: String = str(Twists.info().banner)
 	if twist_label != null and line != "":
@@ -574,8 +584,6 @@ func _show_twist_banner() -> void:
 		twist_label.visible = true
 		twist_label.modulate.a = 1.0
 		_twist_line_t = TWIST_LINE_TIME
-	if twist_fx != null and twist_fx.has_method("show_banner"):
-		twist_fx.show_banner()
 
 # test only (-- --anim-test): P6-24's driver, like the trip test's (it gets `main`)
 func _add_anim_test() -> void:
@@ -1309,6 +1317,19 @@ var _frame := 0
 var _cue_shot := false
 var _block_shot := false
 var _switch_shot := false
+var _call_shot := false
+
+# a --shots / --menushot screenshot path: /tmp/hoops_<name>.png, or <DIR>/hoops_<name>.png with -- --shots-dir DIR
+# (so parallel test runs don't overwrite each other's files)
+func _shot_path(shot_name: String) -> String:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var dir: String = "/tmp"
+	for i in args.size():
+		if args[i].begins_with("--shots-dir="):
+			dir = args[i].get_slice("=", 1)
+		elif args[i] == "--shots-dir" and i + 1 < args.size():
+			dir = args[i + 1]
+	return dir.path_join("hoops_%s.png" % shot_name)
 
 func _debug_screenshots() -> void:
 	# developer testing only: run with -- --shots to save a few screenshots to /tmp
@@ -1316,19 +1337,23 @@ func _debug_screenshots() -> void:
 	_menushots()
 	if OS.get_cmdline_user_args().has("--shots") and controls.a_glow and not _cue_shot:
 		_cue_shot = true   # first frame with the STEAL button lit (try -- --shots --humantest)
-		get_viewport().get_texture().get_image().save_png("/tmp/hoops_steal_cue.png")
+		get_viewport().get_texture().get_image().save_png(_shot_path("steal_cue"))
+	if OS.get_cmdline_user_args().has("--shots") and controls.b_glow and not _call_shot \
+			and input.call_t > 0.08:
+		_call_shot = true   # the CALL bubble, a moment after the call (try -- --shots --humantest)
+		get_viewport().get_texture().get_image().save_png(_shot_path("call_cue"))
 	if OS.get_cmdline_user_args().has("--shots") and controls.a_block and not _block_shot:
 		_block_shot = true   # first frame the orange button says BLOCK (try -- --shots --humantest)
-		get_viewport().get_texture().get_image().save_png("/tmp/hoops_block_label.png")
+		get_viewport().get_texture().get_image().save_png(_shot_path("block_label"))
 	# the side switch, 1 s into its pause (try -- --shots --target 3 so it comes early; then it quits after this shot)
 	if OS.get_cmdline_user_args().has("--shots") and rules.sides_swapped and not _switch_shot \
 			and rules.dead_timer > 0.0 and rules.dead_timer < rules.SWITCH_PAUSE - 1.0:
 		_switch_shot = true
-		get_viewport().get_texture().get_image().save_png("/tmp/hoops_switch.png")
+		get_viewport().get_texture().get_image().save_png(_shot_path("switch"))
 		if OS.get_cmdline_user_args().has("--target"):
 			get_tree().quit()
 	if OS.get_cmdline_user_args().has("--shots") and _frame in [240, 900, 1800]:
-		get_viewport().get_texture().get_image().save_png("/tmp/hoops_%d.png" % _frame)
+		get_viewport().get_texture().get_image().save_png(_shot_path(str(_frame)))
 		if _frame == 1800 and not OS.get_cmdline_user_args().has("--target"):
 			get_tree().quit()
 
@@ -1341,10 +1366,10 @@ func _menushots() -> void:
 		return
 	_menu_frames += 1
 	if menu_wait and _menu_frames == MENUSHOT_FRAMES:
-		get_viewport().get_texture().get_image().save_png("/tmp/hoops_menu_start.png")
+		get_viewport().get_texture().get_image().save_png(_shot_path("menu_start"))
 		menu._pick(MenuScript.Difficulty.level)
 	elif game_over and _menu_frames == MENUSHOT_FRAMES + int(MenuScript.ARM_TIME_OVER * 60.0):
-		get_viewport().get_texture().get_image().save_png("/tmp/hoops_menu_over.png")
+		get_viewport().get_texture().get_image().save_png(_shot_path("menu_over"))
 		get_tree().quit()
 
 func _physics_process(delta: float) -> void:
@@ -1421,6 +1446,16 @@ func _physics_process(delta: float) -> void:
 	_update_camera()
 	_update_hud()
 
+# ANGLED: screen px above the far sideline kept clear of the HUD bar: CAM_TOP_FT, or the tallest player's drawn head
+# (player.gd view_head_px(): v1 80, v2 about 100) at the far sideline plus CAM_TOP_PAD_PX, whichever is more
+func _cam_top_room() -> float:
+	var head: float = 0.0
+	for p in players:
+		if p.has_method("view_head_px"):
+			head = maxf(head, float(p.view_head_px()))
+	var far: float = minf(View.size_at(Vector2(COURT_W / 2.0, 0.0)), View.size_at(Vector2(COURT_W / 2.0, COURT_H)))
+	return maxf(CAM_TOP_FT * FT, head * far + CAM_TOP_PAD_PX) * View.HEIGHT_SCALE
+
 # FLAT: the camera sits on the ball (as before). ANGLED: it follows the ball's projected floor point left and right
 # (CAM_FOLLOW_X) at a fixed depth (CAM_FOLLOW_Y), inside limits from the projected court corners plus margins. The
 # zoom is CAM_ZOOM, or less if the screen is too short to show the HUD bar, the far heads and the whole court depth.
@@ -1439,13 +1474,14 @@ func _update_camera() -> void:
 		lo = Vector2(minf(lo.x, c.x), minf(lo.y, c.y))
 		hi = Vector2(maxf(hi.x, c.x), maxf(hi.y, c.y))
 	var screen: Vector2 = get_viewport_rect().size
-	var need_y: float = hi.y - lo.y + CAM_TOP_FT * FT * View.HEIGHT_SCALE + CAM_MARGIN_FT * FT
+	var top_room: float = _cam_top_room()
+	var need_y: float = hi.y - lo.y + top_room + CAM_MARGIN_FT * FT
 	var zm: float = clampf((screen.y - CAM_HUD_PX) / need_y, CAM_ZOOM_MIN, CAM_ZOOM)
 	camera.zoom = Vector2(zm, zm)
 	var vis: Vector2 = screen / Vector2(zm, zm)
 	var left: float = lo.x - CAM_MARGIN_FT * FT
 	var right: float = hi.x + CAM_MARGIN_FT * FT
-	var top: float = lo.y - CAM_TOP_FT * FT * View.HEIGHT_SCALE - CAM_HUD_PX / zm
+	var top: float = lo.y - top_room - CAM_HUD_PX / zm
 	var bottom: float = hi.y + CAM_MARGIN_FT * FT
 	var mid := Vector2((left + right) / 2.0, (top + bottom) / 2.0)
 	var follow_y: float = CAM_FOLLOW_Y
@@ -1807,24 +1843,32 @@ func draw_floor_ring(node: CanvasItem, center: Vector2, r: float, color: Color, 
 	node.draw_polyline(pts, color, width)
 
 # the call was heard: a "!" speech bubble over the caller, plus a faint line from the teammate with the ball
-# (overlay layer; the bubble floats CALL_CUE_RISE above the caller's projected feet)
+# (overlay layer; the bubble floats CALL_CUE_GAP over the caller's drawn head, above his arrow)
 func _draw_call_cue() -> void:
 	if autoplay or not input.call_active() or human_player == null:
 		return
 	var h = human_player
 	var pulse: float = 0.5 + 0.5 * sin(input.call_t * 18.0)
-	var c: Vector2 = View.to_screen(h.position, CALL_CUE_RISE + 3.0 * pulse)
+	var tip: Vector2 = player_head_screen(h) - Vector2(0, CALL_CUE_GAP)
+	var c: Vector2 = tip - Vector2(0, CALL_CUE_TAIL + 3.0 * pulse)
 	var q = input.call_passer()
 	if q != null:
 		_call_node.draw_line(View.to_screen(q.position), View.to_screen(h.position), Color(CALL_CUE_COLOR, 0.35), 2.0)
-	_call_node.draw_colored_polygon(PackedVector2Array([c + Vector2(-5, 9), c + Vector2(5, 9),
-			View.to_screen(h.position, CALL_CUE_RISE - 18.0)]), Color.WHITE)
+	_call_node.draw_colored_polygon(PackedVector2Array([c + Vector2(-5, 9), c + Vector2(5, 9), tip]), Color.WHITE)
 	_call_node.draw_circle(c, 12.0, Color.WHITE)
 	_call_node.draw_arc(c, 12.0, 0, TAU, 24, CALL_CUE_COLOR, 2.5)
 	var font := ThemeDB.fallback_font
 	var fs := 20
 	var w: float = font.get_string_size("!", HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
 	_call_node.draw_string(font, c + Vector2(-w / 2.0, fs * 0.36), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0.1, 0.2, 0.5))
+
+# the top of p's drawn head on screen (as player.gd places its arrow): the feet lifted by the jump, plus the sheet's
+# head height (view_head_px(): v1 80, v2 about 100) at the depth's size
+func player_head_screen(p) -> Vector2:
+	var lift = p.get("_v_lift")
+	var head: float = float(p.view_head_px()) if p.has_method("view_head_px") else CAM_TOP_FT * FT
+	return View.to_screen(p.position, float(lift) if lift != null else float(p.jump_z)) \
+			- Vector2(0, head * View.size_at(p.position))
 
 func show_message(text: String, time := 1.2, color := Color.WHITE) -> void:
 	msg_label.text = text
