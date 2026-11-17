@@ -1,638 +1,539 @@
 # Task Board
 
-Current phase: **Phase 6: content (all 8 cities) and the animation upgrade** (planned 2026-11-17 by `lead-producer`).
-The Phase 5 board is archived in `docs/board-phase5.md` (Phase 4: `docs/board-phase4.md`, Phase 3:
+Current phase: **Phase 7: release** (planned 2026-11-17 by `lead-producer`). The Phase 6 board is archived in
+`docs/board-phase6.md` (Phase 5: `docs/board-phase5.md`, Phase 4: `docs/board-phase4.md`, Phase 3:
 `docs/board-phase3.md`, Phase 2: `docs/board-phase2.md`, Phase 1: `docs/board-phase1.md`).
 
-**STATUS: BUILT AND QA'D (2026-11-17).** Every Phase 6 task is merged and done except **P6-42** (web publish and the
-owner check-in). Both gates passed: G1 (owner answers, below) and G2 (animation sample approved). The phase summary
-for the owner is `docs/phase6-summary.md`. The plan below is kept as written; the task list is in "Done".
+**STATUS: PLANNED.** Waves 1 and 2 can start now. The tasks that depend on an owner question (Q1-Q5, at the bottom)
+say so in their last column. Those tasks build with the recommended answer as a placeholder in one clearly marked
+constant or field, and are only finished once the coordinator relays the answer.
 
-Scope (from `docs/VISION.md`, rows "Phase 5 check-in", "Phase 6 design: animation", "Phase 6 design: cities", the
-starting city list and the Phase 6 roadmap):
-1. **Cities.** All 8 on the route, in this order: Hometown, Chicago, Memphis, New Orleans, Denver, Seattle,
-   Los Angeles, New York. Each city gets:
-   - a crew: 5 players (2 average, 2 good, a boss), rated by trip stage;
-   - its own court look (`court_looks.gd` plus a generated floor and backdrop);
-   - a twist: noticeable but fair, the same for both teams, shown with a banner and effects;
-   - music: CC0 or CC-BY upbeat chiptune;
-   - story scenes (arrival and after-win) and portraits in the approved comic style v2.
+Scope (from `docs/VISION.md`: roadmap Phase 7, the rows "Phase 6 check-in", "Phase 6 tuning check-in" and
+"Phase 7 design"):
+1. **Settings.** Music volume and sound volume as separate sliders, the difficulty, and a left-handed layout
+   (joystick on the right, buttons on the left).
+   - **What exists today:**
+     - Settings (`title.gd`) has MUSIC ON/OFF, FULL SCREEN, a SOUND slider and LEVEL (EASY / NORMAL / HARD). The
+       difficulty is done, so it is only checked.
+     - The pause panel (`pause.gd`) has MUSIC ON/OFF, FULL SCREEN and a SOUND slider.
+     - There is no music volume.
+     - `touch_controls.gd` puts the joystick on the left half and A/B at the bottom right.
+2. **How to Play.** Picture pages reached from the title:
+   - pages: controls, flicks (crossover), pump fake, CALL, steals, blocks, dunks and alley-oops, turbo and stamina,
+     on fire, the trip basics;
+   - touch: swipe or arrow buttons, and BACK;
+   - **the pictures come from the game itself**: screenshots captured by a test mode, finished by a `tools/art`
+     script in the approved style (arrows, a thumb, button callouts). Nothing hand-drawn or downloaded;
+   - no playable tutorial (VISION "Phase 7 design").
+3. **itch.io HTML5 release.** A ZIP with `index.html` at its root for itch's web embed (1280x720, fullscreen button,
+   mobile friendly; threads are already off), built by `tools/build_web.sh --zip`.
+4. **Android APK** on the same itch page (no Google Play). The work:
+   - an Android export preset: landscape, icon, app name, package id (Q1), version, minimal permissions;
+   - a script that builds a debug APK here and a release APK when the owner's keystore comes in through environment
+     variables (never committed);
+   - exact steps for the owner to create the key and export from the Godot Android editor (Q5).
+5. **Store page** (owner uploads; VISION "Phase 7 design"):
+   - itch page text;
+   - a 630x500 cover;
+   - 3-5 screenshots at 1280x720 captured from the game;
+   - `UPLOAD.md` with the owner's step-by-step instructions;
+   - price: pay what you want (free, optional tip).
+6. **Release QA and docs.**
+   - Final release QA: a full trip on the web build in Chromium, the touch walk, the APK checks (see P7-40) and
+     the version number visible in the game.
+   - README, CLAUDE.md and CREDITS.md complete for a public release. Every CC-BY attribution is shown in the
+     game's CREW & CREDITS screen, along with the Godot license notice.
 
-   **What Phase 5 already has:**
-   - Hometown and Chicago have crews, v1 sheets, portraits and music, but placeholder names, borrowed courts
-     (blacktop and gym) and no twists. Phase 6 gives them their own courts and twists: Hometown none (tutorial),
-     Chicago wind.
-   - New York has music, `ny_boss` art, and a stub bracket whose 8 other players wear the old `red_n` sheets. Phase 6
-     gives them real crews, art and a court.
-   - Memphis to Los Angeles are map pins only (`built: false`).
-2. **Balance the ramp across cities** (QA). Owner: leave the in-city ramp as it is (game 1 to game 3), campaign
-   difficulty on their level is about right, and the screens keep their style.
-3. **Animation upgrade, a highlight of the game, done side by side with the cities:**
-   - Bigger, more detailed players: about 25% taller on screen (owner: "about 100 px, today about 80").
-   - New sheet format with many more frames.
-   - Standing and running dribble: the legs move and the ball stays in time with the hand.
-   - Crossovers, several dunk styles, layups, and jump shots with gather, release and follow-through.
-   - Chest, bounce and lob passes; defensive slide; steal swipe; block swat; falling on a crossover; celebrations.
-   - Motion effects: squash and stretch, dust on hard cuts, a hang at the top of a dunk, a camera punch on big dunks.
-   - The old sheets stay as a fallback until every new sheet exists, and the Kenney fallback rules stay.
-
-Not in scope:
-- Boss special moves (owner Phase 5 Q3: no special moves).
-- Changes to the in-city ramp or the game lengths, unless the owner changes them in Q10.
-- Screen restyling.
-- A spin move (VISION: crossover only for now).
-- Left-handed layout, How to Play and store exports (Phase 7).
-- Quick Game gameplay: it stays as today, except the court choice (Q9).
+Not in scope (owner decisions; anything new goes to the owner first):
+- Google Play.
+- A playable tutorial.
+- New gameplay or balance changes.
+- New cities, crews or music.
+- Restyling the screens.
+- Localization.
+- Controller support.
+- Achievements and online features.
+- A first-launch prompt (unless Q3 picks it).
 
 Format: `ID | task | owner role | files | done when | depends on | blocked by owner questions`
 
 ## Rules for every task in this phase
-- **Godot 4.3.** No `:=` with an untyped right side (`game.x`, `Flow.match.get(...)`, `JSON.parse_string()`,
-  `min`/`max`/`clamp`); use an explicit type or `minf`/`maxf`/`clampf`. Tuning constants go at the top of the script
-  they belong to, with a comment.
-- **Touch first.** Nothing new to press. Twists are things you feel and see, never a new control.
-- **No new `.tscn` scenes.** New code is new `.gd` files built in code (`twists.gd`, `twist_fx.gd`, `sheets.gd`,
-  `anim_test.gd`).
-- **Simulation and drawing stay apart.** The simulation stays 2D top-down. Everything new on screen goes through
-  `View` (`to_screen`, `size_at`). **Animation is visual only.** It reads the sim (velocity, facing, timers,
-  `rim_kind`, `jump_t`, `ball.z`) and never writes to it. Sprite size, frame choice, squash, the dunk hang and the
-  camera punch must not change any timing, reach, steal window or block window. The sim's dribble (bounce period,
-  floor-touch timing for steals) is unchanged; the animation follows the ball, not the other way round.
-- **Twists change the sim through `twists.gd` only.** Each hook multiplies or replaces an existing constant through
-  `Twists.value(key, default)`. With twist `"none"` every hook returns exactly today's value.
-- A task touches only the files listed. If it needs another file, stop and tell the coordinator.
-- **Quick Game and the test modes stay as today** (P6-40 checks against P6-00). With `Flow.match` empty the twist is
-  `"none"` unless Q9 says otherwise, and the sheets are whatever exists. Behaviour is identical, only the drawing
-  changes.
-- Data the owner may edit on the tablet (cities, crews, twists, story, looks) lives in `const` dictionaries with
-  comments.
-- **Assets.** Art is generated by scripts in `tools/art/` in the approved styles: players and courts in style sample
-  v1, portraits in comic v2, and the animation in sample v1 once G2 approves it. Third-party assets must be CC0 or
-  CC-BY (no SA, no NC), and every asset gets a `CREDITS.md` row.
-- **Size budgets.** Web `index.pck` is 5.2 MB today; the budget is set by Q8. **No texture larger than
-  2048 x 2048** (WebGL and older Android GPUs).
-- **Tests.**
-  - Every gameplay task runs 3 `--autoplay`, 1 `--humantest` and `--trip-test --target 3`. All must reach `FINAL` /
-    `TRIP END` with no script errors.
-  - Every twist task also runs `--city <id> --cgame 1 --autoplay` for its city.
-  - Every visual task looks at a screenshot (`--shots`, `--city <id> --shots`, or `--anim-test` once P6-24 exists).
+- **Godot 4.3.** Don't use `:=` when the right side is untyped (`game.x`, `cfg.get_value()`,
+  `ProjectSettings.get_setting()`, `JSON.parse_string()`, `min`/`max`/`clamp`); use an explicit type or
+  `minf`/`maxf`/`clampf` instead. Tuning constants and layout numbers go at the top of the script they belong to,
+  each with a comment.
+- **Touch first.**
+  - Every new screen works with taps and swipes alone: big buttons, BACK top-left like Settings and Crew.
+  - Keyboard is for desktop testing only: Escape = BACK, Left/Right = page.
+- **No new `.tscn` scenes.**
+  - New screens are `.gd` CanvasLayers built in code with `ui_kit.gd` and registered in `flow.gd` `SCREENS`.
+  - New test drivers are `.gd` files loaded by a flag, like `trip_test.gd` / `anim_test.gd`.
+- **Defaults are today's game.** A fresh install, and every test mode without the new flags, must look, sound and
+  play exactly as today:
+  - right-handed layout;
+  - music volume 1.0 = today's `MUSIC_DB`;
+  - no change to the sim.
+
+  Every gameplay task runs 3 `--autoplay`, 1 `--humantest`, `--trip-test --target 3` and `--titletest`. All must
+  reach `FINAL` / `TRIP END` / the title test's end with no script errors.
+- **Settings live in `user://settings.cfg`, section `"settings"`**, next to `sfx_volume`, `fullscreen` and the
+  level. Test runs never write the owner's file: follow the existing pattern (`_test_fs` in title.gd,
+  `user://settings_test.cfg` for unlocks).
+- **No secrets in git.** No keystore, password or alias in any committed file, script default or log line. The
+  release key reaches the build only through environment variables. `.gitignore` covers `*.keystore`, `*.jks`
+  and `build/`.
+- **Assets.**
+  - Pictures, the icon and the cover are generated by `tools/art/` scripts from the game's own captures or its
+    approved art (style sample v1, the players in `docs/art/players_v3_moves.gif`, comic portraits v2).
+  - Every new asset gets a `CREDITS.md` row.
+  - No texture larger than 2048 x 2048.
+  - How to Play pictures: at most about 2.5 MB together (web `index.pck` is 34.2 MB today).
+- **One task per file per wave** (parallel plan below). A task touches only the files it lists. If it needs another
+  file, it stops and tells the coordinator.
+- **The project must still open from a ZIP in the Godot 4.3 Android editor.** New `project.godot` keys must exist
+  in 4.3. Export presets must not break opening the project when the Android templates are missing (Godot only
+  warns).
 
 ## Shared contract (names fixed now so parallel tasks can call each other)
 
-### Twists (`scripts/twists.gd`, P6-01; `extends RefCounted`, static only, `const Twists = preload(...)`)
-```
-const TWISTS := {
-  "none": {},
-  "wind":     {"name": "WIND OFF THE LAKE", "banner": "Wind: long shots and lobs drift", ...numbers (Q1)},
-  "crowd":    {...}, "humid": {...}, "thin_air": {...}, "wet": {...}, "sand": {...}, "cage": {...},
-}
-static var current := "none"
-static func set_current(id: String) -> void         # unknown id -> "none" (and a printed warning)
-static func value(key: String, default: float) -> float   # the current twist's number, or default (= today)
-static func flag(key: String) -> bool               # e.g. "sideline_fence"
-static func info() -> Dictionary                    # name, banner line, icon id, for twist_fx / map / pause
-```
-- Set from `Flow.match.twist` by main.gd at game build time (P6-02). Test flag `--twist <id>` overrides it, in a
-  Quick Game too.
-- `trip.match_for()` adds `"twist": city.twist` (P6-10).
-
-Hook points. Each is one `Twists.value(...)` call around today's constant; the default is today's value:
-
-| Key | Default (today) | File | Used by |
+### Settings (P7-01 `difficulty.gd`, P7-02 `audio.gd`)
+| Key in `settings.cfg` [settings] | Type, default | Owner script | API |
 |---|---|---|---|
-| `long_shot_mult` | 1.0 | main.gd `shot_probability()` (shots beyond the arc) | wind, thin_air |
-| `shot_clock` | 24.0 (`SHOT_CLOCK_LENGTH`) | main.gd | crowd |
-| `speed_mult` | 1.0 | player.gd top speed (after `Ratings.speed_px`) | crowd, sand |
-| `turbo_mult` | 1.35 (`TURBO_SPEED_MULT`) | player.gd | sand |
-| `stamina_drain_mult`, `stamina_refill_mult` | 1.0 | player.gd (after `Ratings.stamina_*`) | thin_air, humid |
-| `cut_grip`, `cut_min_speed`, `cut_angle_deg` | 1.0, -, - | player.gd accel on a sharp turn at speed (crossover bursts keep full grip) | wet |
-| `lob_drift_ft`, `wind_dir` (runtime: `Twists.wind` Vector2, set once per game, flips at the side switch only if Q1 says so) | 0 | ball.gd lob target (sim) | wind |
-| `shot_curve_ft` | 0 | ball.gd drawn shot path only (visual) | wind |
-| `lob_time_mult`, `arc_mult` | 1.0 | ball.gd lob flight time (sim), drawn shot arc (visual) | thin_air |
-| `sideline_fence` (flag), `fence_bounce` | false, - | ball.gd `_went_out()`: a loose ball crossing a sideline bounces back in | cage (Q2) |
-| `crowd_db` | 0 | audio / twist_fx crowd loop | crowd |
+| `left_handed` | bool, `false` | `difficulty.gd` | `static func is_left_handed() -> bool`, `static func set_left_handed(on: bool) -> void` (saves) |
+| `music_volume` | float 0..1, `1.0` | `audio.gd` | `static var music_volume := 1.0`, `func set_music_volume(v: float, save := true) -> void`, `static func save_music_volume() -> void`; read once per run like `sfx_volume` |
 
-Every hook acts on **all players and both teams the same way**; no hook reads `team`.
+- **Test flags** (`difficulty.gd` reads them; for this run only, never saved):
+  - `--left-handed` / `--right-handed`;
+  - `--music-volume X` (0..1).
+- **Music volume is applied in `_update_music_volume()`** as one more gain on top of today's math (ducking and the
+  crossfade unchanged): `MUSIC_DB + linear_to_db(g * pow(music_volume, SFX_VOLUME_CURVE))`, floored at
+  `MUSIC_SILENT_DB`.
+  - `music_volume` 0 = silent, but it does not flip `MenuScript.music_on`. MUSIC ON/OFF stays as it is.
+  - The twist ambience follows the SOUND volume, as today.
 
-### City data (`scripts/cities.gd`, P6-10; done)
-- All 8 cities have `built: true`, a `look` (new look ids `barn`, `rooftop`, `soul_gym`, `bayou`, `mountain`,
-  `rain_park`, `beach`, `cage`), `music` (track ids `hometown`, `chicago`, `memphis`, `new_orleans`, `denver`,
-  `seattle`, `los_angeles`, `newyork`) and `twist` (`none`, `wind`, `crowd`, `humid`, `thin_air`, `wet`, `sand`,
-  `cage` (Q2)). The known ids are `Cities.LOOK_IDS`, `MUSIC_IDS`, `TWIST_IDS`; `Cities.twist(id)` reads one.
-- Each city also has `"fallback": {"look", "music"}`: `trip.gd` `look_for()` / `music_for()` put the city's own look
-  in the match once `court_looks.gd` has it (P6-12) and its own track once `assets/music/<id>.ogg` exists (P6-A3);
-  until then the fallback (gym / blacktop, an existing track). No code change is needed when the art lands.
-- Crew data is as in Phase 5: name, style, colors, ui_color, good, boss, avg, and `look` text per player for the art
-  agent (body and skin words from `tools/art/crews.json`). New palette names for P6-A1: `ORANGE`, `TEAL`, `LIME`,
-  `SKY`, `SAND` (the others exist).
-- Id prefixes: `mem_`, `nol_`, `den_`, `sea_`, `la_` (`<p>_g1`, `_g2`, `_boss`, `_a1`, `_a2`). Every player's
-  `sheet` and `portrait` is his own id; until P6-A1 / P6-A4 draw them they fall back (sheet -> `red_n`, portrait ->
-  a silhouette in the crew's ui_color).
-- New York keeps `ny_q*`, `ny_s*`, `ny_f*` and `ny_boss`, now with their own sheet / portrait ids. The semifinal
-  crew "Subway Sparks" is renamed **BODEGA BANDITS** (grey and plum).
-- STAGE_AVG and TIER stay (owner Q3). QA may nudge STAGE_AVG within "about 40 rising to about 70" (P6-30).
-- `trip.gd` (P6-10):
-  - `match_for()` adds `"twist"` (the city's; `"none"` in Hometown).
-  - Test flag `--expected-roster` (with `--city <id> --cgame N`): the match uses the crew a trip would have there
-    (`Trip.expected_roster()`): every earlier game won at once, the points spent as after_game.gd's `auto_step()`
-    does (one at a time on the lowest stat of the first roster player who can take one), the first recruit
-    candidate signed, and the lineup's default starters (the 3 underdogs; the trip test's one-off pick check is not
-    replayed). Prints an `EXPECTED ROSTER` line. QA measures the ramp with it.
-  - After a city's boss game (game 3, or the New York final) is won, `Difficulty.unlock_court(city)` is called if
-    difficulty.gd has it (P6-17), never in the in-memory test trips.
-  - `--triptest-data` checks every city's ids, story scenes, crew shape, recruitable flags, the expected roster at
-    each city, and the full route to New York.
+### Touch layout (P7-03 `touch_controls.gd`)
+- `var left_handed := false`, set in `_ready()` from `Difficulty.is_left_handed()`.
+- `func mirror_x(p: Vector2) -> Vector2`: `Vector2(size.x - p.x, p.y)` when left-handed, else `p`.
+- `func on_joy_side(pos: Vector2) -> bool`: the left half when right-handed, the right half when left-handed.
+- `a_center()` and `b_center()` return the mirrored points. Their callers (`main.gd`, `pause.gd`) keep calling
+  them and never place a control in raw coordinates.
+- `JOY_RADIUS`, `TURBO_PULL`, the hit radii and the drawing are unchanged; only the positions are mirrored.
+- The pause button stays top-right in both layouts (Q3 may change this), and so does the HUD top bar.
 
-### Court looks (`scripts/court_looks.gd`, P6-12; art from `tools/art/make_courts.py`, P6-A2)
-- New look entries use the same keys as `gym` and `blacktop`, plus these optional keys (`court.gd` ignores a missing
-  key):
-  - `"ambience"`: an sfx loop name such as `rain` or `wind`;
-  - `"backboard"`: `"glass"`, `"metal"` or `"wood"`;
-  - `"pole"` colors;
-  - `"front_fence"`: true for the cage, low posts and mesh along the near sideline, drawn under the players;
-  - `"floor_overlay"`: `"puddles"` or `"sand_drift"`.
-- `gym` and `blacktop` stay for Quick Game.
-- `names()` returns the order the COURT button cycles (Q9).
+### Screens
+- `flow.gd` `SCREENS` gains `"howto": "res://scripts/howto.gd"` (P7-04).
+  - Args: `{"back": "<screen>"}`, default `"title"`.
+  - `howto.gd` (P7-H3) implements `auto_step()`: next page, `false` after the last page.
+- **Title** (P7-04):
+  - a HOW TO PLAY button: a third button in the SETTINGS / CREW & CREDITS row, or a row of its own if three don't
+    fit at `SIDE_BTN`;
+  - the version, small, in the bottom-right corner: `"v" + version`;
+  - CREW & CREDITS shows the version at the top of its list and, at the end, the Godot notice
+    (`Engine.get_license_text()`).
+- **Version, single source**: `project.godot` `application/config/version` (P7-08, `"1.0.0"` unless Q1 says
+  otherwise). Read it with `var v: String = str(ProjectSettings.get_setting("application/config/version", ""))`.
+  An empty string means no label (true until P7-08 lands).
 
-### Player sheet format v2 (numbers from the owner-approved animation sample v1; the JSON file is the truth)
-The sample (`docs/art/anim_sample_v1.md`, `_points.json`) replaced the guessed 56 x 80 numbers:
-```
-assets/players2/format.json         {"version": 2, "frame": [64, 96], "feet_row": 88, "center_x": 32, "head_px": 50,
-                                     "draw_scale": 2.0, "dirs": ["S", "SE", "E", "NE", "N"],
-                                     "cols": <logical columns per direction>, "page_cols": 32,
-                                     "anims": {"idle": {"start": 0, "frames": 6, "fps": 6, "loop": true}, ...}}
-assets/players2/<sheet>.png         one page (when cols <= 64); <sheet>_p0.png is accepted too
-assets/players2/<sheet>_p0.png ...  pages when cols > 64: page p holds logical columns p*64 .. p*64+63
-assets/players2/hands.json          {"frame": [64, 96], "feet_row": 88,
-                                     "bodies": {"<body>": {"<anim>": {"<DIR>": [{"hands": {"L": [x, y], "R": [x, y]},
-                                        "ball": [x, y, front] or null, "ball_floor": [x, y], "ball_h": h}, ...]}}},
-                                     "sheets": {"<sheet>": "<body>"}}       # recolors share their body's points
-assets/players2/cards/<sheet>.png   one 64 x 96 frame: the idle frame facing the camera (lineup, recruit, bracket)
-```
-- Numbers: frame 64 x 96 art px, art scale 1.25, drawn 2x in the game (an average body is 50 art px = 100 px on the
-  720 px screen; today 40 art px). The floor point under the pelvis is row 88, x 32. Ids are today's (`ud_deuce`,
-  `ht_g1`, `ht_g1_crew`, ...).
-- Layout: each direction is one row of `cols` logical columns (animation `start` + frame); rows 0-4 = S, SE, E, NE,
-  N (SW, W, NW mirrored: `x' = 63 - x`, L and R swap). The columns are stored in pages of up to `page_cols` = 32
-  columns, so a page is at most 2048 x 480 px (the 2048 texture limit; about 180 columns = 6 pages). An animation may cross a page edge; `Sheets.frame_region()` finds the page.
-- hands.json is keyed by animation and direction, like the sample's `_points.json` (so it doesn't depend on the column
-  layout). `ball` is the ball centre for the game's 11 px ball, `front` 1 = drawn over the sprite; null = the ball is
-  free (after a dunk's slam). Directions without points (the sample has SE and E only) return `{}`.
-- **Fallback chain** (sheets.gd): each id the caller lists, v2 (`assets/players2/`, needs `format.json`) then v1
-  (`assets/players/<sheet>.png`, 37 x 5 frames of 40 x 64, today's `hands.json`); nothing at all = the caller draws
-  the Kenney sprite (player.gd) or a silhouette (screens). v1 and v2 players can share a court. A page or sheet of
-  the wrong size is refused (a warning), so a half-made sheet falls back instead of drawing garbage.
-- Animation names: an animation a sheet doesn't have maps to the nearest one it has (`Sheets.ALIASES`): on a v1
-  sheet run_dribble / cross / catch -> dribble, hold / land -> idle, slide -> run, dunk_* / rim_hang -> dunk, pass_* ->
-  pass, steal -> poke, fall -> stumble, celebrate_a/b -> celebrate; on a v2 sheet today's names map the other way
-  (dunk -> dunk_two, pass -> pass_chest, poke -> steal, celebrate -> celebrate_a). The sample's `rundribble` =
-  `run_dribble`.
-- `scripts/sheets.gd` (P6-05, static, no game state; `const Sheets = preload("res://scripts/sheets.gd")`):
-  - `load_sheet(sheet_id) -> {id, version, fmt, texture (page 0), pages}` (v2 then v1, {} if neither);
-    `load_first(ids)`; `with_base(sheet_id)` = `[id]` plus the plain id after a `_crew` one;
-  - `frame_index(fmt, dir_row, anim, k) -> int` (`dir_row * cols + start + k`; k wraps if the anim loops, else
-    clamps); `progress_index(fmt, dir_row, anim, f)` for f in 0..1; `frame_region(sheet, index) -> {texture, region}`;
-  - `resolve(fmt, anim)`, `has_anim()`, `anim_frames(fmt, anim) -> int`, `anim_fps(fmt, anim) -> float` (0 = driven by a
-    progress), `anim_loops()`;
-  - `hand(fmt, sheet_id, frame, flip = false) -> {L, R: Vector2, ball: Vector2, ball_front: bool, ball_h}` or {};
-  - `feet_y(fmt)`, `center_x(fmt)`, `frame_size(fmt)`, `head_px(fmt)`, `draw_scale(fmt)`, `cols()`, `page_cols()`;
-  - `card(sheet_id) -> Texture2D`: `cards/<sheet>.png`, else the idle S frame cut from its v2 or v1 sheet;
-    `card_info(sheet_id)` / `card_first(ids)` add the floor point and height, and `card_rect(info, v1_pos, v1_scale)`
-    places any card where today's 40 x 64 card stood (same floor point and character height).
-  - `self_test()` (prints `SHEETS ... OK`): v1 numbers against player.gd and hands.json, then a 2-page v2 sheet built
-    in `user://sheets_test/` with the sample's points. Run it with a one-line `SceneTree` script, or from
-    `--anim-test` (P6-24).
-  - lineup.gd, recruit.gd and bracket.gd go through it (P6-06); player.gd (P6-21) and ball.gd (P6-22) next, so
-    nothing else hardcodes 40 x 64 or 37 columns.
+### How to Play pages (P7-H1 capture, P7-H2 pictures, P7-H3 screen)
+Page ids, in order. Each page is one picture plus a title and 2-4 short lines. The lines are written in `howto.gd`
+`PAGES`, so the owner can edit them on the tablet; they are not baked into the image.
 
-- **v2.1: indexed pages + palettes (coordinator decision after P6-A6 measured 29 MB of video memory per RGBA sheet,
-  about 175 MB with 6 players on court).**
-  - Pages are 8-bit grayscale PNGs (`<sheet>_p<n>.png`, imported as L8, lossless, nearest): the gray value is a
-    palette index, 0 = transparent. About 7.3 MB of video memory per sheet instead of 29.
-  - `palettes/<id>.png`: a 256 x 1 RGBA palette per sheet AND per recolor (`ud_deuce.png`, `ht_g1_crew.png` ...).
-    A `_crew` recolor is only a palette that points at its base sheet's pages (`hands.json` `sheets` maps it to the
-    body; `format.json` or a `palettes.json` maps recolor -> base pages). No separate recolor pages: this also keeps
-    the download inside Q8.
-  - `format.json` gets `"indexed": true`. The game draws an indexed sheet through one shared canvas_item shader
-    (`scripts/shaders/palette.gdshader`, made by the programmer: `COLOR = texture(palette, vec2((idx * 255.0 + 0.5) /
-    256.0, 0.5)); alpha 0 for index 0`), with the palette as a per-sprite uniform. Mirroring, modulate (fade) and
-    the existing outline/flash effects must keep working.
-  - Cards stay RGBA (64 x 96, small). v1 sheets and non-indexed v2 sheets keep working (reader checks `indexed`).
-
-### Animation table (names fixed; frame counts are read from `format.json`)
-The counts below were the plan's guess. The approved sample has run 12, run_dribble 10, dribble 8, dunk_two 10 (and
-proposes idle 6, cross 8, shoot 10, layup 10, the passes 6, catch 4, slide 8, steal 6, block 8, fall 8, land 4,
-celebrate 12, stumble 8); the code reads whatever `format.json` says.
-Today = what the v1 sheet does. "Phase" = what picks the frame.
-
-| Anim | Frames | Plays when (player.gd reads) | Frame phase |
+| # | id | Picture shows (captured from the game) | Points the lines make |
 |---|---|---|---|
-| idle | 4 | standing without the ball | clock, 3 fps |
-| run | 8 | moving faster than `RUN_MIN_SPEED` without the ball, not guarding | clock, fps scaled by speed (today's rule) |
-| dribble | 6 | standing with the ball | **locked to the ball**: 1 dribble per cycle (`ball.dribble_phase()`, P6-22) |
-| run_dribble | 8 | moving with the ball | **locked to the ball**: 2 dribbles = 2 steps per cycle; under ~40% speed it blends to `dribble` |
-| cross | 6 | crossover burst (`cross_t`) | progress of the burst; the ball's hand switch follows the frame's hands |
-| hold, catch | 2, 2 | ball held (free throw line, inbound) / first 0.15 s after a catch | one-shot |
-| shoot | 8 | jump shot and free throw: gather 0-2, rise 3-4, release 5, follow-through 6-7 | the human's `shot_charge` or the CPU's windup, then the follow timer |
-| layup | 6 | `rim_kind == "layup"` | jump progress |
-| dunk_one, dunk_two, dunk_tomahawk, dunk_windmill (Q6) | 7, 7, 7, 8 | `rim_kind == "dunk"`; the style is a visual pick (Q6) from speed, turbo, finishing rating and a hash of the player and possession (no random calls in the sim) | jump progress through the hang curve |
-| rim_hang | 2 | right after a dunk, if Q7 keeps it | visual timer |
-| pass_chest, pass_bounce, pass_lob | 4 each | a pass leaves the hands: lob = `ball.lob`; bounce = a visual pick for a defender in the lane or a short pass; else chest | one-shot |
-| slide | 6 | guarding (defense), moving sideways or backwards relative to facing | fps by speed |
-| steal | 4 | `poke_t` (swipe) | one-shot |
-| block | 6 | `block_jump_t`: crouch, rise, swat at the top, fall | jump progress |
-| stumble, fall | 4, 8 | `stumble_t`; `fall` if Q7 (a crossover beat a close defender, an "ankle-breaker") | stumble time |
-| celebrate_a, celebrate_b | 6, 6 | after a make or a win (b for dunks and game winners) | clock |
-| land | 2 | the first ~0.12 s after any jump lands | visual timer |
+| 1 | `controls` | a game with the joystick out, SHOOT (A) and PASS (B) visible; callouts on the three | joystick moves, A shoots, B passes; left-handed layout in Settings |
+| 2 | `turbo` | a player sprinting with the thumb past the ring, stamina bar draining | pull past the ring to sprint; stamina refills when you ease off |
+| 3 | `shoot` | the shot meter during a jump shot, the arc marked | hold and release in the green; 1 inside the arc, 2 beyond; a short tap is a pump fake |
+| 4 | `dunks` | a dunk at the rim (turbo dunk if possible), plus an alley-oop lob | SHOOT near the rim dunks or lays up; pass to a cutter = alley-oop |
+| 5 | `moves` | a crossover: the flick and the beaten defender | flick the stick while dribbling to cross over |
+| 6 | `call` | the CALL bubble, B lit as CALL | press CALL for the ball; you take over whoever you pass to |
+| 7 | `defense` | the STEAL button glowing next to a handler, then BLOCK at a shooter | STEAL when it glows; BLOCK when your man shoots near you; bad timing fouls |
+| 8 | `fire` | a player on fire, the flaming ball trail | 3 makes in a row = on fire: bigger green zone, no stamina drain |
+| 9 | `trip` | the trip map (and lineup or points screen as an inset) | 3 games per city, win to move on, stat points, recruit one player, pick 3 starters |
 
-That's about 140 of 160 slots, with room for Q6 (c). The hands for each frame come from `hands.json`. **The ball is
-drawn in the hand of every held-ball frame**, including run_dribble, cross, catch, the passes and the dunk styles.
+- **Raw captures** (P7-H1): `--howto-shots DIR` (xvfb) writes `DIR/howto_<id>.png` at 1280x720, plus an optional
+  `howto_<id>_b.png` inset (dunks, defense, trip). The capture for `trip` may come from `--trip-test --screens`
+  instead; P7-H1 says which.
+- **Pictures** (P7-H2): `python3 tools/art/make_howto.py <raw dir>` writes `assets/howto/<id>.png`.
+  - Each is 960 x 540, cropped and scaled from the raw capture, with the overlays drawn by the script: arrows, a
+    thumb, button callouts and the ring for turbo.
+  - Overlays are in the style sample v1 look: bold dark outline, flat bands, the game's palette.
+  - No text in the image beyond what the game itself shows.
+  - The raw captures are committed in `tools/art/howto_raw/`, so the generator reruns.
+- **Missing picture**: `howto.gd` draws a framed placeholder with the page title, so P7-H3 can merge before P7-H2.
 
-### Motion effects (visual only; P6-23)
-- **Squash and stretch**: sprite scale on take-off (stretch), landing (squash) and the `land` frames. At most about
-  12%, with the feet kept on the floor point.
-- **Dunk hang**: a remap of the *drawn* lift curve so the drawn dunk spends longer near the top. The sim's
-  `jump_t`, `jump_z`, `DUNK_RELEASE` and block windows are unchanged (Q7).
-- **Dust**: `fx.dust()` puffs at the feet on hard cuts (sharp turn at speed, the crossover burst start) and on
-  landings. On the sand court they are sand-colored, on the wet court splashes (P6-14 lends twist_fx's colors).
-- **Camera punch**: `fx.punch(strength)`. Main.gd multiplies the camera zoom by `fx.zoom_punch()` (+3-5% for about
-  0.25 s, eased). It fires on big dunks only (Q7: turbo dunks, alley-oops, windmill/tomahawk) and stacks with today's
-  dunk shake.
+### Release files and build scripts
+- Web (P7-06): `tools/build_web.sh --zip` builds as today, then writes
+  `build/release/road-trip-hoops-<version>-web.zip`.
+  - `index.html`, `index.pck`, `index.wasm`, `index.js` and the icons sit at the ZIP's root, with no folder.
+  - `--publish` is unchanged; `--zip --publish` does both.
+  - `<version>` is read from `project.godot`.
+- Android (P7-07):
+  - `tools/build_android.sh` writes `build/release/road-trip-hoops-<version>-debug.apk`.
+  - `tools/build_android.sh --release` writes `build/release/road-trip-hoops-<version>.apk`. It needs Godot's own
+    environment variables `GODOT_ANDROID_KEYSTORE_RELEASE_PATH`, `GODOT_ANDROID_KEYSTORE_RELEASE_USER` (the alias)
+    and `GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD`, and fails with a clear message if any is missing.
+  - Preset name `"Android"` (`platform="Android"`), `export_path="build/release/road-trip-hoops.apk"`.
+- Preset fields (P7-07, icons and version in P7-08):
+  - `package/unique_name` = Q1 (placeholder `io.github.kirmalo.roadtriphoops`), `package/name` = Q1
+    (`"Road Trip Hoops"`);
+  - `version/code=1`; `version/name` empty (= `application/config/version`);
+  - `screen/immersive_mode=true`;
+  - `gradle_build/use_gradle_build=false`;
+  - architectures `arm64-v8a` and `armeabi-v7a` on, `x86`/`x86_64` off;
+  - every permission off (no INTERNET);
+  - orientation from `project.godot` (landscape, as today).
+- Icons (P7-05):
+  - `assets/icon/icon.png` (256, the project icon and web favicon);
+  - `assets/icon/icon_192.png`, `icon_fg_432.png`, `icon_bg_432.png` (Android main and adaptive icon);
+  - `icon_512.png` (spare, for itch).
+- Store and owner docs (excluded from the export by the `docs/*` filter):
+  - `docs/release/cover.png` (630 x 500, P7-05);
+  - `docs/release/screenshots/shot_1..5.png` (1280 x 720, P7-S1);
+  - `docs/release/itch_page.md`, `docs/release/UPLOAD.md` (P7-S2);
+  - `docs/release/ANDROID.md` (P7-07: keystore and APK steps).
 
-### Art lists (art-audio)
-- **v1 sheets now** (P6-A1, today's generator and format, so every city plays before the redraw):
-  - Memphis, New Orleans, Denver, Seattle and Los Angeles crews, 5 each: 25.
-  - 8 New York players (`ny_q1-3`, `ny_s1-3`, `ny_f1-2`).
-  - `_crew` recolors of the 15 new recruitable players.
-- **v2 sheets after G2** (P6-A6, P6-A7): all of the above plus the 3 underdogs, Hometown, Chicago, `ny_boss` and the
-  6 Hometown/Chicago recolors. About 48 base sheets and 21 recolors. Q8 decides if recolors are separate files.
-- **Portraits** (P6-A4, comic v2): base plus `_happy` for the 33 new characters, bosses also `_smug`.
-- **Courts** (P6-A2): 8 looks, floor tile and backdrop each.
-- **Music** (P6-A3): 5 new tracks. Hometown, Chicago and New York keep theirs.
-- **Twist sounds** (P6-A5): rain loop, wind loop, loud crowd loop, fence rattle, splash, sand step.
+## What we found about building APKs here (checked 2026-11-17)
+- **Missing:**
+  - The Android SDK. `dl.google.com` is blocked by the proxy (403), so Google's cmdline-tools, platforms and system
+    images can't be downloaded.
+  - `/dev/kvm`, so **no Android emulator can run here**. Installing and launching the APK is checked on the owner's
+    tablet (a checklist in `UPLOAD.md`).
+- **Present or reachable:**
+  - OpenJDK 21 with `keytool` (`JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64`);
+  - Godot 4.3 on PATH, with only the web templates installed;
+  - GitHub releases: the 4.3 export templates `.tpz` holds `android_debug.apk` / `android_release.apk`;
+  - Ubuntu 24.04 apt: `apksigner` (31.0.2), `zipalign`, `adb`, `aapt`;
+  - `maven.google.com` (200), not needed without Gradle.
+- **Likely route (not yet proven, P7-07 proves it first):** Godot's non-Gradle export only needs:
+  - an SDK folder with `platform-tools/adb` and `build-tools/<ver>/apksigner`, which a shim folder can provide
+    with links to the apt tools;
+  - a JDK path;
+  - the two Android templates;
+  - `rendering/textures/vram_compression/import_etc2_astc=true` (export validation asks for it; our textures are
+    lossless PNG, so nothing reimports differently).
+
+  Godot makes the debug keystore with `keytool`. The APK is checked here with `aapt dump badging` (package, version,
+  permissions, SDK levels, label, icon) and `apksigner verify --print-certs`.
+- **If the route fails:** P7-07 documents exactly what's missing. The fallback is the owner's own Godot Android editor
+  (4.3 can export a non-Gradle APK on the device), with step-by-step instructions in `docs/release/ANDROID.md`.
 
 ## Risks and how this plan handles them
-- **Animation breaks gameplay feel.**
-  - The rules make animation visual only, so no timing or reach changes.
-  - P6-40 compares 100 Quick Game games with the P6-00 baseline (each stat within 2 SE).
-  - The owner judges the feel on the tablet.
-- **Dribble out of time with the steps.** run_dribble is phase-locked to the sim's fixed dribble: about 0.35 s per
-  bounce, about 0.7 s per 2-step cycle. At full speed that is a stride of about 6 ft, which looks right. The sim's
-  dribble period isn't touched because steal timing depends on it.
-- **Download size and memory.**
-  - 160 frames x 5 directions at 56 x 80 is about 7.5x today's pixels per sheet: about 300 KB per sheet and about
-    14 MB of video memory each.
-  - About 69 sheets come to about 15-20 MB of download.
-  - Six players on court plus the ball is about 90 MB of textures. Screens use the small card images, never whole
-    sheets.
-  - Q8 sets the budget. P6-A6 measures the real size on the first 3 v2 sheets before the rest are drawn. P6-31
-    measures fps in Chromium against P6-00.
-- **Texture size limits.** At most 2048 x 2048 per texture (the GLES3 / WebGL2 minimum). v2 sheets are split into
-  pages of 32 columns (32 x 64 = 2048 px wide, 5 x 96 = 480 px high); `format.json` `page_cols` is 32.
-- **Twists unfair or invisible.** Every hook ignores `team`. P6-30 compares each city with and without its twist
-  (100 games each) for the score split and pace, and checks the twist is felt:
-  - wind: long-shot FG% drops by about the set amount;
-  - sand: game length and turbo use go up;
-  - wet: slide count;
-  - crowd: shot clock pace.
-
-  A banner at tip-off, a twist line on the map and the pause screen, and ambient effects make every twist readable.
-- **Ramp across cities.**
-  - P6-30 uses `--expected-roster` (the crew a trip would really have) and 100 games per city game.
-  - Working target, to be confirmed by the owner's play: a CPU-controlled crew on Normal wins about 70% in Hometown,
-    falling city by city to about 50% in the New York final. No city game is above 80% or below 40%, and no city is
-    easier than the one before by more than the noise.
-  - Levers: STAGE_AVG (within "about 40 rising to about 70") and twist numbers inside the strength the owner picks
-    in Q1.
-- **Trip length.** 7 cities x (11 + 15 + 21) plus 3 tournament games to 21 is about 3.5 hours of play, over VISION's
-  "2-3 hours" (Q10).
-- **Sharing files.** player.gd, ball.gd and main.gd get twist hooks (wave 1) and animation work (wave 2/3), so each
-  file has one task per wave (parallel plan below).
+- **The release key.**
+  - The owner must keep the same key for every future update. A lost key means a new app that can't update the
+    old one.
+  - The key must never pass through git.
+  - Q5 decides where the key is made. `ANDROID.md` covers making it, backing it up, and exporting with it (on the
+    tablet, or here through environment variables).
+- **APK size.** About 34 MB of game data plus the Godot engine for two ARM ABIs: an estimated 60-80 MB. That's fine
+  for itch (1 GB per file). P7-07 reports the real size. Dropping `armeabi-v7a` saves about 15-20 MB but loses old
+  32-bit tablets; we keep both unless the owner says otherwise.
+- **Android back gesture quits the app.**
+  - Godot's `application/config/quit_on_go_back` is true by default. Today `pause.gd` opens the pause panel on it,
+    but the app still quits.
+  - P7-08 sets it false. P7-10 makes back act like BACK on the screens and like the pause button in a game. On
+    the title, back still leaves the app (the platform's normal behaviour).
+- **itch.io can't be reached from here** (403), so the embed is tested in a local harness: an `<iframe>` page
+  (1280x720 with `allowfullscreen`, plus a phone-landscape viewport) served from the unzipped release ZIP (P7-40).
+  The owner does the real upload.
+- **Web saves.**
+  - Saves live in the browser per site. A trip played on GitHub Pages doesn't carry over to itch.io, and the APK
+    has its own save. `UPLOAD.md` and the itch page say so.
+  - Godot keys `user://` by the project name, so the save survives re-uploads on itch. Keep `config/name`.
+- **Left-handed layout breaks something mirrored by hand.** The scripted thumb (`main.gd` `HT_FINGER_POS`) and the
+  pause test's stray touch (`pause.gd`) use raw left-half points. P7-03 routes both through `mirror_x()`, and
+  `--humantest --left-handed` must pass like the default.
+- **How to Play pictures go stale** if the HUD changes. They are regenerated by two commands (capture, compose), and
+  CLAUDE.md lists them.
+- **Size.** Pictures are capped at about 2.5 MB. The icon and cover are small. P7-40 reports `index.pck` against
+  34.2 MB.
+- **Godot license notice.** The MIT notice must ship. It is shown in CREW & CREDITS with `Engine.get_license_text()`
+  (the list scrolls), and `CREDITS.md` already has the engine row.
 
 ## Owner answers
-- Q1 twists: (a) as proposed. Q2 New York: (a) fenced cage. Q3 crews: (a) all as written (Subway Sparks renamed).
-  Q4 story: (a) light comedy with heart. Q5 music: (a) listening list first. Q6 dunks: (a) 4 styles. Q7 motion:
-  (a) medium. Q8 size: (a) 15-20 MB is fine. Q10 trip length: (a) keep 11/15/21 (about 3.5 hours).
-- **Q9 (owner's own answer):** Quick Game offers every city court WITH its twist, but a city's court unlocks only
-  after you beat that city's boss on the Road Trip (gym and blacktop always open, twist none). Coordinator default:
-  an unlock is kept for good (a new trip doesn't lock it again), stored with the settings, not in the trip save.
-  New task P6-17.
-- **G2 passed: the owner approved animation sample v1** (`docs/art/anim_sample_v1*`: 64x96 frames at 2x, art scale
-  1.25), with two fixes for the full redraw: make the dribbling arm read against the jersey (side view: navy sleeve
-  on a blue jersey), and push the running-dribble ball a bit more to the side so it doesn't cover the legs.
+From `docs/VISION.md` "Phase 7 design":
+- Release on itch.io: the web version plus a downloadable Android APK on the same page; no Google Play for now.
+- Price: pay what you want (free, with an optional tip).
+- How to Play: picture pages from the title (controls, flicks, steals, blocks, dunks); no playable tutorial.
+- The owner uploads. The team builds the release files (the web ZIP, and the APK signed with a key the owner
+  creates), writes the step-by-step upload instructions, the store page text and the screenshots.
+
+Open: Q1-Q5 below.
 
 ## Todo
-(Phase 6 tuning round, from the owner's Phase 6 check-in; see VISION "Phase 6 check-in". Then publish and Phase 7.)
+
+### Wave 1 (start now; six tasks, no shared files)
+- **P7-01** | Left-handed setting:
+  - `is_left_handed()` / `set_left_handed()` as in the contract, saved as `left_handed` in `settings.cfg`;
+  - test runs don't save;
+  - flags `--left-handed` / `--right-handed` (this run only) and `--music-volume X` (stored for P7-02 to read:
+    `static var music_volume_flag := -1.0`).
+
+  | gameplay A | `scripts/difficulty.gd` | parses in 4.3; a fresh `settings.cfg` reads false; set, reload, reads true;
+  the flag wins for the run without writing the file | - | none
+- **P7-02** | Music volume:
+  - `music_volume` with load, save and set, as in the contract;
+  - applied in `_update_music_volume()`;
+  - `Difficulty.music_volume_flag` wins when >= 0.
+
+  | gameplay B | `scripts/audio.gd` | 1.0 = today's levels exactly (print the dB in a one-off check); 0 = silent;
+  ducking and the crossfade unchanged; 3 autoplay + humantest clean | - | none
+- **P7-05** | Icon and cover generator `tools/art/make_icon.py`, outputs:
+  - `assets/icon/*` as in the contract;
+  - `docs/release/cover.png` (630 x 500).
+
+  The pictures are built from the game's own art: the underdogs' cards (`assets/players2/cards/`), the ball, a court
+  floor, the van from `assets/map/van.png`, and the name "ROAD TRIP HOOPS" in the title's gold. All in the style
+  sample v1 look. The adaptive foreground keeps the motif inside the 264 px safe circle. A `CREDITS.md` row (original,
+  generated).
+
+  | art-audio | `tools/art/make_icon.py` (new), `assets/icon/*` (new), `docs/release/cover.png` (new), `CREDITS.md` |
+  reruns byte-identical; readable at 48 px; sizes exact; contact image for the owner in the PR | - | none (the
+  owner judges the look at the check-in)
+- **P7-06** | `tools/build_web.sh --zip`: the release ZIP as in the contract (flat root, version from
+  `project.godot`). Also check the itch.io embed needs: `index.html` at the root, relative paths only, nothing over
+  itch's limits (1000 files, 200 MB per file). Print the ZIP size.
+
+  | gameplay C | `tools/build_web.sh` | the ZIP unzips to a flat folder that runs from a local server in Chromium;
+  `--publish` alone behaves as today | - | none
+- **P7-07** | Android build:
+  - **Step 1, the spike.** Set up the toolchain here: the apt `apksigner zipalign adb aapt`, an SDK shim folder,
+    `android_debug.apk` and `android_release.apk` from the 4.3 templates `.tpz` (extracted like the web templates
+    in `docs/TEAM.md`), and the editor settings for the SDK and JDK paths. Export a debug APK of the current build.
+    If it can't be done, stop after step 1, write down what is missing, and do step 3 only.
+  - **Step 2, the preset and script.**
+    - Add the `"Android"` preset with the contract's fields; the icons come in P7-08.
+    - `tools/build_android.sh`, as in the contract. It sets up nothing secret, never echoes passwords, and keeps
+      the debug keystore outside the repo.
+    - `import_etc2_astc=true` in `project.godot` if the export asks for it.
+    - Add `*.keystore` and `*.jks` to `.gitignore`.
+  - **Step 3, `docs/release/ANDROID.md`.**
+    - The exact steps to create the release keystore (the `keytool` command with placeholders; alias, validity
+      10000 days) and to back it up twice.
+    - Exporting the release APK in the Godot Android editor on the tablet: Editor Settings > Export > Android,
+      Project > Export > Android > Release keystore fields.
+    - Exporting it here with the environment variables.
+    - What never to commit.
+    - Installing the APK on the tablet ("install unknown apps").
+  - Add the toolchain setup to "Tools in the cloud environment" in `docs/TEAM.md`.
+
+  | gameplay B (after P7-02) | `export_presets.cfg`, `tools/build_android.sh` (new), `project.godot` (only
+  `import_etc2_astc`), `.gitignore`, `docs/release/ANDROID.md` (new), `docs/TEAM.md` | `aapt dump badging` shows the
+  package, version 1 / name, label, landscape, no permissions; `apksigner verify` passes on the debug APK; the APK
+  size is reported; or the spike's findings are written down and ANDROID.md covers the tablet route | - | Q1 (the
+  package id; placeholder until answered), Q5 (which route `ANDROID.md` leads with)
+- **P7-H1** | How to Play capture driver `scripts/howto_shots.gd` (new), loaded by `main.gd` under
+  `--howto-shots DIR` (like `--anim-test`):
+  - It plays scripted `--humantest`-style situations, or watches a game, and saves `howto_<id>.png` at the moments
+    in the page table. It polls the game state (the joystick shown, `turbo_pull()`, `rim_kind`, `a_glow`,
+    `a_block`, the call bubble, on fire); it never changes the sim's rules.
+  - Uses fixed seeds, so a rerun gives the same pictures.
+  - Quits when every page has a capture or after a time limit, and prints `HOWTO SHOTS <n>/9` plus the missing ids.
+  - If `trip` comes from `--trip-test --screens`, say so.
+
+  | gameplay A (after P7-01) | `scripts/howto_shots.gd` (new), `scripts/main.gd` (the flag hook only) | under xvfb
+  all 9 captures (or 8 + the trip screen) exist and show the moment named; default runs unchanged | - | none
+
+### Wave 2 (after the wave-1 task each one names)
+- **P7-03** | Left-handed layout, as in the touch contract:
+  - `touch_controls.gd`: the joystick zone on the right half and A/B mirrored to the bottom left.
+  - `main.gd`: the humantest thumb (`HT_FINGER_POS`) through `controls.mirror_x()`.
+  - `pause.gd`: the stray-touch test spot through `mirror_x()`.
+
+  Check that nothing else on screen collides with the mirrored buttons: popups, the twist banner, the message line
+  (all centred today) and the pause button (top-right).
+
+  | gameplay A | `scripts/touch_controls.gd`, `scripts/main.gd`, `scripts/pause.gd` | `--humantest` and
+  `--humantest --left-handed` both pass; `--shots --humantest --left-handed` screenshot shows the mirrored layout;
+  the default is byte-for-byte today's layout | P7-01, P7-H1 (main.gd) | Q3 (if the pause button moves)
+- **P7-04** | Title and Settings:
+  - Settings gets a LEFT-HANDED ON/OFF row (`Difficulty.set_left_handed`) and a MUSIC volume slider (`UI.slider_row`,
+    saved after `SFX_SAVE_DELAY` like SOUND, previews on the menu music). MUSIC ON/OFF, FULL SCREEN, SOUND and LEVEL
+    stay. It must fit 1280x720 and the narrowest 16:9 or 4:3 view; scroll or two columns if needed.
+  - The title gets the HOW TO PLAY button (`Flow.go("howto", {"back": "title"})`) and the version label.
+  - CREW & CREDITS:
+    - the version at the top of the list;
+    - `CREDITS_LIST` checked against `CREDITS.md`, so that every CC-BY item shows title, author, license and
+      source exactly as the license asks (`crowd`, `crowd_loud`, `newyork`, `memphis`, `seattle` with "Music by
+      Christovix Games");
+    - the Godot license text at the end.
+  - `flow.gd`: the `"howto"` entry.
+  - `--titletest`: taps LEFT-HANDED (and back), moves the MUSIC slider (and back), opens HOW TO PLAY, pages once
+    and taps BACK. Every setting is put back, and the test never writes the owner's file.
+
+  | gameplay C | `scripts/title.gd`, `scripts/flow.gd` | `--titletest` passes; screenshots of settings, title
+  and credits; the left-handed choice reaches the next game | P7-01, P7-02 | Q3 (placement)
+- **P7-H2** | `tools/art/make_howto.py`: the 9 pictures from the raw captures, as in the contract. The raw
+  captures go in `tools/art/howto_raw/`, plus a `CREDITS.md` row.
+
+  | art-audio | `tools/art/make_howto.py` (new), `tools/art/howto_raw/*` (new), `assets/howto/*` (new),
+  `CREDITS.md` | reruns byte-identical; 9 pictures at 960 x 540, at most about 2.5 MB together; a contact sheet for
+  the owner | P7-H1 (P7-05 for `CREDITS.md`) | none
+- **P7-H3** | How to Play screen `scripts/howto.gd` (new), screen `"howto"`:
+  - `PAGES` const data (the table above; the lines written plainly, at most 4 per page, big font);
+  - the picture centred, title above, lines below, page dots;
+  - big < > arrow buttons and a horizontal swipe (a drag of at least about 80 px; a tap on the picture does
+    nothing);
+  - BACK top-left goes to `args.back`; Escape = BACK and Left/Right = page on desktop;
+  - the `PANEL_ARM` tap guard like title.gd;
+  - a missing picture draws a placeholder;
+  - `auto_step()`.
+
+  | gameplay B | `scripts/howto.gd` (new) | under `--titletest` (after P7-04) every page shows; screenshots of
+  pages 1, 4, 9; swipe works in Chromium with touch emulation | - (merges with P7-04) | none
+- **P7-08** | Release metadata:
+  - `project.godot`: `application/config/version` (Q1, `"1.0.0"`), `application/config/icon` =
+    `res://assets/icon/icon.png`, `application/config/quit_on_go_back=false`.
+  - Android preset: the three launcher icon fields.
+  - Web preset: the PWA icon fields stay empty (the favicon comes from the project icon).
+
+  | gameplay C (after P7-04) | `project.godot`, `export_presets.cfg` | the project opens in 4.3 headless without
+  warnings about the icon; the web build's favicon is the new icon; the debug APK shows the icon and version name
+  in `aapt dump badging` | P7-05, P7-07 | Q1
+
+### Wave 3
+- **P7-10** | Android back gesture with `quit_on_go_back` false (P7-08):
+  - in a game, back opens or closes the pause panel (`pause.gd` already opens it on the request);
+  - on any other screen it does what that screen's BACK / Escape does;
+  - on the title it quits the app.
+
+  One handler in `main.gd` that sends the screen an Escape key press. No per-screen edits unless a screen lacks an
+  Escape BACK; if one does, stop and tell the coordinator.
+
+  | gameplay A | `scripts/main.gd` | a desktop test sends `NOTIFICATION_WM_GO_BACK_REQUEST` on the title, settings,
+  howto, map and in a game, and logs the result; humantest clean | P7-03, P7-08 | none
+- **P7-S1** | Store screenshots, 5 images at 1280 x 720, captured from the game (xvfb):
+  - a dunk on a city court;
+  - a big moment with a twist (rain or wind);
+  - the trip map;
+  - a story scene (portraits);
+  - the New York cage or the lineup screen.
+
+  Use the existing modes (`--shots --city <id> --cgame N`, `--trip-test --screens`, `--ballshots`) or P7-H1's
+  driver. No HUD debug text, the right-handed layout, and a sharp frame (not mid-fade). A contact sheet for the
+  owner.
+
+  | qa | `docs/release/screenshots/*` (new) | 5 PNGs, exact size, each a different part of the game | P7-03, P7-04,
+  P7-H3 | none
+- **P7-S2** | Store page text and the owner's upload steps.
+  - `docs/release/itch_page.md`:
+    - the title and tagline (Q2);
+    - a short description (under 140 characters for itch's "short description");
+    - a long description: the pitch, the trip, the cities and twists, the controls, the features;
+    - "Controls: touch (joystick + 2 buttons); keyboard WASD / J / K on desktop";
+    - saves stay in your browser or on your device;
+    - a credits pointer ("Music and sound by ..., full credits in the game's CREW & CREDITS screen") listing every
+      CC-BY author;
+    - the genre (Sports) and tags (up to 10 proposed);
+    - the source link only if Q4 says so.
+  - `docs/release/UPLOAD.md`, one numbered list the owner can follow on the tablet. It can also be done on a computer.
+    1. Create the itch project: title, URL, the kind "HTML".
+    2. Pricing: "No payments" vs "Donate"; pick pay what you want with a minimum of $0 and a suggested tip.
+    3. Upload the web ZIP with "This file will be played in the browser".
+    4. Embed options: viewport 1280 x 720, "Mobile friendly" with landscape orientation, the "Fullscreen button"
+       on, "Automatically start on page load" off, SharedArrayBuffer off.
+    5. Upload the APK as a download, marked Android.
+    6. The cover and screenshots; the genre, tags, release status and community settings.
+    7. Save as a draft, test on the tablet (web and APK install checklist), then make it public.
+    8. How to upload an update later: the same file slot, the version code bumped, the same key.
+
+  | art-audio | `docs/release/itch_page.md` (new), `docs/release/UPLOAD.md` (new) | the coordinator can follow
+  UPLOAD.md without guessing; every field on itch's edit page is covered | P7-06, P7-07 | Q2, Q4
+
+### Wave 4
+- **P7-40** | Final release QA, report `docs/qa/phase7.md`.
+  - **Headless.**
+    - The full `--trip-test` (full length and `--target 3`), a forced loss, and stop/resume.
+    - 3 Quick Game `--autoplay` against the Phase 6 numbers; `--humantest` with and without `--left-handed`;
+      `--titletest`; `--twisttest`; `--anim-test`.
+  - **Web, from the release ZIP**, served locally, in Chromium with Playwright touch emulation, in the itch-style
+    iframe harness (1280x720 and a phone-landscape viewport).
+    - A full trip. The web runtime runs the trip test: `GODOT_CONFIG.args` patched to
+      `--trip-test --target 3` in a copy of `index.html`.
+    - A touch walk: title, How to Play (swipe and arrows), Settings (LEFT-HANDED on, then a game played by touch
+      with the mirrored controls; the MUSIC slider), a new trip's first game by touch, pause, quit, CONTINUE.
+    - The save survives a reload.
+    - FULL SCREEN works inside the iframe.
+    - The version is visible on the title and in the credits.
+    - `index.pck` and ZIP sizes.
+  - **APK.**
+    - `aapt dump badging`, `apksigner verify`, the size.
+    - Install and launch can't be tested here (no emulator: no KVM, no Android system images), so give the owner
+      a tablet checklist in the report: installs, opens landscape, sound on the first tap, back gesture, the save
+      survives closing the app.
+
+  | qa | `docs/qa/phase7.md` (new) | report written; bugs filed here as P7-Bn | all above | none
+- **P7-41** | Docs for a public release.
+  - `README.txt`:
+    - the player part first (what the game is, how to play, the controls, Settings and LEFT-HANDED, How to Play,
+      where saves live);
+    - the build part after (web ZIP, APK, `ANDROID.md`).
+  - `CLAUDE.md`: Layout (`howto.gd`, `howto_shots.gd`, `assets/icon/`, `assets/howto/`, `docs/release/`,
+    `make_icon.py`, `make_howto.py`, `build_android.sh`) and Testing (`--left-handed`, `--music-volume`,
+    `--howto-shots`, `build_web.sh --zip`, `build_android.sh`). The coordinator approves.
+  - `CREDITS.md`: every file under `assets/` covered, every license CC0, CC-BY or MIT (the engine), and the CC-BY
+    attribution text matching the in-game list.
+
+  | gameplay C | `README.txt`, `CLAUDE.md`, `CREDITS.md`, `docs/TEAM.md` (check only) | the owner can follow it;
+  the coordinator approves the CLAUDE.md change | P7-40 | none
+- **P7-42** | Coordinator.
+  - Build the release files from the merged commit (`build_web.sh --zip --publish`, `build_android.sh`, and the
+    release APK if the owner's key route allows it here).
+  - Hand them to the owner the way Q4 allows (a GitHub release on the repo is the default proposal).
+  - Then `lead-producer` writes `docs/phase7-summary.md`.
+
+  | coordinator | (no repo files besides the summary) | the owner has the ZIP, the APK (or the steps to export
+  it), `UPLOAD.md`, the page text and the images | P7-40, P7-41 | Q4, Q5
 
 ## Doing
 
 ## Review
 
 ## Done
-- **Tuning round (owner's Phase 6 check-in), merged:** P6-T1 camera 1.60 -> 1.72 with a small depth slide at 16:9
-  (2583a9e); P6-T2 FULL SCREEN in Settings and pause, first tap restores it on the web (7ba7a00); P6-T3 Quick Game
-  team pick on both sides, unlocks with the boss/bracket wins, stats shifted to a 50 average, test unlocks go to
-  `user://settings_test.cfg` (bcff4b0). P6-42 republished after them.
-All merged on `ccr-f5c087b2-3ojk5f` by `c6a8491` (P6-41 in the docs commit after it). The task text is as planned;
-what changed is in the **Done notes** below.
 
-**Done notes:**
-- P6-A6b (v2.1 indexed pages + palettes, `bdd2e60`) and the recruit joining lines (`631be3f`, `story_text.gd`
-  `RECRUIT_LINES`, `recruit.gd`) were added during the phase.
-- P6-30 and P6-31 wrote one report, `docs/qa/phase6.md` (not `phase6-cities.md` / `phase6-anim.md`), with 40 games
-  per city game (not 100). Applied tuning: wet court (`twists.gd` `cut_angle_deg` 150, `cut_min_speed` 0.9;
-  `player.gd` `SLIDE_MIN_WANT` 0.9). No STAGE_AVG change.
-- P6-40 is folded into `docs/qa/phase6.md` plus the coordinator's checks on `c6a8491`: import clean,
-  `--trip-test --target 3` plays all 8 cities to `TRIP END`, Seattle game 3 `--autoplay` FINAL 21-17 in 9:44.
-  Quick Game against P6-00 was 20 autoplay games (all stats inside the limit; fouls 2.90 vs 3.77, just inside) and
-  18 humantests. Not run separately in this phase: the forced loss and stop/resume across all 8 cities, the
-  per-city touch walk in Chromium, the save-survives-reload check. `index.pck` is 34.2 MB against the owner's
-  "about 31 MB" (owner question in the summary).
-- P6-B1 fixed in `c6a8491`: popups are clamped to the visible view in `fx.gd` `_draw`.
-- P6-41: `README.txt` and `CLAUDE.md` updated; `CREDITS.md` checked (every Phase 6 track, twist sound, court,
-  portrait and `assets/players2/` has a row; the removed v1 sheets are noted), no change needed.
+## Parallel plan (never two tasks on the same file in one wave)
+| Wave | Tasks (owner role) | Files touched | Notes |
+|---|---|---|---|
+| 1 | P7-01 (gameplay A), P7-02 (gameplay B), P7-05 (art-audio), P7-06 (gameplay C), P7-07 (gameplay B after P7-02), P7-H1 (gameplay A after P7-01) | difficulty.gd / audio.gd / make_icon.py, assets/icon, cover, CREDITS.md / build_web.sh / export_presets.cfg, build_android.sh, project.godot, .gitignore, ANDROID.md, TEAM.md / howto_shots.gd, main.gd | P7-07 starts with its spike so the APK answer comes early |
+| 2 | P7-03 (gameplay A), P7-04 (gameplay C), P7-H2 (art-audio), P7-H3 (gameplay B), P7-08 (gameplay C after P7-04) | touch_controls.gd, main.gd, pause.gd / title.gd, flow.gd / make_howto.py, howto_raw, assets/howto, CREDITS.md / howto.gd / project.godot, export_presets.cfg | P7-H3 and P7-04 merge together (the button and the screen) |
+| 3 | P7-10 (gameplay A), P7-S1 (qa), P7-S2 (art-audio) | main.gd / docs/release/screenshots / itch_page.md, UPLOAD.md | |
+| 4 | P7-40 (qa), then P7-41 (gameplay C), then P7-42 (coordinator) | docs/qa/phase7.md / README.txt, CLAUDE.md, CREDITS.md / - | |
 
-### Wave 0
-- **P6-00** | Baseline on the current dev build:
-  - 100 Quick Game `--autoplay` and 6 `--humantest` (stats table as in `docs/qa/phase5.md` section 3);
-  - `--city hometown|chicago --cgame 1..3`, 100 games each on Normal;
-  - `index.pck` size;
-  - fps in headless Chromium on a Quick Game (same method as P4-12) and in the Godot `--fps` run.
-
-  | qa | `docs/qa/phase6-baseline.md` | table written, commit recorded | - | none
-
-### Wave 1
-- **P6-01** | Twist table and getters as in the contract, with the Q1/Q2 numbers as commented constants; `info()`
-  for banners | gameplay A | `scripts/twists.gd` (new) | parses in 4.3; every key in the hook table has its
-  default; `value()` returns the default for `"none"` | - | Q1, Q2
-- **P6-02** | main.gd hooks:
-  - read `Flow.match.twist` and set `Twists.current`; `--twist <id>` test flag;
-  - `long_shot_mult` in `shot_probability()`; `shot_clock` from `Twists.value`;
-  - twist banner at tip-off: the line under the match label, plus twist_fx's banner if the file exists;
-  - add a `twist_fx.gd` node to the game if the file exists;
-  - camera zoom x `fx.zoom_punch()` if fx has it;
-  - `--anim-test` loads `scripts/anim_test.gd` if present (like `--trip-test`).
-
-  | gameplay A | `scripts/main.gd` | twist `none`: 3 autoplay + humantest as P6-00; `--city chicago --cgame 1
-  --twist wind` and `--twist crowd` play and print the twist in the `MATCH` line | P6-01 | Q1, Q9
-- **P6-03** | player.gd twist hooks: `speed_mult`, `turbo_mult`, stamina drain/refill, wet-court grip on sharp turns
-  at speed (crossover bursts keep full grip), and a read-only `sliding` flag for the effects. Must merge before P6-21
-  starts | gameplay A | `scripts/player.gd` | twist none identical; `--twist sand` games are measurably longer;
-  `--twist wet` prints a slide count stat | P6-01 | Q1
-- **P6-04** | ball.gd and rules.gd twist hooks:
-  - wind: the lob target drifts downwind (sim) and the drawn shot path curves (visual);
-  - thin air: lob time and drawn arc;
-  - cage: a loose ball crossing a sideline bounces off the fence (rattle sfx if present); baselines unchanged;
-  - `stat()` counters for each.
-
-  Must merge before P6-22 starts | gameplay A | `scripts/ball.gd`, `scripts/rules.gd` | twist none identical; each
-  twist seen in `--ballshots` and in its stat | P6-01 | Q1, Q2
-- **P6-10** | City and crew data:
-  - the 5 new cities complete, plus the real New York crews;
-  - Hometown, Chicago and New York names per Q3 (the `# placeholder` marks removed);
-  - looks, music and twist ids for all 8; `built: true` everywhere;
-  - per-player `look` text for the art agent;
-  - trip.gd: `match_for()` adds `twist`; `--expected-roster`; `self_test()` checks every id and that each city's
-    lineup prints.
-
-  | gameplay B | `scripts/cities.gd`, `scripts/trip.gd` | `--triptest-data` (+ `--load`) passes for all 8 cities;
-  `--trip-test --target 3` plays all 8 cities to `TRIP END` (sheets fall back to `red_n` until P6-A1) | - | Q2, Q3, Q10
-- **P6-05** | Sheet format reader as in the contract: v1 built in, v2 from `format.json` and `hands.json`
-  (body-keyed), the fallback chain, `card()`, and `"pages"` support if P6-A0 needs it. Static, no game state |
-  gameplay B | `scripts/sheets.gd` (new) | parses in 4.3; with only v1 files every function gives today's numbers;
-  with the P6-A0 sample files it returns the v2 frame for each anim | P6-A0 (format proposal) | none
-- **P6-06** | Cards use `Sheets.card()` instead of cutting frame 0 out of a 40 x 64 sheet | gameplay B |
-  `scripts/lineup.gd`, `scripts/recruit.gd`, `scripts/bracket.gd` | screens look as today with v1 sheets, and show the
-  sample player's v2 card when it exists (`--trip-test --screens`) | P6-05 | none
-- **P6-11** | Story scenes:
-  - arrival and after-win for Memphis, New Orleans, Denver, Seattle and Los Angeles;
-  - Hometown, Chicago, New York and the ending rewritten from placeholder to final names (Q3) and tone (Q4);
-  - `final_before`, `first_loss` and `ending` reviewed;
-  - each scene mentions or hints at the city's twist (it is part of the "shown" rule).
-
-  | gameplay B | `scripts/story_text.gd` | every scene id that cities.gd names exists; `--trip-test --target 3
-  --screens` shows them; lead reviews tone | P6-10 | Q3, Q4
-- **P6-A1** | crews.json parts and v1 sheets for the 33 new players and 15 recolors, with new palettes; preview
-  `docs/art/players_preview_p6.png`; CREDITS rows | art-audio | `tools/art/crews.json`, `tools/art/make_players.py`,
-  `assets/players/*`, `docs/art/*`, `CREDITS.md` | `--city <each> --cgame 3 --shots` shows the crews; size reported |
-  P6-10 (look text) | Q3
-- **P6-A2** | 8 court looks in `make_courts.py`, floor tile and backdrop each:
-  - barn driveway with a cornfield;
-  - lakefront rooftop with a skyline (wind flags);
-  - old-school gym with a packed crowd;
-  - bayou blacktop with cypress and lights;
-  - mountain park with peaks;
-  - rainy park (wet sheen, puddles);
-  - beach (sand floor, boardwalk);
-  - fenced cage with city blocks.
-
-  No real buildings, logos or brands. Preview `docs/art/courts_preview_v2.png` for the coordinator to show the owner
-  | art-audio | `tools/art/make_courts.py`, `assets/courts/*`, `docs/art/*`, `CREDITS.md` | preview reads at 1280x720;
-  files load through a test look | - | none
-- **P6-A3** | Music: 5 tracks (Memphis, New Orleans, Denver, Seattle, Los Angeles), upbeat chiptune with a city
-  flavor, CC0 or CC-BY from OpenGameArt. Loops cut with `tools/make_music.sh`, -20 LUFS like the others. Listening
-  list for the owner if Q5 (a) | art-audio | `tools/make_music.sh`, `assets/music/*`, `CREDITS.md` | 5 files play
-  through `audio.play_music(<id>)`; licenses checked | - | Q5
-- **P6-A0** (Done: approved, see Owner answers).
-
-### Wave 2
-- **P6-12** | Court looks data: the 8 new looks with their textures, colors, music, ambience and the optional keys
-  from the contract; `names()` order per Q9 | art-audio | `scripts/court_looks.gd` | `--court <each>` and `--city
-  <each> --shots` look right; Quick Game COURT button per Q9 | P6-A2 | Q9
-- **P6-13** | court.gd supports the new optional look keys (wood backboard and barn pole, `front_fence` posts and
-  mesh under the players, `floor_overlay` puddles and sand drift), all through View | gameplay A | `scripts/court.gd`
-  | gym and blacktop unchanged in a screenshot; cage, rain_park and beach show their props | P6-12 (or a test look)
-  | none
-- **P6-14** | Twist effects (new script):
-  - the banner at tip-off and after the side switch, with the name, one line and an icon;
-  - wind streaks plus a windsock or arrow showing the wind;
-  - rain and splashes; heat shimmer and sweat when tired; thin-air breath puffs and a higher drawn arc trail;
-  - sand puffs at the feet; crowd camera flashes;
-  - the ambience loop through audio (P6-15) if present.
-
-  Visual only, through View | gameplay A | `scripts/twist_fx.gd` (new) | every twist readable in a `--city <id>
-  --shots` screenshot; twist none draws nothing; fps cost measured (`--fps`) | P6-01, P6-02 | Q1, Q2
-- **P6-15** | Ambience: `play_ambience(name, db)` and `stop_ambience()`, ducked like the music; the crowd loop's
-  volume from `Twists.value("crowd_db")` | gameplay A | `scripts/audio.gd` | missing file = silence; pause stops it
-  | P6-01 | none
-- **P6-16** | Twist line on the trip map's city box ("WIND: long shots and lobs drift") and on the pause screen |
-  gameplay A | `scripts/trip_map.gd`, `scripts/pause.gd` | shows for each city in `--trip-test --screens`; nothing
-  for Hometown | P6-01, P6-10 | none
-- **P6-21** | Animation selection for v2 sheets:
-  - the full animation table (run_dribble, cross, the 4 dunk styles, pass types, slide, steal, block swat, fall,
-    celebrations, land, catch);
-  - fps per animation from `format.json`, run and slide fps by speed;
-  - dribble and run_dribble locked to `ball.dribble_phase()`;
-  - v1 sheets keep today's mapping exactly;
-  - `HEAD_PX` and `DUNK_VIEW_LIFT` from the format (`head_px`), so the hands still reach the rim.
-
-  Built against the P6-A0 sheet | gameplay B | `scripts/player.gd` | v1-only game: frames identical to today
-  (P6-24 contact sheet diff); with the sample sheet each animation in the table shows when its condition holds; 3
-  autoplay + humantest as P6-00 | P6-03, P6-05, P6-A0 | Q6, Q7
-- **P6-22** | Ball for v2:
-  - hand points from `Sheets.hand()` (frame size and feet row from the format);
-  - `dribble_phase() -> float` (0 = in the hand at the top, 0.5 = on the floor; read-only, from the sim's dribble);
-  - the ball in the right hand for cross, catch and each pass type;
-  - the bounce pass drawn bouncing once on the floor (visual);
-  - `REACH_VIEW_Z` and `CATCH_VIEW_Z` scaled by `head_px`.
-
-  | gameplay B | `scripts/ball.gd` | the ball sits in the hand in every held-ball frame of the sample (`--ballshots`,
-  `--anim-test`); v1 unchanged | P6-04, P6-05 | none
-- **P6-24** | `--anim-test` driver:
-  - poses one or all sheets through every animation in 8 directions on a plain court, with the ball drawn in hand;
-  - writes contact sheets `/tmp/hoops_anim_<sheet>_<anim>.png` and a frame strip for a moving preview (xvfb);
-  - headless: checks every sheet's format, hands and frame counts and prints `ANIM OK` or the problems.
-
-  | gameplay A | `scripts/anim_test.gd` (new) | runs on v1 sheets and the sample; QA and art can use it to check hands
-  | P6-02, P6-05 | none
-- **P6-A4** | Portraits for the 33 new characters (comic v2, moods), from crews.json | art-audio |
-  `tools/art/make_portraits_v2.py`, `tools/art/crews.json`, `assets/portraits/*`, `docs/art/*`, `CREDITS.md` | story
-  scenes show them (`--trip-test --screens`) | P6-A1 | Q3
-- **P6-A5** | Twist sounds: rain loop, wind loop, loud crowd loop, fence rattle, splash, sand step (synthesized like
-  the swish, or CC0) | art-audio | `tools/` sound scripts, `tools/make_sfx.sh`, `assets/sfx/*`, `CREDITS.md` | files
-  credited; `audio.play(name)` plays them | - | none
-- **P6-A6** (after G2) | v2 generator, first slice:
-  - `tools/art/make_players_v2.py` (new; the v1 generator stays) writes `format.json`, body-keyed `hands.json`, cards
-    and the 3 underdogs' v2 sheets with the whole animation table;
-  - measures size on disk, in `index.pck` and in video memory; reports whether the Q8 budget holds before the rest is
-    drawn;
-  - preview `docs/art/players_preview_v3.png`.
-
-  | art-audio | `tools/art/make_players_v2.py` (new), `tools/art/pixel3d.py`, `assets/players2/*`, `docs/art/*`,
-  `CREDITS.md` | `--anim-test` shows `ANIM OK` for the 3; hands checked | G2, P6-A1 | Q6, Q8
-
-- **P6-17** | Quick Game court unlocks (Q9): a court unlocks when its city's boss game is won on any trip (kept for
-  good, saved with the settings, not in the trip save); the COURT button cycles the gym, the blacktop and the
-  unlocked city courts, and a city court brings its twist; a locked city shows nothing. `--unlock-all` test flag |
-  gameplay A | `scripts/menu.gd`, `scripts/difficulty.gd` (settings file), one call from `trip.gd` (coordinate with
-  P6-10: `Trip` calls `Difficulty.unlock_court(city)` after a boss win) | a fresh install shows gym + blacktop only;
-  after `--trip-test` the beaten cities' courts appear; Quick Game on Chicago's court plays with wind | P6-02, P6-10 |
-  Q9
-
-### Wave 3
-- **P6-23** | Motion effects as in the contract:
-  - squash and stretch, the land frames, the dunk hang curve (drawn lift only), dust and splash on hard cuts and
-    landings;
-  - `fx.punch()` / `fx.zoom_punch()` on big dunks;
-  - `POPUP_HEAD_LIFT` for taller players.
-
-  | gameplay B | `scripts/player.gd`, `scripts/fx.gd` | visible in `--anim-test` strips and `--shots`; sim stats as P6-00
-  (no timing change); fps cost measured | P6-21 | Q7
-- **P6-26** | main.gd size pass for taller players: `CAM_TOP_FT` (far heads visible), CALL bubble and steal cue
-  heights from `Sheets.head_px` | gameplay A | `scripts/main.gd` | heads and bubbles not cut at 1280x720 and 1280x800
-  with v2 sheets | P6-21, P6-A6 | none
-- **P6-A7** | v2 sheets for every other player and recolor (or runtime recolor, Q8); preview; CREDITS | art-audio |
-  `tools/art/make_players_v2.py`, `tools/art/crews.json`, `assets/players2/*`, `docs/art/*`, `CREDITS.md` |
-  `--anim-test` `ANIM OK` for all sheets | P6-A6 | Q8
-- **P6-30** | QA cities and ramp:
-  - for each city game: 100 `--autoplay --city <id> --cgame N --expected-roster` on Normal, and 100 with
-    `--twist none` for the twist's size and fairness;
-  - humantest 6 per twist city; Easy/Hard spot checks on the boss games;
-  - tune the twist constants within the Q1 strength, and STAGE_AVG within the owner's range, toward the ramp target;
-  - a twist screenshot per city.
-
-  | qa | `docs/qa/phase6-cities.md`, constants in `scripts/twists.gd` and `scripts/cities.gd` (tuning only) | report
-  written; ramp table; tuning listed | P6-02..P6-04, P6-10, P6-14 | none
-- **P6-31** | QA animation:
-  - `--anim-test` on all sheets: hands, frame counts;
-  - Quick Game 100 autoplay vs P6-00 (animation must not move a stat);
-  - screenshots at 720 and 800;
-  - Chromium touch fps vs P6-00; `index.pck`; video memory estimate;
-  - a moving-preview strip of each new animation for the owner.
-
-  | qa | `docs/qa/phase6-anim.md` | report written; bugs filed here | P6-21..P6-24, P6-A6 | none
-
-### Wave 4
-- **P6-25** | Remove the v1 player sheets and `assets/players/hands.json` once every v2 sheet exists. Keep the Kenney
-  fallback and sheets.gd's v1 path (it then falls to Kenney). Update CREDITS | art-audio | `assets/players/*`,
-  `CREDITS.md` | full trip and Quick Game run with only v2; pck shrinks | P6-A7, P6-31, G2 | none
-- **P6-40** | Final QA:
-  - `--trip-test` full length plus a forced loss plus stop/resume across all 8 cities;
-  - 100 Quick Game games vs P6-00;
-  - the whole flow by touch in Chromium (each city's banner, ambience, pause twist line);
-  - save survives a reload;
-  - `index.pck` within Q8.
-
-  | qa | `docs/qa/phase6.md` | report written; bugs filed | all | none
-- **P6-41** | Docs:
-  - README.txt (cities, twists, new animations);
-  - CLAUDE.md Layout (`twists.gd`, `twist_fx.gd`, `sheets.gd`, `anim_test.gd`, `assets/players2/`,
-    `make_players_v2.py`) and Testing (`--twist`, `--expected-roster`, `--anim-test`), coordinator approves;
-  - CREDITS check.
-
-  | gameplay A | `README.txt`, `CLAUDE.md`, `CREDITS.md` (check only) | the owner can follow it | P6-40 | none
-
-### Bugs from QA (P6-30 / P6-31, `docs/qa/phase6.md` section 7)
-- **P6-B1** | BALL! popup clipped at the screen edge: the caller stands at the edge of the view, and the popup at
-  his head (`human_input.gd` `fx.popup_head`) is cut off ("BA"). Keep it inside the screen like the other popups |
-  gameplay A | `scripts/human_input.gd` or `scripts/fx.gd` | the popup fully on screen in `--shots --humantest --city
-  memphis --cgame 3` | - | none
-
+The file most at risk is `main.gd`: P7-H1 (wave 1), P7-03 (wave 2) and P7-10 (wave 3) each change a few lines, in
+order. The same goes for `project.godot` and `export_presets.cfg`: P7-07 (wave 1), then P7-08 (wave 2). `CREDITS.md`
+gets one row in P7-05 (wave 1) and one in P7-H2 (wave 2), and P7-41 checks it (wave 4).
 
 ## Open questions for the owner
-**All answered** (see "Owner answers" above and `docs/VISION.md`); kept for the record. The Phase 6 check-in
-questions are in `docs/phase6-summary.md`.
-
-Answer with the letter; (a) is the recommendation each time. Answers go into `docs/VISION.md` and "Owner answers"
+Answer with the letter. (a) is the recommendation each time. Answers go into `docs/VISION.md` and "Owner answers"
 above.
 
-- **Q1 How strong are the city twists?** They are the same for both teams. Our proposal:
-
-  | City | Twist | What changes | How you see it |
-  |---|---|---|---|
-  | Hometown | none (tutorial) | nothing | no banner |
-  | Chicago | wind | A steady crosswind, gusting between half and full strength. At full gust, shots beyond the arc go in 8% less often and curve about 1.5 ft in the air. Lobs land up to 2 ft downwind (usually still caught) | banner "WIND OFF THE LAKE", wind streaks, flags, a wind arrow |
-  | Memphis | full crowd | 18-second shot clock (24 today), everyone 4% faster, crowd much louder | banner "FULL HOUSE", camera flashes |
-  | New Orleans | humid | stamina refills 30% slower | heat shimmer, sweat when tired |
-  | Denver | thin air | shots beyond the arc go in 8% more often, shots and lobs float about 15% higher and longer, stamina drains 20% faster | breath puffs, high arcs |
-  | Seattle | wet court | a sharp turn at full speed slides about 1.5 ft before you change direction (crossovers keep their grip) | rain, splashes |
-  | Los Angeles | sand | everyone 10% slower; turbo boost 35% -> 45%, so turbo matters more | sand puffs at the feet |
-
-  (a) As proposed. (b) About twice as strong. (c) About half as strong. (d) As proposed, but I'll change some (tell
-  us which).
-- **Q2 New York's twist ("tight sidelines").** (a) A fenced cage: a loose ball bounces off the fence back into play
-  (no out of bounds on the sidelines; baselines as now) with a fence rattle. (b) A narrower court, about 6 ft less
-  room to drive around (riskier: every CPU spot and the camera depend on the court size). (c) No twist: the finale is
-  just the best crews and a loud crowd.
-- **Q3 Crew names and themes.** Our proposal (original characters; no real teams; each crew has 2 average players,
-  2 good ones and a boss):
-  - Memphis **RIVERSIDE SOUL** (orange and black, inside game), boss Darnell "Smoke" Whitfield, a barbecue
-    pitmaster.
-  - New Orleans **BAYOU BRASS** (teal and white, fast break), boss Andre "Gator" Fontenot, a trombone player.
-  - Denver **SWITCHBACKS** (forest green and silver, long range), boss Hank "Ridge" Larsen, ski patrol.
-  - Seattle **PUDDLE JUMPERS** (navy and lime, balanced), boss Kenji "Downpour" Sato, a fishing-boat deckhand.
-  - Los Angeles **BOARDWALK BOMBERS** (sky blue and sand, slashers), boss Malik "Sunset" Rivers, a lifeguard.
-
-  Today's placeholders (Hometown County Line and the Mayor; Chicago Lakeshore Gusts and Big Lou; New York Bridge
-  Runners, Subway Sparks, Concrete Crowns, King, "Big City Showdown") become final, except **Subway Sparks**, which
-  we rename because "Sparks" is a real pro team.
-
-  (a) All of this as written. (b) As written, but I'll change some names (tell us which). (c) Propose a different
-  set.
-- **Q4 Story tone for the new cities.** (a) Keep Phase 5's tone: light comedy with heart. Each city crew is a rival
-  who respects you after you win, and the recruit joins with a funny line. Running jokes pay off in New York (Deuce's
-  knee, the van breaking down once on the way, Jojo's napkin math). Arrival scenes are 4-6 lines, after-win scenes
-  3-5. (b) More drama: stakes and setbacks, a rival crew that follows you across the country. (c) Shorter and mostly
-  jokes.
-- **Q5 Music for the 5 new cities.** (a) We look for CC0 or CC-BY upbeat chiptune with a hint of each city's style
-  (soul, brass, bluegrass, rock, surf). You get a short listening list before it's final. (b) The same search, but we
-  pick and you swap later if you don't like one. (c) Reuse the 6 tracks we already have for the new cities.
-- **Q6 Dunk styles.** (a) 4 styles: one-hand, two-hand, tomahawk and windmill. The windmill only comes on turbo or
-  from great finishers (and bosses). Alley-oops are a two-hand catch and slam. Styles are picked by speed, turbo and
-  the finishing rating; it's only the look, the chance to score doesn't change. (b) 3 styles: one-hand, two-hand,
-  tomahawk. (c) 6 styles: (a) plus a reverse dunk and a 360 (more art, so the full redraw takes longer).
-- **Q7 How big should the motion feel?** (a) A hang at the top of every dunk and a short rim hang after it; the
-  camera punch only on big dunks (turbo, alley-oop, windmill or tomahawk); a defender beaten by a crossover up close
-  falls down and gets back up (an "ankle-breaker", about 1-3 a game). All of it is only the look: block and steal
-  timing don't change. (b) Bigger: a camera punch on every dunk, a longer hang. (c) Subtle: a small hang, no rim
-  hang, beaten defenders only stumble as today.
-- **Q8 Download size.** The new animations make each player sheet much bigger. The web download grows from about
-  5.5 MB to about 15-20 MB. (a) That's fine. (b) Keep it under about 12 MB: the game recolors recruits itself
-  (fewer files) and average players get fewer frames for rare moves. (c) Keep it under 12 MB even if every player
-  gets fewer frames.
-- **Q9 Courts in Quick Game.** (a) The COURT button cycles through all 8 city courts plus the gym and the blacktop.
-  Twists are off in Quick Game. (b) The same, but each city court brings its twist. (c) Gym and blacktop only, as
-  today.
-- **Q10 Trip length.** With all 8 cities, every city to 11, 15 and 21 and the tournament to 21, the full trip is about
-  3.5 hours of play, more than the 2-3 hours in the vision. (a) Keep it; a long trip is fine. (b) Game 1 and 2 to 11,
-  the boss game to 21 (about 3 hours). (c) Hometown, the tutorial city, plays 7, 11 and 15; the rest stay as they are.
+- **Q1 App identity (Android and the version label).**
+  - The package id can never change once people install the APK.
+  - (a) Package id `io.github.kirmalo.roadtriphoops`, app name "Road Trip Hoops", version 1.0.0 (version code 1),
+    the version shown small on the title (bottom right) and in CREW & CREDITS.
+  - (b) The same, but a package id of your own (e.g. `com.<yourname>.roadtriphoops`) or another version (e.g.
+    0.9.0).
+- **Q2 Store page title and tagline.**
+  - (a) Title "Road Trip Hoops", tagline "Drive your underdog crew across America and win the 3v3 streetball
+    tournament in New York.", genre Sports. Proposed tags: basketball, sports, arcade, pixel-art, streetball,
+    touch-friendly, android, retro, singleplayer, 2d.
+  - (b) The same title with a tagline you write.
+  - (c) A different title for the store.
+- **Q3 Where the new settings go.**
+  - (a) Settings gets LEFT-HANDED ON/OFF and a MUSIC volume slider; MUSIC ON/OFF stays; the pause panel stays as
+    it is (it already has MUSIC ON/OFF, FULL SCREEN and SOUND); the pause button stays top-right in both layouts.
+  - (b) As (a), and the pause panel also gets LEFT-HANDED and the MUSIC slider.
+  - (c) As (a), and the very first launch asks "Which hand for the joystick?" once.
+- **Q4 Source code and the GitHub page.**
+  - (a) The itch page doesn't link the GitHub source. The GitHub Pages build stays as your test build. We hand you
+    the release files as a GitHub release on the repo.
+  - (b) The itch page links the source. You also pick a license for the code; today there is none, so it is "all
+    rights reserved".
+  - (c) As (a), but take GitHub Pages down at release so itch.io is the only place to play.
+- **Q5 The release signing key** (it signs the APK; keep it forever, or updates won't install over the old app).
+  - (a) You make it on a computer with Java's `keytool` (we give the exact command). You keep two backups, and
+    export the release APK yourself in the Godot Android editor on the tablet (we give the steps). Our script can
+    also build it here if you pass the key path and passwords as environment variables.
+  - (b) You have no computer: the team makes the key here once, and you download it once from a private place and
+    keep the backups. Less safe: the key passed through the cloud.
+  - (c) For 1.0, ship an APK signed with a debug key, and make a real key later. Not recommended: switching keys
+    means uninstalling the old version (and losing its save).
