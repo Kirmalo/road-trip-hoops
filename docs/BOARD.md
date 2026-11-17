@@ -210,6 +210,20 @@ assets/players2/cards/<sheet>.png   one 64 x 96 frame: the idle frame facing the
   - lineup.gd, recruit.gd and bracket.gd go through it (P6-06); player.gd (P6-21) and ball.gd (P6-22) next, so
     nothing else hardcodes 40 x 64 or 37 columns.
 
+- **v2.1: indexed pages + palettes (coordinator decision after P6-A6 measured 29 MB of video memory per RGBA sheet,
+  about 175 MB with 6 players on court).**
+  - Pages are 8-bit grayscale PNGs (`<sheet>_p<n>.png`, imported as L8, lossless, nearest): the gray value is a
+    palette index, 0 = transparent. About 7.3 MB of video memory per sheet instead of 29.
+  - `palettes/<id>.png`: a 256 x 1 RGBA palette per sheet AND per recolor (`ud_deuce.png`, `ht_g1_crew.png` ...).
+    A `_crew` recolor is only a palette that points at its base sheet's pages (`hands.json` `sheets` maps it to the
+    body; `format.json` or a `palettes.json` maps recolor -> base pages). No separate recolor pages: this also keeps
+    the download inside Q8.
+  - `format.json` gets `"indexed": true`. The game draws an indexed sheet through one shared canvas_item shader
+    (`scripts/shaders/palette.gdshader`, made by the programmer: `COLOR = texture(palette, vec2((idx * 255.0 + 0.5) /
+    256.0, 0.5)); alpha 0 for index 0`), with the palette as a per-sprite uniform. Mirroring, modulate (fade) and
+    the existing outline/flash effects must keep working.
+  - Cards stay RGBA (64 x 96, small). v1 sheets and non-indexed v2 sheets keep working (reader checks `indexed`).
+
 ### Animation table (names fixed; frame counts are read from `format.json`)
 The counts below were the plan's guess. The approved sample has run 12, run_dribble 10, dribble 8, dunk_two 10 (and
 proposes idle 6, cross 8, shoot 10, layup 10, the passes 6, catch 4, slide 8, steal 6, block 8, fall 8, land 4,
