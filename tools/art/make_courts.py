@@ -9,6 +9,14 @@ Outputs (all opaque except the ball):
   assets/courts/gym_backdrop.png      384 x 100  bleachers with a pixel crowd, wall banners, scoreboard; tiles in x
   assets/courts/blacktop_backdrop.png 384 x 100  chain-link fence, street, parked cars, buildings, trees; tiles in x
   assets/ball/ball.png                 64 x 16   4 spin frames of 16 x 16 (hframes = 4), ball 11 px across
+  assets/courts/<look>_floor.png       64 x 64   Phase 6 city looks (P6-A2), same conventions as above:
+  assets/courts/<look>_backdrop.png   384 x 100    barn (Hometown driveway, cornfield), rooftop (Chicago lakefront,
+                                                   skyline, flags), soul_gym (Memphis old-school gym, packed crowd),
+                                                   bayou (New Orleans, cypress, string lights), mountain (Denver,
+                                                   peaks), rain_park (Seattle, wet sheen, rain), beach (Los Angeles,
+                                                   sand, boardwalk), cage (New York, city blocks behind a tall fence)
+  docs/art/courts_preview_v2.png      the city looks for the owner: the game's own 1280 x 720 screenshot of each, its
+                                       whole backdrop and its floor tile 3 x 3 (needs --shots DIR, below)
   docs/art/courts_preview_v1.png      preview: both looks composed in the 3/4 view as the game frames it, plus the
                                        whole backdrops (not exported)
   docs/art/courts_tiles_4x4.png       each floor tile repeated 4 x 4 (seam check, not exported)
@@ -25,7 +33,12 @@ How the game should draw them (texel = one pixel of these images):
     +x on screen); play them faster for a fast ball, mirror (flip_h) for a ball moving left. The highlight stays at
     the upper left in every frame.
 
-Usage:  python3 tools/art/make_courts.py
+Usage:  python3 tools/art/make_courts.py                  all textures, the v1 preview and the tile test
+        python3 tools/art/make_courts.py --shots DIR      also courts_preview_v2.png from DIR/<look>.png, the game's
+                                                          screenshots: for each look,  -- --court <look> --shots
+                                                          (xvfb, see CLAUDE.md), then copy /tmp/hoops_1800.png
+        python3 tools/art/make_courts.py --print-looks    prints the city looks' court_looks.gd entries (colours for
+                                                          the lines, paint, hoop; CITY_LOOKS below) as GDScript
 Needs:  Pillow, numpy
 """
 import math
@@ -43,6 +56,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 COURTS = os.path.join(ROOT, "assets", "courts")
 BALLS = os.path.join(ROOT, "assets", "ball")
 PREVIEW = os.path.join(ROOT, "docs", "art", "courts_preview_v1.png")
+PREVIEW_V2 = os.path.join(ROOT, "docs", "art", "courts_preview_v2.png")
 TILES_TEST = os.path.join(ROOT, "docs", "art", "courts_tiles_4x4.png")
 
 TEXEL_PX = 2              # canvas px per texel (same as PLAYER_SCALE)
@@ -628,6 +642,1282 @@ def blacktop_backdrop(seed=8):
     return px.image()
 
 
+# ============================================================================= Phase 6 city looks (P6-A2)
+# Eight more looks, one per Road Trip city. Same conventions as gym/blacktop: 64 x 64 seamless floor tiles drawn as
+# seen in the 3/4 view, 384 x 100 backdrops that repeat in x, bottom row on the floor. At 1280 x 720 the game shows
+# about the bottom 46 rows of a backdrop (3.36 screen px per texel; the HUD bar covers the top of that), a 16:10
+# screen about 24 rows more, so each city's landmark shape sits in rows ~50-95. Everything is generic: no real
+# buildings, skylines, logos, brands or text.
+
+def wave(x, period, terms):
+    """A smooth curve that repeats every `period` texels: terms = [(harmonic k, amplitude, phase), ...]."""
+    return sum(a * math.sin(2 * math.pi * k * x / period + p) for k, a, p in terms)
+
+
+def tone4(v, cuts=(0.75, 0.45, 0.15)):
+    """0..1 light value -> palette index 0 (lit) .. 3 (dark)."""
+    return 0 if v > cuts[0] else (1 if v > cuts[1] else (2 if v > cuts[2] else 3))
+
+
+def sky(px, y0, y1, cols):
+    """Vertical bands of cols (top .. horizon), 2-row checker dither at each join."""
+    n = len(cols)
+    for y in range(y0, y1):
+        f = (y - y0) * n / max(1, (y1 - y0))
+        b = min(n - 1, int(f))
+        fr = f - b
+        for x in range(px.w):
+            c = cols[b]
+            if b > 0 and fr < 0.2 and (x + y) % 2 == 0:
+                c = cols[b - 1]
+            px.put(x, y, c)
+
+
+def clouds(px, specs, lit, shade):
+    for cx, cy, cw in specs:
+        for x in range(cx, cx + cw):
+            hh = 2 + int(2.5 * math.sin(math.pi * (x - cx) / cw))
+            for y in range(cy + 3 - hh, cy + 4):
+                px.put(x, y, lit if y < cy + 3 else shade)
+
+
+def haze_rows(img, color, t_top, t_bot):
+    """Blend each row toward a haze colour, t_top at row 0 .. t_bot at the bottom row (pushes the backdrop back)."""
+    a = np.asarray(img).astype(float)
+    h = a.shape[0]
+    hz = np.array(color, float)
+    for y in range(h):
+        t = t_top + (t_bot - t_top) * y / (h - 1)
+        a[y] = a[y] * (1 - t) + hz * t
+    return Image.fromarray(np.clip(a + 0.5, 0, 255).astype(np.uint8), "RGB")
+
+
+def from_img(img):
+    px = Pix(img.size[0], img.size[1], (0, 0, 0))
+    px.a = np.asarray(img).copy()
+    return px
+
+
+def crack(px, x, y, steps, rnd, c, edge=None):
+    """A wandering hairline crack (wraps on tiles), mostly along x; edge: a colour on the texel below (moss, sheen)."""
+    for _ in range(steps):
+        px.put(x, y, c)
+        if edge is not None and rnd.random() < 0.5:
+            px.put(x, y + 1, edge)
+        x += rnd.choice((1, 1, 1, 0, -1)) if rnd.random() < 0.3 else 1
+        y += rnd.choice((-1, 0, 0, 0, 1))
+
+
+def noise_tones(px, tones, seed_rnd, cells=4, fine_cells=16, cuts=(0.80, 0.48, 0.20), fine_w=0.25):
+    n = periodic_noise(px.w, px.h, cells, seed_rnd, octaves=3)
+    f = periodic_noise(px.w, px.h, fine_cells, seed_rnd, octaves=1)
+    v = (1 - fine_w) * n + fine_w * f
+    v = (v - v.min()) / (v.max() - v.min())
+    for y in range(px.h):
+        for x in range(px.w):
+            px.put(x, y, tones[tone4(v[y, x], cuts)])
+    return v
+
+
+# ----------------------------------------------------------------------------- city floor tiles
+
+DRIVE = pal("#cdc6b6", "#c1baa9", "#b4ad9c", "#a69f8e")     # barn: poured concrete driveway
+DRIVE_JOINT = pal("#8c8676")                # joints and cracks (blended)
+STRAW = pal("#f0d488", "#d4b060")
+
+
+def barn_floor(seed=21):
+    """Concrete driveway: soft blotches, a faint saw-cut joint at the tile edges (slabs about 11 x 22 ft), soft
+    hairline cracks and a few bits of straw blown off the barn. Nothing high-contrast, so the tile's repeat (every
+    215 screen px) doesn't show and the court lines stay the only lines."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, DRIVE[1], wrap_y=True)
+    noise_tones(px, DRIVE, rnd, cuts=(0.82, 0.50, 0.22))
+    for _ in range(70):                                         # sand grains in the broom finish
+        px.put(rnd.randrange(TILE), rnd.randrange(TILE), DRIVE[rnd.choice((0, 3))])
+    for x in range(TILE):                                       # saw-cut joints: faint, so they never read as lines
+        px.blend(x, 0, DRIVE_JOINT[0], 0.35)
+    for y in range(TILE):
+        px.blend(0, y, DRIVE_JOINT[0], 0.25)
+    for _ in range(2):                                          # hairline cracks (soft)
+        x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+        for _k in range(rnd.randint(8, 14)):
+            px.blend(x, y, DRIVE_JOINT[0], 0.45)
+            x += 1
+            y += rnd.choice((-1, 0, 0, 1))
+    for _ in range(5):                                          # straw bits: 2-3 texel diagonal strokes
+        x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+        dx = rnd.choice((1, -1))
+        for k in range(rnd.randint(2, 3)):
+            px.put(x + k * dx, y + (k if rnd.random() < 0.4 else 0), STRAW[k % 2])
+    return px.image()
+
+
+ROOFTILE = pal("#5f7a9a", "#5a7494", "#54708f", "#4e6a88")  # rooftop: modular sport tiles, slate blue
+ROOFTILE_SEAM = pal("#34465e", "#7e98b6")
+
+
+def rooftop_floor(seed=22):
+    """Interlocking sport tiles on a roof deck: 8 x 4 texel squares (about 1.3 ft), a soft seam right and below, and a slightly different tone per tile (sun-faded ones). The joints are soft so the grid stays behind the court lines."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, ROOFTILE[1], wrap_y=True)
+    for ty in range(TILE // 4):
+        for tx in range(TILE // 8):
+            k = rnd.choice((1, 1, 1, 2, 2, 0))
+            base = ROOFTILE[k]
+            for dy in range(4):
+                for dx in range(8):
+                    c = base
+                    if dx == 7 or dy == 3:
+                        c = mix(base, ROOFTILE_SEAM[0], 0.45)     # the joint between tiles, kept soft
+                    px.put(tx * 8 + dx, ty * 4 + dy, c)
+    for _ in range(6):                                          # a few scuffs
+        x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+        for k in range(rnd.randint(3, 5)):
+            px.blend(x + k, y, H("#2c3a4c"), 0.4)
+    return px.image()
+
+
+OLDWOOD = pal("#cf9156", "#c1834a", "#b27540", "#a26838")    # Memphis soul gym: older, darker, redder maple
+OLDWOOD_SEAM = H("#7c4626")
+OLDWOOD_GRAIN = H("#9a5e32")
+
+
+def soul_gym_floor(seed=23):
+    """Old-school gym boards: narrower (2 texels + seam), deeper amber varnish, dull worn patches and dark sneaker
+    scuffs from decades of games."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, OLDWOOD[1], wrap_y=True)
+    wear = periodic_noise(TILE, TILE, 2, rnd, octaves=2)
+    wear = (wear - wear.min()) / (wear.max() - wear.min())
+    for r in range(TILE // 3):
+        y = r * 3
+        while True:
+            n = rnd.choice((2, 3, 3))
+            js = sorted(rnd.randrange(TILE) for _ in range(n))
+            gaps = [(js[(k + 1) % n] - js[k]) % TILE for k in range(n)]
+            if min(gaps) >= 10:
+                break
+        for k in range(n):
+            x0, L = js[k], gaps[k]
+            base = OLDWOOD[rnd.choice((0, 1, 1, 2, 2, 3))]
+            for dx in range(L):
+                x = x0 + dx
+                for dy in range(2):
+                    c = base
+                    if dy == 0:
+                        c = mix(base, (255, 228, 180), 0.12)
+                    if wear[(y + dy) % TILE, x % TILE] > 0.72:
+                        c = mix(c, H("#d8b48a"), 0.30)         # worn-through varnish (dull, lighter)
+                    if dx == L - 1:
+                        c = mix(base, OLDWOOD_SEAM, 0.6)
+                    px.put(x, y + dy, c)
+            for _ in range(max(1, L // 9)):
+                gx = x0 + rnd.randint(1, max(1, L - 6))
+                for q in range(rnd.randint(2, 5)):
+                    if (gx + q - x0) % TILE < L - 1:
+                        px.put(gx + q, y + 1, mix(base, OLDWOOD_GRAIN, 0.5))
+        for x in range(TILE):
+            px.put(x, y + 2, OLDWOOD_SEAM)
+    for _ in range(7):                                          # black sneaker scuffs: short curved strokes
+        x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+        for k in range(rnd.randint(3, 6)):
+            px.blend(x + k, y + (1 if k in (0, 5) else 0), H("#3a2418"), 0.55)
+    return px.image()
+
+
+BAYOU_ASP = pal("#535b52", "#4a524a", "#424943", "#3a413b")  # New Orleans: humid, greenish asphalt
+MOSS = pal("#7a9a4a", "#55783a")
+
+
+def bayou_floor(seed=24):
+    """Bayou blacktop: greenish damp asphalt, darker wet blotches, cracks with moss growing in them."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, BAYOU_ASP[1], wrap_y=True)
+    noise_tones(px, BAYOU_ASP, rnd)
+    for _ in range(90):
+        x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+        px.put(x, y, rnd.choice((H("#727a70"), H("#646b62"), H("#2c322c"))))
+    for sx, sy, n in ((6, 20, 14), (38, 48, 10)):
+        crack(px, sx, sy, n, rnd, H("#30362f"), edge=MOSS[1])
+    for _ in range(6):                                          # moss tufts
+        x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+        px.put(x, y, MOSS[0])
+        px.put(x + 1, y, MOSS[1])
+    return px.image()
+
+
+PARKCOURT = pal("#6a9a64", "#5e8e58", "#54824f", "#4a7646")  # Denver: green acrylic park court, sun-bleached
+PARKCOURT_CRACK = pal("#3a5a38", "#8cb684")
+
+
+def mountain_floor(seed=25):
+    """Mountain park court: green acrylic coat with its sandy grit, faded where the sun hits, a few patched
+    hairline cracks (dark line, a lighter filler line beside it) and pine needles."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, PARKCOURT[1], wrap_y=True)
+    v = periodic_noise(TILE, TILE, 3, rnd, octaves=2)
+    v = (v - v.min()) / (v.max() - v.min())
+    for y in range(TILE):
+        for x in range(TILE):
+            k = 1 if v[y, x] > 0.55 else 2
+            if v[y, x] > 0.85:
+                k = 0
+            if rnd.random() < 0.22:                           # grit: a texel one tone off
+                k = max(0, min(3, k + rnd.choice((-1, 1))))
+            px.put(x, y, PARKCOURT[k])
+    crack(px, 10, 22, 12, rnd, PARKCOURT[3], edge=PARKCOURT[0])
+    for _ in range(3):                                          # pine needles
+        x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+        for k in range(3):
+            px.put(x + k, y - (k // 2), H("#7a5a30"))
+    return px.image()
+
+
+WETASP = pal("#474b54", "#40444d", "#393d46", "#32363e")     # Seattle: rain-dark asphalt
+SHEEN = pal("#8ea0b4", "#6c7c90", "#56647a")
+
+
+def rain_park_floor(seed=26):
+    """Wet park asphalt: darker than the blacktop, with the grey sky reflected as long horizontal sheen streaks
+    (the light runs along the court seen from the side) and a few bright wet stones."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, WETASP[1], wrap_y=True)
+    v = noise_tones(px, WETASP, rnd)
+    for _ in range(70):
+        px.put(rnd.randrange(TILE), rnd.randrange(TILE), rnd.choice((H("#5c606a"), H("#2a2d34"))))
+    for _ in range(18):                                         # sheen streaks, on the lighter (raised, wetter) areas
+        for _try in range(10):
+            x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+            if v[y, x] > 0.45:
+                break
+        L = rnd.randint(4, 12)
+        for k in range(L):
+            t = 1 - abs(k - L / 2) / (L / 2)                  # brightest in the middle of the streak
+            px.blend(x + k, y, SHEEN[0] if t > 0.6 else SHEEN[1], 0.25 + 0.45 * t)
+        if L > 8:
+            for k in range(2, L - 2):
+                px.blend(x + k, y + 1, SHEEN[2], 0.3)
+    for _ in range(12):                                         # glints
+        px.put(rnd.randrange(TILE), rnd.randrange(TILE), H("#c4d0dc"))
+    return px.image()
+
+
+SAND = pal("#efd8a6", "#e5cb94", "#d9bc84", "#ccad74")       # Los Angeles: beach sand
+SAND_BITS = pal("#fff4e0", "#f2b8a8", "#9a8a78", "#b49064")
+
+
+def beach_floor(seed=27):
+    """Packed beach sand: wind ripples (wavy lines along the court, foreshortened: lit crest, shaded trough),
+    footprint dimples, shell bits and pebbles. Seamless: the ripples follow curves that repeat every tile."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, SAND[1], wrap_y=True)
+    v = periodic_noise(TILE, TILE, 4, rnd, octaves=2)
+    v = (v - v.min()) / (v.max() - v.min())
+    for y in range(TILE):
+        for x in range(TILE):
+            ph = y + wave(x, TILE, ((1, 1.6, 0.4), (2, 0.8, 2.1))) + 2.0 * v[y, x]
+            r = ph % 5.33                                       # 12 ripples per tile
+            k = 1
+            if r < 1.0:
+                k = 0                                           # crest catches the light
+            elif r < 2.0:
+                k = 2                                           # lee side
+            if v[y, x] > 0.8 and k == 1:
+                k = 0
+            if rnd.random() < 0.08:
+                k = min(3, k + 1)                               # grain
+            px.put(x, y, SAND[k])
+    for _ in range(5):                                          # footprints: dimple pairs
+        x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+        for fx, fy in ((0, 0), (5, 2)):
+            for dx in range(3):
+                px.put(x + fx + dx, y + fy, SAND[3] if dx < 2 else SAND[2])
+                px.put(x + fx + dx, y + fy + 1, SAND[0] if dx > 0 else SAND[2])
+    for _ in range(10):
+        px.put(rnd.randrange(TILE), rnd.randrange(TILE), SAND_BITS[rnd.randrange(4)])
+    return px.image()
+
+
+CAGEASP = pal("#5c5854", "#534f4c", "#4a4644", "#413d3b")    # New York: warm grey city asphalt
+TAR = pal("#1e1c20", "#4c4a50")
+PATCH = pal("#45444a", "#3c3b41")
+
+
+def cage_floor(seed=28):
+    """City cage asphalt: worn, soft darker repair areas and thin tar-sealed crack lines ("tar snakes")."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, CAGEASP[1], wrap_y=True)
+    noise_tones(px, CAGEASP, rnd)
+    for _ in range(110):
+        x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+        px.put(x, y, rnd.choice((H("#7a7672"), H("#6a6662"), H("#2e2b2a"))))
+    patch = periodic_noise(TILE, TILE, 3, rnd, octaves=2)      # soft darker repair areas (no hard edges)
+    for y in range(TILE):
+        for x in range(TILE):
+            if patch[y, x] > 0.66:
+                px.blend(x, y, PATCH[1], 0.35)
+    for sx, sy, n in ((30, 10, 18), (6, 42, 14)):              # tar snakes: 1 texel, a gloss texel here and there
+        x, y = sx, sy
+        for _ in range(n):
+            px.blend(x, y, TAR[0], 0.7)
+            if rnd.random() < 0.3:
+                px.put(x, y - 1, TAR[1])
+            x += 1
+            y += rnd.choice((-1, 0, 0, 0, 1))
+    return px.image()
+
+
+# ----------------------------------------------------------------------------- city backdrops
+
+def bd_canvas(fill):
+    return Pix(BD_W, BD_H, fill)
+
+
+# --- Hometown: barn driveway with a cornfield
+BARN_RED = pal("#d0503c", "#b03c2e", "#8a2c24", "#5e1e1c")
+TRIM = pal("#f4efe4", "#d8d0c0", "#a8a090")
+ROOF_GREY = pal("#8a8a92", "#6e6e78", "#55555e", "#3e3e46")
+SILO = pal("#d8dce0", "#b4bac2", "#8c94a0", "#646c78")
+CORN = pal("#a8c860", "#78a440", "#4e7c30", "#2e5222")
+TASSEL = pal("#f0d878", "#c8a848")
+RAIL = pal("#c8a078", "#9c7650", "#74563a", "#4c3828")
+FIELD = H("#6a8a3c")
+
+
+def corn(px, x0, x1, top_y, bot_y, rnd):
+    """A cornfield edge from x0 to x1: stalk columns with leaf highlights, a ragged top with tassels."""
+    for x in range(x0, x1):
+        t = top_y + int(round(wave(x, BD_W, ((24, 1.2, 0.0), (37, 0.9, 1.3), (64, 0.7, 2.2))))) + rnd.choice((0, 0, 1))
+        dark_col = (x * 7 + 3) % 5 == 0                         # rows of stalks: dark gaps between them
+        for y in range(t, bot_y):
+            depth = (y - t) / max(1, bot_y - t)
+            k = 1 if depth < 0.25 else (2 if depth < 0.7 else 3)
+            if dark_col:
+                k = min(3, k + 1)
+            px.put(x, y, CORN[k])
+        px.put(x, t, TASSEL[0] if rnd.random() < 0.4 else CORN[0])
+        if rnd.random() < 0.3:
+            px.put(x, t - 1, TASSEL[1])
+    for _ in range((x1 - x0) * 2):                              # leaves: short lit diagonals
+        x = rnd.randrange(x0, x1)
+        y = rnd.randint(top_y + 1, bot_y - 4)
+        d = rnd.choice((1, -1))
+        for k in range(3):
+            if px.get(x + k * d, y + k // 2) != CORN[0]:
+                px.put(x + k * d, y + k // 2, CORN[0] if k == 0 else CORN[1])
+
+
+def barn_backdrop(seed=31):
+    rnd = random.Random(seed)
+    px = bd_canvas(H("#7fb4e0"))
+    sky(px, 0, 72, pal("#7fb4e0", "#9cc6e6", "#bcd8e6", "#dce6dc", "#f2e8c8"))
+    clouds(px, ((30, 30, 26), (170, 22, 34), (300, 34, 22)), H("#ffffff"), H("#e8e4d8"))
+    # far tree line and fields on the horizon
+    for x in range(BD_W):
+        t = 66 + int(round(wave(x, BD_W, ((6, 1.5, 0.3), (13, 1.0, 2.0), (29, 0.8, 0.7)))))
+        for y in range(t, 74):
+            px.put(x, y, H("#5a7a6a") if y < t + 2 else H("#4c6a5a"))
+    px.rect(0, 74, BD_W - 1, 76, H("#9ab05a"))
+    # cornfield all along, behind the barn
+    corn(px, 0, BD_W, 64, 90, rnd)
+    # barn: gable roof, red board walls, white trim, big X door, hay loft
+    bx0, bx1, base = 150, 226, 90
+    wall_top, peak = 66, 46
+    mid = (bx0 + bx1) // 2
+    for x in range(bx0, bx1 + 1):
+        for y in range(wall_top, base):
+            k = 1
+            if (x - bx0) % 4 == 3:
+                k = 2                                           # board gaps
+            if x < bx0 + 2:
+                k = 0
+            if x > bx1 - 3:
+                k = 2
+            px.put(x, y, BARN_RED[k])
+    for x in range(bx0 - 3, bx1 + 4):                           # roof: two slopes, lit left, shaded right
+        h = peak + abs(x - mid) * (wall_top - peak) / ((bx1 - bx0) / 2 + 3)
+        for y in range(int(h), wall_top + 2):
+            if y - int(h) < 2:
+                px.put(x, y, ROOF_GREY[0] if x < mid else ROOF_GREY[2])
+            else:
+                px.put(x, y, ROOF_GREY[1] if x < mid else ROOF_GREY[3])
+        if x % 4 == 0:
+            for y in range(int(h) + 2, wall_top + 2):
+                px.put(x, y, ROOF_GREY[2] if x < mid else ROOF_GREY[3])
+    # gable end shows a red triangle under the roof edge (front face), then trim
+    for y in range(peak + 6, wall_top + 2):
+        half = (y - peak - 6) * ((bx1 - bx0) / 2 - 4) / (wall_top + 2 - peak - 6)
+        for x in range(int(mid - half), int(mid + half) + 1):
+            px.put(x, y, BARN_RED[1] if x < mid + half - 2 else BARN_RED[2])
+    for y in range(peak + 5, wall_top + 3):
+        half = (y - peak - 5) * ((bx1 - bx0) / 2 - 3) / (wall_top + 3 - peak - 5)
+        px.put(int(mid - half), y, TRIM[0])
+        px.put(int(mid + half), y, TRIM[1])
+    # loft door
+    px.rect(mid - 5, wall_top - 6, mid + 5, wall_top + 3, TRIM[1])
+    px.rect(mid - 4, wall_top - 5, mid + 4, wall_top + 2, BARN_RED[3])
+    px.rect(mid - 3, wall_top - 4, mid + 3, wall_top + 2, H("#d8b860"))   # hay inside
+    px.rect(mid - 3, wall_top - 4, mid + 3, wall_top - 3, BARN_RED[3])
+    # big doors with the white X
+    dx0, dx1, dy0 = mid - 15, mid + 15, wall_top + 7
+    px.rect(dx0, dy0, dx1, base - 1, TRIM[1])
+    for half, (a, b) in enumerate(((dx0 + 1, mid - 1), (mid + 1, dx1 - 1))):
+        px.rect(a, dy0 + 1, b, base - 1, BARN_RED[1 + half])
+        w, h = b - a, base - 1 - (dy0 + 1)
+        for k in range(w + 1):
+            yy = dy0 + 1 + int(k * h / w)
+            px.put(a + k, yy, TRIM[0])
+            px.put(a + k, base - 1 - int(k * h / w), TRIM[0])
+    px.rect(mid, dy0, mid, base - 1, TRIM[2])
+    px.rect(bx0, base - 1, bx1, base, BARN_RED[3])
+    # silo with a dome
+    sx0, sx1, stop = 230, 246, 40
+    for x in range(sx0, sx1 + 1):
+        u = (x - sx0) / (sx1 - sx0)
+        k = 0 if u < 0.25 else (1 if u < 0.6 else (2 if u < 0.85 else 3))
+        for y in range(stop, base):
+            c = SILO[k]
+            if (y - stop) % 6 == 5:
+                c = SILO[min(3, k + 1)]                          # hoops
+            px.put(x, y, c)
+        dome = int(round(5 * math.sqrt(max(0.0, 1 - (2 * u - 1) ** 2))))
+        for y in range(stop - dome, stop):
+            px.put(x, y, ROOF_GREY[0] if u < 0.45 else ROOF_GREY[2])
+    # hay bales by the barn
+    for hx in (124, 136, 130):
+        hy = 82 if hx != 130 else 76
+        for y in range(hy, hy + 8):
+            for x in range(hx, hx + 11):
+                k = 0 if y == hy else (1 if x < hx + 8 else 2)
+                c = (STRAW[0], H("#e0bc6a"), STRAW[1])[k]
+                if (x + y) % 3 == 0:
+                    c = mix(c, H("#a8843a"), 0.3)
+                px.put(x, y, c)
+    # ground strip and a split-rail fence (posts every 48, wraps)
+    px.rect(0, 90, BD_W - 1, BD_H - 1, FIELD)
+    for x in range(BD_W):
+        if rnd.random() < 0.5:
+            px.put(x, 90, H("#8aaa4c"))
+        if rnd.random() < 0.3:
+            px.put(x, rnd.randint(92, 98), H("#56762e"))
+    for y0r in (86, 92):
+        for x in range(BD_W):
+            px.put(x, y0r, RAIL[0])
+            px.put(x, y0r + 1, RAIL[1])
+            px.put(x, y0r + 2, RAIL[3])
+    for x in range(0, BD_W, 48):
+        px.rect(x, 82, x + 2, 98, RAIL[1])
+        px.rect(x, 82, x, 98, RAIL[0])
+        px.rect(x + 2, 83, x + 2, 98, RAIL[2])
+        px.rect(x, 82, x + 2, 82, RAIL[0])
+    # a mailbox on a post (no name) at one post
+    px.rect(337, 80, 338, 90, RAIL[2])
+    px.rect(333, 76, 342, 80, H("#5a6a7a"))
+    px.rect(333, 76, 342, 76, H("#8a9aaa"))
+    px.rect(343, 74, 343, 78, H("#d8283a"))
+    img = haze_rows(px.image(), H("#c8d4d8"), 0.20, 0.04)
+    return img
+
+
+# --- Chicago: lakefront rooftop, skyline over the water, flags in the wind
+TOWER = [pal("#9aaac0", "#8494ac", "#6c7c96", "#56647c"), pal("#b0a89c", "#968e84", "#7a746c", "#625c56"),
+         pal("#8ea4b4", "#748c9e", "#5e7486", "#4a5e70"), pal("#a4a0b4", "#8a869c", "#706c84", "#58566a")]
+LAKE = pal("#7cc0e0", "#4f98c4", "#3a7aa8", "#2c5e88")
+PARAPET = pal("#c88a64", "#a86e50", "#86543e", "#5e3a2e")
+FLAG_COLS = [pal("#ffffff", "#e4eaf4", "#a9b6d4"), pal("#78b8ff", "#2f74e0", "#1f479e"),
+             pal("#ff7a6a", "#d8283a", "#951833"), pal("#d8a0ff", "#9a5ad0", "#683a9a")]
+
+
+def flag(px, x, y, w, h, cols, stripe, phase):
+    """A flag waving to the right (the wind): each column shifted by a sine; plain colour bands only."""
+    for dx in range(w):
+        off = int(round(1.5 * math.sin(phase + dx * 0.7) * dx / w))
+        shade = 0 if math.cos(phase + dx * 0.7) > 0.3 else (1 if math.cos(phase + dx * 0.7) > -0.4 else 2)
+        for dy in range(h):
+            c = cols[shade]
+            if stripe and h // 3 <= dy < 2 * h // 3:
+                c = FLAG_COLS[0][shade]
+            px.put(x + dx, y + dy + off, c)
+
+
+def rooftop_backdrop(seed=32):
+    rnd = random.Random(seed)
+    px = bd_canvas(H("#6aa8e0"))
+    sky(px, 0, 76, pal("#6aa8e0", "#86bae6", "#a4cceb", "#c4def0", "#dcecf2"))
+    clouds(px, ((60, 18, 30), (250, 26, 26)), H("#ffffff"), H("#dce8f0"))
+    # skyline across the water: generic towers, base on the far shore (row 74); tops mostly 30-64
+    x = 0
+    while x < BD_W:
+        w = rnd.choice((8, 10, 12, 14, 16, 18))
+        if BD_W - (x + w) < 8:
+            w = BD_W - x
+        top = rnd.choice((30, 36, 42, 48, 52, 56, 58, 60, 62, 64))
+        c = TOWER[rnd.randrange(len(TOWER))]
+        style = rnd.choice(("grid", "bands", "glass", "step"))
+        for xx in range(x, x + w):
+            for y in range(top, 74):
+                k = 1 if xx < x + w - 2 else 2
+                if xx == x:
+                    k = 0
+                if style == "grid" and (y - top) % 3 == 1 and (xx - x) % 3 == 1:
+                    k = 3 if rnd.random() > 0.15 else 0
+                elif style == "bands" and (y - top) % 4 == 2:
+                    k = 3
+                elif style == "glass" and (xx - x) % 2 == 1 and y > top + 1:
+                    k = min(3, k + 1)
+                px.put(xx, y, c[k])
+        if style == "step" and w >= 10:                         # a set-back crown
+            px.rect(x + 2, top - 5, x + w - 3, top - 1, c[1])
+            px.rect(x + 2, top - 5, x + 2, top - 1, c[0])
+            px.rect(x + w // 2 - 1, top - 9, x + w // 2, top - 6, c[2])
+        if top < 40 and rnd.random() < 0.6:                     # an antenna
+            px.rect(x + w // 2, top - 8, x + w // 2, top - 1, c[3])
+            px.put(x + w // 2, top - 8, H("#e04040"))
+        x += w
+    # the lake: far shore line, water bands with sparkles
+    px.rect(0, 74, BD_W - 1, 74, H("#56647c"))
+    for y in range(75, 90):
+        b = min(3, (y - 75) // 4)
+        for xx in range(BD_W):
+            c = LAKE[b]
+            if (xx * 13 + y * 7) % 23 == 0:
+                c = LAKE[max(0, b - 1)]
+            if (xx * 5 + y * 11) % 41 == 0:
+                c = H("#e8f6ff")                                 # sparkle
+            px.put(xx, y, c)
+    # a sailboat or two (plain white sails)
+    for sx in (110, 300):
+        for k in range(7):
+            px.rect(sx + 3 - k // 2, 77 - k, sx + 3, 77 - k, H("#ffffff") if k < 6 else H("#d0dce8"))
+        px.rect(sx - 1, 78, sx + 6, 79, H("#3a4a5a"))
+    img = haze_rows(px.image(), H("#c4d8e6"), 0.30, 0.10)
+    px = from_img(img)
+    # rooftop: water tank on a stand, a vent box, then the brick parapet with a rail
+    tx = 196
+    for leg in (tx + 1, tx + 14):
+        px.rect(leg, 74, leg + 1, 90, H("#3a3230"))
+    for k in range(16):
+        px.put(tx + k, 76 + k % 2 * 6 + 2, H("#3a3230"))
+    for xx in range(tx - 2, tx + 18):
+        u = (xx - tx + 2) / 19
+        kk = 0 if u < 0.2 else (1 if u < 0.6 else (2 if u < 0.85 else 3))
+        for y in range(58, 74):
+            c = RAIL[kk]
+            if (y - 58) % 5 == 4:
+                c = H("#3a3230")                                 # tank hoops
+            px.put(xx, y, c)
+    for xx in range(tx - 3, tx + 19):                           # conical lid
+        h = abs(xx - (tx + 8)) * 0.5
+        for y in range(int(53 + h), 58):
+            px.put(xx, y, ROOF_GREY[0] if xx < tx + 8 else ROOF_GREY[2])
+    px.rect(60, 80, 86, 90, H("#b8bec6"))                       # a vent / AC box
+    px.rect(60, 80, 86, 80, H("#dfe4ea"))
+    px.rect(86, 80, 86, 90, H("#8a929c"))
+    for xx in range(63, 84, 3):
+        px.rect(xx, 82, xx, 88, H("#8a929c"))
+    # flags on poles along the parapet (generic colour bands, no symbols), all blowing right
+    for k, fxp in enumerate((24, 140, 268, 340)):
+        px.rect(fxp, 56, fxp, 90, H("#d8dce4"))
+        px.rect(fxp + 1, 56, fxp + 1, 90, H("#8a929c"))
+        px.put(fxp, 55, H("#f0d878"))
+        flag(px, fxp + 2, 57, 16, 9, FLAG_COLS[1 + k % 3], stripe=k % 2 == 0, phase=k * 1.7)
+    # parapet: coping stone, brick face; railing above it
+    for y in range(90, BD_H):
+        for xx in range(BD_W):
+            k = 1 if (y - 90) % 3 != 2 else 2
+            if (xx + (4 if ((y - 90) // 3) % 2 else 0)) % 8 == 0:
+                k = 2
+            px.put(xx, y, PARAPET[k])
+    px.rect(0, 90, BD_W - 1, 90, CONCRETE[0])
+    px.rect(0, 91, BD_W - 1, 91, CONCRETE[2])
+    px.rect(0, BD_H - 1, BD_W - 1, BD_H - 1, PARAPET[3])
+    for xx in range(BD_W):                                      # rail
+        px.put(xx, 82, H("#2a2e36"))
+        px.put(xx, 81, H("#5a606c"))
+    for xx in range(0, BD_W, 16):
+        px.rect(xx, 81, xx, 89, H("#2a2e36"))
+    return px.image()
+
+
+# --- Memphis: old-school gym with a packed crowd
+BRICK_WALL = pal("#b0644a", "#94503c", "#7a4032", "#5c3026")
+OLD_PAD = pal("#3c8a5a", "#2a6a44", "#1c4e32", "#123822")   # deep green wall pads
+SIGN_COLS = [H("#fff4d0"), H("#ffe080"), H("#ffffff"), H("#ff9a7a"), H("#9ad0ff")]
+SOUL_TIERS = 6
+SOUL_TIER_H = 9
+
+
+def soul_gym_backdrop(seed=33):
+    rnd = random.Random(seed)
+    px = bd_canvas(BRICK_WALL[2])
+    # brick wall, warm
+    for y in range(0, 44):
+        for x in range(BD_W):
+            k = 1 if y > 14 else 2
+            if y % 4 == 3:
+                k = 3
+            elif (x + (4 if (y // 4) % 2 else 0)) % 8 == 0:
+                k = min(3, k + 1)
+            elif (x * 3 + y * 5) % 17 == 0:
+                k = 0
+            px.put(x, y, BRICK_WALL[k])
+    px.rect(0, 0, BD_W - 1, 3, H("#2e1c18"))
+    for x in range(10, BD_W, 48):                               # caged lamps hanging low
+        px.rect(x + 2, 4, x + 2, 7, H("#2e1c18"))
+        px.rect(x, 8, x + 4, 10, H("#fff0c0"))
+        px.put(x, 8, H("#2e1c18"))
+        px.put(x + 4, 8, H("#2e1c18"))
+        px.rect(x + 1, 11, x + 3, 11, mix(BRICK_WALL[1], H("#fff0c0"), 0.5))
+    # a painted stripe along the wall and a retro bulb scoreboard
+    px.rect(0, 30, BD_W - 1, 33, H("#d8a040"))
+    px.rect(0, 34, BD_W - 1, 34, H("#8a5a20"))
+    sx0, sx1, sy0, sy1 = 160, 224, 13, 29
+    px.rect(sx0, sy0, sx1, sy1, H("#1a1410"))
+    px.rect(sx0, sy0, sx1, sy0, H("#6a5a4a"))
+    px.rect(sx1, sy0, sx1, sy1, H("#0c0806"))
+    number(px, "18", sx0 + 4, sy0 + 4, H("#ffd060"))
+    number(px, "17", sx1 - 12, sy0 + 4, H("#ffd060"))
+    px.rect(sx0 + 24, sy0 + 3, sx1 - 24, sy0 + 12, H("#2a1a10"))
+    number(px, "18", sx0 + 28, sy0 + 5, H("#ff5a3a"))           # the 18 s shot clock (the Memphis twist)
+    # pennants with stars only
+    for k, bx in enumerate((24, 96, 272, 344)):
+        c = BANNER_COLS[k % len(BANNER_COLS)]
+        for d in range(14):
+            for x in range(bx + d // 2, bx + 16 - d // 2):
+                px.put(x, 14 + d, c[1] if x < bx + 15 - d // 2 else c[2])
+        for dy, row in enumerate(("..X..", "XXXXX", ".XXX.", ".X.X.")):
+            for dx, ch in enumerate(row):
+                if ch == "X":
+                    px.put(bx + 6 + dx, 16 + dy, H("#fff4d0"))
+    # bleachers packed to the rafters: 6 tiers, everyone in, many standing, hands up, blank signs
+    top0 = BD_H - 8 - SOUL_TIERS * SOUL_TIER_H
+    for t in range(SOUL_TIERS):
+        y0 = top0 + t * SOUL_TIER_H
+        px.rect(0, y0, BD_W - 1, y0 + SOUL_TIER_H - 4, RISER[2 if t < SOUL_TIERS - 1 else 1])
+        px.rect(0, y0, BD_W - 1, y0, RISER[3])
+        px.rect(0, y0 + SOUL_TIER_H - 3, BD_W - 1, y0 + SOUL_TIER_H - 3, BLEACH[1])
+        px.rect(0, y0 + SOUL_TIER_H - 2, BD_W - 1, y0 + SOUL_TIER_H - 2, BLEACH[2])
+        px.rect(0, y0 + SOUL_TIER_H - 1, BD_W - 1, y0 + SOUL_TIER_H - 1, BLEACH[3])
+        x = rnd.randint(0, 3)
+        while x < BD_W - 2:
+            standing = rnd.random() < 0.35
+            person(px, x, y0 + SOUL_TIER_H - 10 - (2 if standing else 0), rnd, t, standing,
+                   arms_up=rnd.random() < 0.30)
+            if rnd.random() < 0.035 and x < BD_W - 14:            # a blank hand-made sign held up
+                sc = rnd.choice(SIGN_COLS)
+                sy = y0 + SOUL_TIER_H - 18
+                px.rect(x - 1, sy, x + 8, sy + 5, sc)
+                px.rect(x - 1, sy + 5, x + 8, sy + 5, mix(sc, H("#000000"), 0.3))
+                px.rect(x + 1, sy + 2, x + 6, sy + 2, rnd.choice((H("#d8283a"), H("#1f479e"), H("#2e7a3a"))))
+            x += rnd.choice((4, 5, 5, 5, 6))
+    # fans standing along the floor in front of the pads
+    for x in range(2, BD_W - 4, 7):
+        if rnd.random() < 0.55:
+            person(px, x + rnd.randint(0, 2), BD_H - 16, rnd, 5, True, arms_up=rnd.random() < 0.4)
+    # front: old green wall pads
+    fy = BD_H - 6
+    px.rect(0, fy, BD_W - 1, BD_H - 1, OLD_PAD[1])
+    px.rect(0, fy, BD_W - 1, fy, OLD_PAD[0])
+    px.rect(0, BD_H - 1, BD_W - 1, BD_H - 1, OLD_PAD[3])
+    for x in range(0, BD_W, 32):
+        px.rect(x, fy + 1, x, BD_H - 2, OLD_PAD[2])
+    img = haze_rows(px.image(), H("#3a2a26"), 0.30, 0.10)
+    return img
+
+
+# --- New Orleans: bayou blacktop, cypress trees, string lights
+DUSK = pal("#4a4a86", "#6c5a96", "#9a6a9a", "#d68a7a", "#f2b47a", "#f8d498")
+WATER = pal("#6a7a8e", "#4e6070", "#3a4a5a", "#2a3644")
+CYPRESS = pal("#6a8a4a", "#4c6c3a", "#36522e", "#243a22")
+CYP_BARK = pal("#8a7058", "#6a5440", "#4e3c2e", "#33271e")
+SPANISH_MOSS = pal("#b4bea0", "#8e9a7c", "#6c7860")
+BULB = pal("#fff4c0", "#ffd060", "#c08030")
+
+
+def cypress(px, cx, base, top, rnd):
+    """A bald cypress: flared trunk standing in the water, flat layered crown, Spanish moss hanging down."""
+    for y in range(top + 8, base):
+        flare = 0 if y < base - 8 else (base - 8 - y) * -0.6
+        w = 2 + int(flare)
+        for x in range(cx - w, cx + 3 + w):
+            k = 1 if x < cx + 1 else 2
+            if x == cx - w:
+                k = 0
+            px.put(x, y, CYP_BARK[k])
+    for kx in (-9, -6, 7, 11):                                  # knees poking out of the water
+        px.rect(cx + kx, base - 2, cx + kx + 1, base, CYP_BARK[1])
+        px.put(cx + kx, base - 3, CYP_BARK[0])
+    layers = [(top, 14), (top + 5, 18), (top + 10, 13)]
+    for ly, lw in layers:
+        for x in range(cx - lw, cx + lw + 3):
+            th = 3 + int(1.5 * math.sin(x * 0.9 + ly))
+            for y in range(ly, ly + th):
+                k = 0 if y == ly and x < cx else (1 if x < cx + 2 else 2)
+                if rnd.random() < 0.15:
+                    k = min(3, k + 1)
+                px.put(x, y, CYPRESS[k])
+            if rnd.random() < 0.28:                              # moss strands
+                L = rnd.randint(3, 9)
+                for y in range(ly + th, ly + th + L):
+                    px.put(x, y, SPANISH_MOSS[0 if y < ly + th + 2 else (1 if y < ly + th + L - 2 else 2)])
+
+
+def bayou_backdrop(seed=34):
+    rnd = random.Random(seed)
+    px = bd_canvas(DUSK[0])
+    sky(px, 0, 72, DUSK)
+    clouds(px, ((40, 30, 30), (200, 22, 40), (320, 36, 24)), H("#f8c0a0"), H("#c08090"))
+    # far tree line in silhouette
+    for x in range(BD_W):
+        t = 64 + int(round(wave(x, BD_W, ((5, 2.0, 0.5), (11, 1.2, 1.9), (31, 0.8, 0.2)))))
+        for y in range(t, 74):
+            px.put(x, y, H("#4a3a5a") if y > t else H("#5c4a6a"))
+    # water with the sky reflected in streaks
+    for y in range(74, 90):
+        b = min(3, (y - 74) // 4)
+        for x in range(BD_W):
+            px.put(x, y, WATER[b])
+    for _ in range(70):                                         # the dusk sky reflected in short ripples
+        x, y = rnd.randrange(BD_W), rnd.randint(74, 88)
+        L = rnd.randint(3, 9) if y < 81 else rnd.randint(2, 5)
+        c = H("#f2b47a") if y < 79 else H("#d68a7a")
+        for k in range(L):
+            px.blend(x + k, y, c, 0.7 if 0 < k < L - 1 else 0.4)
+    for lx, ly in ((80, 83), (96, 86), (250, 82), (340, 85)):   # lily pads
+        px.rect(lx, ly, lx + 4, ly, H("#5a8a4a"))
+        px.rect(lx + 1, ly - 1, lx + 3, ly - 1, H("#7aaa5a"))
+        px.put(lx + 2, ly - 2, H("#f0a0c0"))
+    # cypress trees standing in the water
+    for cx, top in ((40, 54), (176, 50), (300, 56)):
+        cypress(px, cx, 89, top, rnd)
+    img = haze_rows(px.image(), H("#8a6a8a"), 0.22, 0.06)
+    px = from_img(img)
+    # bank: grass and reeds at the court edge
+    px.rect(0, 90, BD_W - 1, BD_H - 1, H("#4a6a3a"))
+    for x in range(BD_W):
+        px.put(x, 90, H("#6a8a4a") if x % 3 else H("#3a5a2e"))
+        if rnd.random() < 0.35:                                 # reeds
+            h = rnd.randint(2, 6)
+            for y in range(90 - h, 91):
+                px.put(x, y, H("#7a9a4a") if y > 90 - h else H("#a8c070"))
+        if rnd.random() < 0.05:                                 # cattails
+            px.rect(x, 83, x, 90, H("#6a8a3a"))
+            px.rect(x, 84, x, 86, H("#6a3e22"))
+    # string lights: wooden poles every 96, sagging wires with warm bulbs (wraps)
+    for p in range(0, BD_W, 96):
+        px.rect(p, 60, p + 1, BD_H - 3, CYP_BARK[1])
+        px.rect(p, 60, p, BD_H - 3, CYP_BARK[0])
+        px.rect(p - 1, 60, p + 2, 60, CYP_BARK[2])
+    for p in range(0, BD_W, 96):
+        for dx in range(96):
+            u = dx / 96
+            y = 62 + int(round(9 * 4 * u * (1 - u)))
+            px.put(p + dx, y, H("#2a2228"))
+            if dx % 8 == 4:
+                c = BULB[(dx // 8) % 2]
+                px.put(p + dx, y + 1, c)
+                px.put(p + dx, y + 2, BULB[2])
+                for gx, gy in ((-1, 1), (1, 1), (0, 3)):        # glow
+                    px.blend(p + dx + gx, y + gy, BULB[0], 0.45)
+    return px.image()
+
+
+# --- Denver: mountain park with snowy peaks
+MSKY = pal("#3e7ad0", "#5a92da", "#7aaae2", "#9cc2ea", "#bcd6ee")
+PEAK_FAR = pal("#c4cee0", "#9aa8c4", "#7a88a8", "#5e6a8a")
+PEAK_NEAR = pal("#8a9aa4", "#6a7a86", "#52606c", "#3e4a56")
+SNOW = pal("#ffffff", "#e4ecf6", "#b8c6dc")
+PINE = pal("#4e8a5a", "#326a44", "#225034", "#163826")
+MEADOW = pal("#9ac05a", "#7aa44a", "#5e883c", "#466a2e")
+
+
+def peaks(px, base, specs, cols, rnd, snow=True):
+    """A mountain range from (centre x, summit row, slope, snow depth) peaks: each column takes the highest peak
+    over it (wrapping in x), lit on the left face, shaded on the right, a jagged snow cap and gullies."""
+    jit = [wave(x, BD_W, ((19, 0.8, 0.3), (43, 0.6, 1.9), (71, 0.5, 0.7))) for x in range(BD_W)]
+    for x in range(BD_W):
+        best = None
+        for cx, top, sl, sd in specs:
+            dx = (x - cx + BD_W // 2) % BD_W - BD_W // 2
+            y = top + abs(dx) * sl + jit[x] * min(1.0, abs(dx) / 6)
+            if best is None or y < best[0]:
+                best = (y, dx, top, sd, cx)
+        y0, dx, top, sd, cx = best
+        for y in range(int(round(y0)), base + 1):
+            lit = dx < 0
+            depth = y - y0
+            k = (0 if depth < 2 else 1) if lit else (2 if depth < 8 else 3)
+            if (x * 3 + int(y * 0.5) + cx) % 13 == 0 and depth > 2:
+                k = min(3, k + 1)                                # gullies
+            c = cols[k]
+            snow_line = top + sd + 2.5 * math.sin(x * 0.9 + cx) + (abs(dx) * 0.15)
+            if snow and y < snow_line:
+                c = SNOW[0] if lit else SNOW[2]
+                if depth > 1 and (x + y) % 5 == 0:
+                    c = SNOW[1]
+            px.put(x, y, c)
+
+
+def pine(px, cx, base, h, rnd):
+    for y in range(base - h, base):
+        w = int((y - (base - h)) * 0.42) + 1
+        for x in range(cx - w, cx + w + 1):
+            k = 0 if x < cx - w // 2 else (1 if x <= cx else 2)
+            if (y + x) % 3 == 0 and k < 3:
+                k += 1
+            px.put(x, y, PINE[k])
+    px.rect(cx, base, cx, base + 1, CYP_BARK[2])
+
+
+def mountain_backdrop(seed=35):
+    rnd = random.Random(seed)
+    px = bd_canvas(MSKY[0])
+    sky(px, 0, 76, MSKY)
+    clouds(px, ((90, 14, 28), (280, 20, 20)), H("#ffffff"), H("#e0ecf6"))
+    # far range: big snowy peaks (summits around rows 48-58, so they show under the HUD at 1280 x 720), then a
+    # nearer, darker ridge and the pines
+    peaks(px, 84, ((30, 50, 0.85, 9), (96, 58, 0.9, 6), (150, 48, 0.75, 11), (226, 54, 0.9, 8),
+                   (290, 49, 0.8, 10), (350, 57, 0.95, 6)), PEAK_FAR, rnd)
+    img = haze_rows(px.image(), H("#b8cce4"), 0.12, 0.12)
+    px = from_img(img)
+    peaks(px, 86, ((0, 66, 0.55, 3), (64, 70, 0.6, 0), (124, 64, 0.5, 3), (196, 69, 0.6, 0), (258, 66, 0.55, 2),
+                   (318, 70, 0.6, 0)), PEAK_NEAR, rnd)
+    x = 0
+    while x < BD_W:
+        pine(px, x, 88 - rnd.randint(0, 3), rnd.randint(6, 12), rnd)
+        x += rnd.randint(3, 7)
+    px.rect(0, 86, BD_W - 1, 87, PINE[3])
+    # meadow, wildflowers, a log rail fence
+    for y in range(86, BD_H):
+        for x in range(BD_W):
+            k = 1 if y < 92 else 2
+            if rnd.random() < 0.15:
+                k = rnd.choice((0, 2))
+            px.put(x, y, MEADOW[k])
+    for _ in range(60):
+        px.put(rnd.randrange(BD_W), rnd.randint(87, 97), rnd.choice((H("#f8e070"), H("#ffffff"), H("#d890e0"))))
+    for x in range(BD_W):
+        px.put(x, 90, RAIL[0])
+        px.put(x, 91, RAIL[1])
+        px.put(x, 92, RAIL[3])
+    for x in range(0, BD_W, 32):
+        px.rect(x, 86, x + 1, 98, RAIL[1])
+        px.rect(x, 86, x, 98, RAIL[0])
+        px.put(x, 86, RAIL[0])
+    # a picnic table
+    tx = 210
+    px.rect(tx, 88, tx + 16, 89, RAIL[0])
+    px.rect(tx, 90, tx + 16, 90, RAIL[2])
+    for lx in (tx + 2, tx + 13):
+        px.rect(lx, 91, lx + 1, 96, RAIL[2])
+    px.rect(tx - 2, 93, tx + 18, 93, RAIL[1])
+    px.rect(0, BD_H - 1, BD_W - 1, BD_H - 1, MEADOW[3])
+    return px.image()
+
+
+# --- Seattle: rainy park
+RSKY = pal("#7c8694", "#8a94a2", "#98a2ae", "#a8b0ba")
+FOGCITY = pal("#a4acb8", "#949eac", "#86909e")
+FIR = pal("#4a6a5a", "#36564a", "#28443a", "#1c322c")
+WETGRASS = pal("#5c7a4c", "#4a6840", "#3a5434", "#2c4228")
+LAMP_GLOW = H("#ffe8a0")
+
+
+def rain_park_backdrop(seed=36):
+    rnd = random.Random(seed)
+    px = bd_canvas(RSKY[0])
+    sky(px, 0, 70, RSKY)
+    for cy in (8, 20, 32):                                      # low cloud banks
+        for x in range(BD_W):
+            h = 3 + int(round(wave(x, BD_W, ((3, 1.5, cy * 0.1), (7, 1.0, cy * 0.3)))))
+            for y in range(cy, cy + h):
+                px.blend(x, y, H("#6c7480"), 0.5)
+    # a far, fog-faded city edge (generic blocks)
+    x = 0
+    while x < BD_W:
+        w = rnd.choice((10, 14, 18, 22))
+        if BD_W - (x + w) < 10:
+            w = BD_W - x
+        top = rnd.randint(44, 62)
+        for xx in range(x, x + w):
+            for y in range(top, 72):
+                c = FOGCITY[0 if xx == x else (2 if xx >= x + w - 2 else 1)]
+                if (y - top) % 4 == 2 and (xx - x) % 3 == 1 and rnd.random() < 0.3:
+                    c = H("#d8d0b0")                             # a lit window in the gloom
+                px.put(xx, y, c)
+        x += w
+    img = haze_rows(px.image(), H("#a0a8b4"), 0.25, 0.25)
+    px = from_img(img)
+    # firs and round trees of the park
+    x = 2
+    while x < BD_W:
+        if rnd.random() < 0.6:
+            h = rnd.randint(18, 30)
+            base = 86
+            for y in range(base - h, base):
+                w = int((y - (base - h)) * 0.32) + 1
+                if (y - (base - h)) % 5 == 4:
+                    w -= 1                                      # layered boughs
+                for xx in range(x - w, x + w + 1):
+                    k = 0 if xx < x - w // 2 else (1 if xx <= x else 2)
+                    if (xx * 3 + y) % 4 == 0:
+                        k = min(3, k + 1)
+                    px.put(xx, y, FIR[k])
+            x += rnd.randint(9, 14)
+        else:
+            x += rnd.randint(6, 10)
+    # wet grass, a gravel path with puddles, lamps, a bench
+    for y in range(80, BD_H):
+        for xx in range(BD_W):
+            k = 1 if y < 88 else 2
+            if (xx * 7 + y * 3) % 11 == 0:
+                k = 0
+            px.put(xx, y, WETGRASS[k])
+    px.rect(0, 88, BD_W - 1, 92, H("#7a7a7e"))
+    px.rect(0, 88, BD_W - 1, 88, H("#9a9aa0"))
+    for pxp, pw in ((30, 14), (150, 22), (270, 10), (330, 16)):  # puddles reflecting the sky
+        px.rect(pxp, 90, pxp + pw, 91, H("#a8b4c4"))
+        px.rect(pxp + 2, 90, pxp + pw - 3, 90, H("#c8d4e0"))
+    for lx in (64, 192, 320):
+        px.rect(lx, 58, lx + 1, 89, H("#2a2e36"))
+        px.rect(lx - 2, 56, lx + 3, 57, H("#2a2e36"))
+        px.rect(lx - 1, 58, lx + 2, 59, LAMP_GLOW)
+        for gy in range(60, 66):                                # light cone in the rain
+            for gx in range(-(gy - 58) // 2, (gy - 58) // 2 + 2):
+                px.blend(lx + gx, gy, LAMP_GLOW, 0.18)
+    bx = 222
+    px.rect(bx, 82, bx + 20, 83, RAIL[1])
+    px.rect(bx, 85, bx + 20, 86, RAIL[0])
+    px.rect(bx + 2, 87, bx + 3, 89, H("#2a2e36"))
+    px.rect(bx + 17, 87, bx + 18, 89, H("#2a2e36"))
+    # low black iron fence at the court edge
+    px.rect(0, 92, BD_W - 1, BD_H - 1, WETGRASS[3])
+    for xx in range(BD_W):
+        px.put(xx, 93, H("#22262e"))
+        if xx % 4 == 0:
+            px.rect(xx, 93, xx, 98, H("#22262e"))
+            px.put(xx, 92, H("#4a5060"))
+    # rain: thin diagonal streaks over everything (blended, so the scene reads through)
+    for _ in range(420):
+        x, y = rnd.randrange(BD_W), rnd.randrange(0, BD_H - 3)
+        L = rnd.randint(3, 5)
+        for k in range(L):
+            px.blend(x - k // 2, y + k, H("#dce4ee"), 0.35)
+    return px.image()
+
+
+# --- Los Angeles: beach court, ocean, boardwalk
+BSKY = pal("#5ab0f0", "#7ac0f2", "#9ad0f4", "#bee0f6")
+SEA = pal("#3a8ed0", "#2a76bc", "#3aa6c8", "#5cc4d0")
+FOAM = pal("#ffffff", "#d8f0f4")
+DRYSAND = pal("#f2ddb0", "#e8d0a0", "#dcc08c")
+BOARD = pal("#c89a6a", "#a8784e", "#86603e", "#5e422c")
+PALM = pal("#7ac04a", "#4e9a3a", "#36742e", "#245020")
+
+
+def palm(px, bx, base, h, lean, rnd):
+    pts = []
+    for k in range(h):
+        u = k / h
+        x = bx + lean * u * u * h * 0.35
+        y = base - k
+        pts.append((x, y))
+        for dx in range(3):
+            c = (TRUNK[0], TRUNK[1], TRUNK[2])[dx]
+            if k % 3 == 0:
+                c = TRUNK[2]
+            px.put(int(x) + dx, y, c)
+    tx, ty = pts[-1]
+    tx, ty = int(tx) + 1, ty
+    for ang in (-160, -130, -100, -60, -25, 5, 30):           # fronds: arcs drooping out of the crown
+        a = math.radians(ang)
+        L = rnd.randint(10, 14)
+        for s in range(L):
+            fx = tx + math.cos(a) * s
+            fy = ty + math.sin(a) * s * 0.6 + (s * s) * 0.05
+            c = PALM[0] if s < L * 0.4 else (PALM[1] if s < L * 0.8 else PALM[2])
+            px.put(int(fx), int(fy), c)
+            px.put(int(fx), int(fy) + 1, PALM[3])
+    px.rect(tx - 1, ty, tx + 1, ty + 1, H("#6a4a2a"))           # coconuts
+
+
+def beach_backdrop(seed=37):
+    rnd = random.Random(seed)
+    px = bd_canvas(BSKY[0])
+    sky(px, 0, 60, BSKY)
+    clouds(px, ((20, 24, 24), (140, 16, 34), (280, 28, 26)), H("#ffffff"), H("#e4f0f8"))
+    # ocean: horizon at row 60, deep blue to turquoise, foam lines of the breaking waves
+    for y in range(60, 78):
+        b = min(3, (y - 60) // 5)
+        for x in range(BD_W):
+            c = SEA[b]
+            if (x * 11 + y * 5) % 37 == 0:
+                c = H("#9ad8ec")
+            px.put(x, y, c)
+    px.rect(0, 60, BD_W - 1, 60, H("#2a6ab0"))
+    for wy, amp, ph in ((68, 1.0, 0.0), (73, 1.2, 1.7), (77, 1.0, 3.1)):
+        for x in range(BD_W):
+            y = wy + int(round(amp * math.sin(2 * math.pi * 6 * x / BD_W + ph)))
+            px.put(x, y, FOAM[0])
+            if (x + wy) % 5 < 3:
+                px.put(x, y + 1, FOAM[1])
+    # wet and dry sand
+    px.rect(0, 79, BD_W - 1, 80, H("#d4b88c"))
+    for y in range(81, 88):
+        for x in range(BD_W):
+            px.put(x, y, DRYSAND[0 if (x * 3 + y * 7) % 9 else 2])
+    # lifeguard tower (plain, no lettering), umbrellas, palms
+    gx = 150
+    for lx in (gx + 1, gx + 16):
+        px.rect(lx, 70, lx + 1, 86, H("#e8e4dc"))
+    px.rect(gx, 62, gx + 18, 70, H("#f0c040"))
+    px.rect(gx, 62, gx + 18, 62, H("#fff0a0"))
+    px.rect(gx + 4, 64, gx + 14, 67, H("#5a8ab0"))
+    px.rect(gx - 2, 58, gx + 20, 61, H("#e05040"))
+    px.rect(gx - 2, 58, gx + 20, 58, H("#ff8a70"))
+    px.rect(gx + 17, 71, gx + 22, 71, H("#e8e4dc"))
+    for k in range(6):
+        px.put(gx + 18 + k, 72 + k * 2, H("#c8c4bc"))
+    for ux, cols in ((214, (H("#ff6a5a"), H("#ffffff"))), (346, (H("#3a8ed0"), H("#ffe070"))), (90, (H("#4fae4a"), H("#ffffff")))):
+        px.rect(ux + 7, 76, ux + 7, 86, H("#e8e4dc"))
+        for dy in range(5):
+            half = 2 + int(math.sqrt(dy + 1) * 4)
+            for dx in range(-half, half + 1):
+                c = cols[((dx + 16) // 3) % 2]
+                if dy == 4:
+                    c = mix(c, H("#000000"), 0.25)
+                px.put(ux + 7 + dx, 72 + dy, c)
+        px.rect(ux + 1, 86, ux + 13, 86, H("#c8a878"))          # its shadow
+    for pxp, h, lean in ((40, 28, 1), (262, 31, -1), (300, 25, 1)):
+        palm(px, pxp, 86, h, lean, rnd)
+    # boardwalk: railing in front, deck edge at the court
+    px.rect(0, 88, BD_W - 1, BD_H - 1, BOARD[1])
+    for x in range(0, BD_W):
+        px.put(x, 88, BOARD[0])
+        if x % 12 == 0:
+            px.rect(x, 89, x, BD_H - 2, BOARD[2])
+    px.rect(0, BD_H - 3, BD_W - 1, BD_H - 3, BOARD[2])
+    px.rect(0, BD_H - 1, BD_W - 1, BD_H - 1, BOARD[3])
+    for x in range(BD_W):                                       # rail
+        px.put(x, 82, BOARD[0])
+        px.put(x, 83, BOARD[2])
+    for x in range(0, BD_W, 24):
+        px.rect(x, 82, x + 1, 88, BOARD[1])
+        px.put(x, 82, BOARD[0])
+    return haze_rows(px.image(), H("#d8ecf6"), 0.18, 0.02)
+
+
+# --- New York: fenced cage with city blocks
+CSKY = pal("#8aa4c8", "#a6b6cc", "#c4c4c8", "#e0c8b0")
+TENEMENT = [pal("#b0604a", "#8e4a3a", "#6e382e", "#4e2822"), pal("#9a7a62", "#7c604c", "#5e4838", "#40322a"),
+            pal("#8c8a94", "#6e6c78", "#56545e", "#3e3c46"), pal("#a85a5a", "#864446", "#663236", "#46222a")]
+SHUTTER = [pal("#c0c4ca", "#9aa0a8", "#7a808a"), pal("#3a8a7a", "#2a6a5e", "#1e4e46"),
+           pal("#d0a040", "#a87c28", "#7c5a1c")]
+MURAL = [H("#ff5a7a"), H("#ffd040"), H("#40c0e0"), H("#7ae060"), H("#b070ff"), H("#ff8a30")]
+CAGE_MESH = pal("#c8d0d8", "#8a949e", "#5a646e", "#3a424c")
+
+
+def cage_backdrop(seed=38):
+    rnd = random.Random(seed)
+    px = bd_canvas(CSKY[0])
+    sky(px, 0, 40, CSKY)
+    # tall tenement blocks right behind the street (tops near rows 6-24), water towers on the roofs
+    x = 0
+    k = 0
+    while x < BD_W:
+        w = rnd.choice((34, 40, 46, 52))
+        if BD_W - (x + w) < 34:
+            w = BD_W - x
+        top = rnd.randint(8, 24)
+        c = TENEMENT[k % len(TENEMENT)]
+        for xx in range(x, x + w):
+            for y in range(top, 76):
+                kk = 1
+                if (y - top) % 3 == 2:
+                    kk = 2
+                if xx == x:
+                    kk = 0
+                if xx >= x + w - 2:
+                    kk = 2
+                px.put(xx, y, c[kk])
+        px.rect(x - 1, top, x + w, top + 1, c[0])
+        px.rect(x - 1, top + 2, x + w, top + 2, c[3])
+        wy = top + 5
+        while wy < 62:
+            wx = x + 4
+            while wx + 4 < x + w - 2:
+                lit = rnd.random() < 0.25
+                px.rect(wx, wy, wx + 3, wy + 4, H("#ffe7a0") if lit else GLASS[2])
+                px.put(wx, wy, H("#fff4d0") if lit else GLASS[0])
+                px.rect(wx - 1, wy + 5, wx + 4, wy + 5, CONCRETE[1])
+                wx += 8
+            wy += 8
+        if k % 2 == 0:                                          # fire escape zig-zag
+            ex = x + w // 2 - 7
+            for y in range(top + 12, 62, 8):
+                px.rect(ex, y, ex + 14, y, H("#22222a"))
+                for xx in range(ex, ex + 15, 2):
+                    px.put(xx, y - 1, H("#32323c"))
+                for d in range(7):
+                    px.put(ex + 2 + d * 2 if (y // 8) % 2 else ex + 12 - d * 2, y + 1 + d, H("#22222a"))
+        if rnd.random() < 0.7:                                  # wooden water tower on the roof
+            tx = x + rnd.randint(6, max(7, w - 16))
+            for xx in range(tx, tx + 10):
+                kk = 0 if xx < tx + 3 else (1 if xx < tx + 7 else 2)
+                px.rect(xx, top - 9, xx, top - 3, RAIL[kk])
+            for xx in range(tx - 1, tx + 11):
+                hh = abs(xx - (tx + 4.5)) * 0.6
+                px.rect(xx, int(top - 13 + hh), xx, top - 10, ROOF_GREY[1])
+            px.rect(tx + 1, top - 2, tx + 1, top - 1, H("#22222a"))
+            px.rect(tx + 8, top - 2, tx + 8, top - 1, H("#22222a"))
+        # ground floor: roll-down shutters with abstract colour murals (shapes only, no letters)
+        for sx in range(x + 4, x + w - 12, 16):
+            sh = SHUTTER[rnd.randrange(len(SHUTTER))]
+            for y in range(64, 76):
+                for xx in range(sx, sx + 12):
+                    px.put(xx, y, sh[0] if (y - 64) % 2 == 0 else sh[1])
+            px.rect(sx, 63, sx + 11, 63, c[3])
+            if rnd.random() < 0.6:
+                mc = rnd.sample(MURAL, 2)
+                cx0, cy0 = sx + rnd.randint(2, 5), rnd.randint(67, 70)
+                for dy in range(-3, 4):                         # a soft blob and a zig-zag stroke
+                    for dx in range(-4, 5):
+                        if dx * dx / 16 + dy * dy / 9 < 1:
+                            px.put(cx0 + dx, cy0 + dy, mc[0])
+                for dx in range(10):
+                    px.put(sx + 1 + dx, 72 + (dx % 4 if dx % 8 < 4 else 3 - dx % 4) - 1, mc[1])
+        x += w
+        k += 1
+    # sidewalk and street with a parked cab-coloured car and others (no badges or lettering)
+    px.rect(0, 76, BD_W - 1, 79, CONCRETE[1])
+    px.rect(0, 76, BD_W - 1, 76, CONCRETE[0])
+    px.rect(0, 80, BD_W - 1, 80, CONCRETE[3])
+    px.rect(0, 81, BD_W - 1, 90, ROAD[2])
+    for x in range(0, BD_W, 20):
+        px.rect(x, 86, x + 9, 86, H("#e8e8e0"))
+    for cx, ci, f in ((30, 2, 1), (200, 0, -1), (300, 3, 1)):
+        car(px, cx, 88, CARS[ci], f)
+    for hx in (120, 260):                                       # fire hydrants
+        px.rect(hx, 73, hx + 2, 77, H("#d8283a"))
+        px.rect(hx - 1, 74, hx + 3, 74, H("#a81a2a"))
+    img = haze_rows(px.image(), H("#b8b0a8"), 0.22, 0.10)
+    px = from_img(img)
+    px.rect(0, 91, BD_W - 1, BD_H - 1, CONCRETE[2])             # sidewalk on the court side
+    px.rect(0, 91, BD_W - 1, 91, CONCRETE[0])
+    # the cage: a tall, dense chain-link fence (top rail high above the screen), heavy posts every 48
+    FT_TOP = 14
+    for y in range(FT_TOP + 2, BD_H - 2):
+        for x in range(BD_W):
+            u, v = (x + y) % 5, (x - y) % 5
+            if u == 0 or v == 0:
+                lit = u == 0
+                px.blend(x, y, CAGE_MESH[1] if lit else CAGE_MESH[2], 0.5 if lit else 0.45)
+    for yr in (FT_TOP, 58):                                     # top rail and a mid rail
+        for x in range(BD_W):
+            px.put(x, yr, CAGE_MESH[0])
+            px.put(x, yr + 1, CAGE_MESH[2])
+    for x in range(0, BD_W, 48):
+        px.rect(x, FT_TOP - 2, x + 3, BD_H - 2, CAGE_MESH[1])
+        px.rect(x, FT_TOP - 2, x, BD_H - 2, CAGE_MESH[0])
+        px.rect(x + 3, FT_TOP - 1, x + 3, BD_H - 2, CAGE_MESH[3])
+    px.rect(0, BD_H - 2, BD_W - 1, BD_H - 1, CONCRETE[3])
+    return px.image()
+
+
+# The look data P6-12 can copy into scripts/court_looks.gd (colours for the code-drawn court lines, paint, hoop and
+# the plain fallback when a texture is missing). `python3 tools/art/make_courts.py --print-looks` prints them as
+# GDScript. ambience / backboard / front_fence / floor_overlay follow the board's court look contract.
+CITY_LOOKS = {
+    "barn": {"name": "BARN", "music": "hometown", "floor": "#c1baa9", "floor_stripe": "#c1baa9", "stripe_ft": 0,
+             "speckle": 0, "line": ("#ffffff", 0.90), "paint": ("#3e8a4a", 0.75), "logo": ("#3e8a4a", 0.75),
+             "apron": "#b4ad9c", "backdrop": "fence", "wall": "#6a8a3c", "wall_dark": "#4c6a5a",
+             "backboard": "wood", "board_square": "#f4efe4", "pole": "#9c7650", "rim": "#e8602a",
+             "net": ("#f4f0e4", 0.85)},
+    "rooftop": {"name": "ROOFTOP", "music": "chicago", "floor": "#5a7494", "floor_stripe": "#5a7494",
+                "stripe_ft": 0, "speckle": 0, "line": ("#ffffff", 0.92), "paint": ("#7a4ab0", 0.80),
+                "logo": ("#7a4ab0", 0.80), "apron": "#4e6788", "backdrop": "fence", "wall": "#a86e50",
+                "wall_dark": "#5e3a2e", "ambience": "wind", "backboard": "glass", "board_square": "#ffffff",
+                "pole": "#3a3e48", "rim": "#f06a1e", "net": ("#ffffff", 0.80)},
+    "soul_gym": {"name": "SOUL GYM", "music": "memphis", "floor": "#c1834a", "floor_stripe": "#b27540",
+                 "stripe_ft": 2.0, "speckle": 0, "line": ("#fff8e8", 0.92), "paint": ("#2a6a44", 0.85),
+                 "logo": ("#2a6a44", 0.85), "apron": "#86502c", "backdrop": "bleachers", "wall": "#94503c",
+                 "wall_dark": "#5c3026", "ambience": "crowd", "backboard": "glass", "board_square": "#ffffff",
+                 "pole": "#2a6a44", "rim": "#f06a1e", "net": ("#ffffff", 0.80)},
+    "bayou": {"name": "BAYOU", "music": "new_orleans", "floor": "#4a524a", "floor_stripe": "#4a524a",
+              "stripe_ft": 0, "speckle": 0, "line": ("#f4f0d8", 0.85), "paint": ("#8a4ab0", 0.70),
+              "logo": ("#d8a040", 0.70), "apron": "#3a413b", "backdrop": "fence", "wall": "#4e6070",
+              "wall_dark": "#2a3644", "backboard": "metal", "board_square": "#d8a040", "pole": "#4e3c2e",
+              "rim": "#e8602a", "net": ("#e0e4d8", 0.85)},
+    "mountain": {"name": "MOUNTAIN", "music": "denver", "floor": "#5e8e58", "floor_stripe": "#5e8e58",
+                 "stripe_ft": 0, "speckle": 0, "line": ("#ffffff", 0.92), "paint": ("#b05a3a", 0.80),
+                 "logo": ("#b05a3a", 0.80), "apron": "#4a7646", "backdrop": "fence", "wall": "#7aa44a",
+                 "wall_dark": "#326a44", "backboard": "metal", "board_square": "#ffffff", "pole": "#4a5a4a",
+                 "rim": "#f06a1e", "net": ("#ffffff", 0.85)},
+    "rain_park": {"name": "RAIN PARK", "music": "seattle", "floor": "#40444d", "floor_stripe": "#40444d",
+                  "stripe_ft": 0, "speckle": 0, "line": ("#e8ecf0", 0.85), "paint": ("#2a7a6a", 0.75),
+                  "logo": ("#2a7a6a", 0.75), "apron": "#393d46", "backdrop": "fence", "wall": "#4a6840",
+                  "wall_dark": "#28443a", "ambience": "rain", "backboard": "metal", "board_square": "#e8ecf0",
+                  "pole": "#2a2e36", "rim": "#e8602a", "net": ("#c8d0d8", 0.85), "floor_overlay": "puddles"},
+    "beach": {"name": "BEACH", "music": "los_angeles", "floor": "#e5cb94", "floor_stripe": "#e5cb94",
+              "stripe_ft": 0, "speckle": 0, "line": ("#2a6ab0", 0.85), "paint": ("#ff7a5a", 0.55),
+              "logo": ("#ff7a5a", 0.55), "apron": "#d9bc84", "backdrop": "fence", "wall": "#a8784e",
+              "wall_dark": "#5e422c", "backboard": "metal", "board_square": "#ff7a5a", "pole": "#e8e4dc",
+              "rim": "#f06a1e", "net": ("#ffffff", 0.90), "floor_overlay": "sand_drift"},
+    "cage": {"name": "CAGE", "music": "newyork", "floor": "#534f4c", "floor_stripe": "#534f4c", "stripe_ft": 0,
+             "speckle": 0, "line": ("#f4f0e0", 0.85), "paint": ("#2a7a4a", 0.75), "logo": ("#c03a30", 0.75),
+             "apron": "#4a4644", "backdrop": "fence", "wall": "#6e6c78", "wall_dark": "#3e3c46",
+             "backboard": "metal", "board_square": "#f4f0e0", "pole": "#3a424c", "rim": "#e8602a",
+             "net": ("#9aa0a8", 0.90), "front_fence": True},
+}
+CITY_MAKERS = {
+    "barn": (barn_floor, barn_backdrop), "rooftop": (rooftop_floor, rooftop_backdrop),
+    "soul_gym": (soul_gym_floor, soul_gym_backdrop), "bayou": (bayou_floor, bayou_backdrop),
+    "mountain": (mountain_floor, mountain_backdrop), "rain_park": (rain_park_floor, rain_park_backdrop),
+    "beach": (beach_floor, beach_backdrop), "cage": (cage_floor, cage_backdrop),
+}
+
+
+def gd_color(v):
+    c, a = (v, 1.0) if isinstance(v, str) else v
+    r, g, b = H(c)
+    s = "Color(%.2f, %.2f, %.2f" % (r / 255, g / 255, b / 255)
+    return s + (", %.2f)" % a if a < 1.0 else ")")
+
+
+def looks_gdscript():
+    """The CITY_LOOKS entries as GDScript dictionary text (same keys and order as gym / blacktop)."""
+    order = ["name", "music", "floor_texture", "floor_scale", "floor", "floor_stripe", "stripe_ft", "speckle", "line",
+             "paint", "logo", "apron", "backdrop", "backdrop_texture", "backdrop_scale", "wall", "wall_dark",
+             "ambience", "backboard", "board_square", "pole", "rim", "net", "front_fence", "floor_overlay"]
+    out = []
+    for lid, d in CITY_LOOKS.items():
+        d = dict(d)
+        d["floor_texture"] = "res://assets/courts/%s_floor.png" % lid
+        d["backdrop_texture"] = "res://assets/courts/%s_backdrop.png" % lid
+        d["floor_scale"] = 2.0
+        d["backdrop_scale"] = 2.0
+        out.append('\t"%s": {' % lid)
+        for k in order:
+            if k not in d:
+                continue
+            v = d[k]
+            if k in ("name", "music", "floor_texture", "backdrop_texture", "backdrop", "ambience", "backboard",
+                     "floor_overlay"):
+                s = '"%s"' % v
+            elif k == "front_fence":
+                s = "true" if v else "false"
+            elif k in ("floor_scale", "backdrop_scale", "stripe_ft"):
+                s = "%.1f" % float(v)
+            elif k == "speckle":
+                s = str(int(v))
+            else:
+                s = gd_color(v)
+            out.append('\t\t"%s": %s,' % (k, s))
+        out.append("\t},")
+    return "\n".join(out)
+
+
 # ----------------------------------------------------------------------------- ball
 
 BALL = pal("#ffb070", "#f0761e", "#b84a16", "#702a12")
@@ -836,7 +2126,71 @@ def compose(look, floor, backdrop, ball, players):
     return cv.resize((1280, 720), Image.NEAREST)
 
 
+def city_outputs():
+    """The 8 city looks: {path: image} for assets/courts/<look>_floor.png and <look>_backdrop.png."""
+    out = {}
+    for lid, (fl, bd) in CITY_MAKERS.items():
+        out[os.path.join(COURTS, lid + "_floor.png")] = fl()
+        out[os.path.join(COURTS, lid + "_backdrop.png")] = bd()
+    return out
+
+
+def label(img, text, x, y, scale=3, fg=(255, 255, 255), bg=(16, 14, 24)):
+    """Big pixel text for the preview (uses PIL's default bitmap font, scaled up with nearest)."""
+    d0 = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    l, t, r, b = d0.textbbox((0, 0), text)
+    small = Image.new("RGB", (r - l + 4, b - t + 4), bg)
+    ImageDraw.Draw(small).text((2 - l, 2 - t), text, fill=fg)
+    big = small.resize((small.size[0] * scale, small.size[1] * scale), Image.NEAREST)
+    img.paste(big, (x, y))
+
+
+def preview_v2(city, shots_dir):
+    """docs/art/courts_preview_v2.png: per look, the game's own 1280 x 720 screenshot (from shots_dir/<look>.png,
+    made with  -- --court <look> --shots), then the whole backdrop strip and the floor tile 3 x 3 at 2x."""
+    looks = list(CITY_MAKERS.keys())
+    strip_h = BD_H * 2
+    tile_h = TILE * 3 * 2
+    row_h = 720 + 8 + max(strip_h, tile_h) + 16
+    pv = Image.new("RGB", (1280, row_h * len(looks)), (20, 18, 28))
+    for n, lid in enumerate(looks):
+        y0 = n * row_h
+        shot = os.path.join(shots_dir, lid + ".png")
+        if os.path.exists(shot):
+            pv.paste(Image.open(shot).convert("RGB").resize((1280, 720), Image.NEAREST), (0, y0))
+        bd = city[os.path.join(COURTS, lid + "_backdrop.png")]
+        fl = city[os.path.join(COURTS, lid + "_floor.png")]
+        pv.paste(bd.resize((BD_W * 2, strip_h), Image.NEAREST), (8, y0 + 728))
+        t3 = tile_test(fl, n=3, zoom=2)
+        pv.paste(t3, (1280 - t3.size[0] - 8, y0 + 728))
+        name = CITY_LOOKS[lid]["name"]
+        label(pv, name, 16, y0 + 728 + strip_h + 8, scale=4, fg=(255, 236, 160), bg=(20, 18, 28))
+    pv.save(PREVIEW_V2, optimize=True)
+    print("wrote", os.path.relpath(PREVIEW_V2, ROOT), pv.size, os.path.getsize(PREVIEW_V2), "bytes")
+
+
 def main():
+    args = sys.argv[1:]
+    if "--print-looks" in args:
+        print(looks_gdscript())
+        return
+    shots_dir = None
+    if "--shots" in args:
+        shots_dir = args[args.index("--shots") + 1]
+    os.makedirs(COURTS, exist_ok=True)
+    os.makedirs(BALLS, exist_ok=True)
+    city = city_outputs()
+    for path, img in city.items():
+        img.save(path, optimize=True)
+        print("wrote %s %s %d bytes" % (os.path.relpath(path, ROOT), img.size, os.path.getsize(path)))
+    if shots_dir:
+        preview_v2(city, shots_dir)
+    else:
+        print("courts_preview_v2.png not rebuilt (needs game screenshots: --shots DIR, see the top of this file)")
+    v1_main()
+
+
+def v1_main():
     os.makedirs(COURTS, exist_ok=True)
     os.makedirs(BALLS, exist_ok=True)
     out = {
