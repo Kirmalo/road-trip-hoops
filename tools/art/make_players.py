@@ -14,12 +14,14 @@ Airborne frames (shoot, dunk, layup, block) keep the feet on the floor row: the 
 Also writes assets/players/hands.json: the hand points per player, row and column (frame pixels), so the game can
 put the ball in the hand (shoot and pass: both hands; dunk and layup: "R", the near hand when facing E; dribble "R").
 
-Usage:  python3 tools/art/make_players.py [--preview-only] [--only ID]
+Usage:  python3 tools/art/make_players.py [--preview-only] [--only ID[,ID...] [--preview]] [--jobs N]
 Output: assets/players/<id>.png, assets/players/hands.json, docs/art/players_preview_v1.png (part 1 view) and
         docs/art/players_preview_v2.png (every animation, not exported)
         (both for the Phase 4 six), docs/art/players_preview_p5.png (Phase 5 players: S, E, N and an action frame).
 Phase 5: entries with "recruit": true also write <id>_crew.png in your crew's colors (crews.json crew_recolor);
 sheets are saved as indexed-palette PNGs when that is smaller (same pixels, about 40 KB instead of 95 KB).
+Phase 6 (P6-A1): the five new city crews and the New York crews ("phase": 6 in crews.json), new parts in the
+"Phase 6 parts" section below, preview docs/art/players_preview_p6.png. Sheets render in parallel (--jobs).
 Needs:  Pillow, numpy
 """
 import json
@@ -38,6 +40,7 @@ OUT_DIR = os.path.join(ROOT, "assets", "players")
 PREVIEW = os.path.join(ROOT, "docs", "art", "players_preview_v1.png")
 PREVIEW2 = os.path.join(ROOT, "docs", "art", "players_preview_v2.png")
 PREVIEW_P5 = os.path.join(ROOT, "docs", "art", "players_preview_p5.png")
+PREVIEW_P6 = os.path.join(ROOT, "docs", "art", "players_preview_p6.png")
 HANDS = os.path.join(ROOT, "assets", "players", "hands.json")
 
 FW, FH = P.FRAME_W, P.FRAME_H          # 40 x 64
@@ -374,6 +377,194 @@ EXPR = {"celebrate": "celebrate"}   # face per animation (pixel3d.stamp_face)
 
 
 
+# ----------------------------------------------------------------------------- Phase 6 parts (P6-A1)
+# New hair styles and accessories, added here around pixel3d.build so the renderer and every older sheet stay
+# pixel-identical: a player without these keys goes straight through to the original build.
+#   hair cornrows | locs_tied | shaggy | sides (shaved sides, short top) | bun | slick (combed back) | part (fade
+#   with a shaved part); braids: true adds short braids at the nape (with cornrows).
+#   two-digit numbers (10-99); no_number: true (flannel shirts).
+#   flannel: true (checks on the top), patch: true (a cross patch on the left chest, patch_pal),
+#   towel: "L"/"R" (towel over that shoulder, towel_pal, stripes in trim), waist_jacket: true (a jacket tied at the
+#   waist, jacket_pal), whistle: true (on the chain, whistle_pal), glasses_up: true (spare shades on the forehead) and
+#   glasses_collar: true (a pair hooked on the collar, collar_pal), glasses_pal; goggle_tan: true (pale band at the eyes);
+#   hand_pal (chalk or tape on the hands); kneepads: "L" | "R" | "both" (pad_pal).
+
+_ORIG_BUILD = P.build
+_ORIG_NUMBER_PX = P.number_px
+_CUR = {}          # the player being rendered (materials are evaluated lazily inside P.render)
+EXT_HAIR = {"cornrows": "bald", "locs_tied": "twists", "shaggy": "buzz", "sides": "bald", "bun": "buzz",
+            "slick": "buzz", "part": "buzz"}
+EXT_KEYS = ("flannel", "patch", "towel", "waist_jacket", "whistle", "glasses_up", "glasses_collar", "goggle_tan",
+            "hand_pal", "kneepads", "braids", "no_number")
+HK = 1.14          # pixel3d head scale
+
+
+def number_px_ext(num, x, y, cx, cy, cell):
+    if _CUR.get("no_number"):
+        return False
+    if num < 10:
+        return _ORIG_NUMBER_PX(num, x, y, cx, cy, cell)
+    # two digits side by side (x grows to the viewer's right on both faces, see pixel3d.number_px)
+    c = cell * 0.9
+    return (_ORIG_NUMBER_PX(num // 10, x, y, cx - 2.0 * c, cy, c)
+            or _ORIG_NUMBER_PX(num % 10, x, y, cx + 2.0 * c, cy, c))
+
+
+def is_ext(p):
+    return p["hair"] in EXT_HAIR or p["number"] >= 10 or any(p.get(k) for k in EXT_KEYS)
+
+
+def build_ext(p, pose, expr="focus", portrait=False):
+    _CUR.clear()
+    _CUR.update(p)
+    if not is_ext(p):
+        return _ORIG_BUILD(p, pose, expr, portrait)
+    style = p["hair"]
+    q = dict(p)
+    q["hair"] = EXT_HAIR.get(style, style)
+    prims, info, pp = _ORIG_BUILD(q, pose, expr, portrait)
+    for k in ("towel", "jacket", "whistle", "glasses", "collar", "hand", "pad", "patch"):
+        if p.get(k + "_pal"):
+            pp[k] = P.pal(p[k + "_pal"])
+    W, mass, tk = p["width"], p["mass"], p["torso"]
+    head_c, Rh, pelvis = info["head_c"], info["Rh"], info["pelvis"]
+    Rs = P.rot_y(math.radians(pose.get("twist", 0.0))) @ P.rot_x(math.radians(pose.get("lean", 4.0)))
+    sh_y = 10.0 * tk
+
+    def S(x, y, z):
+        return pelvis + Rs @ P.vec(x, y, z)
+
+    def H(x, y, z):
+        return head_c + Rh @ P.vec(x, y, z)
+
+    def head_local(h):
+        return Rh.T @ (h - head_c) / (HK * HK)
+
+    def hairline(l):
+        return 1.55 * max(-1.0, min(1.0, l[2] / 3.6)) + 0.25
+
+    # --- head: new hair styles and face extras (wrap the head materials)
+    def head_extra(l, m):
+        x, y, z = l
+        if m == "band":
+            return m
+        top = y > hairline(l) + 0.15
+        if style == "cornrows" and top and m == "skin":
+            return "skin+1" if (x * 0.62 + 10.0) % 1.0 < 0.34 else "hair"
+        if style == "sides" and y > hairline(l) + 0.3 and m == "skin":
+            return "hair" if abs(x) < 2.0 else "skin+1"
+        if style == "part" and m == "hair" and 0.85 < x < 1.35 and y > 1.0 and z > -1.5:
+            return "skin+1"
+        if p.get("goggle_tan") and m == "skin" and z > 1.3 and -0.2 < y < 1.15 and abs(x) < 3.0:
+            return "skin-1"
+        return m
+
+    new = []
+    for pr in prims:
+        if pr.part == "head" and callable(pr.mat):
+            def wrapped(h, prim, orig=pr.mat):
+                m = orig(h, prim)
+                return head_extra(head_local(h), m)
+            pr.mat = wrapped
+        new.append(pr)
+    prims = new
+    if style == "locs_tied":
+        prims.append(P.ell(H(0, 0.6, -3.9), Rh, 1.2, 1.3, 1.1, "hair_tw", "hair"))
+        prims.append(P.ell(H(0, -0.9, -4.5), Rh, 0.9, 1.6, 0.8, "hair_tw", "hair"))
+    if style == "shaggy":
+        pl = (H(0, -0.6, 0), Rh @ P.unit(0, 1.0, -0.75))
+        prims.append(P.ell(H(0, 1.0, -0.45), Rh, 3.45 + 0.55, 3.95 + 0.25, 3.6 + 0.5, "hair", "hair", clip=pl))
+        for sx in (-1.4, 0.2, 1.6):   # fringe locks over the forehead
+            prims.append(P.ell(H(sx, 2.0, 3.0), Rh, 1.0, 0.8, 0.8, "hair", "hair"))
+    if style == "sides":
+        prims.append(P.ell(H(0, 3.3, -0.2), Rh, 1.9, 1.3, 3.0, "hair_tw", "hair"))
+    if style == "bun":
+        prims.append(P.ell(H(0, 1.2, -0.5), Rh, 3.45 + 0.25, 3.95 + 0.1, 3.6 + 0.3, "hair", "hair",
+                           clip=(H(0, 0.9, 0), Rh @ P.unit(0, 1.0, -0.45))))
+        prims.append(P.Sphere(H(0, 3.2, -3.4), 1.45, "hair_tw", "hair"))
+    if style == "slick":
+        prims.append(P.ell(H(0, 0.6, -0.6), Rh, 3.45 + 0.3, 3.95 + 0.15, 3.6 + 0.5, "hair", "hair",
+                           clip=(H(0, 0.85, 0), Rh @ P.unit(0, 1.0, -0.38))))
+    if p.get("braids"):
+        for bx in (-1.6, 0.0, 1.6):
+            P.limb(prims, H(bx, -0.8, -3.4), H(bx * 1.1, -3.6, -3.9), 0.65, 0.5, "hair_tw", "hair")
+
+    # --- torso: flannel checks, a chest patch
+    def torso_extra(h, m):
+        qv = Rs.T @ (h - pelvis)
+        x, y, z = qv
+        if p.get("patch") and z > 0.8 and m.startswith("top"):
+            dx, dy = x - 2.0 * W, y - 7.3 * tk
+            if (abs(dx) < 0.5 and abs(dy) < 1.4) or (abs(dy) < 0.5 and abs(dx) < 1.4):
+                return "patch"
+        if p.get("flannel") and m == "top":
+            bx = math.floor(x / 1.7 + 10) % 2
+            by = math.floor(y / 1.7 + 10) % 2
+            return "top+1" if bx and by else ("top" if bx or by else "top-1")
+        return m
+
+    if p.get("patch") or p.get("flannel"):
+        for pr in prims:
+            if pr.part == "torso" and callable(pr.mat):
+                def wrapped_t(h, prim, orig=pr.mat):
+                    return torso_extra(h, orig(h, prim))
+                pr.mat = wrapped_t
+
+    # --- hands (chalk, tape)
+    if p.get("hand_pal"):
+        for pr in prims:
+            if pr.part == "hand":
+                pr.mat = "hand"
+
+    # --- knee pads / brace: leg spheres come L thigh, L calf, L shoe, then R (pixel3d.build order)
+    if p.get("kneepads"):
+        side, seen_shoe = "L", False
+        for pr in prims:
+            if pr.part == "shoe":
+                seen_shoe = True
+                continue
+            if pr.part == "thigh" and seen_shoe:
+                side, seen_shoe = "R", False
+            if pr.part in ("thigh", "calf") and p["kneepads"] in (side, "both"):
+                def wrapped_k(h, prim, orig=pr.mat):
+                    m = orig(h, prim)
+                    near = (prim.part == "thigh" and prim.t > 0.86) or (prim.part == "calf" and prim.t < 0.2)
+                    return "pad" if near and m in ("skin", "tight") else m
+                pr.mat = wrapped_k
+
+    # --- extra pieces
+    if p.get("towel"):
+        sx = 1.0 if p["towel"] == "L" else -1.0
+        fz = 3.0 + mass * 0.5
+        a, b, c = S(sx * 2.9 * W, sh_y - 4.6, fz + 0.3), S(sx * 3.0 * W, sh_y + 1.3, -0.3), S(sx * 2.9 * W, sh_y - 5.0, -fz)
+
+        def towel_mat(h, prim):
+            return "trim" if 0.72 < prim.t < 0.86 and prim.part == "towel_f" else "towel"
+
+        P.limb(prims, a, b, 1.45, 1.4, towel_mat, "towel_f")
+        P.limb(prims, b, c, 1.4, 1.45, "towel", "towel_b")
+    if p.get("waist_jacket"):
+        I = np.eye(3)
+        prims.append(P.ell(pelvis + P.vec(0, 1.3, 0), I, 3.8 * W + mass * 0.5 + 0.45, 0.8,
+                           2.45 + mass * 0.3 + 0.45, "jacket", "jacket"))
+        prims.append(P.ell(pelvis + P.vec(0, -1.0, -2.7 - mass * 0.3), I, 3.3 * W, 2.4, 0.65, "jacket", "jacket"))
+        knot = pelvis + P.vec(0, 1.1, 2.9 + mass * 0.3 + 0.2)
+        prims.append(P.Sphere(knot, 0.95, "jacket+1", "jacket"))
+        for kx in (0.7, -0.7):
+            P.limb(prims, knot, knot + P.vec(kx, -2.6, 0.25), 0.7, 0.55, "jacket", "jacket")
+    if p.get("whistle"):
+        prims.append(P.ell(S(0.0, 7.7 * tk, 3.3 + mass * 0.5), Rs, 0.75, 0.95, 0.7, "whistle", "whistle"))
+    if p.get("glasses_up"):     # a spare pair pushed up on the forehead
+        prims.append(P.ell(H(0, 2.4, 2.7), Rh, 2.7, 0.6, 1.0, "glasses", "glasses"))
+    if p.get("glasses_collar"):  # and one hooked on the collar (collar_pal)
+        prims.append(P.ell(S(0.0, 7.6 * tk, 3.6 + mass * 0.5), Rs, 1.9, 0.7, 0.6, "collar", "glasses"))
+    return prims, info, pp
+
+
+P.number_px = number_px_ext
+P.build = build_ext
+
+
 # ----------------------------------------------------------------------------- render + checks
 
 def render_frame(p, anim, k, yaw, hands=None):
@@ -605,15 +796,25 @@ P5_GROUPS = [("Your crew: the underdogs (blue ring)", lambda p: p["crew"] == "U"
              ("Chicago: Lakeshore Gusts (purple and white, red ring)", lambda p: p["crew"] == "CHI"),
              ("New York champions: Concrete Crowns", lambda p: p["crew"] == "NY"),
              ("Recruits in your colors (<id>_crew)", lambda p: "recolor_of" in p)]
+P6_GROUPS = [("Memphis: Riverside Soul (orange and black)", lambda p: p["crew"] == "MEM"),
+             ("New Orleans: Bayou Brass (teal and white)", lambda p: p["crew"] == "NOL"),
+             ("Denver: Switchbacks (forest and silver)", lambda p: p["crew"] == "DEN"),
+             ("Seattle: Puddle Jumpers (navy and lime)", lambda p: p["crew"] == "SEA"),
+             ("Los Angeles: Boardwalk Bombers (sky and sand)", lambda p: p["crew"] == "LA"),
+             ("New York quarterfinal: Bridge Runners (red and black)", lambda p: p["crew"] == "NYQ"),
+             ("New York semifinal: Bodega Bandits (grey and plum)", lambda p: p["crew"] == "NYS"),
+             ("New York final: Concrete Crowns (black and gold)", lambda p: p["crew"] == "NYF"),
+             ("Phase 6 recruits in your colors (<id>_crew)", lambda p: "recolor_of" in p)]
 
 
-def preview_p5(players, all_frames, path=PREVIEW_P5, zoom=3, per_line=5):
-    """Phase 5 check: every new player standing S, E, N plus one action frame (crews.json 'action'), by crew."""
+def preview_p5(players, all_frames, path=PREVIEW_P5, zoom=3, per_line=5, groups=None):
+    """Phase 5 check: every new player standing S, E, N plus one action frame (crews.json 'action'), by crew.
+    Phase 6 uses it too (groups=P6_GROUPS)."""
     cell = 42
     block = 4 * cell + 14
     head = 16
     lines = []
-    for title, keep in P5_GROUPS:
+    for title, keep in (groups or P5_GROUPS):
         grp = [p for p in players if keep(p)]
         for i in range(0, len(grp), per_line):
             lines.append((title if i == 0 else None, grp[i:i + per_line]))
@@ -648,21 +849,31 @@ def preview_p5(players, all_frames, path=PREVIEW_P5, zoom=3, per_line=5):
     big.convert("RGB").save(path, optimize=True)
 
 
+def _job(p):
+    sheet, frames, probs, hp = make_sheet(p)
+    return p["id"], sheet, frames, probs, hp
+
+
 def main(argv):
-    only = argv[argv.index("--only") + 1] if "--only" in argv else None
+    only = set(argv[argv.index("--only") + 1].split(",")) if "--only" in argv else None
+    jobs = int(argv[argv.index("--jobs") + 1]) if "--jobs" in argv else (os.cpu_count() or 1)
     players = load_players()
     os.makedirs(OUT_DIR, exist_ok=True)
     all_frames = {}
     all_hands = {}
     problems = []
-    for p in players:
-        if only and p["id"] != only:
-            continue
-        sheet, frames, probs, hp = make_sheet(p)
-        all_frames[p["id"]] = frames
-        all_hands[p["id"]] = hp
+    todo = [p for p in players if not only or p["id"] in only]
+    if jobs > 1:
+        import multiprocessing
+        with multiprocessing.get_context("fork").Pool(jobs) as pool:
+            results = pool.map(_job, todo, chunksize=1)
+    else:
+        results = [_job(p) for p in todo]
+    for pid, sheet, frames, probs, hp in results:   # in crews.json order, so hands.json keeps its order
+        all_frames[pid] = frames
+        all_hands[pid] = hp
         problems += probs
-        out = os.path.join(OUT_DIR, p["id"] + ".png")
+        out = os.path.join(OUT_DIR, pid + ".png")
         if "--preview-only" not in argv:
             kind = save_png(sheet, out)
             print("wrote %s %s %s %d bytes" % (out, sheet.size, kind, os.path.getsize(out)))
@@ -672,10 +883,15 @@ def main(argv):
         print("wrote", PREVIEW)
         preview2(p4, all_frames)
         print("wrote", PREVIEW2)
-        preview_p5([p for p in players if p["crew"] not in ("A", "B")], all_frames)
+        preview_p5([p for p in players if p["crew"] not in ("A", "B") and p.get("phase", 5) == 5], all_frames)
         print("wrote", PREVIEW_P5)
+        preview_p5([p for p in players if p.get("phase") == 6], all_frames, path=PREVIEW_P6, groups=P6_GROUPS)
+        print("wrote", PREVIEW_P6)
         if "--preview-only" not in argv:
             write_hands(all_hands)
+    elif "--preview" in argv:
+        preview_p5([p for p in players if p["id"] in all_frames], all_frames, path=PREVIEW_P6, groups=P6_GROUPS)
+        print("wrote", PREVIEW_P6)
     for s in problems:
         print("CHECK", s)
     print("checks: %d problem(s)" % len(problems))

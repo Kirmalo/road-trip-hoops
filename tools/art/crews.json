@@ -12,7 +12,13 @@
     "brim_pal). top bib = overalls (top_pal) over a tee (trim_pal; the buckles use chain_pal, default GOLD).",
     "chain: true (necklace, chain_pal), wrist: true (wristbands on both arms, wrist_pal), shades: true (dark glasses).",
     "'action': [animation, frame] shown in docs/art/players_preview_p5.png. 'recruit': true also writes",
-    "<id>_crew.png: the same player with the palette names swapped by 'crew_recolor'[crew] (your blue and gold)."
+    "<id>_crew.png: the same player with the palette names swapped by 'crew_recolor'[crew] (your blue and gold).",
+    "Phase 6 (P6-A1): 'phase': 6 marks the new players (preview docs/art/players_preview_p6.png). number may have 2 digits.",
+    "New hair: cornrows | locs_tied | shaggy | sides (shaved sides, short top) | bun | slick (combed back) | part (fade",
+    "with a shaved part); braids: true (short braids at the nape). Extras: flannel (checked top), no_number, patch (cross",
+    "patch on the left chest, patch_pal), towel L/R (over that shoulder, towel_pal), waist_jacket (jacket_pal), whistle",
+    "(on the chain, whistle_pal), glasses_up / glasses_collar (spare shades, glasses_pal, collar_pal), goggle_tan, hand_pal (chalk or",
+    "tape on the hands), kneepads L | R | both (pad_pal). Drawn in make_players.py 'Phase 6 parts'."
   ],
   "palettes": {
     "BLUE": ["#78b8ff", "#2f74e0", "#1f479e", "#172a66"],
@@ -36,7 +42,19 @@
     "HAIR_AUBURN": ["#c8743e", "#9a4a26", "#6c2e1c", "#421a14"],
     "HAIR_GREY": ["#c8c4c2", "#8e8888", "#5e5858", "#3a3436"],
     "HAIR_RUST": ["#e8985a", "#c0642e", "#86421e", "#4c2414"],
-    "HAIR_BLOND": ["#fff0a8", "#e0c060", "#a88838", "#6a5220"]
+    "HAIR_BLOND": ["#fff0a8", "#e0c060", "#a88838", "#6a5220"],
+    "ORANGE": ["#ffb070", "#f07a1e", "#b04e14", "#6a2c10"],
+    "TEAL": ["#7ee6dc", "#1ea6a0", "#14706e", "#0c4244"],
+    "LIME": ["#e8ff8a", "#a6d82c", "#6a9a1c", "#3c5a14"],
+    "SKY": ["#c4ecff", "#6cbcf0", "#3c82bc", "#22487a"],
+    "SAND": ["#fff4d0", "#e8d29a", "#b89a62", "#7a6238"],
+    "YELLOW": ["#fff6a0", "#f6d628", "#c09a14", "#76580e"],
+    "LIFEGUARD": ["#ff9a72", "#ee4e2a", "#a8301c", "#601a14"],
+    "CHALK": ["#ffffff", "#ece8e0", "#c4beb4", "#8c867e"],
+    "TAPE": ["#ffffff", "#f0f0ec", "#c8c8c4", "#8e8e8a"],
+    "HAIR_SUN": ["#fff2c0", "#e8cc84", "#b8945a", "#7a5c36"],
+    "HAIR_FLECK": ["#b4b0b0", "#5a5456", "#2e2a2c", "#141012"],
+    "HAIR_SANDY": ["#f4dc9c", "#c8a466", "#94703e", "#5c4224"]
   },
   "skins": {
     "deep": ["#a86e4c", "#7e4c32", "#573024", "#381c1e"],
@@ -63,12 +81,25 @@
     "U": {"team": "blue", "ring": [64, 150, 255], "_note": "your crew: the underdogs and the _crew recruits"},
     "HT": {"team": "red", "ring": [236, 52, 64], "_note": "Hometown: County Line, green and white"},
     "CHI": {"team": "red", "ring": [236, 52, 64], "_note": "Chicago: Lakeshore Gusts, purple and white"},
-    "NY": {"team": "red", "ring": [236, 52, 64], "_note": "New York champions: Concrete Crowns, black and silver"}
+    "NY": {"team": "red", "ring": [236, 52, 64], "_note": "New York champions: Concrete Crowns, black and silver"},
+    "MEM": {"team": "red", "ring": [236, 52, 64], "_note": "Memphis: Riverside Soul, orange and black"},
+    "NOL": {"team": "red", "ring": [236, 52, 64], "_note": "New Orleans: Bayou Brass, teal and white"},
+    "DEN": {"team": "red", "ring": [236, 52, 64], "_note": "Denver: Switchbacks, forest and silver"},
+    "SEA": {"team": "red", "ring": [236, 52, 64], "_note": "Seattle: Puddle Jumpers, navy and lime"},
+    "LA": {"team": "red", "ring": [236, 52, 64], "_note": "Los Angeles: Boardwalk Bombers, sky and sand"},
+    "NYQ": {"team": "red", "ring": [236, 52, 64], "_note": "New York quarterfinal: Bridge Runners, red and black"},
+    "NYS": {"team": "red", "ring": [236, 52, 64], "_note": "New York semifinal: Bodega Bandits, grey and plum"},
+    "NYF": {"team": "red", "ring": [236, 52, 64], "_note": "New York final: Concrete Crowns, black and gold"}
   },
   "crew_recolor": {
     "_help": "per city crew: palette name swaps, then '_fields' sets these fields outright (gold trims)",
     "HT": {"GREEN": "BLUE", "FOREST": "NAVY", "_fields": {"trim_pal": "GOLD", "shorts_trim": "GOLD"}},
-    "CHI": {"PURPLE": "BLUE", "PLUM": "NAVY", "_fields": {"trim_pal": "GOLD", "shorts_trim": "GOLD"}}
+    "CHI": {"PURPLE": "BLUE", "PLUM": "NAVY", "_fields": {"trim_pal": "GOLD", "shorts_trim": "GOLD"}},
+    "MEM": {"ORANGE": "BLUE", "BLACK": "NAVY", "_fields": {"trim_pal": "GOLD", "shorts_trim": "GOLD"}},
+    "NOL": {"TEAL": "BLUE", "_fields": {"trim_pal": "GOLD", "shorts_trim": "GOLD"}},
+    "DEN": {"FOREST": "BLUE", "GREEN": "BLUE", "SILVER": "WHITE", "_fields": {"trim_pal": "GOLD", "shorts_trim": "GOLD"}},
+    "SEA": {"LIME": "BLUE", "_fields": {"trim_pal": "GOLD", "shorts_trim": "GOLD"}},
+    "LA": {"SKY": "BLUE", "SAND": "WHITE", "LIFEGUARD": "NAVY", "_fields": {"trim_pal": "GOLD", "shorts_trim": "GOLD"}}
   },
   "players": [
     {
@@ -269,6 +300,354 @@
       "sleeve": "R", "sleeve_pal": "BLACK", "tight": null,
       "sock_pal": "SILVER", "sock_len": 0.45, "shoe_pal": "BLACK", "shoe_acc": "SILVER", "sole_pal": "WHITE",
       "action": ["dunk", 4]
+    },
+
+    {
+      "id": "mem_g1", "crew": "MEM", "phase": 6, "number": 33, "role": "post scorer", "name": "Honey", "recruit": true,
+      "desc": "power forward, deep brown skin, short waves, orange tank with black trim, black knee-length shorts",
+      "body": "power_forward", "body_tweak": {"mass": 0.08}, "skin": "deep", "hair": "buzz", "hair_pal": "HAIR_BLACK",
+      "top": "tank", "top_pal": "ORANGE", "trim_pal": "BLACK",
+      "shorts_pal": "BLACK", "shorts_trim": "ORANGE", "shorts_len": 0.98,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.3, "shoe_pal": "BLACK", "shoe_acc": "ORANGE", "sole_pal": "WHITE",
+      "action": ["dunk", 2]
+    },
+    {
+      "id": "mem_g2", "crew": "MEM", "phase": 6, "number": 4, "role": "slasher", "name": "Lamont", "recruit": true,
+      "desc": "lanky guard, brown skin, cornrows, black tee with orange trim, orange shorts, wristbands",
+      "body": "lanky_guard", "skin": "brown", "hair": "cornrows", "hair_pal": "HAIR_BLACK",
+      "wrist": true, "wrist_pal": "BLACK",
+      "top": "tee", "top_pal": "BLACK", "trim_pal": "ORANGE",
+      "shorts_pal": "ORANGE", "shorts_trim": "BLACK", "shorts_len": 0.92,
+      "sleeve": null, "tight": null,
+      "sock_pal": "BLACK", "sock_len": 0.2, "shoe_pal": "WHITE", "shoe_acc": "ORANGE", "sole_pal": "BLACK",
+      "action": ["layup", 1]
+    },
+    {
+      "id": "mem_boss", "crew": "MEM", "phase": 6, "number": 1, "role": "boss", "name": "Smoke", "recruit": true,
+      "desc": "boss big, umber skin, bald, thick grey-flecked beard, black sleeveless hoodie with orange trim, orange shorts, towel over one shoulder",
+      "body": "boss_big", "skin": "umber", "hair": "bald", "hair_pal": "HAIR_FLECK", "beard": true,
+      "towel": "R", "towel_pal": "WHITE",
+      "top": "hoodie", "top_pal": "BLACK", "trim_pal": "ORANGE",
+      "shorts_pal": "ORANGE", "shorts_trim": "BLACK", "shorts_len": 1.0,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.4, "shoe_pal": "BLACK", "shoe_acc": "ORANGE", "sole_pal": "WHITE",
+      "action": ["celebrate", 2]
+    },
+    {
+      "id": "mem_a1", "crew": "MEM", "phase": 6, "number": 10, "role": "average", "name": "Booker",
+      "desc": "stocky guard, tan skin, flat-top hair, orange tee, black short shorts",
+      "body": "stocky_guard", "skin": "tan", "hair": "hightop", "hair_pal": "HAIR_DARK",
+      "top": "tee", "top_pal": "ORANGE", "trim_pal": "BLACK",
+      "shorts_pal": "BLACK", "shorts_trim": "ORANGE", "shorts_len": 0.64,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.22, "shoe_pal": "BLACK", "shoe_acc": "WHITE", "sole_pal": "ORANGE",
+      "action": ["dribble", 2]
+    },
+    {
+      "id": "mem_a2", "crew": "MEM", "phase": 6, "number": 50, "role": "average", "name": "Wendell",
+      "desc": "wiry center, deep brown skin, short afro, black tank with orange trim, long shorts, knee pads",
+      "body": "wiry_center", "skin": "deep", "hair": "afro", "hair_pal": "HAIR_BLACK",
+      "kneepads": "both", "pad_pal": "BLACK",
+      "top": "tank", "top_pal": "BLACK", "trim_pal": "ORANGE",
+      "shorts_pal": "ORANGE", "shorts_trim": "BLACK", "shorts_len": 1.08,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.35, "shoe_pal": "WHITE", "shoe_acc": "BLACK", "sole_pal": "BLACK",
+      "action": ["block", 1]
+    },
+
+    {
+      "id": "nol_g1", "crew": "NOL", "phase": 6, "number": 3, "role": "fast-break guard", "name": "Lucien", "recruit": true,
+      "desc": "slim guard, brown skin, short locs tied back, teal tank with white trim, white shorts, headband",
+      "body": "slim_guard", "skin": "brown", "hair": "locs_tied", "hair_pal": "HAIR_DARK", "headband": true, "band_pal": "WHITE",
+      "top": "tank", "top_pal": "TEAL", "trim_pal": "WHITE",
+      "shorts_pal": "WHITE", "shorts_trim": "TEAL", "shorts_len": 0.88,
+      "sleeve": null, "tight": null,
+      "sock_pal": "TEAL", "sock_len": 0.18, "shoe_pal": "WHITE", "shoe_acc": "TEAL", "sole_pal": "TEAL",
+      "action": ["run", 1]
+    },
+    {
+      "id": "nol_g2", "crew": "NOL", "phase": 6, "number": 12, "role": "slasher", "name": "Beau", "recruit": true,
+      "desc": "lanky wing, light skin, shaggy brown hair, white tee with teal trim, teal shorts, leg sleeve",
+      "body": "lanky_wing", "skin": "light", "hair": "shaggy", "hair_pal": "HAIR_BROWN",
+      "top": "tee", "top_pal": "WHITE", "trim_pal": "TEAL",
+      "shorts_pal": "TEAL", "shorts_trim": "WHITE", "shorts_len": 1.0,
+      "sleeve": null, "tight": "R", "tight_pal": "WHITE",
+      "sock_pal": "WHITE", "sock_len": 0.25, "shoe_pal": "TEAL", "shoe_acc": "WHITE", "sole_pal": "WHITE",
+      "action": ["layup", 2]
+    },
+    {
+      "id": "nol_boss", "crew": "NOL", "phase": 6, "number": 7, "role": "boss", "name": "Gator", "recruit": true,
+      "desc": "boss big, deep brown skin, shaved sides with a short top, gold chain, teal sleeveless hoodie with white trim, white shorts",
+      "body": "boss_big", "body_tweak": {"mass": -0.05}, "skin": "deep", "hair": "sides", "hair_pal": "HAIR_INK",
+      "chain": true, "chain_pal": "GOLD",
+      "top": "hoodie", "top_pal": "TEAL", "trim_pal": "WHITE",
+      "shorts_pal": "WHITE", "shorts_trim": "TEAL", "shorts_len": 0.95,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.3, "shoe_pal": "TEAL", "shoe_acc": "GOLD", "sole_pal": "WHITE",
+      "action": ["poke", 1]
+    },
+    {
+      "id": "nol_a1", "crew": "NOL", "phase": 6, "number": 5, "role": "average", "name": "Pierre",
+      "desc": "stocky guard, tan skin, curly black hair, white tee with teal trim, short shorts",
+      "body": "stocky_guard", "body_tweak": {"mass": -0.06}, "skin": "tan", "hair": "twists", "hair_pal": "HAIR_INK",
+      "top": "tee", "top_pal": "WHITE", "trim_pal": "TEAL",
+      "shorts_pal": "TEAL", "shorts_trim": "WHITE", "shorts_len": 0.66,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.45, "shoe_pal": "WHITE", "shoe_acc": "TEAL", "sole_pal": "WHITE",
+      "action": ["pass", 1]
+    },
+    {
+      "id": "nol_a2", "crew": "NOL", "phase": 6, "number": 44, "role": "average", "name": "Moose",
+      "desc": "heavy big, light skin, red buzz cut and red beard, teal tank, white knee-length shorts",
+      "body": "heavy_big", "skin": "light", "hair": "buzz", "hair_pal": "HAIR_RUST", "beard": true,
+      "top": "tank", "top_pal": "TEAL", "trim_pal": "WHITE",
+      "shorts_pal": "WHITE", "shorts_trim": "TEAL", "shorts_len": 0.98,
+      "sleeve": null, "tight": null,
+      "sock_pal": "TEAL", "sock_len": 0.3, "shoe_pal": "WHITE", "shoe_acc": "TEAL", "sole_pal": "TEAL",
+      "action": ["block", 2]
+    },
+
+    {
+      "id": "den_g1", "crew": "DEN", "phase": 6, "number": 30, "role": "deep shooter", "name": "Wes", "recruit": true,
+      "desc": "lanky wing, light skin, sandy hair under a knit beanie, forest green tank with silver trim, long shorts",
+      "body": "lanky_wing", "body_tweak": {"leg": 0.02}, "skin": "light", "hair": "beanie", "hair_pal": "HAIR_SANDY",
+      "cap_pal": "FOREST", "brim_pal": "SILVER",
+      "top": "tank", "top_pal": "FOREST", "trim_pal": "SILVER",
+      "shorts_pal": "FOREST", "shorts_trim": "SILVER", "shorts_len": 1.1,
+      "sleeve": null, "tight": null,
+      "sock_pal": "SILVER", "sock_len": 0.3, "shoe_pal": "SILVER", "shoe_acc": "FOREST", "sole_pal": "FOREST",
+      "action": ["shoot", 2]
+    },
+    {
+      "id": "den_g2", "crew": "DEN", "phase": 6, "number": 11, "role": "shooter", "name": "Theo", "recruit": true,
+      "desc": "slim guard, umber skin, short twists, silver tee with green trim, green shorts, climbing chalk on his hands",
+      "body": "slim_guard", "skin": "umber", "hair": "twists", "hair_pal": "HAIR_BLACK", "hand_pal": "CHALK",
+      "top": "tee", "top_pal": "SILVER", "trim_pal": "GREEN",
+      "shorts_pal": "GREEN", "shorts_trim": "SILVER", "shorts_len": 0.85,
+      "sleeve": null, "tight": null,
+      "sock_pal": "SILVER", "sock_len": 0.2, "shoe_pal": "GREEN", "shoe_acc": "SILVER", "sole_pal": "SILVER",
+      "action": ["shoot", 1]
+    },
+    {
+      "id": "den_boss", "crew": "DEN", "phase": 6, "number": 8, "role": "boss", "name": "Ridge", "recruit": true,
+      "desc": "big power forward, light skin, blond hair and a big blond beard, forest green sleeveless hoodie with a silver cross patch, silver shorts, leather boots",
+      "body": "power_forward", "body_tweak": {"mass": 0.25, "width": 0.08, "torso": 0.04}, "skin": "light",
+      "hair": "shaggy", "hair_pal": "HAIR_BLOND", "beard": true, "patch": true, "patch_pal": "SILVER",
+      "top": "hoodie", "top_pal": "FOREST", "trim_pal": "SILVER",
+      "shorts_pal": "SILVER", "shorts_trim": "FOREST", "shorts_len": 0.95,
+      "sleeve": null, "tight": null,
+      "sock_pal": "SILVER", "sock_len": 0.4, "shoe_pal": "LEATHER", "shoe_acc": "FOREST", "sole_pal": "BLACK",
+      "action": ["block", 2]
+    },
+    {
+      "id": "den_a1", "crew": "DEN", "phase": 6, "number": 2, "role": "average", "name": "Gus",
+      "desc": "stocky guard, tan skin, backwards green cap, silver tee, short shorts",
+      "body": "stocky_guard", "skin": "tan", "hair": "cap", "hair_pal": "HAIR_DARK", "cap_pal": "FOREST", "brim_pal": "SILVER",
+      "top": "tee", "top_pal": "SILVER", "trim_pal": "FOREST",
+      "shorts_pal": "FOREST", "shorts_trim": "SILVER", "shorts_len": 0.64,
+      "sleeve": null, "tight": null,
+      "sock_pal": "FOREST", "sock_len": 0.2, "shoe_pal": "SILVER", "shoe_acc": "FOREST", "sole_pal": "WHITE",
+      "action": ["poke", 0]
+    },
+    {
+      "id": "den_a2", "crew": "DEN", "phase": 6, "number": 21, "role": "average", "name": "Cody",
+      "desc": "wiry center, light skin, messy brown hair, green tank, silver long shorts, goggle tan",
+      "body": "wiry_center", "skin": "light", "hair": "shaggy", "hair_pal": "HAIR_BROWN", "goggle_tan": true,
+      "top": "tank", "top_pal": "GREEN", "trim_pal": "SILVER",
+      "shorts_pal": "SILVER", "shorts_trim": "GREEN", "shorts_len": 1.08,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.25, "shoe_pal": "GREEN", "shoe_acc": "SILVER", "sole_pal": "WHITE",
+      "action": ["pass", 1]
+    },
+
+    {
+      "id": "sea_g1", "crew": "SEA", "phase": 6, "number": 1, "role": "point guard", "name": "Dex", "recruit": true,
+      "desc": "slim guard, deep brown skin, short fade, navy tank with lime trim, lime shorts",
+      "body": "slim_guard", "body_tweak": {"leg": -0.02}, "skin": "deep", "hair": "buzz", "hair_pal": "HAIR_BLACK",
+      "top": "tank", "top_pal": "NAVY", "trim_pal": "LIME",
+      "shorts_pal": "LIME", "shorts_trim": "NAVY", "shorts_len": 0.9,
+      "sleeve": null, "tight": null,
+      "sock_pal": "NAVY", "sock_len": 0.22, "shoe_pal": "LIME", "shoe_acc": "NAVY", "sole_pal": "WHITE",
+      "action": ["dribble", 1]
+    },
+    {
+      "id": "sea_g2", "crew": "SEA", "phase": 6, "number": 13, "role": "stretch forward", "name": "Iggy", "recruit": true,
+      "desc": "lanky wing, light skin, long dark hair in a bun, flannel-check sleeveless shirt in navy, lime shorts",
+      "body": "lanky_wing", "body_tweak": {"width": 0.03}, "skin": "light", "hair": "bun", "hair_pal": "HAIR_DARK",
+      "top": "tank", "top_pal": "NAVY", "trim_pal": "LIME", "flannel": true, "no_number": true,
+      "shorts_pal": "LIME", "shorts_trim": "NAVY", "shorts_len": 1.0,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.3, "shoe_pal": "NAVY", "shoe_acc": "LIME", "sole_pal": "WHITE",
+      "action": ["shoot", 2]
+    },
+    {
+      "id": "sea_boss", "crew": "SEA", "phase": 6, "number": 9, "role": "boss", "name": "Downpour", "recruit": true,
+      "desc": "power forward, tan skin, short black hair with a lime headband, navy sleeveless hoodie with lime trim, navy shorts, a yellow rain jacket tied at the waist",
+      "body": "power_forward", "body_tweak": {"mass": 0.15, "leg": 0.03}, "skin": "tan", "hair": "buzz", "hair_pal": "HAIR_INK",
+      "headband": true, "band_pal": "LIME", "waist_jacket": true, "jacket_pal": "YELLOW",
+      "top": "hoodie", "top_pal": "NAVY", "trim_pal": "LIME",
+      "shorts_pal": "NAVY", "shorts_trim": "LIME", "shorts_len": 0.95,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.35, "shoe_pal": "LIME", "shoe_acc": "NAVY", "sole_pal": "NAVY",
+      "action": ["dunk", 3]
+    },
+    {
+      "id": "sea_a1", "crew": "SEA", "phase": 6, "number": 6, "role": "average", "name": "Milo",
+      "desc": "stocky guard, light skin, curly red hair, lime tee, navy short shorts",
+      "body": "stocky_guard", "body_tweak": {"mass": -0.04}, "skin": "light", "hair": "twists", "hair_pal": "HAIR_RUST",
+      "top": "tee", "top_pal": "LIME", "trim_pal": "NAVY",
+      "shorts_pal": "NAVY", "shorts_trim": "LIME", "shorts_len": 0.64,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.3, "shoe_pal": "NAVY", "shoe_acc": "LIME", "sole_pal": "WHITE",
+      "action": ["pass", 0]
+    },
+    {
+      "id": "sea_a2", "crew": "SEA", "phase": 6, "number": 40, "role": "average", "name": "Ray",
+      "desc": "wiry center, light skin, blond buzz cut, navy tee, lime knee-length shorts",
+      "body": "wiry_center", "skin": "light", "hair": "buzz", "hair_pal": "HAIR_BLOND",
+      "top": "tee", "top_pal": "NAVY", "trim_pal": "LIME",
+      "shorts_pal": "LIME", "shorts_trim": "NAVY", "shorts_len": 0.98,
+      "sleeve": null, "tight": null,
+      "sock_pal": "NAVY", "sock_len": 0.25, "shoe_pal": "WHITE", "shoe_acc": "NAVY", "sole_pal": "NAVY",
+      "action": ["block", 1]
+    },
+
+    {
+      "id": "la_g1", "crew": "LA", "phase": 6, "number": 23, "role": "slasher", "name": "Trey", "recruit": true,
+      "desc": "lanky guard, brown skin, short curls, sky blue tank with sand trim, sand shorts",
+      "body": "lanky_guard", "skin": "brown", "hair": "twists", "hair_pal": "HAIR_DARK",
+      "top": "tank", "top_pal": "SKY", "trim_pal": "SAND",
+      "shorts_pal": "SAND", "shorts_trim": "SKY", "shorts_len": 0.95,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.2, "shoe_pal": "SKY", "shoe_acc": "WHITE", "sole_pal": "WHITE",
+      "action": ["layup", 2]
+    },
+    {
+      "id": "la_g2", "crew": "LA", "phase": 6, "number": 15, "role": "wing", "name": "Kai", "recruit": true,
+      "desc": "power forward, tan skin, sun-bleached shaggy hair, sand tee with sky blue trim, sky blue board shorts",
+      "body": "power_forward", "body_tweak": {"mass": -0.04}, "skin": "tan", "hair": "shaggy", "hair_pal": "HAIR_SUN",
+      "top": "tee", "top_pal": "SAND", "trim_pal": "SKY",
+      "shorts_pal": "SKY", "shorts_trim": "SAND", "shorts_len": 1.06,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.12, "shoe_pal": "SAND", "shoe_acc": "SKY", "sole_pal": "WHITE",
+      "action": ["poke", 1]
+    },
+    {
+      "id": "la_boss", "crew": "LA", "phase": 6, "number": 0, "role": "boss", "name": "Sunset", "recruit": true,
+      "desc": "champion build, deep brown skin, short locs, sky blue sleeveless hoodie with sand trim, red-orange lifeguard shorts, whistle on a cord",
+      "body": "champion", "skin": "deep", "hair": "twists", "hair_pal": "HAIR_BLACK",
+      "chain": true, "chain_pal": "WHITE", "whistle": true, "whistle_pal": "SILVER",
+      "top": "hoodie", "top_pal": "SKY", "trim_pal": "SAND",
+      "shorts_pal": "LIFEGUARD", "shorts_trim": "SAND", "shorts_len": 0.9,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.2, "shoe_pal": "SAND", "shoe_acc": "LIFEGUARD", "sole_pal": "WHITE",
+      "action": ["dunk", 4]
+    },
+    {
+      "id": "la_a1", "crew": "LA", "phase": 6, "number": 3, "role": "average", "name": "Brody",
+      "desc": "slim guard, light skin, swoopy blond hair, sky blue tee, sand short shorts",
+      "body": "slim_guard", "skin": "light", "hair": "shaggy", "hair_pal": "HAIR_BLOND",
+      "top": "tee", "top_pal": "SKY", "trim_pal": "SAND",
+      "shorts_pal": "SAND", "shorts_trim": "SKY", "shorts_len": 0.62,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.12, "shoe_pal": "WHITE", "shoe_acc": "SKY", "sole_pal": "SAND",
+      "action": ["run", 3]
+    },
+    {
+      "id": "la_a2", "crew": "LA", "phase": 6, "number": 34, "role": "average", "name": "Duke",
+      "desc": "heavy big, umber skin, buzz cut, sand tank, sky blue long shorts, three pairs of sunglasses (eyes, forehead, collar)",
+      "body": "heavy_big", "skin": "umber", "hair": "buzz", "hair_pal": "HAIR_BLACK", "shades": true,
+      "glasses_up": true, "glasses_collar": true, "glasses_pal": "BLACK", "collar_pal": "RED",
+      "top": "tank", "top_pal": "SAND", "trim_pal": "SKY",
+      "shorts_pal": "SKY", "shorts_trim": "SAND", "shorts_len": 1.08,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.2, "shoe_pal": "SKY", "shoe_acc": "SAND", "sole_pal": "WHITE",
+      "action": ["celebrate", 0]
+    },
+
+    {
+      "id": "ny_q1", "crew": "NYQ", "phase": 6, "number": 5, "role": "big", "name": "Ace",
+      "desc": "power forward, tan skin, slicked-back black hair, red tank with black trim, black shorts, taped fingers",
+      "body": "power_forward", "body_tweak": {"leg": 0.02}, "skin": "tan", "hair": "slick", "hair_pal": "HAIR_INK",
+      "hand_pal": "TAPE",
+      "top": "tank", "top_pal": "RED", "trim_pal": "BLACK",
+      "shorts_pal": "BLACK", "shorts_trim": "RED", "shorts_len": 0.95,
+      "sleeve": null, "tight": null,
+      "sock_pal": "BLACK", "sock_len": 0.3, "shoe_pal": "RED", "shoe_acc": "BLACK", "sole_pal": "WHITE",
+      "action": ["dunk", 2]
+    },
+    {
+      "id": "ny_q2", "crew": "NYQ", "phase": 6, "number": 9, "role": "average", "name": "Dash",
+      "desc": "slim guard, deep brown skin, short fade with a part, black tee with red trim, red shorts",
+      "body": "slim_guard", "skin": "deep", "hair": "part", "hair_pal": "HAIR_BLACK",
+      "top": "tee", "top_pal": "BLACK", "trim_pal": "RED",
+      "shorts_pal": "RED", "shorts_trim": "BLACK", "shorts_len": 0.9,
+      "sleeve": null, "tight": null,
+      "sock_pal": "WHITE", "sock_len": 0.2, "shoe_pal": "BLACK", "shoe_acc": "RED", "sole_pal": "WHITE",
+      "action": ["dribble", 2]
+    },
+    {
+      "id": "ny_q3", "crew": "NYQ", "phase": 6, "number": 8, "role": "average", "name": "Knox",
+      "desc": "wiry center, light skin, red buzz cut, red tank, black knee-length shorts, knee brace",
+      "body": "wiry_center", "skin": "light", "hair": "buzz", "hair_pal": "HAIR_RUST",
+      "kneepads": "L", "pad_pal": "BLACK",
+      "top": "tank", "top_pal": "RED", "trim_pal": "BLACK",
+      "shorts_pal": "BLACK", "shorts_trim": "RED", "shorts_len": 0.96,
+      "sleeve": null, "tight": null,
+      "sock_pal": "RED", "sock_len": 0.3, "shoe_pal": "BLACK", "shoe_acc": "RED", "sole_pal": "RED",
+      "action": ["block", 1]
+    },
+    {
+      "id": "ny_s1", "crew": "NYS", "phase": 6, "number": 3, "role": "shooter", "name": "Jax",
+      "desc": "lanky guard, umber skin, high-top hair, grey tank with plum trim, plum shorts",
+      "body": "lanky_guard", "skin": "umber", "hair": "hightop", "hair_pal": "HAIR_BLACK",
+      "top": "tank", "top_pal": "GREYW", "trim_pal": "PLUM",
+      "shorts_pal": "PLUM", "shorts_trim": "GREYW", "shorts_len": 0.95,
+      "sleeve": null, "tight": null,
+      "sock_pal": "GREYW", "sock_len": 0.3, "shoe_pal": "PLUM", "shoe_acc": "GREYW", "sole_pal": "WHITE",
+      "action": ["shoot", 2]
+    },
+    {
+      "id": "ny_s2", "crew": "NYS", "phase": 6, "number": 11, "role": "wing", "name": "Omar",
+      "desc": "lanky wing, brown skin, neat beard, plum tee with grey trim, grey long shorts, arm sleeve",
+      "body": "lanky_wing", "skin": "brown", "hair": "buzz", "hair_pal": "HAIR_DARK", "beard": true,
+      "top": "tee", "top_pal": "PLUM", "trim_pal": "GREYW",
+      "shorts_pal": "GREYW", "shorts_trim": "PLUM", "shorts_len": 1.08,
+      "sleeve": "L", "sleeve_pal": "PLUM", "tight": null,
+      "sock_pal": "PLUM", "sock_len": 0.2, "shoe_pal": "GREYW", "shoe_acc": "PLUM", "sole_pal": "PLUM",
+      "action": ["pass", 1]
+    },
+    {
+      "id": "ny_s3", "crew": "NYS", "phase": 6, "number": 4, "role": "average", "name": "Bruno",
+      "desc": "heavy big, light skin, dark crew cut, grey sleeveless hoodie, plum shorts",
+      "body": "heavy_big", "skin": "light", "hair": "buzz", "hair_pal": "HAIR_DARK",
+      "top": "hoodie", "top_pal": "GREYW", "trim_pal": "PLUM",
+      "shorts_pal": "PLUM", "shorts_trim": "GREYW", "shorts_len": 0.9,
+      "sleeve": null, "tight": null,
+      "sock_pal": "GREYW", "sock_len": 0.35, "shoe_pal": "BLACK", "shoe_acc": "PLUM", "sole_pal": "GREYW",
+      "action": ["poke", 0]
+    },
+    {
+      "id": "ny_f1", "crew": "NYF", "phase": 6, "number": 1, "role": "slasher", "name": "Slim",
+      "desc": "lanky guard, tan skin, braids, black tank with gold trim, black shorts, gold wristbands",
+      "body": "lanky_guard", "body_tweak": {"width": -0.03}, "skin": "tan", "hair": "cornrows", "braids": true,
+      "hair_pal": "HAIR_INK", "wrist": true, "wrist_pal": "GOLD",
+      "top": "tank", "top_pal": "BLACK", "trim_pal": "GOLD",
+      "shorts_pal": "BLACK", "shorts_trim": "GOLD", "shorts_len": 1.02,
+      "sleeve": null, "tight": null,
+      "sock_pal": "BLACK", "sock_len": 0.25, "shoe_pal": "GOLD", "shoe_acc": "BLACK", "sole_pal": "WHITE",
+      "action": ["layup", 1]
+    },
+    {
+      "id": "ny_f2", "crew": "NYF", "phase": 6, "number": 6, "role": "big", "name": "Hammer",
+      "desc": "heavy big, light skin, shaved head, black sleeveless hoodie with gold trim, black long shorts",
+      "body": "heavy_big", "body_tweak": {"mass": 0.05, "torso": 0.03}, "skin": "light", "hair": "bald", "hair_pal": "HAIR_BROWN",
+      "top": "hoodie", "top_pal": "BLACK", "trim_pal": "GOLD",
+      "shorts_pal": "BLACK", "shorts_trim": "GOLD", "shorts_len": 1.08,
+      "sleeve": null, "tight": null,
+      "sock_pal": "GOLD", "sock_len": 0.3, "shoe_pal": "BLACK", "shoe_acc": "GOLD", "sole_pal": "GOLD",
+      "action": ["dunk", 3]
     }
   ]
 }
