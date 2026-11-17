@@ -164,8 +164,9 @@ const TURBO_SHOT_EXEMPT_FT := 6.0 # shots this close to the rim (dunks, layups) 
 const SLIDE_END_DEG := 20.0       # the slide ends once he is moving within this of where he wants to go ...
 const SLIDE_END_SPEED := 0.3      # ... or has slowed under this fraction of top speed ...
 const SLIDE_MAX_TIME := 0.6       # ... or after this many seconds
-const SLIDE_MIN_WANT := 0.5       # a cut is a slide only if he wants to go the new way at this fraction of top speed
-                                  # or more (easing into a spot or stopping is not a hard cut)
+const SLIDE_MIN_WANT := 0.9       # a cut is a slide only if he wants to go the new way at this fraction of top speed
+                                  # or more (easing into a spot or stopping is not a hard cut). P6-30: was 0.5; a ball
+                                  # handler's full stick is 0.94, so he still slides on a hard cut
 var sliding := false              # read-only for the effects (twist_fx, P6-23 dust): a hard cut is sliding now
 var _slide_t := 0.0
 

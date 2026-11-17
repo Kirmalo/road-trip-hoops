@@ -540,6 +540,12 @@ drawn in the hand of every held-ball frame**, including run_dribble, cross, catc
 - **P6-42** | Web publish (`tools/build_web.sh --publish`) and the lead's phase summary | coordinator, lead | - |
   published, summary sent | P6-41 | none
 
+### Bugs from QA (P6-30 / P6-31, `docs/qa/phase6.md` section 7)
+- **P6-B1** | BALL! popup clipped at the screen edge: the caller stands at the edge of the view, and the popup at
+  his head (`human_input.gd` `fx.popup_head`) is cut off ("BA"). Keep it inside the screen like the other popups |
+  gameplay A | `scripts/human_input.gd` or `scripts/fx.gd` | the popup fully on screen in `--shots --humantest --city
+  memphis --cgame 3` | - | none
+
 ## Parallel plan
 
 | Wave | Programmer A | Programmer B | Art-audio | QA |

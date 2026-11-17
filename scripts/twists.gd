@@ -61,8 +61,9 @@ const TWISTS := {
 	"wet": {
 		"name": "WET COURT", "banner": "Wet court: hard cuts slide (crossovers keep their grip)", "icon": "wet",
 		"cut_grip": 0.42,             # a sharp turn at full speed slides about 1.5 ft further before he changes direction
-		"cut_min_speed": 0.8,         # only at 80% of top speed or more
-		"cut_angle_deg": 60.0,        # and only turning 60 degrees or more
+		"cut_min_speed": 0.9,         # only at 90% of top speed or more (P6-30: was 0.8)
+		"cut_angle_deg": 150.0,       # and only turning 150 degrees or more: a reversal (P6-30: was 60, about 500 slides
+		                              # a CPU game; now about 75)
 	},
 	# Los Angeles: sand
 	"sand": {
