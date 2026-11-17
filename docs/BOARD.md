@@ -257,7 +257,10 @@ From `docs/VISION.md` "Phase 7 design":
 - The owner uploads. The team builds the release files (the web ZIP, and the APK signed with a key the owner
   creates), writes the step-by-step upload instructions, the store page text and the screenshots.
 
-Open: Q1-Q5 below.
+Q1-Q5 answered (VISION "Phase 7 plan answers"): all the recommended (a) answers. Package id
+io.github.kirmalo.roadtriphoops, app name "Road Trip Hoops", 1.0.0 / code 1, the proposed tagline; LEFT-HANDED and
+MUSIC in Settings only; no source link on itch, GitHub Pages stays the test build; the owner makes the release key.
+Coordinator: Android back = pause/BACK, quits only on the title; APK keeps 32- and 64-bit ARM.
 
 ## Todo
 
