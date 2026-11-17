@@ -224,7 +224,7 @@ func call_for_ball() -> void:
 		return
 	call_t = 0.0
 	game.stat("human_calls")
-	game.fx.popup("BALL!", h.position + Vector2(0, -4.5 * game.FT), game.TEAM_COLORS[h.team], 28)
+	game.fx.popup_head("BALL!", h, h.position + Vector2(0, -4.5 * game.FT), game.TEAM_COLORS[h.team], 28)   # over his head
 	_log("call")
 
 func _end_call(cooldown: bool) -> void:

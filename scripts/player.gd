@@ -1724,6 +1724,10 @@ func _build_view() -> void:
 	_v_over = Node2D.new()
 	_v_over.draw.connect(_draw_view_overlay)
 	game.overlay.add_child(_v_over)
+	# P6-23 motion effects listen to the view's own events (v2 emits them from its frame picker, v1 from _fx_v1_events)
+	view_takeoff.connect(_fx_on_takeoff)
+	view_landed.connect(_fx_on_landed)
+	view_dunk_slam.connect(_fx_on_slam)
 
 func _process(delta: float) -> void:
 	if _v_body != null:
@@ -1767,16 +1771,20 @@ func _update_view(delta: float) -> void:
 	_v_body.position = base
 	var sc: float = View.size_at(position)
 	var up: float = base.y - View.to_screen(position, _v_lift).y
+	_fx_cuts(delta)
 	if _v_ver == 2:
 		_update_sheet_frame_v2(delta)   # also sets the drawn lift (_v_lift)
-		_v_spr.scale = Vector2.ONE * Sheets.draw_scale(_v_fmt) * sc
+		_v_spr.scale = Vector2.ONE * Sheets.draw_scale(_v_fmt) * sc * _fx_squash(delta)   # around the feet point
 		_v_spr.position = Vector2(0, -(base.y - View.to_screen(position, _v_lift).y))
 		_v2_texmem()
 	elif _v_sheet:
 		_update_sheet_frame(delta)
-		_v_spr.scale = Vector2(PLAYER_SCALE, PLAYER_SCALE) * sc
+		_fx_v1_events()
+		_v_spr.scale = Vector2(PLAYER_SCALE, PLAYER_SCALE) * sc * _fx_squash(delta)   # the feet are the origin
 		_v_spr.position = Vector2(0, -up)
 	else:
+		_fx_v1_events()   # the top-down fallback: dust and the punch, no squash (a centered, turned sprite)
+		_fx_squash(delta)
 		_v_spr.rotation = View.screen_angle(position, facing)
 		_v_spr.scale = Vector2(1.75, 1.75) * sc * (1.0 + 0.15 * jump_z / DUNK_JUMP_PX)
 		_v_spr.position = Vector2(0, -up - 14.0 * sc)
@@ -2456,3 +2464,142 @@ func _v2_texmem() -> void:
 			ids.append("%s(v%d%s)" % [p._v_sheet_id if p._v_ver == 2 else p.sheet_path().get_file().get_basename(),
 					p._v_ver, ",indexed" if bool(p._v_sheet_data.get("indexed", false)) else ""])
 		print("TEXMEM texture %.1f MB, video %.1f MB, players %s" % [tex_mb, vid_mb, ", ".join(ids)])
+
+# ---------------- motion effects (P6-23, Q7 "medium"; visual only) ----------------
+# These read the sim state and the view's events and never write the sim: squash and stretch of the drawn sprite
+# around its feet point on take-off and landing, dust (sand, splash) at the feet on hard cuts and landings, and a
+# camera punch (fx.punch) on a made big dunk. Nothing here uses the game's random numbers.
+
+const SQ_UP_TIME := 0.13          # seconds of the take-off stretch
+const SQ_DOWN_TIME := 0.16        # seconds of the landing squash
+const SQ_ATTACK := 0.25           # fraction of either spent reaching the full amount (then eased back to 1)
+const SQ_UP_AMP := {"dunk": 0.11, "layup": 0.08, "block": 0.07}    # take-off: taller by this (board: at most ~12%)
+const SQ_DOWN_AMP := {"dunk": 0.12, "layup": 0.09, "block": 0.08}  # landing: shorter by this
+const SQ_WIDE := 0.6              # the width changes by this x the height change, the other way (keeps the volume)
+const SQ_SLAM_AMP := 0.05         # a made dunk's slam: a short stretch as the arms snap down on the rim
+const DUST_LAND := {"dunk": 0.95, "layup": 0.6, "block": 0.55}     # landing puff strength (fx.foot_dust 0..1)
+const DUST_TAKEOFF := 0.4         # a dunk's or layup's take-off kicks up a small puff
+const CUT_DEG := 65.0             # a hard cut: the run turns this far off where he was heading ...
+const CUT_MIN_FRAC := 0.6         # ... at this fraction of top speed or more
+const CUT_DIR_FOLLOW := 8.0       # 1/s: "where he was heading" follows the run this fast (a smoothed direction)
+const CUT_COOLDOWN := 0.35        # seconds between two cut puffs of one player
+const DUST_CUT := 0.5             # a cut's puff strength (on turbo: DUST_CUT_TURBO)
+const DUST_CUT_TURBO := 0.75
+const DUST_CROSS := 0.6           # the crossover burst start
+const DUST_STUMBLE := 0.45        # a beaten defender stumbling (an ankle-breaker: DUST_FALL)
+const DUST_FALL := 0.8
+const PUNCH_STRENGTH := 1.0       # fx.punch strength on a made big dunk (turbo, alley-oop, windmill, tomahawk)
+
+var _fx_sq_t := -1.0              # seconds into the current squash / stretch (< 0: none)
+var _fx_sq_time := 0.1
+var _fx_sq_amp := 0.0             # > 0: stretch (taller), < 0: squash (shorter)
+var _fx_dir := Vector2.ZERO       # smoothed run direction (ZERO while standing)
+var _fx_cut_cd := 0.0
+var _fx_was_cross := false
+var _fx_was_slide := false
+var _fx_stumble_prev := 0.0
+var _fx_was_air := false          # v1 event tracking (v2 emits the events in _update_sheet_frame_v2)
+var _fx_air_kind := ""
+var _fx_rel_seen := false
+
+func _fx_start(amp: float, time: float) -> void:
+	# a new pulse never cuts a stronger one short
+	if _fx_sq_t >= 0.0 and absf(_fx_sq_amp) * _fx_env() > absf(amp):
+		return
+	_fx_sq_t = 0.0
+	_fx_sq_time = time
+	_fx_sq_amp = amp
+
+func _fx_env() -> float:
+	if _fx_sq_t < 0.0:
+		return 0.0
+	var u: float = clampf(_fx_sq_t / maxf(_fx_sq_time, 0.01), 0.0, 1.0)
+	if u < SQ_ATTACK:
+		return smoothstep(0.0, 1.0, u / SQ_ATTACK)
+	var v: float = (u - SQ_ATTACK) / (1.0 - SQ_ATTACK)
+	return (1.0 - v) * (1.0 - v)
+
+# the sprite scale multiplier this frame (Vector2.ONE at rest); the sprite's origin is the feet point
+func _fx_squash(delta: float) -> Vector2:
+	if _fx_sq_t < 0.0:
+		return Vector2.ONE
+	var e: float = _fx_env()
+	_fx_sq_t += delta
+	if _fx_sq_t >= _fx_sq_time:
+		_fx_sq_t = -1.0
+	var h: float = _fx_sq_amp * e
+	return Vector2(1.0 - SQ_WIDE * h, 1.0 + h)
+
+func _fx_dust(strength: float, dir: Vector2 = Vector2.ZERO) -> void:
+	if game.fx != null and game.fx.has_method("foot_dust"):
+		game.fx.foot_dust(position, strength, dir)
+
+func _fx_on_takeoff(kind: String) -> void:
+	_fx_start(float(SQ_UP_AMP.get(kind, 0.07)), SQ_UP_TIME)
+	game.stat("fx_stretches")
+	if kind == "dunk" or kind == "layup":
+		_fx_dust(DUST_TAKEOFF)
+
+func _fx_on_landed(kind: String) -> void:
+	_fx_start(-float(SQ_DOWN_AMP.get(kind, 0.08)), SQ_DOWN_TIME)
+	game.stat("fx_squashes")
+	_fx_dust(float(DUST_LAND.get(kind, 0.5)))
+
+func _fx_on_slam(_style: String, big: bool) -> void:
+	var ball = game.ball
+	var made: bool = ball.state == ball.SHOT and ball.shooter == self and ball.shot_kind == "dunk" and ball.shot_made
+	if not made:
+		return
+	_fx_start(SQ_SLAM_AMP, SQ_UP_TIME)
+	if big and game.fx != null and game.fx.has_method("punch"):
+		game.fx.punch(PUNCH_STRENGTH)
+
+# v1 sheets (and the fallback) have no frame picker events: the same take-off, slam and landing, seen from the sim
+func _fx_v1_events() -> void:
+	var air: bool = is_airborne()
+	if air and not _fx_was_air:
+		_fx_air_kind = "block" if block_jump_t >= 0.0 else rim_kind
+		_fx_rel_seen = false
+		v_turbo_dunk = rim_kind == "dunk" and (turbo or since_turbo < TURBO_DUNK_WINDOW)
+		view_takeoff.emit(_fx_air_kind)
+	if rim_kind == "dunk" and jump_released and not _fx_rel_seen:
+		_fx_rel_seen = true
+		view_dunk_slam.emit("", alley_oop or v_turbo_dunk)
+	if _fx_was_air and not air:
+		view_landed.emit(_fx_air_kind)
+	_fx_was_air = air
+
+# dust at the feet on hard cuts (a sharp turn at speed, the crossover burst, a wet slide starting) and stumbles
+func _fx_cuts(delta: float) -> void:
+	_fx_cut_cd = maxf(0.0, _fx_cut_cd - delta)
+	var air: bool = is_airborne()
+	var spd: float = velocity.length()
+	var crossing: bool = cross_t > 0.0
+	if crossing and not _fx_was_cross and not air:
+		_fx_dust(DUST_CROSS, cross_dir)
+		_fx_cut_cd = CUT_COOLDOWN
+		game.stat("dust_cuts")
+	_fx_was_cross = crossing
+	if sliding and not _fx_was_slide and not air:
+		_fx_dust(DUST_CUT_TURBO, velocity)
+		_fx_cut_cd = CUT_COOLDOWN
+		game.stat("dust_cuts")
+	_fx_was_slide = sliding
+	if stumble_t > _fx_stumble_prev and not air:
+		_fx_dust(DUST_FALL if _v_fall else DUST_STUMBLE)
+	_fx_stumble_prev = stumble_t
+	if air or spd <= RUN_MIN_SPEED:
+		_fx_dir = Vector2.ZERO
+		return
+	var now: Vector2 = velocity / spd
+	if _fx_dir == Vector2.ZERO:
+		_fx_dir = now
+		return
+	if _fx_cut_cd <= 0.0 and spd >= CUT_MIN_FRAC * speed and absf(now.angle_to(_fx_dir)) > deg_to_rad(CUT_DEG):
+		_fx_dust(DUST_CUT_TURBO if turbo else DUST_CUT, now)
+		_fx_cut_cd = CUT_COOLDOWN
+		_fx_dir = now
+		game.stat("dust_cuts")
+		return
+	var d: Vector2 = _fx_dir.lerp(now, 1.0 - exp(-CUT_DIR_FOLLOW * delta))
+	_fx_dir = d.normalized() if d.length() > 0.01 else now
