@@ -227,3 +227,56 @@ static func _as_ids(v) -> Array:
 		for x in v:
 			out.append(str(x))
 	return out
+
+# ---------------- Full screen (P6-T2) ----------------
+# The FULL SCREEN button (title.gd's Settings, pause.gd's panel) calls set_fullscreen(), which switches at once (inside
+# the tap, as a browser needs) and saves the choice. The label shows is_fullscreen(), the real state, so leaving with
+# the browser (Esc, back gesture) shows OFF without changing the saved choice. A browser can't enter full screen at
+# page load, so restore_fullscreen() (title.gd and pause.gd call it on a finger / mouse release) puts a saved ON back on
+# the first tap of the run, once. Where full screen isn't supported nothing happens (the label stays OFF).
+const FULLSCREEN_KEY := "fullscreen"     # bool in SAVE_SECTION
+
+static var _fs_restored := false         # restore_fullscreen() has had its one try this run
+
+static func fullscreen_saved() -> bool:
+	var cfg := ConfigFile.new()
+	if cfg.load(SAVE_PATH) != OK:
+		return false
+	return bool(cfg.get_value(SAVE_SECTION, FULLSCREEN_KEY, false))
+
+static func save_fullscreen(on: bool) -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(SAVE_PATH)   # keep the other settings in the file
+	cfg.set_value(SAVE_SECTION, FULLSCREEN_KEY, on)
+	cfg.save(SAVE_PATH)
+
+static func is_fullscreen() -> bool:
+	var m: int = DisplayServer.window_get_mode()
+	return m == DisplayServer.WINDOW_MODE_FULLSCREEN or m == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
+
+# The button: switch now and remember it. No window (headless) = nothing to switch; the choice is still saved.
+static func set_fullscreen(on: bool) -> void:
+	_fs_restored = true   # the player chose: no restore after this
+	save_fullscreen(on)
+	apply_fullscreen(on)
+
+# Once per run, on the first tap: a saved ON goes back to full screen (the tap is the browser's user gesture).
+static func restore_fullscreen() -> void:
+	if _fs_restored:
+		return
+	_fs_restored = true
+	if fullscreen_saved() and not is_fullscreen():
+		apply_fullscreen(true)
+
+static func apply_fullscreen(on: bool) -> void:
+	if DisplayServer.get_name() == "headless" or on == is_fullscreen():
+		return
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if on else DisplayServer.WINDOW_MODE_WINDOWED)
+
+# a finger or mouse button let go (Chromium counts a release as the user gesture; a touch press isn't one)
+static func is_release_tap(event: InputEvent) -> bool:
+	if event is InputEventScreenTouch:
+		return not (event as InputEventScreenTouch).pressed
+	if event is InputEventMouseButton:
+		return not (event as InputEventMouseButton).pressed
+	return false

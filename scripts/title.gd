@@ -4,12 +4,15 @@ extends CanvasLayer
 #             ROAD TRIP -> CONTINUE / NEW TRIP (NEW TRIP over a saved trip asks to confirm) -> EASY / NORMAL / HARD
 #             QUICK GAME -> today's game (its start panel picks the level and court, as before)
 #             SETTINGS, CREW & CREDITS (their own Flow screens)
-#   settings  MUSIC on/off, SOUND volume, the default LEVEL (Quick Game and new trips); more in Phase 7
+#   settings  MUSIC on/off, FULL SCREEN on/off (P6-T2), SOUND volume, the default LEVEL (Quick Game and new trips)
 #   crew      your crew (from the trip save if there is one) and the art and music credits, in a scrolling list
 # The Road Trip sub-panels swap in place (no reload); every other move is Flow.go(). Each panel ignores taps for
 # PANEL_ARM s, so a quick double tap can't fall through onto the next panel's button in the same spot.
 # trip.gd / save.gd (P5-05) and audio.set_sfx_volume (P5-07) are called only if they exist, so this runs alone:
 # without save.gd CONTINUE is off; without trip.gd NEW TRIP goes to the flow's "not built yet" map panel.
+# FULL SCREEN (P6-T2): Difficulty.set_fullscreen() inside the tap (a browser needs the gesture); the label follows the
+# real window mode every frame (the browser's Esc / back gesture). The first tap of a run puts a saved ON back
+# (Difficulty.restore_fullscreen(), from _input here and in pause.gd).
 # Desktop testing: Escape = BACK. Test: -- --titletest walks every screen and button (screenshots with xvfb).
 
 const UI = preload("res://scripts/ui_kit.gd")
@@ -115,6 +118,8 @@ var _arm_t := 0.0
 var _buttons: Array = []     # the buttons that wait out PANEL_ARM
 var _busy := false           # a Flow.go() is on its way: ignore further taps
 var _music_btn: Button
+var _fs_btn: Button          # FULL SCREEN: ON / OFF (Settings)
+var _fs_shown := false       # the real state the label shows
 var _level_btns: Array = []
 var _sfx_slider: HSlider
 var _sfx_dirty_t := -1.0
@@ -125,6 +130,7 @@ var _art: Control
 static var _test_step := 0
 var _test_on := false
 var _test_t := 0
+var _test_fs := false        # the saved FULL SCREEN before the test pressed it
 
 func _ready() -> void:
 	MenuScript.start_done = false   # a Quick Game from here shows its start panel (level, court) again
@@ -152,8 +158,15 @@ func _process(delta: float) -> void:
 			_save_sfx()
 	if _art != null:
 		_art.queue_redraw()
+	if _fs_btn != null and Difficulty.is_fullscreen() != _fs_shown:
+		_refresh_settings()   # left (or entered) full screen through the browser
 	if _test_on:
 		_test_tick()
+
+# the first tap of the run puts a saved FULL SCREEN back (a browser only allows it during a tap)
+func _input(event: InputEvent) -> void:
+	if Difficulty.is_release_tap(event):
+		Difficulty.restore_fullscreen()
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	var k := event as InputEventKey
@@ -298,6 +311,9 @@ func _build_settings() -> void:
 	var r1 := _row(box, "MUSIC")
 	_music_btn = UI.button(r1, "", _tap.bind(_toggle_music), UI.KIND_OPT)
 	_buttons.append(_music_btn)
+	var r2 := _row(box, "SCREEN")
+	_fs_btn = UI.button(r2, "", _tap.bind(_toggle_fullscreen), UI.KIND_OPT)
+	_buttons.append(_fs_btn)
 	_sfx_slider = UI.slider_row(box, "SOUND", _saved_sfx(), _on_sfx)
 	var r3 := _row(box, "LEVEL")
 	for lv in [Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD]:
@@ -307,7 +323,6 @@ func _build_settings() -> void:
 		_buttons.append(b)
 	UI.label(box, "LEVEL is for Quick Game and new trips" + (", and your saved trip" if _has_trip() else ""),
 			UI.SUB_FONT, STUB_COLOR)
-	UI.label(box, "More settings are coming in a later update.", UI.SUB_FONT, STUB_COLOR)
 	_refresh_settings()
 	_arm(PANEL_ARM)
 
@@ -320,6 +335,9 @@ func _row(parent: Control, text: String) -> HBoxContainer:
 func _refresh_settings() -> void:
 	_music_btn.text = "ON" if MenuScript.music_on else "OFF"
 	UI.set_text_color(_music_btn, UI.OFF_TEXT if MenuScript.music_on else UI.OPT_OFF_TEXT)
+	_fs_shown = Difficulty.is_fullscreen()
+	_fs_btn.text = "FULL SCREEN: ON" if _fs_shown else "FULL SCREEN: OFF"
+	UI.set_text_color(_fs_btn, UI.OFF_TEXT if _fs_shown else UI.OPT_OFF_TEXT)
 	for i in _level_btns.size():
 		UI.set_kind(_level_btns[i], UI.KIND_LIT if i == Difficulty.level else UI.KIND_MAIN)
 
@@ -328,6 +346,14 @@ func _toggle_music() -> void:
 	if audio != null:
 		audio.set_music_on(MenuScript.music_on)
 	_stat("title_music_" + ("on" if MenuScript.music_on else "off"))
+	_refresh_settings()
+
+# switches inside this tap (the browser's user gesture) and saves the choice; on the web the window mode changes a
+# moment later, and _process updates the label then
+func _toggle_fullscreen() -> void:
+	var on: bool = not Difficulty.is_fullscreen()
+	Difficulty.set_fullscreen(on)
+	_stat("title_fullscreen_" + ("on" if on else "off"))
 	_refresh_settings()
 
 func _pick_level(lv: int) -> void:
@@ -568,12 +594,16 @@ func _test_tick() -> void:
 		7:
 			print("TITLE TEST music_on=%s" % MenuScript.music_on)
 			_press("ON" if MenuScript.music_on else "OFF")   # back to how it was
+			_test_fs = Difficulty.fullscreen_saved()
+			_press(_fs_btn.text)                              # FULL SCREEN (headless: no window, stays OFF)
 			var keep: float = _sfx_slider.value
 			_sfx_slider.value = 0.5
 			_sfx_slider.value = keep
 		8:
-			print("TITLE TEST music_on=%s sfx=%.2f level=%s" % [MenuScript.music_on, _sfx_slider.value,
-					Difficulty.level_name()])
+			print("TITLE TEST music_on=%s sfx=%.2f level=%s fullscreen=%s (%s, saved %s)" % [MenuScript.music_on,
+					_sfx_slider.value, Difficulty.level_name(), Difficulty.is_fullscreen(), _fs_btn.text,
+					Difficulty.fullscreen_saved()])
+			Difficulty.set_fullscreen(_test_fs)   # back to how it was
 			_press(Difficulty.level_name().to_upper())
 			_press("BACK")
 		9:

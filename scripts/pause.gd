@@ -16,12 +16,16 @@ extends CanvasLayer
 # that nothing moved: stats pause_opens, pause_resumes, pause_test_ok or pause_leaks.
 # P6-16: under the stats, the game's twist in one line ("WIND: long shots and lobs drift"; nothing without a twist).
 # --humantest --pauseshot (xvfb) saves the open panel to /tmp/hoops_pause.png.
+# P6-T2: FULL SCREEN ON/OFF beside MUSIC (Difficulty.set_fullscreen() inside the tap, saved in settings.cfg). The label
+# follows the real window mode every frame while the panel shows (leaving with the browser's Esc / back gesture shows
+# OFF). A finger or mouse release here also gives Difficulty.restore_fullscreen() its first-tap try.
 
 const UI = preload("res://scripts/ui_kit.gd")
 const Flow = preload("res://scripts/flow.gd")
 const MenuScript = preload("res://scripts/menu.gd")
 const AudioScript = preload("res://scripts/audio.gd")
 const Twists = preload("res://scripts/twists.gd")    # the twist line (P6-16)
+const Difficulty = preload("res://scripts/difficulty.gd")   # FULL SCREEN (P6-T2)
 
 const LAYER := UI.LAYER + 1              # over the HUD (10) and the level panel (20)
 const BTN_SIZE := 80.0                   # pause button, px square at the 1280x720 base: thumb-sized
@@ -36,7 +40,8 @@ const CONFIRM_TAPS := true               # RESTART and QUIT ask for a second tap
 const CONFIRM_TIME := 2.5                # s the second tap may come in
 const RESUME_SIZE := Vector2(540, 150)   # the big RESUME
 const HALF_SIZE := Vector2(250, 110)     # RESTART / QUIT side by side (board minimum 200 x 110)
-const WIDE_SIZE := Vector2(540, 110)     # MUSIC
+const TOGGLE_FONT := 24                  # MUSIC / FULL SCREEN side by side (P6-T2), HALF_SIZE each: smaller than
+                                         # UI.OPT_FONT so "FULL SCREEN: OFF" fits with room to spare
 const RIGHT_GAP := 18                    # px between the rows on the right
 const COLUMNS_GAP := 44                  # px between the stats panel and the buttons
 const SCORE_FONT := 60                   # the score, each number in its team's color
@@ -47,6 +52,8 @@ const STAT_COL_W := 150                  # px, each team's column
 const SAMPLE_SFX := "bounce"             # played at the new volume when the slider is let go
 const TEST_AT := 20.0                    # --humantest: s of game time before the scripted pause
 const TEST_HOLD := 30                    # --humantest: frames it stays paused
+const TEST_FS_ON := 8                    # --humantest: paused frame that taps FULL SCREEN, and the one that taps it back
+const TEST_FS_OFF := 18
 const TWIST_FONT := 24                   # the twist line under the stats (P6-16)
 const TWIST_COLOR := Color(1.0, 0.9, 0.55)   # as main.gd's tip-off twist line
 const TWIST_W := 480.0                   # px; a longer line wraps
@@ -58,6 +65,8 @@ var _root: Control
 var _score_row: HBoxContainer
 var _grid: GridContainer
 var _music_btn: Button
+var _fs_btn: Button                      # FULL SCREEN: ON / OFF (P6-T2)
+var _fs_shown := false                   # the real state the label shows
 var _restart_btn: Button
 var _quit_btn: Button
 var _vol_label: Label
@@ -159,13 +168,17 @@ func _build_panel() -> void:
 	_twist_lbl.custom_minimum_size = Vector2(TWIST_W, 0)
 	_twist_lbl.visible = false
 
-	# right: RESUME, RESTART / QUIT, MUSIC, SOUND
+	# right: RESUME, RESTART / QUIT, MUSIC / FULL SCREEN, SOUND
 	var right := UI.vbox(cols, RIGHT_GAP, false)
 	UI.button(right, "RESUME", resume, UI.KIND_LIT, RESUME_SIZE)
 	var row := UI.hbox(right, RIGHT_GAP)
 	_restart_btn = UI.button(row, "RESTART", _on_restart, UI.KIND_MAIN, HALF_SIZE)
 	_quit_btn = UI.button(row, "QUIT", _on_quit, UI.KIND_MAIN, HALF_SIZE)
-	_music_btn = UI.button(right, "", _toggle_music, UI.KIND_OPT, WIDE_SIZE)
+	var row2 := UI.hbox(right, RIGHT_GAP)
+	_music_btn = UI.button(row2, "", _toggle_music, UI.KIND_OPT, HALF_SIZE)
+	_fs_btn = UI.button(row2, "", _toggle_fullscreen, UI.KIND_OPT, HALF_SIZE)
+	for b in [_music_btn, _fs_btn]:
+		(b as Button).add_theme_font_size_override("font_size", TOGGLE_FONT)
 	_vol_label = UI.label(right, "", UI.OPT_FONT)
 	_slider = UI.slider(right, AudioScript.sfx_volume, _on_volume)
 	_slider.drag_ended.connect(_on_volume_let_go)
@@ -252,6 +265,17 @@ func _toggle_music() -> void:
 		cfg.save(AudioScript.SETTINGS_PATH)
 	_refresh_buttons()
 
+# switches inside this tap (the browser's user gesture) and saves the choice; _process updates the label when the
+# window mode really changes (a moment later on the web)
+func _toggle_fullscreen() -> void:
+	var on: bool = not Difficulty.is_fullscreen()
+	if _test:
+		Difficulty.apply_fullscreen(on)   # the test doesn't change the saved choice
+	else:
+		Difficulty.set_fullscreen(on)
+	game.stat("pause_fullscreen_" + ("on" if on else "off"))
+	_refresh_buttons()
+
 func _on_volume(v: float) -> void:
 	game.audio.set_sfx_volume(v, false)   # saved when the panel closes
 	_vol_dirty = true
@@ -311,6 +335,9 @@ func _pct(s: Dictionary) -> String:
 func _refresh_buttons() -> void:
 	_music_btn.text = "MUSIC: ON" if MenuScript.music_on else "MUSIC: OFF"
 	UI.set_text_color(_music_btn, UI.OFF_TEXT if MenuScript.music_on else UI.OPT_OFF_TEXT)
+	_fs_shown = Difficulty.is_fullscreen()
+	_fs_btn.text = "FULL SCREEN: ON" if _fs_shown else "FULL SCREEN: OFF"
+	UI.set_text_color(_fs_btn, UI.OFF_TEXT if _fs_shown else UI.OPT_OFF_TEXT)
 	_restart_btn.text = "RESTART?" if _confirm == "restart" else "RESTART"
 	_quit_btn.text = "QUIT?" if _confirm == "quit" else "QUIT"
 	UI.set_kind(_restart_btn, UI.KIND_LIT if _confirm == "restart" else UI.KIND_MAIN)
@@ -334,14 +361,20 @@ func _process(delta: float) -> void:
 		if _confirm_t <= 0.0:
 			_confirm = ""
 			_refresh_buttons()
+	if _open and Difficulty.is_fullscreen() != _fs_shown:
+		_refresh_buttons()   # left (or entered) full screen through the browser
 	var show: bool = not _open and can_pause()
 	_btn.visible = show
 	UI.set_enabled(_btn, _guard_t <= 0.0)
 	if _test:
 		_humantest_step()
 
-# desktop testing: Escape or P
+# desktop testing: Escape or P. Any finger / mouse release: the run's first tap puts a saved FULL SCREEN back.
 func _input(event: InputEvent) -> void:
+	if Difficulty.is_release_tap(event):
+		if not _test:
+			Difficulty.restore_fullscreen()
+		return
 	if not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	if event.keycode == KEY_ESCAPE or event.keycode == KEY_P:
@@ -374,6 +407,8 @@ func _humantest_step() -> void:
 			_test_touch(true)
 		return
 	_test_frames += 1
+	if _test_frames == TEST_FS_ON or _test_frames == TEST_FS_OFF:
+		_fs_btn.emit_signal("pressed")   # FULL SCREEN on, then off again (headless: no window, the label stays OFF)
 	if _test_frames == TEST_HOLD - 1 and OS.get_cmdline_user_args().has("--pauseshot") \
 			and DisplayServer.get_name() != "headless":
 		get_viewport().get_texture().get_image().save_png(PAUSESHOT_PATH)
