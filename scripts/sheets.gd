@@ -487,6 +487,8 @@ const SAMPLE_ANIM_NAMES := {"run": "run", "rundribble": "run_dribble", "dribble"
 # in user://sheets_test/ and checks frames, pages, aliases, hands, mirroring, cards and the fallback chain.
 static func self_test() -> bool:
 	var ok := true
+	var real_v2: String = v2_dir
+	v2_dir = TEST_DIR + "no_v2/"   # the v1 checks see only v1 sheets, even where a v2 sheet exists
 	clear_cache()
 	# v1: today's numbers
 	var pl: GDScript = load("res://scripts/player.gd") as GDScript
@@ -526,10 +528,10 @@ static func self_test() -> bool:
 	ok = _t(load_sheet("no_such_player").is_empty() and card("no_such_player") == null
 			and str(load_first(["no_such_crew", "no_such", "red_1"]).get("id", "")) == "red_1"
 			and str(card_first(with_base("ht_g1_crew")).get("id", "")) == "ht_g1_crew"
-			and str(card_first(with_base("mem_g1_crew") + ["blue_1"]).get("id", "")) == "blue_1", "fallback chain") and ok
+			and str(card_first(with_base("no_such_crew") + ["blue_1"]).get("id", "")) == "blue_1", "fallback chain") and ok
 	# v2: a built test sheet
 	ok = _v2_test() and ok
-	v2_dir = V2_DIR
+	v2_dir = real_v2
 	clear_cache()
 	print("SHEETS %s" % ("OK" if ok else "FAILED"))
 	return ok
