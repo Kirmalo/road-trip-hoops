@@ -11,6 +11,12 @@ leg and dribble code, and renders with tools/art/pixel3d.py.
 - 5 drawn directions, rows S, SE, E, NE, N (yaw 0, 45, 75, 135, 180 as v1); SW, W, NW are mirrors.
 - Columns: every animation of ANIMS in order (format.json is the truth), stored in pages of 32 columns
   (<sheet>_p0.png ...; 2048 x 480 px at most).
+- v2.1 (indexed): the pages are 8-bit grayscale PNGs whose value is a palette index (0 = transparent), with one
+  256 x 1 RGBA palette per sheet and per _crew recolor (palettes/<id>.png); a recolor has no pages of its own
+  (palettes.json maps it to its base). The base and its recolors are rendered, and each index stands for the tuple
+  of colours a pixel has in all of them, so a recolor is exact. Rendered RGBA pages are cached in build/players2_rgba
+  (--skip-render rebuilds the files from it). Godot keeps the pages L8 only with
+  rendering/textures/lossless_compression/force_png = true (project.godot): its default lossless WebP decodes to RGB.
 - The ball is not drawn into the sprite. hands.json stores per body, animation, direction and frame the hand points,
   the ball centre with its layer flag (front 1 = over the sprite, by a z-buffer vote) or null when the ball is free,
   the ball's floor point and height (as the sample's _points.json).
@@ -23,9 +29,11 @@ Poses: run, run_dribble and dribble are procedural cycles (the sample's), dunk_t
 else is a list of key poses ("rigs": pelvis height, foot targets, hand targets, ball, lean...) with Catmull-Rom
 in-betweens. Legs are two-bone IK to foot targets on the floor, arms IK to hand targets (clamped to the arm's reach).
 
-Usage:  python3 tools/art/make_players_v2.py [--only ID[,ID...]] [--jobs N] [--frames DIR] [--no-preview]
-Output: assets/players2/format.json, hands.json, <id>_p<N>.png, cards/<id>.png;
-        docs/art/players_preview_v3.png, docs/art/players_v3_moves.gif
+Usage:  python3 tools/art/make_players_v2.py [--only ID[,ID...] | --all] [--jobs N] [--skip-render] [--no-preview]
+        [--anims a,b --frames DIR]   (a quick look: strips of those animations to DIR, no files written)
+Output: assets/players2/format.json, hands.json, palettes.json, <id>_p<N>.png, palettes/<id>.png, cards/<id>.png;
+        docs/art/players_preview_v3.png, docs/art/players_v3_moves.gif (the underdogs),
+        docs/art/players_preview_v4.png (--all: one strip per crew)
 Needs:  Pillow, numpy
 """
 import json
@@ -329,9 +337,12 @@ def dribble_fn(k, D, n):
 
 
 def run_dribble_fn(k, D, n=10):
-    """The sample's running dribble (right hand), with the ball pushed out to the side (owner fix 2): the hand works
-    further out from the hip and the ball lands beside the right foot's line instead of in front of the legs."""
+    """Running dribble (right hand): the sample's run legs, 2 steps per cycle and ONE BOUNCE PER STEP (P6-A7: the game
+    locks the dribble to the sim's ~0.35 s bounce, so a 2-step cycle is 2 bounces, about 0.7 s, a 6 ft stride at full
+    speed). The ball hits the floor on frames 2 and 7. Owner fix 2: the hand works further out from the hip and the
+    ball lands beside the right foot's line instead of in front of the legs."""
     ph = k / n
+    u = (2.0 * ph) % 1.0          # the bounce phase: two per cycle
     p = {"lean": 15.0, "head_up": 16.0}
     pelvis_y = S.run_legs(p, D, ph + 0.92, stride=0.92, sink=0.3)
     s = math.cos(2 * math.pi * (ph + 0.92 - 0.45))
@@ -347,16 +358,16 @@ def run_dribble_fn(k, D, n=10):
                  (0.50, hx - 0.4, 18.0, 5.6),
                  (0.70, hx, 20.6, 4.4),
                  (0.86, hx, 20.4, 4.6)]
-    hand = S.periodic_spline(hand_keys, ph)
+    hand = S.periodic_spline(hand_keys, u)
     under = np.array([0.0, -(BR + 1.5), 0.6])
     rel, floor_ph, catch_ph = 0.17, 0.40, 0.90
     fl = np.array([hx - 2.6, BR, 7.0])
-    if ph < rel or ph >= catch_ph:
+    if u < rel or u >= catch_ph:
         ball = hand + under
     else:
         b0 = S.periodic_spline(hand_keys, rel) + under
         b1 = S.periodic_spline(hand_keys, catch_ph) + under
-        ball = S.ball_free(ph, rel, floor_ph, catch_ph, b0, fl, b1)
+        ball = S.ball_free(u, rel, floor_ph, catch_ph, b0, fl, b1)
     S.set_hand(p, "R", hand, pelvis_y, (-1, -0.3, -0.7))
     return p, ball
 
@@ -928,8 +939,10 @@ ANIMS = [
     ("run", proc(run_fn, 12), 20.0, [50] * 12, {"contact": [0, 6]}),
     ("dribble", proc(dribble_fn, 8), 13.3, [80, 70] * 4, {"floor": 4, "catch": 7}),
     ("dribble_l", mirrored("dribble"), 13.3, [80, 70] * 4, {"floor": 4, "catch": 7, "hand": "L"}),
-    ("run_dribble", proc(run_dribble_fn, 10), 16.7, [60] * 10, {"floor": 4, "catch": 9, "contact": [1, 6]}),
-    ("run_dribble_l", mirrored("run_dribble"), 16.7, [60] * 10, {"floor": 4, "catch": 9, "contact": [1, 6], "hand": "L"}),
+    ("run_dribble", proc(run_dribble_fn, 10), 14.3, [70] * 10,
+     {"floor": [2, 7], "bounces": 2, "catch": [4, 9], "contact": [1, 6]}),
+    ("run_dribble_l", mirrored("run_dribble"), 14.3, [70] * 10,
+     {"floor": [2, 7], "bounces": 2, "catch": [4, 9], "contact": [1, 6], "hand": "L"}),
     ("cross", keyed(k_cross, 8), 0.0, [40] * 8, {"floor": 3, "switch": 4, "hand_end": "L"}),
     ("cross_l", mirrored("cross"), 0.0, [40] * 8, {"floor": 3, "switch": 4, "hand_end": "R"}),
     ("hold", keyed(k_hold, 4, loop=True), 4.0, [250] * 4, {}),
@@ -1061,9 +1074,29 @@ def check(img, rec, tag):
     return ["%s: %s" % (tag, s) for s in probs]
 
 
+def players_v2():
+    """crews.json players (make_players.load_players), with the v2-only changes in V2_OVERRIDES applied."""
+    ps = M.load_players()
+    pals = json.load(open(M.CREWS))["palettes"]
+    for p in ps:
+        swap = V2_OVERRIDES.get(p["id"])
+        if not swap:
+            continue
+        for k, v in list(p.items()):
+            for old, new in swap.items():
+                if v == pals[old]:
+                    p[k] = pals[new]
+    return ps
+
+
+# v2 only (crews.json is shared with the other art tasks): palette swaps per sheet id. ny_boss matches his v2
+# portrait: black and gold instead of black and silver.
+V2_OVERRIDES = {"ny_boss": {"SILVER": "GOLD"}}
+
+
 def render_sheet(sheet_id, dump=None, only_anims=None):
     """Renders one player's whole sheet. Returns (frames {(anim, dir): [(img, rec)]}, problems)."""
-    p = [q for q in M.load_players() if q["id"] == sheet_id][0]
+    p = [q for q in players_v2() if q["id"] == sheet_id][0]
     D = dims_of(p)
     frames, probs = {}, []
     for name, d, fps, ms, ev in ANIMS:
@@ -1083,41 +1116,186 @@ def render_sheet(sheet_id, dump=None, only_anims=None):
     return frames, probs
 
 
-def _render_job(args):
-    sid, dump, only = args
-    t = time.time()
-    fr, pr = render_sheet(sid, dump, only)
-    # PIL images pickle fine; keep them as raw bytes to be lighter
-    out = {k: [(np.array(img), rec) for img, rec in v] for k, v in fr.items()}
-    return sid, out, pr, time.time() - t
+CACHE = os.path.join(ROOT, "build", "players2_rgba")     # RGBA pages per rendered id (build/ is not in git)
 
 
-# ----------------------------------------------------------------------------- files
-
-def write_sheet(sheet_id, frames):
+def assemble_pages(frames):
     cols, total = columns()
     pages = []
-    npages = int(math.ceil(total / PAGE_COLS))
-    for pg in range(npages):
-        c0 = pg * PAGE_COLS
-        w = min(PAGE_COLS, total - c0)
+    for pg in range(int(math.ceil(total / PAGE_COLS))):
+        w = min(PAGE_COLS, total - pg * PAGE_COLS)
         pages.append(Image.new("RGBA", (w * FW, FH * len(DIRS)), (0, 0, 0, 0)))
     for name, (start, n) in cols.items():
         for r, (dname, _) in enumerate(DIRS):
             for k, (img, rec) in enumerate(frames[(name, dname)]):
                 c = start + k
                 pages[c // PAGE_COLS].paste(img, ((c % PAGE_COLS) * FW, r * FH))
-    sizes = []
+    return pages
+
+
+def _patch_job(args):
+    """Re-render only some animations of an id and paste them into its cached pages and points."""
+    sid, anims = args
+    t = time.time()
+    fr, pr = render_sheet(sid, None, anims)
+    pages = [Image.fromarray(a, "RGBA") for a in cached_pages(sid)]
+    recs = cached_recs(sid)
+    cols, _ = columns()
+    for (name, dname), seq in fr.items():
+        start, n = cols[name]
+        r = [d for d, _ in DIRS].index(dname)
+        for k, (img, rec) in enumerate(seq):
+            c = start + k
+            pg = pages[c // PAGE_COLS]
+            x, y = (c % PAGE_COLS) * FW, r * FH
+            pg.paste((0, 0, 0, 0), (x, y, x + FW, y + FH))
+            pg.paste(img, (x, y))
+        recs[(name, dname)] = [rec for _, rec in seq]
     for pg, img in enumerate(pages):
-        path = os.path.join(OUT_DIR, "%s_p%d.png" % (sheet_id, pg))
-        kind = M.save_png(img, path)
-        sizes.append((path, img.size, kind, os.path.getsize(path)))
+        img.save(os.path.join(CACHE, "%s_p%d.png" % (sid, pg)), compress_level=1)
+    with open(os.path.join(CACHE, sid + ".json"), "w") as f:
+        json.dump({"%s|%s" % k: v for k, v in recs.items()}, f)
+    if ("idle", "S") in fr:
+        M.save_png(fr[("idle", "S")][0][0], os.path.join(CARD_DIR, sid + ".png"))
+    return sid, recs, pr, time.time() - t, None
+
+
+def _render_job(args):
+    sid, dump, only = args
+    t = time.time()
+    fr, pr = render_sheet(sid, dump, only)
+    recs = {k: [rec for _, rec in v] for k, v in fr.items()}
+    if only:       # a quick look: hand the frames back
+        return sid, recs, pr, time.time() - t, {k: [np.array(img) for img, _ in v] for k, v in fr.items()}
+    os.makedirs(CACHE, exist_ok=True)
+    open(os.path.join(CACHE, ".gdignore"), "w").close()      # Godot must not import the cache
+    for pg, img in enumerate(assemble_pages(fr)):
+        img.save(os.path.join(CACHE, "%s_p%d.png" % (sid, pg)), compress_level=1)
+    with open(os.path.join(CACHE, sid + ".json"), "w") as f:
+        json.dump({"%s|%s" % k: v for k, v in recs.items()}, f)
     os.makedirs(CARD_DIR, exist_ok=True)
-    card = frames[("idle", "S")][0][0]
-    cpath = os.path.join(CARD_DIR, sheet_id + ".png")
-    M.save_png(card, cpath)
-    sizes.append((cpath, card.size, "card", os.path.getsize(cpath)))
-    return sizes
+    M.save_png(fr[("idle", "S")][0][0], os.path.join(CARD_DIR, sid + ".png"))
+    return sid, recs, pr, time.time() - t, None
+
+
+def cached_pages(sid):
+    _, total = columns()
+    n = int(math.ceil(total / PAGE_COLS))
+    return [np.array(Image.open(os.path.join(CACHE, "%s_p%d.png" % (sid, pg))).convert("RGBA")) for pg in range(n)]
+
+
+def cached_recs(sid):
+    d = json.load(open(os.path.join(CACHE, sid + ".json")))
+    return {tuple(k.split("|")): v for k, v in d.items()}
+
+
+def cached_frames(sid):
+    """{(anim, dir): [(PIL image, rec)]} rebuilt from the cache (previews)."""
+    pages = cached_pages(sid)
+    recs = cached_recs(sid)
+    cols, _ = columns()
+    out = {}
+    for name, (start, n) in cols.items():
+        for r, (dname, _) in enumerate(DIRS):
+            seq = []
+            for k in range(n):
+                c = start + k
+                a = pages[c // PAGE_COLS][r * FH:(r + 1) * FH, (c % PAGE_COLS) * FW:(c % PAGE_COLS + 1) * FW]
+                seq.append((Image.fromarray(a.copy(), "RGBA"), recs[(name, dname)][k]))
+            out[(name, dname)] = seq
+    return out
+
+
+# ----------------------------------------------------------------------------- files (v2.1: indexed pages)
+
+PAL_DIR = os.path.join(OUT_DIR, "palettes")
+
+
+def write_indexed(base, variants):
+    """One base sheet and its recolors -> 8-bit index pages (<base>_p<n>.png, gray value = palette index, 0 =
+    transparent) and one 256 x 1 RGBA palette per id (palettes/<id>.png). An index stands for the tuple of colors the
+    pixel has in every variant (the base and each recolor render the same shapes), so a recolor is exactly its
+    palette. More than 255 tuples: the rarest are merged into the nearest kept one (reported)."""
+    pages = {v: cached_pages(v) for v in variants}
+    bp = pages[base]
+    keys, masks, shapes = [], [], []
+    for pg in range(len(bp)):
+        m = bp[pg][:, :, 3] > 0
+        for v in variants:
+            if not np.array_equal(pages[v][pg][:, :, 3] > 0, m):
+                raise RuntimeError("%s: %s page %d has a different shape than its base" % (base, v, pg))
+        masks.append(m)
+        shapes.append(m.shape)
+        keys.append(np.concatenate([pages[v][pg][:, :, :3][m] for v in variants], axis=1))
+    allk = np.concatenate(keys, axis=0)
+    uniq, inv, cnt = np.unique(allk, axis=0, return_inverse=True, return_counts=True)
+    inv = inv.reshape(-1)
+    n_tuples = len(uniq)
+    merged = 0
+    if n_tuples > 255:
+        keep = np.argsort(-cnt)[:255]
+        kv = uniq[keep].astype(float)
+        remap = np.empty(n_tuples, int)
+        remap[keep] = np.arange(255)
+        rest = np.setdiff1d(np.arange(n_tuples), keep)
+        for i in rest:
+            remap[i] = int(np.argmin(((kv - uniq[i].astype(float)) ** 2).sum(1)))
+        merged = int(cnt[rest].sum())
+        uniq = uniq[keep]
+        inv = remap[inv]
+    sizes = []
+    off = 0
+    for pg, m in enumerate(masks):
+        idx = np.zeros(shapes[pg], np.uint8)
+        nn = int(m.sum())
+        idx[m] = (inv[off:off + nn] + 1).astype(np.uint8)
+        off += nn
+        path = os.path.join(OUT_DIR, "%s_p%d.png" % (base, pg))
+        save_l8(idx, path)
+        sizes.append((path, (shapes[pg][1], shapes[pg][0]), "L8", os.path.getsize(path)))
+    os.makedirs(PAL_DIR, exist_ok=True)
+    for vi, v in enumerate(variants):
+        pal = np.zeros((1, 256, 4), np.uint8)
+        pal[0, 1:len(uniq) + 1, :3] = uniq[:, vi * 3:vi * 3 + 3]
+        pal[0, 1:len(uniq) + 1, 3] = 255
+        path = os.path.join(PAL_DIR, v + ".png")
+        Image.fromarray(pal, "RGBA").save(path, optimize=True)
+        sizes.append((path, (256, 1), "palette", os.path.getsize(path)))
+    return sizes, n_tuples, merged
+
+
+def save_l8(a, path):
+    """An 8-bit grayscale PNG with filter 0 on every row: index data compresses about 20% better unfiltered than
+    with Pillow's adaptive filters (the same reason palette PNGs use none)."""
+    import struct
+    import zlib
+    h, w = a.shape
+    raw = b"".join(b"\x00" + a[j].tobytes() for j in range(h))
+
+    def chunk(t, d):
+        return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
+    with open(path, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 0, 0, 0, 0))
+                + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
+
+
+def write_palettes_json(groups):
+    path = os.path.join(OUT_DIR, "palettes.json")
+    data = {}
+    if os.path.exists(path):
+        try:
+            data = json.load(open(path)).get("palettes", {})
+        except ValueError:
+            data = {}
+    for base, variants in groups.items():
+        for v in variants:
+            data[v] = {"pages": base}
+    out = {"_help": "v2.1 (indexed): palettes.<id>.pages = the sheet whose index pages <id> draws with its own "
+                    "palette palettes/<id>.png (256 x 1 RGBA; index 0 = transparent). A _crew recolor has no pages "
+                    "of its own.", "palettes": dict(sorted(data.items()))}
+    with open(path, "w") as f:
+        json.dump(out, f, indent=1)
+    return path
 
 
 def write_format():
@@ -1131,14 +1309,17 @@ def write_format():
         anims[name] = e
     fmt = {"_help": "v2 player sheets (P6-A6, tools/art/make_players_v2.py). Frame 64 x 96 art px, art scale 1.25, "
                     "drawn 2x; floor point row 88, x 32. Rows S, SE, E, NE, N (SW, W, NW mirrored). Logical columns "
-                    "in pages of page_cols: <sheet>_p<N>.png. fps 0 = the game drives the frame from a progress. "
-                    "ms = the drawn timing per frame (previews; a hint). Events are frame indexes: release (the ball "
-                    "leaves the hands), floor (dribble bounce), catch, takeoff, hang, rim (hands on the rim), land, "
-                    "swat, air [first, last] (feet off the floor). *_l = left-hand versions; cross ends in the left "
-                    "hand, cross_l in the right.",
+                    "in pages of page_cols: <sheet>_p<N>.png. indexed (v2.1): the pages are 8-bit gray (value = "
+                    "palette index, 0 = transparent), drawn with palettes/<id>.png; palettes.json maps a recolor to "
+                    "its base pages. fps 0 = the game drives the frame from a progress. ms = the drawn timing per "
+                    "frame (previews; a hint). Events are frame indexes: release (the ball leaves the hands), floor "
+                    "(dribble bounce; a list = one per bounce), catch, takeoff, hang, rim (hands on the rim), land, "
+                    "swat, air [first, last] (feet off the floor). bounces 2 (run_dribble): two dribbles per cycle, "
+                    "one per step. *_l = left-hand versions; cross ends in the left hand, cross_l in the right.",
            "version": 2, "frame": [FW, FH], "feet_row": FEET_Y, "center_x": CX, "head_px": HEAD_PX,
            "art_scale": SCALE, "draw_scale": 2.0, "dirs": [d for d, _ in DIRS], "cols": total,
-           "page_cols": PAGE_COLS, "anims": anims}
+           "page_cols": PAGE_COLS, "indexed": True, "palette_dir": "palettes/", "palette_map": "palettes.json",
+           "anims": anims}
     with open(os.path.join(OUT_DIR, "format.json"), "w") as f:
         json.dump(fmt, f, indent=1)
     return fmt
@@ -1148,31 +1329,62 @@ def body_key(p):
     return p["body"] if not p.get("body_tweak") else p["id"]
 
 
-def write_hands(all_frames):
-    """Body-keyed hands.json. Sheets on the same body (and no body_tweak) share the points; if a sheet's points
-    differ (a hair style can flip a ball layer vote), it gets its own body entry."""
-    players = {q["id"]: q for q in M.load_players()}
+def _strip_front(pts):
+    return {a: {d: [dict(r, ball=None if r["ball"] is None else r["ball"][:2]) for r in fr] for d, fr in v.items()}
+            for a, v in pts.items()}
+
+
+def _front_diff(p, q):
+    return sum(1 for a in p for d in p[a] for x, y in zip(p[a][d], q[a][d]) if x != y)
+
+
+def write_hands(all_recs, fresh=False):
+    """Body-keyed hands.json. A sheet shares a body entry with every sheet whose hand and ball points are the same
+    (the body from crews.json, also with a body_tweak that only changes mass); a few ball layer flags may differ
+    (a hair style or a heavier arm flips a z-buffer vote) and then the first sheet's flags are kept (reported).
+    Different points (a leg or torso tweak) = an entry of its own. fresh: rebuild from scratch (--all)."""
+    players = {q["id"]: q for q in players_v2()}
     raw = json.load(open(M.CREWS))
     body_of = {e["id"]: e for e in raw["players"]}
     path = os.path.join(OUT_DIR, "hands.json")
     data = {"bodies": {}, "sheets": {}}
-    if os.path.exists(path):
+    if os.path.exists(path) and not fresh:
         try:
             old = json.load(open(path))
             data["bodies"].update(old.get("bodies", {}))
             data["sheets"].update(old.get("sheets", {}))
         except ValueError:
             pass
-    for sid, frames in all_frames.items():
-        e = body_of.get(sid, body_of.get(players[sid].get("recolor_of", ""), {}))
-        key = e.get("body", sid) if not e.get("body_tweak") else sid
+    stripped = {k: _strip_front(v) for k, v in data["bodies"].items()}
+    flips = {}
+    for sid, recs in all_recs.items():
+        if players[sid].get("recolor_of"):    # a recolor: the same shapes and points as its base
+            continue
         pts = {}
         for name, d, fps, ms, ev in ANIMS:
-            pts[name] = {dn: [_rec_out(rec) for _, rec in frames[(name, dn)]] for dn, _ in DIRS}
-        if key in data["bodies"] and data["bodies"][key] != pts and data["sheets"].get(sid) != key:
-            key = sid
-        data["bodies"][key] = pts
+            pts[name] = {dn: [_rec_out(rec) for rec in recs[(name, dn)]] for dn, _ in DIRS}
+        sp = _strip_front(pts)
+        name0 = body_of.get(sid, {}).get("body", sid)
+        key = None
+        for k in [name0] + sorted(k for k in stripped if k != name0):
+            if k in stripped and stripped[k] == sp:
+                key = k
+                break
+        if key is None:
+            key = name0 if name0 not in data["bodies"] else sid
+            data["bodies"][key] = pts
+            stripped[key] = sp
+        else:
+            n = _front_diff(data["bodies"][key], pts)
+            if n:
+                flips[sid] = (key, n)
         data["sheets"][sid] = key
+    for sid in all_recs:
+        base = players[sid].get("recolor_of")
+        if base and base in data["sheets"]:
+            data["sheets"][sid] = data["sheets"][base]
+    for sid, (k, n) in sorted(flips.items()):
+        print("hands: %s shares %s (%d ball layer flags differ, %s's kept)" % (sid, k, n, k))
     out = {"_help": "v2 hand and ball points (P6-A6): bodies.<body>.<anim>.<DIR>[frame] = {hands: {L, R: [x, y]}, "
                     "ball: [x, y, front] or null, ball_floor: [x, y], ball_h}. Art px of a 64 x 96 frame (floor row "
                     "88). front 1 = draw the ball over the sprite. null = the ball is free (thrown, slammed) or not "
@@ -1309,61 +1521,170 @@ def moves_gif(all_frames, path=MOVES_GIF):
     return path, len(frames), sum(durs)
 
 
+PREVIEW4 = os.path.join(ROOT, "docs", "art", "players_preview_v4.png")
+CREW_ORDER = ["U", "HT", "CHI", "MEM", "NOL", "DEN", "SEA", "LA", "NYQ", "NYS", "NYF", "NY"]
+
+
+def decoded_pages(base, pal_id):
+    """RGBA pages of a sheet as the game draws them: the index pages through a palette (checks the recolors)."""
+    pal = np.array(Image.open(os.path.join(PAL_DIR, pal_id + ".png")).convert("RGBA"))[0]
+    _, total = columns()
+    out = []
+    for pg in range(int(math.ceil(total / PAGE_COLS))):
+        idx = np.array(Image.open(os.path.join(OUT_DIR, "%s_p%d.png" % (base, pg))))
+        out.append(pal[idx])
+    return out
+
+
+def cut(pages, name, dname, k):
+    cols, _ = columns()
+    start, n = cols[name]
+    c = start + min(k, n - 1)
+    r = [d for d, _ in DIRS].index(dname)
+    return Image.fromarray(pages[c // PAGE_COLS][r * FH:(r + 1) * FH, (c % PAGE_COLS) * FW:(c % PAGE_COLS + 1) * FW].copy())
+
+
+V4_CELLS = [("idle", "S", 0), ("run_dribble", "SE", 2), ("shoot", "E", 6), ("dunk_windmill", "SE", 6), ("fall", "SE", 5)]
+
+
+def preview_v4(only, groups, path=PREVIEW4):
+    """One strip per crew: each player decoded from the indexed pages (idle S, run dribble SE, jump shot release E,
+    windmill top SE, fall SE), plus each _crew recolor's idle S drawn from the same pages with its own palette."""
+    players = {p["id"]: p for p in players_v2()}
+    raw = json.load(open(M.CREWS))
+    notes = {k: v.get("_note", k) for k, v in raw["crews"].items()}
+    Z = 2
+    cw, chh = FW * Z, FH * Z
+    per_line = 4
+    pad = 6
+    block = len(V4_CELLS) * cw + cw + pad * 3
+    lines = []
+    for crew in CREW_ORDER:
+        ids = [b for b in only if players[b]["crew"] == crew]
+        for i in range(0, len(ids), per_line):
+            lines.append((notes.get(crew, crew) if i == 0 else None, ids[i:i + per_line]))
+    W = pad + per_line * block
+    H = 40 + sum((26 if t else 0) + chh + 24 for t, _ in lines)
+    base = S.floor_bg(W, H)
+    dr = ImageDraw.Draw(base)
+    dr.rectangle([0, 0, W, 32], fill=(28, 26, 38, 255))
+    S.label(dr, (8, 8), "Player sheets v2.1 (P6-A7), indexed pages + palettes, shown 2x as in the game. Per player: idle "
+                        "S, run dribble SE, jump shot release E, windmill top SE, fall SE | its _crew recolor (same "
+                        "pages, own palette).", 14)
+    y = 40
+    for title, ids in lines:
+        if title:
+            dr.rectangle([0, y, W, y + 22], fill=(28, 26, 38, 255))
+            S.label(dr, (8, y + 3), title, 14)
+            y += 26
+        for bi, b in enumerate(ids):
+            recs = cached_recs(b)
+            pages = decoded_pages(b, b)
+            x0 = pad + bi * block
+            ring = tuple(players[b]["ring"])
+            for ci, (name, dn, k) in enumerate(V4_CELLS):
+                img = cut(pages, name, dn, k)
+                cell = S.compose_frame(img, recs[(name, dn)][k], ball_spin=k, top=0)
+                base.alpha_composite(cell.resize((cw, chh), Image.NEAREST), (x0 + ci * cw, y + 18))
+            for v in groups[b][1:]:
+                img = cut(decoded_pages(b, v), "idle", "S", 0)
+                cell = S.compose_frame(img, dict(recs[("idle", "S")][0], ball=None), top=0)
+                base.alpha_composite(cell.resize((cw, chh), Image.NEAREST), (x0 + len(V4_CELLS) * cw + pad, y + 18))
+            S.label(dr, (x0 + 2, y + 2), "%s  %s #%d%s" % (b, players[b]["title"], players[b]["number"],
+                    "  | " + groups[b][1] if len(groups[b]) > 1 else ""), 13, (250, 244, 230))
+            del ring
+        y += chh + 24
+    base.convert("RGB").save(path, optimize=True)
+    return path
+
+
 # ----------------------------------------------------------------------------- main
 
+def all_bases():
+    """Every sheet the trip uses (crews.json order, without Quick Game's blue_n / red_n and the recolors)."""
+    return [p["id"] for p in players_v2() if "recolor_of" not in p and not p["id"].startswith(("blue_", "red_"))]
+
+
 def main(argv):
-    only = argv[argv.index("--only") + 1].split(",") if "--only" in argv else SHEETS
-    jobs = int(argv[argv.index("--jobs") + 1]) if "--jobs" in argv else min(len(only), os.cpu_count() or 1)
+    if "--only" in argv:
+        only = argv[argv.index("--only") + 1].split(",")
+    elif "--all" in argv:
+        only = all_bases()
+    else:
+        only = SHEETS
     dump = argv[argv.index("--frames") + 1] if "--frames" in argv else None
     anims = argv[argv.index("--anims") + 1].split(",") if "--anims" in argv else None
+    players = players_v2()
+    groups = {b: [b] + [p["id"] for p in players if p.get("recolor_of") == b] for b in only}
+    todo = [v for b in only for v in groups[b]]
+    jobs = int(argv[argv.index("--jobs") + 1]) if "--jobs" in argv else min(len(todo), os.cpu_count() or 1)
     os.makedirs(OUT_DIR, exist_ok=True)
     t0 = time.time()
-    tasks = [(sid, dump, anims) for sid in only]
-    if jobs > 1:
+    problems = []
+    if "--patch-anims" in argv:      # re-render these animations into the cache, then write the files
+        pa = argv[argv.index("--patch-anims") + 1].split(",")
         with multiprocessing.get_context("fork").Pool(jobs) as pool:
-            res = pool.map(_render_job, tasks)
-    else:
-        res = [_render_job(t) for t in tasks]
-    all_frames, problems = {}, []
-    for sid, fr, pr, dt in res:
-        all_frames[sid] = {k: [(Image.fromarray(a), rec) for a, rec in v] for k, v in fr.items()}
-        problems += pr
-        print("rendered %s in %.0f s" % (sid, dt))
-    if anims:          # a quick look only: contact strips to the dump folder, no files written
-        out = dump or "/tmp"
-        for sid, fr in all_frames.items():
-            for (name, dn), seq in fr.items():
-                strip = Image.new("RGBA", (FW * len(seq), FH + S.TOP), (0, 0, 0, 0))
-                lift = PREVIEW_LIFT.get(name)
-                for k, (img, rec) in enumerate(seq):
-                    strip.alpha_composite(S.compose_frame(img, rec, lift=lift[k] if lift else 0, ball_spin=k), (FW * k, 0))
-                bg = S.floor_bg(strip.width * 3, strip.height * 3)
-                bg.alpha_composite(strip.resize((strip.width * 3, strip.height * 3), Image.NEAREST))
-                bg.convert("RGB").save(os.path.join(out, "strip_%s_%s_%s.png" % (sid, name, dn)))
-        for s in problems:
-            print("CHECK", s)
-        print("checks: %d problem(s)" % len(problems))
-        return
+            for sid, recs, pr, dt, _ in pool.imap_unordered(_patch_job, [(v, pa) for v in todo], chunksize=1):
+                problems += pr
+                print("patched %s (%s) in %.0f s" % (sid, ",".join(pa), dt), flush=True)
+    elif "--skip-render" not in argv:
+        tasks = [(sid, dump, anims) for sid in todo]
+        if jobs > 1:
+            with multiprocessing.get_context("fork").Pool(jobs) as pool:
+                res = list(pool.imap_unordered(_render_job, tasks, chunksize=1))
+        else:
+            res = [_render_job(t) for t in tasks]
+        for sid, recs, pr, dt, fr in res:
+            problems += pr
+            print("rendered %s in %.0f s" % (sid, dt), flush=True)
+        if anims:          # a quick look only: contact strips to the dump folder, no files written
+            out = dump or "/tmp"
+            for sid, recs, pr, dt, fr in res:
+                for key, seq in fr.items():
+                    name, dn = key
+                    strip = Image.new("RGBA", (FW * len(seq), FH + S.TOP), (0, 0, 0, 0))
+                    lift = PREVIEW_LIFT.get(name)
+                    for k, a in enumerate(seq):
+                        strip.alpha_composite(S.compose_frame(Image.fromarray(a), recs[key][k],
+                                              lift=lift[k] if lift else 0, ball_spin=k), (FW * k, 0))
+                    bg = S.floor_bg(strip.width * 3, strip.height * 3)
+                    bg.alpha_composite(strip.resize((strip.width * 3, strip.height * 3), Image.NEAREST))
+                    bg.convert("RGB").save(os.path.join(out, "strip_%s_%s_%s.png" % (sid, name, dn)))
+            for p_ in problems:
+                print("CHECK", p_)
+            print("checks: %d problem(s)" % len(problems))
+            return
+    t1 = time.time()
     fmt = write_format()
-    print("wrote assets/players2/format.json: %d columns, %d pages of %d" % (fmt["cols"],
+    print("wrote assets/players2/format.json: %d columns, %d pages of %d, indexed" % (fmt["cols"],
           int(math.ceil(fmt["cols"] / PAGE_COLS)), PAGE_COLS))
     total = 0
-    for sid in only:
-        sizes = write_sheet(sid, all_frames[sid])
-        s = sum(x[3] for x in sizes)
-        total += s
-        for pth, sz, kind, b in sizes:
-            print("wrote %s %s %s %d bytes" % (os.path.relpath(pth, ROOT), sz, kind, b))
-        print("sheet %s: %d bytes on disk (pages + card)" % (sid, s))
-    hp = write_hands(all_frames)
+    for b in only:
+        sizes, nt, merged = write_indexed(b, groups[b])
+        sizes += [(os.path.join(CARD_DIR, v + ".png"), (FW, FH), "card",
+                   os.path.getsize(os.path.join(CARD_DIR, v + ".png"))) for v in groups[b]]
+        sz = sum(x[3] for x in sizes)
+        total += sz
+        print("sheet %s (+ %s): %d bytes (pages %d, palettes + cards %d); %d color tuples%s" % (
+            b, ", ".join(groups[b][1:]) or "no recolors", sz, sum(x[3] for x in sizes if x[2] == "L8"),
+            sum(x[3] for x in sizes if x[2] != "L8"), nt,
+            (", %d px merged into near colors" % merged) if merged else ""), flush=True)
+    print("players2 files written this run: %d bytes" % total)
+    print("wrote", os.path.relpath(write_palettes_json(groups), ROOT))
+    hp = write_hands({v: cached_recs(v) for b in only for v in groups[b]}, fresh="--all" in argv)
     print("wrote %s %d bytes" % (os.path.relpath(hp, ROOT), os.path.getsize(hp)))
     if "--no-preview" not in argv:
-        print("wrote", preview_png(all_frames))
-        pth, nf, ms = moves_gif(all_frames)
-        print("wrote %s: %d frames, %.1f s, %d bytes" % (pth, nf, ms / 1000.0, os.path.getsize(pth)))
-    for s in problems:
-        print("CHECK", s)
-    print("checks: %d problem(s); %.0f s" % (len(problems), time.time() - t0))
+        if all(u in only for u in SHEETS) and "--v4-only" not in argv:
+            fr3 = {u: cached_frames(u) for u in SHEETS}
+            print("wrote", preview_png(fr3))
+            pth, nf, ms = moves_gif(fr3)
+            print("wrote %s: %d frames, %.1f s, %d bytes" % (pth, nf, ms / 1000.0, os.path.getsize(pth)))
+            del fr3
+        if len(only) > len(SHEETS) and "preview_v4" in globals():
+            print("wrote", preview_v4(only, groups))
+    for p_ in problems:
+        print("CHECK", p_)
+    print("checks: %d problem(s); render %.0f s, files %.0f s" % (len(problems), t1 - t0, time.time() - t1))
 
 
 if __name__ == "__main__":
