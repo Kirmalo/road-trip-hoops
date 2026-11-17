@@ -62,7 +62,7 @@ const TITLE_LONG_CHARS := 30             # ... from this many characters
 const SAVE_TEAMS := ["quick_team", "quick_opponent"]   # keys in Difficulty.SAVE_PATH: BLUE's and RED's crew ids
 const QUICK_TEAMS_FLAG := "--quick-teams"   # test flag: --quick-teams <blue>,<red> (any known crew, locked or not)
 const TEST_RUN_FLAGS := ["--autoplay", "--humantest", "--shots", "--ballshots", "--menushot", "--twistshots",
-		"--anim-test"]
+		"--anim-test", "--howto-shots"]
 
 static var start_done := false           # the launch panel was answered this run (survives reload_current_scene())
 static var _prepared := false

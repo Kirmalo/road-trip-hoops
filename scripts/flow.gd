@@ -44,13 +44,16 @@ const SCREENS := {
 	"points": "res://scripts/after_game.gd",
 	"recruit": "res://scripts/recruit.gd",    # P5-13
 	"bracket": "res://scripts/bracket.gd",    # P5-14
+	"howto": "res://scripts/howto.gd",        # P7-H3 (How to Play), args {"back": "<screen>"} (default "title");
+	                                          # a missing howto.gd shows the "not built yet" panel (BACK to the title)
 }
 # Test modes that skip the title and play a game at once, as today (main.gd checks skip_title()).
-const TEST_FLAGS := ["--autoplay", "--humantest", "--shots", "--ballshots", "--menushot", "--viewtest", "--city"]
+const TEST_FLAGS := ["--autoplay", "--humantest", "--shots", "--ballshots", "--menushot", "--viewtest", "--city",
+		"--howto-shots"]
 const TRIP_TEST_FLAG := "--trip-test"
 
-static var screen := "title"      # "title", "settings", "crew", "map", "story", "lineup", "game", "result",
-                                  # "points", "recruit", "bracket"
+static var screen := "title"      # "title", "settings", "crew", "howto", "map", "story", "lineup", "game",
+                                  # "result", "points", "recruit", "bracket"
 static var args := {}             # arguments for the screen, e.g. story: {"scene": "hometown_arrive", "then": "lineup"}
 static var match := {}            # the next game (board "Match config", built by trip.gd); {} = Quick Game / tests
 static var last_result := {}      # {"won": bool, "winner": int, "score": [a, b], "stats": {...}} after a trip game
@@ -69,7 +72,8 @@ static func init_once() -> void:
 	if OS.get_cmdline_user_args().has(TRIP_TEST_FLAG):
 		test = "trip"
 
-# True in the test modes that play a game at once (autoplay, humantest, shots, menushot, viewtest, --city).
+# True in the test modes that play a game at once (autoplay, humantest, shots, menushot, viewtest, --city,
+# --howto-shots).
 static func skip_title() -> bool:
 	init_once()
 	if test != "":
