@@ -150,6 +150,11 @@ export and an Android export, store page text and screenshots.
 - Side switch after a free throw that is missed: when the free throw brings a team to 11 and then the last one misses,
   (a) live rebound as usual, and the switch waits for the next dead ball (a possession or more later), or (b) no
   rebound: SWITCH SIDES right away, the defense gets the ball? (`rules.SWITCH_SKIPS_FT_REBOUND`; rare.)
+- Phase 6 plan questions (details and recommendations in `docs/BOARD.md`, "Open questions for the owner"): Q1 twist
+  strengths per city, Q2 New York's "tight sidelines" twist, Q3 crew names and themes (and the Phase 5 placeholder
+  names), Q4 story tone, Q5 music for the 5 new cities, Q6 dunk styles, Q7 how big the motion effects feel (dunk
+  hang, camera punch, crossover falls), Q8 web download size with the bigger sprites, Q9 courts in Quick Game, Q10
+  trip length (~3.5 h with all 8 cities at 11/15/21 vs the 2-3 h trip size).
 - Out of bounds is very rare on its own (about 0.15 per game). Phase 3 added rare hard bounces off the back or side
   of the rim (about 2 per game go out, almost all over the baseline, so the defense gets the ball). Keep them,
   make them rarer, or remove them? (`ball.RIM_LONG_CHANCE`, `ball.RIM_WIDE_CHANCE`.)
