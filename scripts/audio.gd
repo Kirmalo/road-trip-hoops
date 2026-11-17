@@ -22,6 +22,11 @@ extends Node
 # sfx_volume is saved in user://settings.cfg (the file and section menu.gd keeps the music choice in) and read once
 # per run (the first audio node reads it). Stats still count at volume 0. set_sfx_volume(v, false) changes it without
 # saving (a slider being dragged); save_sfx_volume() writes it.
+# Music volume (P7-02):  game.audio.set_music_volume(0.5)   (0..1; 0 = silent; 1.0 = the music exactly as before)
+# music_volume is saved as "music_volume" in the same file and section, read once per run with sfx_volume.
+# set_music_volume(v, false) changes it without saving; save_music_volume() writes it. It is one more gain on top of
+# the fades and the ducking (same SFX_VOLUME_CURVE as the effects). Volume 0 does not turn MUSIC ON/OFF off.
+# The test flag --music-volume X (Difficulty.music_volume_flag, >= 0 when given) wins for the run and is never saved.
 # On the web, browsers keep audio locked until the first tap: the music waits until the page's audio context runs
 # (the head script in export_presets.cfg resumes it on tap/lift), then starts.
 #
@@ -46,6 +51,11 @@ const SETTINGS_PATH := "user://settings.cfg"   # same file and section as diffic
 const SETTINGS_SECTION := "settings"
 const SAVE_SFX_VOLUME := "sfx_volume"          # key of the effects volume (0..1)
 const SFX_VOLUME_DEFAULT := 1.0   # first launch: full volume
+const SAVE_MUSIC_VOLUME := "music_volume"      # key of the music volume (0..1, P7-02)
+const MUSIC_VOLUME_DEFAULT := 1.0 # first launch: 1.0 = MUSIC_DB, today's music level
+const DIFFICULTY_PATH := "res://scripts/difficulty.gd"   # holds music_volume_flag (--music-volume X); loaded at run
+                                                         # time and read by name, so audio.gd has no preload of it
+const MUSIC_VOLUME_FLAG := "music_volume_flag"
 const SFX_VOLUME_CURVE := 2.0     # gain = volume ^ this: a slider at half sounds about half as loud (not just -6 dB)
 const AMBIENCE_DB := -20.0        # ambience loop volume in dB. The loops are loud files (-1 dB peak, RMS about -13 to
                                   # -16 dBFS): -20 here, -4 ducked, puts them about -40 dBFS RMS in play, a bed under the
@@ -60,7 +70,9 @@ const AMBIENCE_CROWD_PREFIX := "crowd"   # ambience names starting with this get
 const Twists = preload("res://scripts/twists.gd")   # crowd_db for the crowd loop (P6-15)
 
 static var sfx_volume := SFX_VOLUME_DEFAULT   # 0..1, the effects volume (survives reload_current_scene)
+static var music_volume := MUSIC_VOLUME_DEFAULT   # 0..1, the music volume (P7-02, survives reload_current_scene)
 static var _volume_read := false
+static var _flag_script: Script = null   # difficulty.gd, for the --music-volume flag
 
 var game
 var _pool: Array = []
@@ -162,6 +174,7 @@ static func read_settings() -> void:
 	if cfg.load(SETTINGS_PATH) != OK:
 		return
 	sfx_volume = clampf(float(cfg.get_value(SETTINGS_SECTION, SAVE_SFX_VOLUME, sfx_volume)), 0.0, 1.0)
+	music_volume = clampf(float(cfg.get_value(SETTINGS_SECTION, SAVE_MUSIC_VOLUME, music_volume)), 0.0, 1.0)
 
 static func save_sfx_volume() -> void:
 	var cfg := ConfigFile.new()
@@ -176,6 +189,36 @@ func set_sfx_volume(v: float, save := true) -> void:
 	if save:
 		save_sfx_volume()
 	_update_ambience_volume()
+
+# ---------------- music volume (P7-02) ----------------
+
+static func save_music_volume() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS_PATH)   # keep the other settings in the file
+	cfg.set_value(SETTINGS_SECTION, SAVE_MUSIC_VOLUME, music_volume)
+	cfg.save(SETTINGS_PATH)
+
+# 0..1; 0 silences the music (MUSIC ON/OFF unchanged). save := false while a slider is being dragged.
+func set_music_volume(v: float, save := true) -> void:
+	read_settings()   # a call before _ready must not be overwritten by the saved value later
+	music_volume = clampf(v, 0.0, 1.0)
+	if save:
+		save_music_volume()
+	if _music.size() == 2:
+		_update_music_volume(0)
+		_update_music_volume(1)
+
+# the volume the music plays at: the --music-volume flag (Difficulty.music_volume_flag >= 0) for this run, else the
+# saved / set music_volume. A difficulty.gd without the flag (or a flag < 0) means no flag.
+static func effective_music_volume() -> float:
+	read_settings()
+	if _flag_script == null and ResourceLoader.exists(DIFFICULTY_PATH):
+		_flag_script = load(DIFFICULTY_PATH) as Script
+	if _flag_script != null:
+		var f = _flag_script.get(MUSIC_VOLUME_FLAG)
+		if f != null and float(f) >= 0.0:
+			return clampf(float(f), 0.0, 1.0)
+	return music_volume
 
 # ---------------- music ----------------
 
@@ -260,9 +303,10 @@ func _set_duck(d: float) -> void:
 
 func _update_music_volume(i: int) -> void:
 	var g: float = _music_gain[i]
+	var vol: float = pow(effective_music_volume(), SFX_VOLUME_CURVE)   # 1.0 = today's level exactly
 	var db: float = MUSIC_SILENT_DB
-	if g > 0.001:
-		db = maxf(MUSIC_SILENT_DB, MUSIC_DB + linear_to_db(g) + MUSIC_DUCK_DB * _duck)
+	if g > 0.001 and vol > 0.0:
+		db = maxf(MUSIC_SILENT_DB, MUSIC_DB + linear_to_db(g * vol) + MUSIC_DUCK_DB * _duck)
 	_music[i].volume_db = db
 
 func _get_music(track: String) -> AudioStream:
