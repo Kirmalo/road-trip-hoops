@@ -183,6 +183,9 @@ const TEST_MATCH := {
 # Phase 6 hooks (P6-02): the twist, its banner and effects, the camera punch, the --anim-test driver
 const TWIST_FX_PATH := "res://scripts/twist_fx.gd"    # P6-14: added to the game when a twist is on (if the file exists)
 const ANIM_TEST_PATH := "res://scripts/anim_test.gd"  # P6-24: -- --anim-test adds it to the game (if the file exists)
+const HOWTO_SHOTS_PATH := "res://scripts/howto_shots.gd"  # P7-H1: -- --howto-shots DIR adds it to a seeded humantest game
+const HOWTO_SHOTS_FLAG := "--howto-shots"
+const HOWTO_SEED := 7031             # P7-H1: fixed seed of a --howto-shots game (the same pictures on every rerun)
 const TWIST_LINE_SIZE := 28          # the twist's banner line under the tip-off message (font size)
 const TWIST_LINE_TIME := 3.5         # seconds it shows at tip-off (fades out over the last TWIST_LINE_FADE)
 const TWIST_LINE_FADE := 0.6
@@ -288,6 +291,7 @@ var ht_ft_n := 0                    # humantest: free throws the scripted thumb 
 var ht_ft_kind := ""                # humantest: "good" or "early" for the free throw on the meter now
 var twist_fx                         # P6-14 twist_fx.gd node (null: no twist or no file)
 var anim_test := false               # test only (-- --anim-test): the animation driver runs on this game
+var howto_shots := false             # test only (-- --howto-shots DIR, P7-H1): the How to Play capture driver watches
 var twist_label: Label               # the twist's banner line under the tip-off message
 var _twist_line_t := 0.0
 
@@ -341,6 +345,12 @@ func _ready() -> void:
 			get_tree().quit(1)
 			return
 		Flow.screen = Flow.GAME
+	# test only (-- --howto-shots DIR, P7-H1): a --humantest game with fixed seeds, watched by howto_shots.gd
+	howto_shots = OS.get_cmdline_user_args().has(HOWTO_SHOTS_FLAG) and ResourceLoader.exists(HOWTO_SHOTS_PATH)
+	if howto_shots:
+		Flow.screen = Flow.GAME
+		rng.seed = HOWTO_SEED
+		seed(HOWTO_SEED)
 	# screen hand-off (Phase 5): the test modes play a game at once, as before; otherwise Flow decides the screen
 	if Flow.skip_title():
 		Flow.screen = Flow.GAME
@@ -352,7 +362,7 @@ func _ready() -> void:
 		return
 	_parse_city_args()   # --city <id> --cgame N: Flow.match = that trip matchup
 	autoplay = OS.get_cmdline_user_args().has("--autoplay") or _city_autoplay() or anim_test
-	humantest = OS.get_cmdline_user_args().has("--humantest")
+	humantest = OS.get_cmdline_user_args().has("--humantest") or howto_shots
 	force_fouls = OS.get_cmdline_user_args().has("--force-fouls")
 	menushot = OS.get_cmdline_user_args().has("--menushot")
 	Flow.attach_test(self)   # --trip-test: the driver (trip_test.gd, P5-15) watches this game too
@@ -438,6 +448,10 @@ func _ready() -> void:
 	if Flow.in_trip() and str(Flow.match.get("label", "")) != "":
 		show_message(str(Flow.match.get("label", "")), rules.START_MSG_TIME)   # instead of "FIRST TO N"
 	_add_anim_test()
+	if howto_shots:
+		var hs = (load(HOWTO_SHOTS_PATH) as GDScript).new()
+		hs.main = self
+		add_child(hs)
 	if View.angled():
 		_update_camera()               # set the ANGLED zoom and limits and start on the ball
 		camera.reset_smoothing()
