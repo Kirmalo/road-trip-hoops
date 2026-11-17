@@ -88,7 +88,7 @@ const VAN_GLASS := Color(0.55, 0.75, 0.90)
 const VAN_BOB := 2.0                           # px the van bounces
 const VAN_BOB_HZ := 3.0
 const BALL_COLOR := Color(0.92, 0.45, 0.12)
-const SIGN_POS := Vector2(1080, 470)
+const SIGN_POS := Vector2(1080, 518)   # below the three-button row (P7-04 made CREW & CREDITS reach x 1220)
 
 # Credits (kept here as a const list, board P5-06; copy new rows from CREDITS.md):
 #   [what, title, author, license, source, changes]   (changes: "" = none; every CC-BY item says what was changed)
@@ -971,7 +971,7 @@ class TitleArt extends Control:
 			draw_circle(p + Vector2(wx, s.y + 4), 8.0, Color(0.6, 0.6, 0.62))
 
 	func _draw_sign(p: Vector2) -> void:
-		draw_rect(Rect2(p + Vector2(70, 60), Vector2(10, 80)), Color(0.45, 0.45, 0.48))
+		draw_rect(Rect2(p + Vector2(70, 60), Vector2(10, maxf(20.0, ROAD_Y + 10.0 - p.y - 60.0))), Color(0.45, 0.45, 0.48))
 		draw_rect(Rect2(p, Vector2(160, 70)), Color(0.10, 0.45, 0.25))
 		draw_rect(Rect2(p + Vector2(4, 4), Vector2(152, 62)), Color.WHITE, false, 2.0)
 		var font: Font = ThemeDB.fallback_font
