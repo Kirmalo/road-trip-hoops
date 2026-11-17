@@ -150,6 +150,11 @@ city, recruiting, bench and starter choice, stat points, save and load (`user://
 **Phase 7: release.** Settings (volume, difficulty, left-handed layout), a How to Play screen, an itch.io HTML5
 export and an Android export, store page text and screenshots.
 
+**Phase 8: progression** (before the first itch.io upload). Stat points for each starter after every win, stars per
+city game and New York round, star rewards (extra roster slots that draft from beaten crews, cosmetics, a LEGEND
+level), replays of beaten city games from the map, the ramp retuned, 1.0.0 saves carried over. Plan:
+`docs/progression-plan.md`.
+
 ## Open questions
 - Are full-court games to 21 too long? Answer from data in Phase 3.
 - Can this environment download from the asset sites (OpenGameArt, itch.io, Kenney)? Check at the start of Phase 1.
@@ -165,7 +170,7 @@ export and an Android export, store page text and screenshots.
 - Out of bounds is very rare on its own (about 0.15 per game). Phase 3 added rare hard bounces off the back or side
   of the rim (about 2 per game go out, almost all over the baseline, so the defense gets the ball). Keep them,
   make them rarer, or remove them? (`ball.RIM_LONG_CHANCE`, `ball.RIM_WIDE_CHANCE`.)
-- Progression after 1.0.0 (owner request 2026-11-17: points after every win for the players who played, stars per
-  level, a reason to replay): `docs/progression-plan.md` Q1-Q6. Open: points per win, whether the level changes
-  points, what stars attach to, star rewards, how replay works (today: no replays), and 1.0 vs a later update. The
-  proposed ramp rise depends on the answer to Q1 (the Phase 5 check-in said "leave the ramp as is").
+- Phase 8 (progression), before work starts: `docs/progression-plan.md` part 9 Q1-Q4: roster slot milestones and the
+  maximum roster size, which players a slot can draft (this trip's beaten crews or any ever beaten; releasing),
+  where jerseys, balls and van paints are picked (a LOCKER screen, Settings, or where each is used), and the version
+  number of the first public release (1.1.0, 1.0.0 or 2.0.0).
