@@ -572,8 +572,8 @@ const DUST_MIN_SPEED := 160.0     # px/s down
 const BOUNCE_PASS_AT := 0.6       # a bounce pass hits the floor this far along its way (drawn only)
 const BOUNCE_MIN_FT := 6.0        # a bounce pass is between these lengths ...
 const BOUNCE_MAX_FT := 26.0
-const BOUNCE_SHORT_FT := 12.0     # ... and either this short ...
-const BOUNCE_LANE_FT := 4.0       # ... or with a defender this close to the middle of the passing lane
+const BOUNCE_SHORT_FT := 8.0      # ... and either this short ...
+const BOUNCE_LANE_FT := 3.0       # ... or with a defender this close to the middle of the passing lane
 const BOUNCE_LANE_FROM := 0.2     # "the middle": between these fractions of the way
 const BOUNCE_LANE_TO := 0.8
 
