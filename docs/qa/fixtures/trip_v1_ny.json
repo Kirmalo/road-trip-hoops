@@ -1,0 +1,152 @@
+{
+	"beaten": [
+		"hometown",
+		"chicago",
+		"memphis",
+		"new_orleans",
+		"denver",
+		"seattle",
+		"los_angeles"
+	],
+	"bracket": {
+		"round": 1
+	},
+	"city": "new_york",
+	"game": 2,
+	"human": "ud_deuce",
+	"level": "normal",
+	"phase": "bracket",
+	"points": 1,
+	"record": {
+		"losses": 2,
+		"wins": 22
+	},
+	"roster": [
+		{
+			"id": "ud_deuce",
+			"ratings": {
+				"defense": 60,
+				"finishing": 63,
+				"shooting": 62,
+				"speed": 61,
+				"stamina": 62
+			}
+		},
+		{
+			"id": "ud_jojo",
+			"ratings": {
+				"defense": 50,
+				"finishing": 52,
+				"shooting": 53,
+				"speed": 62,
+				"stamina": 54
+			}
+		},
+		{
+			"id": "ud_tank",
+			"ratings": {
+				"defense": 58,
+				"finishing": 62,
+				"shooting": 44,
+				"speed": 45,
+				"stamina": 48
+			}
+		},
+		{
+			"id": "ht_g2",
+			"ratings": {
+				"defense": 56,
+				"finishing": 56,
+				"shooting": 47,
+				"speed": 47,
+				"stamina": 44
+			}
+		},
+		{
+			"id": "chi_g1",
+			"ratings": {
+				"defense": 58,
+				"finishing": 61,
+				"shooting": 61,
+				"speed": 61,
+				"stamina": 61
+			}
+		},
+		{
+			"id": "mem_boss",
+			"ratings": {
+				"defense": 73,
+				"finishing": 76,
+				"shooting": 76,
+				"speed": 76,
+				"stamina": 73
+			}
+		},
+		{
+			"id": "nol_g1",
+			"ratings": {
+				"defense": 58,
+				"finishing": 58,
+				"shooting": 58,
+				"speed": 70,
+				"stamina": 70
+			}
+		},
+		{
+			"id": "den_g1",
+			"ratings": {
+				"defense": 62,
+				"finishing": 62,
+				"shooting": 74,
+				"speed": 62,
+				"stamina": 74
+			}
+		},
+		{
+			"id": "sea_g1",
+			"ratings": {
+				"defense": 78,
+				"finishing": 66,
+				"shooting": 66,
+				"speed": 78,
+				"stamina": 66
+			}
+		},
+		{
+			"id": "la_g1",
+			"ratings": {
+				"defense": 70,
+				"finishing": 82,
+				"shooting": 70,
+				"speed": 82,
+				"stamina": 70
+			}
+		}
+	],
+	"seen": [
+		"trip_start",
+		"hometown_arrive",
+		"hometown_won",
+		"chicago_arrive",
+		"first_loss",
+		"chicago_won",
+		"memphis_arrive",
+		"memphis_won",
+		"new_orleans_arrive",
+		"new_orleans_won",
+		"denver_arrive",
+		"denver_won",
+		"seattle_arrive",
+		"seattle_won",
+		"los_angeles_arrive",
+		"los_angeles_won",
+		"final_before"
+	],
+	"serial": 118,
+	"starters": [
+		"ud_deuce",
+		"mem_boss",
+		"chi_g1"
+	],
+	"version": 1
+}
