@@ -54,6 +54,7 @@ const TEST_AT := 20.0                    # --humantest: s of game time before th
 const TEST_HOLD := 30                    # --humantest: frames it stays paused
 const TEST_FS_ON := 8                    # --humantest: paused frame that taps FULL SCREEN, and the one that taps it back
 const TEST_FS_OFF := 18
+const TEST_JOY_SPOT := Vector2(200, 500)   # --humantest: the stray joystick touch (right-handed; mirrored by controls)
 const TWIST_FONT := 24                   # the twist line under the stats (P6-16)
 const TWIST_COLOR := Color(1.0, 0.9, 0.55)   # as main.gd's tip-off twist line
 const TWIST_W := 480.0                   # px; a longer line wraps
@@ -425,7 +426,7 @@ func _humantest_step() -> void:
 
 # stray touches while paused: one on A, one on the joystick half (index 0 also makes the emulated mouse click)
 func _test_touch(down: bool) -> void:
-	var spots: Array = [game.controls.a_center(), Vector2(200, 500)]
+	var spots: Array = [game.controls.a_center(), game.controls.mirror_x(TEST_JOY_SPOT)]
 	for i in spots.size():
 		var ev := InputEventScreenTouch.new()
 		ev.index = i
