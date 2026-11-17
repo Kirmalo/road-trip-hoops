@@ -41,14 +41,14 @@ const ITEMS := {
 	"jersey_1": {"kind": "jersey", "name": "JERSEY 1", "n": 1, "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j1.png"]},
 	"jersey_2": {"kind": "jersey", "name": "JERSEY 2", "n": 2, "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j2.png"]},
 	"jersey_3": {"kind": "jersey", "name": "JERSEY 3", "n": 3, "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j3.png"]},
-	"ball_1": {"kind": "ball", "name": "BALL 1", "n": 1, "files": ["res://assets/ball/ball_1.png"]},
-	"ball_2": {"kind": "ball", "name": "BALL 2", "n": 2, "files": ["res://assets/ball/ball_2.png"]},
-	"ball_3": {"kind": "ball", "name": "BALL 3", "n": 3, "files": ["res://assets/ball/ball_3.png"]},
+	"ball_1": {"kind": "ball", "name": "SKY", "n": 1, "files": ["res://assets/ball/ball_1.png"]},
+	"ball_2": {"kind": "ball", "name": "NIGHT GLOW", "n": 2, "files": ["res://assets/ball/ball_2.png"]},
+	"ball_3": {"kind": "ball", "name": "GOLD", "n": 3, "files": ["res://assets/ball/ball_3.png"]},
 	"van_1": {"kind": "van", "name": "HOT SAUCE", "n": 1, "files": ["res://assets/map/van_1.png"]},
 	"van_2": {"kind": "van", "name": "SURF WOODIE", "n": 2, "files": ["res://assets/map/van_2.png"]},
 	"van_3": {"kind": "van", "name": "GOLD RUSH", "n": 3, "files": ["res://assets/map/van_3.png"]},
-	"court_1": {"kind": "court", "name": "COURT 1", "n": 1, "files": []},
-	"court_2": {"kind": "court", "name": "COURT 2", "n": 2, "files": []},
+	"court_1": {"kind": "court", "name": "MIDNIGHT", "n": 1, "files": []},
+	"court_2": {"kind": "court", "name": "GOLD HALL", "n": 2, "files": []},
 }
 
 static var _picks: Dictionary = {}       # kind -> id as saved (read once per run, kept in step by pick())
