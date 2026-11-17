@@ -14,11 +14,14 @@ extends CanvasLayer
 # The pause button ignores taps for RESUME_GUARD s after Resume. RESTART and QUIT need a second tap (CONFIRM_TAPS).
 # Desktop testing: Escape or P pauses / resumes. --humantest pauses once (TEST_AT), sends a stray tap on A and checks
 # that nothing moved: stats pause_opens, pause_resumes, pause_test_ok or pause_leaks.
+# P6-16: under the stats, the game's twist in one line ("WIND: long shots and lobs drift"; nothing without a twist).
+# --humantest --pauseshot (xvfb) saves the open panel to /tmp/hoops_pause.png.
 
 const UI = preload("res://scripts/ui_kit.gd")
 const Flow = preload("res://scripts/flow.gd")
 const MenuScript = preload("res://scripts/menu.gd")
 const AudioScript = preload("res://scripts/audio.gd")
+const Twists = preload("res://scripts/twists.gd")    # the twist line (P6-16)
 
 const LAYER := UI.LAYER + 1              # over the HUD (10) and the level panel (20)
 const BTN_SIZE := 80.0                   # pause button, px square at the 1280x720 base: thumb-sized
@@ -44,6 +47,10 @@ const STAT_COL_W := 150                  # px, each team's column
 const SAMPLE_SFX := "bounce"             # played at the new volume when the slider is let go
 const TEST_AT := 20.0                    # --humantest: s of game time before the scripted pause
 const TEST_HOLD := 30                    # --humantest: frames it stays paused
+const TWIST_FONT := 24                   # the twist line under the stats (P6-16)
+const TWIST_COLOR := Color(1.0, 0.9, 0.55)   # as main.gd's tip-off twist line
+const TWIST_W := 480.0                   # px; a longer line wraps
+const PAUSESHOT_PATH := "/tmp/hoops_pause.png"
 
 var game                                 # main.gd (set before _ready)
 var _btn: Button
@@ -55,6 +62,7 @@ var _restart_btn: Button
 var _quit_btn: Button
 var _vol_label: Label
 var _slider: HSlider
+var _twist_lbl: Label
 var _open := false
 var _guard_t := 0.0
 var _input_t := 0.0
@@ -146,6 +154,10 @@ func _build_panel() -> void:
 	_grid.add_theme_constant_override("v_separation", 8)
 	_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left.add_child(_grid)
+	_twist_lbl = UI.label(left, "", TWIST_FONT, TWIST_COLOR)
+	_twist_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_twist_lbl.custom_minimum_size = Vector2(TWIST_W, 0)
+	_twist_lbl.visible = false
 
 	# right: RESUME, RESTART / QUIT, MUSIC, SOUND
 	var right := UI.vbox(cols, RIGHT_GAP, false)
@@ -270,6 +282,9 @@ func _refresh() -> void:
 	_row("DUNKS", str(s0.dunks), str(s1.dunks))
 	_row("STEALS", str(s0.steals), str(s1.steals))
 	_row("BLOCKS", str(s0.blocks), str(s1.blocks))
+	var tl: String = MenuScript.twist_line(Twists.current) if Twists.active() else ""
+	_twist_lbl.text = tl
+	_twist_lbl.visible = tl != ""
 	_slider.set_value_no_signal(AudioScript.sfx_volume)
 	_refresh_buttons()
 
@@ -359,6 +374,10 @@ func _humantest_step() -> void:
 			_test_touch(true)
 		return
 	_test_frames += 1
+	if _test_frames == TEST_HOLD - 1 and OS.get_cmdline_user_args().has("--pauseshot") \
+			and DisplayServer.get_name() != "headless":
+		get_viewport().get_texture().get_image().save_png(PAUSESHOT_PATH)
+		print("PAUSESHOT %s | twist %s" % [PAUSESHOT_PATH, Twists.current])
 	if _test_frames < TEST_HOLD:
 		return
 	var c = game.controls

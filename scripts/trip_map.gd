@@ -8,6 +8,7 @@ extends CanvasLayer
 #   - header: ROAD TRIP, your crew, the next city, the record; MENU (back to the title) top-right
 #   - city card bottom-left: name, state, game n of 3, target, the crew you face, record and level. Tap a pin to see
 #     that city on the card (a grey one says "coming soon"); tap the map to go back to your city
+#   - P6-16: the card's last line is the city's twist ("WIND: long shots and lobs drift"), none for Hometown
 #   - GO bottom-right: the city's arrival story the first time, then the lineup (New York: the bracket). When the trip
 #     is between steps (points / recruit / bracket after a CONTINUE) GO goes to that screen.
 # Works without the art: a missing usa.png / pin / van / map.json is drawn with plain shapes (FALLBACK_CITIES).
@@ -17,6 +18,7 @@ const UI = preload("res://scripts/ui_kit.gd")
 const Flow = preload("res://scripts/flow.gd")
 const Trip = preload("res://scripts/trip.gd")
 const Cities = preload("res://scripts/cities.gd")
+const MenuScript = preload("res://scripts/menu.gd")   # twist_line(): the twist's one line (P6-16)
 
 const MAP_DIR := "res://assets/map/"
 const MAP_JSON := MAP_DIR + "map.json"
@@ -65,9 +67,10 @@ const SOON := "  (soon)"
 const HEADER_FONT := 34                        # "ROAD TRIP"
 const INFO_FONT := 22                          # the header's middle line
 const CARD_POS := Vector2(24, 24)              # from the bottom-left corner (x right, y up)
-const CARD_SIZE := Vector2(560, 150)
+const CARD_SIZE := Vector2(660, 150)           # grows upward when the lines need more room (the twist line)
 const CARD_TITLE_FONT := 30
 const CARD_FONT := 22
+const TWIST_COLOR := Color(0.55, 0.85, 1.0)    # the twist line on the card (P6-16)
 const GO_SIZE := Vector2(280, 130)
 const GO_MARGIN := Vector2(24, 20)             # from the bottom-right corner
 const MENU_SIZE := Vector2(200, 110)
@@ -98,6 +101,7 @@ var _info: Label
 var _head: Label
 var _card_title: Label
 var _card_lines: Label
+var _card_twist: Label
 var _shown := ""                               # the city on the card
 var _arm_t := PANEL_ARM
 var _busy := false
@@ -383,6 +387,7 @@ func _build_card() -> void:
 	p.offset_right = CARD_POS.x + CARD_SIZE.x
 	p.offset_top = -CARD_POS.y - CARD_SIZE.y
 	p.offset_bottom = -CARD_POS.y
+	p.grow_vertical = Control.GROW_DIRECTION_BEGIN   # a taller card grows up, never off the bottom edge
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_theme_constant_override("separation", 4)
@@ -392,11 +397,17 @@ func _build_card() -> void:
 	_card_lines = UI.label(box, "", CARD_FONT)
 	_card_lines.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_card_lines.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_card_twist = UI.label(box, "", CARD_FONT, TWIST_COLOR)
+	_card_twist.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_card_twist.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_card_twist.custom_minimum_size = Vector2(CARD_SIZE.x - 32.0, 0)   # inside the 16 px margins
+	_card_twist.visible = false
 
 # the card for a city: yours (game, target, crew), a beaten one, one ahead, or a "coming soon" one
 func _show_city(id: String) -> void:
 	_shown = id
 	var c: Dictionary = Cities.city(id)
+	_show_twist(id)
 	if c.is_empty():
 		_card_title.text = "NO TRIP"
 		_card_lines.text = "Start a Road Trip from the title screen."
@@ -431,6 +442,16 @@ func _show_city(id: String) -> void:
 		lines.append("Record %d-%d  -  level %s" % [int(Trip.record.get("wins", 0)), int(Trip.record.get("losses", 0)),
 				Trip.level.to_upper()])
 	_card_lines.text = "\n".join(PackedStringArray(lines))
+
+# the city's twist line under the card (hidden for Hometown, a city not built yet, an unknown id, a finished trip)
+func _show_twist(id: String) -> void:
+	var tl: String = ""
+	if not Cities.city(id).is_empty() and Cities.is_built(id) and not Trip.is_done():
+		tl = MenuScript.twist_line(Cities.twist(id))
+	_card_twist.text = tl
+	_card_twist.visible = tl != ""
+	if OS.get_cmdline_user_args().has("--trip-test"):
+		print("MAP CARD %s | twist line: %s" % [id, tl if tl != "" else "(none)"])
 
 func _crew_line(id: String) -> String:
 	if id != Trip.city:

@@ -525,10 +525,12 @@ func _flag_value(flag_name: String) -> String:
 
 # ---------------- Phase 6: the twist (P6-02) ----------------
 
-# the twist of this game: Flow.match.twist (trip.gd adds it, P6-10; {} = Quick Game = "none"), or the test flag
-# -- --twist <id> (also in a Quick Game)
+# the twist of this game: Flow.match.twist (trip.gd adds it, P6-10), in a Quick Game ({}) the chosen court's (an
+# unlocked city court brings its city's twist, P6-17; gym and blacktop "none"), or the test flag -- --twist <id>
 func _twist_id() -> String:
 	var id: String = str(Flow.match.get("twist", "none"))
+	if Flow.match.is_empty():
+		id = MenuScript.quick_twist()
 	var flag: String = _flag_value("--twist")
 	if flag != "":
 		id = flag
