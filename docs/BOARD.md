@@ -16,8 +16,8 @@ answers":
    them; a badge on the lineup).
 2. **Stars** per city game and New York round: Easy 1, Normal 2, Hard 3 (LEGEND 3), best kept, 72 in all, kept for
    good in `settings.cfg`. On the map pins, the result screen and the title.
-3. **Star rewards** (a ladder in `stars.gd`): extra roster slots (draft any player from a beaten crew; only one
-   boss in the starting three), cosmetics (3 jerseys, 3 balls, 3 van paints, 2 Quick Game court looks, all made by
+3. **Star rewards** (a ladder in `stars.gd`): extra roster slots (draft any player from a crew beaten on this
+   trip; no boss limit for now, owner: skip that rule), cosmetics (3 jerseys, 3 balls, 3 van paints, 2 Quick Game court looks, all made by
    `tools/art`), and the LEGEND level at 72.
 4. **Replays from the map**: any beaten city game (and New York round), opponents at the stage reached, stars only.
 5. **The ramp retune** for the bigger point totals and the one-boss rule (after P7-T1).
@@ -91,13 +91,13 @@ answers":
   `"paid": ["hometown:1", ...]`, `"replay": {}` or `{"city", "game"}`, level may be `"legend"`.
 - A version 1 save: pool -> `crew_points` + catch-up (+6 per beaten city, +4 per won New York round), every beaten
   game counts as paid, `via` from the data (start / recruit), stars credited at the save's level once
-  (`stars` section key `migrated_v1`), two or three boss starters repaired.
+  (`stars` section key `migrated_v1`). Boss starters stay as they are (no boss rule).
 
 ## Owner answers
 From `docs/VISION.md` "Progression plan answers" (Q1-Q6 of the plan): points per starter after every win (1, 1, 2
 per city; 2 per New York round), the same on every level; stars per game (1/2/3, best kept, 72); stars unlock
-LEGEND, cosmetics (jerseys, balls, van paints, Quick Game court looks) and roster slots that draft from beaten crews,
-one boss at most among the starters (no bonus stat points); replay beaten city games from the map, opponents at the
+LEGEND, cosmetics (jerseys, balls, van paints, Quick Game court looks) and roster slots that draft from beaten crews
+(no bonus stat points; the one-boss rule was dropped by the owner for now); replay beaten city games from the map, opponents at the
 stage reached, stars only; hold the itch.io upload until Phase 8 is done; 1.0.0 saves carry over.
 
 ## Todo
@@ -186,11 +186,10 @@ Everything in the waves below that is not in Doing, Review or Done. Carried over
   sounds row; `--titletest` passes | P8-02, P8-08, Q3
 
 ### Wave 4
-- **P8-14** | Roster slots, the draft and the one-boss rule
+- **P8-14** | Roster slots and the draft
   | gameplay-programmer A | `scripts/trip.gd`
   | the Draft contract; the pool follows Q2; a drafted player joins at his city's stage ratings with 0 points and
-  `via: draft`; `set_starters()` refuses two bosses; a loaded save with 2-3 boss starters is repaired (the
-  `trip_v1_bosses` fixture); TRIPDATA OK | P8-11, P8-02, Q1, Q2
+  `via: draft`; no boss rule (owner); TRIPDATA OK | P8-11, P8-02, Q1, Q2
 - **P8-15** | LOCKER screen
   | gameplay-programmer C | `scripts/locker.gd` (new)
   | the star ladder (got / next, with the star counts), the jersey, ball and van picks with a preview, BACK and the
@@ -208,10 +207,9 @@ Everything in the waves below that is not in Doing, Review or Done. Carried over
   right; a replay never moves city, game or bracket); New York rounds replayable once won; a finished trip resumes on
   the map; `LEVELS` has `legend` and `city_ratings()` adds `Difficulty.rating_bonus(level)`, every stat capped at
   `BOSS_CAP` (new, top of `trip.gd`, start 95); TRIPDATA OK | P8-14, P8-19 (the `rating_bonus` name only)
-- **P8-18** | Lineup: points badge, open slots, one boss
+- **P8-18** | Lineup: points badge, open slots
   | gameplay-programmer B | `scripts/lineup.gd`
-  | a points badge on cards with points (opens the points screen); OPEN SLOT cards (open the draft); BOSS tags; a
-  second boss is refused with "ONLY ONE BOSS CAN START"; PLAY off until legal; the repaired-save note | P8-14, P8-16
+  | a points badge on cards with points (opens the points screen); OPEN SLOT cards (open the draft) | P8-14, P8-16
 - **P8-19** | LEGEND level and the reward courts in Quick Game
   | gameplay-programmer C | `scripts/difficulty.gd`, `scripts/menu.gd`
   | level 3 `legend` = the Hard values plus `LEGEND_BONUS` (`rating_bonus(level)`), offered only when
@@ -235,8 +233,8 @@ Everything in the waves below that is not in Doing, Review or Done. Carried over
 ### Wave 7
 - **P8-23** | Trip test for Phase 8
   | gameplay-programmer A | `scripts/trip_test.gd`
-  | `--trip-test` takes the per-win points, checks stars and paid games, drafts one player (with `--stars 12`), tries
-  a second boss (refused), plays one replay and checks the trip did not move; TRIP END on easy, normal, hard and
+  | `--trip-test` takes the per-win points, checks stars and paid games, drafts one player (with `--stars 12`),
+  plays one replay and checks the trip did not move; TRIP END on easy, normal, hard and
   legend (`--stars 72`); `--trip-resume` still works | P8-12, P8-16, P8-18, P8-20
 - **P8-24** | Back test for the new screens
   | gameplay-programmer C | `scripts/main.gd` (the `--backtest` table only)

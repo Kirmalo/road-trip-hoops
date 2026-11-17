@@ -85,11 +85,7 @@ Hard trip opens everything. The ladder is one data table at the top of `scripts/
 - **His stats.** He joins like a recruit: his ratings at his own city's stage, in your colors (every city and New
   York player gets a blue-and-gold recolor, made by the art script), with 0 points. From then on he earns points
   like anyone who starts.
-- **One boss in the starting three.** Applies to every boss on the roster, recruited or drafted. Boss cards carry a
-  BOSS tag. Picking a second boss shows "ONLY ONE BOSS CAN START" and doesn't add him; PLAY stays off until the three
-  are legal. `Trip.set_starters()` refuses two bosses, so no screen or test can get around it. A 1.0.0 save with 2 or
-  3 boss starters is repaired on load: the first boss stays, the others are swapped for the strongest non-boss bench
-  players, and the lineup shows a one-line note.
+- **No boss limit (for now).** The owner chose to skip a one-boss rule: any players can start, as today.
 
 ### Cosmetics
 
@@ -171,7 +167,7 @@ The Phase 5 check-in said "leave the ramp as is"; this change follows only from 
 Quick Game stars per crew (Q3 c, not picked), extra star goals (clean sweep, blowout), New Game+, challenge games,
 training drills, player badges, a Quick Game ladder. Each would be its own owner question.
 
-## 9. Questions for the owner (before Phase 8 work starts)
+## 9. Questions for the owner (answered: Q1 a, Q2 a, Q3 a; Q4 version asked later; the one-boss rule skipped)
 
 **Q1. How many extra roster slots, and at which star counts?**
 - a) 4 slots at 12, 24, 36 and 48 stars; the roster grows to at most 14 (a full Normal trip opens all four)
