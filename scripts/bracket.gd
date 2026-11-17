@@ -18,6 +18,7 @@ const Flow = preload("res://scripts/flow.gd")
 const Trip = preload("res://scripts/trip.gd")
 const Cities = preload("res://scripts/cities.gd")
 const Ratings = preload("res://scripts/ratings.gd")
+const Sheets = preload("res://scripts/sheets.gd")   # cards: v2 card / v2 sheet / v1 sheet (P6-06)
 
 const ARM_T := 0.5                       # s the screen ignores taps after it opens (a tap from the last screen)
 const FRAME_SIZE := Vector2(1280, 720)   # the layout box, centred on wider / taller screens
@@ -42,9 +43,7 @@ const DIM_BORDER := Color(0.4, 0.42, 0.5, 0.8)
 const DIM_TEXT := Color(0.55, 0.57, 0.63)
 const WON_COLOR := Color(0.35, 0.85, 0.45)
 const LINE_DIM := Color(0.35, 0.37, 0.45)
-const SHEET_FRAME := Vector2(40, 64)     # player.gd SHEET_FRAME; column 0, row 0 = idle facing the camera
-const SHEET_SIZE := Vector2(1480, 320)
-const SHEET_DIR := "res://assets/players/"
+const SHEET_FRAME := Vector2(40, 64)     # the layout box of the boss card (a v1 frame); Sheets.card_rect() fits v2
 const TOURNAMENT := "new_york"           # fallback id if the trip isn't at the tournament
 
 var main                     # main.gd (set by Flow.build_screen)
@@ -254,7 +253,7 @@ class BracketArt extends Control:
 	var rounds: Array = []
 	var won := 0                 # rounds won (the current round = won, if below rounds.size())
 	var lost_round := -1         # the round just lost (shown as "REPLAY")
-	var _boss_tex: Texture2D
+	var _boss_card: Dictionary = {}   # Sheets.card_info(); {} = a silhouette
 	var _boss_name := ""
 	var _t := 0.0
 
@@ -266,11 +265,7 @@ class BracketArt extends Control:
 			if str(p.get("tier", "")) != "boss":
 				continue
 			_boss_name = str(p.get("name", id))
-			var path: String = SHEET_DIR + str(p.get("sheet", id)) + ".png"
-			if ResourceLoader.exists(path):
-				var t: Texture2D = load(path) as Texture2D
-				if t != null and t.get_size() == SHEET_SIZE:
-					_boss_tex = t
+			_boss_card = Sheets.card_info(str(p.get("sheet", id)))
 
 	func _process(delta: float) -> void:
 		_t += delta
@@ -375,8 +370,9 @@ class BracketArt extends Control:
 			return
 		var sz: Vector2 = SHEET_FRAME * BOSS_SCALE
 		var champs_beaten: bool = won >= rounds.size()
-		if _boss_tex != null:
-			draw_texture_rect_region(_boss_tex, Rect2(BOSS_POS, sz), Rect2(Vector2.ZERO, SHEET_FRAME),
+		var tex: Texture2D = _boss_card.get("texture", null)
+		if tex != null:
+			draw_texture_rect(tex, Sheets.card_rect(_boss_card, BOSS_POS, BOSS_SCALE), false,
 					Color(1, 1, 1, 0.5) if champs_beaten else Color.WHITE)
 		else:
 			draw_circle(BOSS_POS + Vector2(sz.x / 2.0, sz.y * 0.16), sz.x * 0.16, DIM_TEXT)

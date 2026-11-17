@@ -13,6 +13,7 @@ const UI = preload("res://scripts/ui_kit.gd")
 const Flow = preload("res://scripts/flow.gd")
 const Trip = preload("res://scripts/trip.gd")
 const Cities = preload("res://scripts/cities.gd")
+const Sheets = preload("res://scripts/sheets.gd")   # cards: v2 card / v2 sheet / v1 sheet (P6-06)
 
 const ARM_T := 0.5                       # s the screen ignores taps after it opens (a tap from the last screen)
 const PICK_ARM_T := 0.25                 # s SIGN stays off after a pick (a double tap on a card can't confirm)
@@ -35,9 +36,7 @@ const PORTRAIT_SCALE := 1.45             # portraits are shown at 96 x 112 x thi
 const PORTRAIT_BOX := Vector2(96, 112)   # the portrait contract size (v2 files are 3x, drawn smoothly)
 const SPRITE_SCALE := 2.0                # idle frame 40 x 64 source px
 const SPRITE_SCALE_ALONE := 2.5          # no portrait: bigger sprites
-const SHEET_FRAME := Vector2(40, 64)     # player.gd SHEET_FRAME; the idle frame facing the camera is column 0, row 0
-const SHEET_SIZE := Vector2(1480, 320)   # a full sheet (37 x 5 frames); anything else is drawn as a silhouette
-const SHEET_DIR := "res://assets/players/"
+const SHEET_FRAME := Vector2(40, 64)     # the layout box of a card sprite (a v1 frame); Sheets.card_rect() fits v2
 const PORTRAIT_DIR := "res://assets/portraits/"
 const NAME_FONT := 30
 const SMALL_FONT := 20
@@ -263,8 +262,8 @@ class CardArt extends Control:
 	var p: Dictionary = {}
 	var crew_color := Color.GRAY
 	var picked := false
-	var _city_tex: Texture2D
-	var _crew_tex: Texture2D
+	var _city_card: Dictionary = {}   # Sheets.card_info(): {} = no sheet, drawn as a silhouette
+	var _crew_card: Dictionary = {}
 	var _portrait: Texture2D
 	var _portrait_rect: TextureRect = null
 	var _spec: Array = []
@@ -275,22 +274,13 @@ class CardArt extends Control:
 		crew_color = color
 		var id: String = str(p.get("id", ""))
 		var data: Dictionary = Cities.player(id)
-		_city_tex = _sheet(Cities.crew_sheet(id, false))
-		_crew_tex = _sheet(Cities.crew_sheet(id, true))
+		_city_card = Sheets.card_info(Cities.crew_sheet(id, false))
+		_crew_card = Sheets.card_info(Cities.crew_sheet(id, true))
 		var por: String = PORTRAIT_DIR + str(data.get("portrait", id)) + ".png"
 		_portrait = load(por) as Texture2D if ResourceLoader.exists(por) else null
 		var sp = data.get("spec", [])
 		_spec = sp if sp is Array else []
 		_tier = str(p.get("tier", data.get("tier", "")))
-
-	static func _sheet(sheet: String) -> Texture2D:
-		var path: String = SHEET_DIR + sheet + ".png"
-		if not ResourceLoader.exists(path):
-			return null
-		var t: Texture2D = load(path) as Texture2D
-		if t == null or t.get_size() != SHEET_SIZE:
-			return null
-		return t
 
 	func _draw() -> void:
 		var font: Font = ThemeDB.fallback_font
@@ -321,8 +311,8 @@ class CardArt extends Control:
 		var gap: float = maxf(0.0, (room - spr.x * 2.0) / 3.0)
 		var a: Vector2 = Vector2(x + gap, spr_y)
 		var b: Vector2 = Vector2(x + gap * 2.0 + spr.x, spr_y)
-		_sprite(_city_tex, a, spr, crew_color)
-		_sprite(_crew_tex, b, spr, UI.OFF_COLOR)
+		_sprite(_city_card, a, sc, crew_color)
+		_sprite(_crew_card, b, sc, UI.OFF_COLOR)
 		var mid: float = (a.x + spr.x + b.x) / 2.0
 		var ay: float = spr_y + spr.y * 0.45
 		draw_line(Vector2(mid - 9.0, ay), Vector2(mid + 7.0, ay), ARROW_COLOR, 4.0)
@@ -372,10 +362,13 @@ class CardArt extends Control:
 			return ""
 		return "BEST AT " + " + ".join(PackedStringArray(names))
 
-	func _sprite(tex: Texture2D, pos: Vector2, sz: Vector2, fallback: Color) -> void:
+	# the card standing in the SHEET_FRAME box at pos, scale sc (a v2 card keeps the floor point and height)
+	func _sprite(card: Dictionary, pos: Vector2, sc: float, fallback: Color) -> void:
+		var tex: Texture2D = card.get("texture", null)
 		if tex != null:
-			draw_texture_rect_region(tex, Rect2(pos, sz), Rect2(Vector2.ZERO, SHEET_FRAME))
+			draw_texture_rect(tex, Sheets.card_rect(card, pos, sc), false)
 			return
+		var sz: Vector2 = SHEET_FRAME * sc
 		# no sheet: a simple silhouette in the colour he would wear
 		draw_circle(pos + Vector2(sz.x / 2.0, sz.y * 0.16), sz.x * 0.16, fallback.lightened(0.3))
 		draw_rect(Rect2(pos + Vector2(sz.x * 0.25, sz.y * 0.28), Vector2(sz.x * 0.5, sz.y * 0.62)), fallback)

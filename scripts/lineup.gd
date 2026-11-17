@@ -16,6 +16,7 @@ const UI = preload("res://scripts/ui_kit.gd")
 const Flow = preload("res://scripts/flow.gd")
 const Trip = preload("res://scripts/trip.gd")
 const Cities = preload("res://scripts/cities.gd")
+const Sheets = preload("res://scripts/sheets.gd")   # cards: v2 card / v2 sheet / v1 sheet (P6-06)
 
 const ARM_T := 0.4                       # s the screen ignores taps after it opens (a tap from the last screen)
 const FRAME_SIZE := Vector2(1280, 720)   # the layout box, centred on wider / taller screens
@@ -40,10 +41,7 @@ const JUMP_PX := 80.0                    # px: one motion longer than this is a 
 const HINT_FLASH := 1.6                  # s the "bench one first" hint stays
 const SPRITE_SCALE := 2.0                # idle frame 40 x 64 source px on a card
 const OPP_SPRITE_SCALE := 1.5
-const SHEET_FRAME := Vector2(40, 64)     # player.gd SHEET_FRAME; idle facing the camera = column 0, row 0
-const SHEET_SIZE := Vector2(1480, 320)   # a full sheet; anything else is drawn as a silhouette
-const SHEET_DIR := "res://assets/players/"
-const CREW_SUFFIX := "_crew"
+const SHEET_FRAME := Vector2(40, 64)     # the layout box of a card sprite (a v1 frame); Sheets.card_rect() fits v2
 const FALLBACK_SHEETS := ["blue_1", "red_1"]   # today's sheets when a player's own is missing (yours / theirs)
 const NAME_FONT := 30
 const SMALL_FONT := 20
@@ -86,7 +84,7 @@ var _back: Button
 var _arm_t := ARM_T
 var _busy := false
 var _match := {}
-var _tex := {}               # sheet id -> Texture2D or null (cache)
+var _tex := {}               # "sheet/team" -> Sheets.card_info() ({} = a silhouette) (cache)
 
 func _ready() -> void:
 	if not Trip.active:
@@ -213,23 +211,14 @@ func _build_side() -> void:
 	_play = UI.button(_frame, "PLAY", _on_play, UI.KIND_LIT, PLAY_SIZE)
 	_play.position = PLAY_POS
 
-# a sheet texture (null = draw a silhouette): the player's own, without _crew, then today's team sheet
-func _sheet(sheet: String, team: int) -> Texture2D:
+# a card ({} = draw a silhouette): the player's own, without _crew, then today's team sheet (Sheets.card_first)
+func _sheet(sheet: String, team: int) -> Dictionary:
 	var key: String = "%s/%d" % [sheet, team]
 	if _tex.has(key):
 		return _tex[key]
-	var tries: Array = [sheet]
-	if sheet.ends_with(CREW_SUFFIX):
-		tries.append(sheet.substr(0, sheet.length() - CREW_SUFFIX.length()))
+	var tries: Array = Sheets.with_base(sheet) if sheet != "" else []
 	tries.append(FALLBACK_SHEETS[team])
-	var out: Texture2D = null
-	for s in tries:
-		var path: String = SHEET_DIR + str(s) + ".png"
-		if str(s) != "" and ResourceLoader.exists(path):
-			var t = load(path)
-			if t is Texture2D and (t as Texture2D).get_size() == SHEET_SIZE:
-				out = t
-				break
+	var out: Dictionary = Sheets.card_first(tries)
 	_tex[key] = out
 	return out
 
@@ -332,10 +321,12 @@ static func draw_text(c: CanvasItem, pos: Vector2, text: String, fs: int, col: C
 	c.draw_string_outline(font, pos, text, align, w, fs, 6, UI.OUTLINE_COLOR)
 	c.draw_string(font, pos, text, align, w, fs, col)
 
-static func draw_sprite(c: CanvasItem, tex: Texture2D, pos: Vector2, sc: float, fallback: Color) -> void:
+# a card standing in the SHEET_FRAME box at pos, scale sc (a v2 card keeps the floor point and the height)
+static func draw_sprite(c: CanvasItem, card: Dictionary, pos: Vector2, sc: float, fallback: Color) -> void:
 	var sz: Vector2 = SHEET_FRAME * sc
+	var tex: Texture2D = card.get("texture", null)
 	if tex != null:
-		c.draw_texture_rect_region(tex, Rect2(pos, sz), Rect2(Vector2.ZERO, SHEET_FRAME))
+		c.draw_texture_rect(tex, Sheets.card_rect(card, pos, sc), false)
 	else:
 		c.draw_circle(pos + Vector2(sz.x / 2.0, sz.y * 0.2), sz.x * 0.22, fallback)
 		c.draw_rect(Rect2(pos + Vector2(sz.x * 0.22, sz.y * 0.34), Vector2(sz.x * 0.56, sz.y * 0.6)), fallback)
@@ -352,7 +343,7 @@ static func draw_ring(c: CanvasItem, feet: Vector2, w: float, col: Color) -> voi
 class Card extends Control:
 	var screen               # lineup.gd
 	var p := {}
-	var tex: Texture2D
+	var tex: Dictionary = {}   # Sheets.card_info()
 	var _down := false
 	var _drag := false
 	var _press := Vector2.ZERO   # where the finger went down (screen px; the card moves while the list scrolls)
@@ -459,7 +450,7 @@ class Side extends Control:
 			var spr: Vector2 = s.SHEET_FRAME * sc
 			var sp := Vector2(18.0, y + (s.OPP_ROW - spr.y) / 2.0)
 			s.draw_ring(self, sp + Vector2(spr.x / 2.0, spr.y * 59.0 / 64.0), spr.x * 0.9, s.THEIR_RING)
-			s.draw_sprite(self, texs[i] if i < texs.size() else null, sp, sc, s.THEIR_RING)
+			s.draw_sprite(self, texs[i] if i < texs.size() else {}, sp, sc, s.THEIR_RING)
 			var x: float = sp.x + spr.x + 14.0
 			s.draw_text(self, Vector2(x, y + 44.0), str(p.get("name", "?")), s.NAME_FONT - 4, s.UI.TEXT_COLOR)
 			var tier: String = str(s.TIER_TEXT.get(str(p.get("tier", "")), ""))
