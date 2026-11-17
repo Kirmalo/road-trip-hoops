@@ -178,6 +178,8 @@ godot --headless --path . -- --ratingtest
 # /tmp/hoops_settings.png, /tmp/hoops_crew*.png when run under xvfb without --headless)
 godot --headless --path . --fixed-fps 60 --quit-after 20000 -- --titletest
 ```
+- `--backtest`: sends the Android back request on every screen and checks where it lands (title quits, a game
+  pauses and resumes, other screens go BACK; result, points and recruit ignore it); prints `BACKTEST OK` or fails.
 - `--titletest` puts every setting back and restores `user://settings.cfg` byte for byte at the end.
 - `--trip-force-loss N` (with `--trip-test`): the Nth trip game of this run is lost, to test the retry.
 - `--trip-stop-after <city>` (with `--trip-test`): quits on the map once that city is done ("TRIP STOP", saved).

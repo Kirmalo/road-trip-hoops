@@ -381,9 +381,11 @@ func _input(event: InputEvent) -> void:
 	if event.keycode == KEY_ESCAPE or event.keycode == KEY_P:
 		if _open:
 			resume()
-		else:
+			get_viewport().set_input_as_handled()
+		elif can_pause():
 			open()
-		get_viewport().set_input_as_handled()
+			get_viewport().set_input_as_handled()
+		# otherwise (Quick Game start / game-over panel) the key goes on to menu.gd
 
 # Android back gesture: pause instead of leaving
 func _notification(what: int) -> void:
