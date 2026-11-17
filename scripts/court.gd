@@ -5,6 +5,9 @@ extends Node2D
 # scenery behind the far sideline drawn through View.to_screen, and per hoop three y-sorted nodes in game.world:
 # pole + backboard (sort y = hoop screen y - 3), back half of the rim (- 1), front half of the rim + net (+ 1).
 # The floor and the hoop structures are drawn once (Godot keeps the drawing); only the nets redraw while they swing.
+# P6-13: the optional look keys (court_looks.gd), ANGLED only: "backboard": "wood" (a plank board on a wooden post),
+# "front_fence" (low posts and mesh along the near sideline, in the floor layer so the players draw over it) and
+# "floor_overlay": "puddles" / "sand_drift" (on the floor, over the lines). A look without them draws as before.
 
 const View = preload("res://scripts/view.gd")
 const Looks = preload("res://scripts/court_looks.gd")
@@ -61,6 +64,30 @@ const FENCE_MESH_FT := 1.0        # blacktop: diamond mesh size
 const STREET_FT := 24.0           # blacktop: sidewalk + street depth behind the fence
 const SPECKLE_SEED := 77          # blacktop: worn patches, same every game
 
+# ---- P6-13: optional look keys (ANGLED) ----
+const WOOD_PLANKS := 5                         # "wood" backboard: planks across the board
+const WOOD_POLE_W := 11.0                      # "wood": the post is a thick square timber (px; POLE_W for the others)
+const WOOD_GRAIN := 0.35                       # "wood": seams and the post's shaded side, darkened by this much
+const FRONT_FENCE_GAP_FT := 2.5                # front_fence: stands this far outside the near sideline
+const FRONT_FENCE_H_FT := 3.5                  # front_fence: low, so it never hides a player at the sideline
+const FRONT_FENCE_POST_FT := 8.0               # front_fence: distance between posts
+const FRONT_FENCE_MESH_FT := 0.9               # front_fence: diamond mesh size
+const FRONT_FENCE_MESH := Color(0.80, 0.82, 0.86, 0.40)   # see-through chain link
+const FRONT_FENCE_POST := Color(0.55, 0.58, 0.62)
+const FRONT_FENCE_RAIL := Color(0.70, 0.72, 0.76)
+const PUDDLE_SEED := 913                       # puddles: the same every game
+const PUDDLES := 16                            # puddles on the court and the apron around it
+const PUDDLE_COLOR := Color(0.30, 0.42, 0.55, 0.40)    # water: a dark sky-blue wash, the lines show through
+const PUDDLE_SHINE := Color(0.80, 0.88, 0.95, 0.45)    # the far edge catches the light
+const PUDDLE_FT := Vector2(2.5, 7.0)           # puddle length range (feet); the width is 40-70% of it
+const SAND_SEED := 4242                        # sand drifts: the same every game
+const SAND_DRIFTS := 22                        # drifts, mostly along the sidelines and in the corners
+const SAND_LIGHT := 0.22                       # a drift is the floor color lightened by this much
+const SAND_ALPHA := 0.92                       # and lets a little of the line through
+const SAND_FT := Vector2(4.0, 11.0)            # drift length range (feet)
+const SAND_RIPPLE := 0.25                      # wind ripples on a drift, darkened by this much
+const SAND_SHADE := 0.30                       # the drift's near (lower) edge, darkened by this much: reads as a mound
+
 const CROWD_COLORS := [Color(0.85, 0.25, 0.22), Color(0.25, 0.45, 0.85), Color(0.92, 0.85, 0.35),
 	Color(0.92, 0.92, 0.92), Color(0.30, 0.65, 0.35), Color(0.55, 0.35, 0.70), Color(0.95, 0.55, 0.20),
 	Color(0.20, 0.20, 0.22)]
@@ -73,7 +100,7 @@ var _look: Dictionary
 var _parts := []                  # ANGLED hoops instance: per hoop [board, rim_back, rim_front] nodes in game.world
 var _drawn_flip := false          # View.flipped when last drawn (only changes with View.SIDE_FLIP)
 var _floor_tex: Texture2D        # the look's textures (null = procedural); kept here, because the drawing only
-var _backdrop_tex: Texture2D     # references them and a freed texture would draw white          # View.flipped when last drawn (only changes with View.SIDE_FLIP)
+var _backdrop_tex: Texture2D     # references them and a freed texture would draw white
 
 func _ready() -> void:
 	Looks.parse_args()
@@ -353,6 +380,113 @@ func _draw_floor_angled() -> void:
 		_fill(_arc_pts(h, RIM_R_FT * FT, 0, TAU, 20), HOOP_SHADOW)
 		var pole: Vector2 = _pole_floor(i)
 		_fill(_rect_pts(Rect2(pole.x - 1.0 * FT, pole.y - PAD_FT * FT, 2.0 * FT, 2.0 * PAD_FT * FT)), HOOP_SHADOW)
+	# P6-13: what lies on the floor over the lines, then the near fence (still under the players: this is the floor layer)
+	var overlay: String = str(_look.get("floor_overlay", ""))
+	if overlay == "puddles":
+		_draw_puddles()
+	elif overlay == "sand_drift":
+		_draw_sand_drifts()
+	if bool(_look.get("front_fence", false)):
+		_draw_front_fence()
+
+# ---------------- P6-13: floor overlays and the near fence ----------------
+
+# a sim ellipse (center c, half axes r) as floor points; wobble[s] bends point s out (+) or in (-)
+static func _ellipse_pts(c: Vector2, r: Vector2, n: int, wobble: Array = []) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for s in n:
+		var a: float = TAU * float(s) / float(n)
+		var k: float = 1.0 + (float(wobble[s]) if s < wobble.size() else 0.0)
+		out.append(c + Vector2(cos(a) * r.x, sin(a) * r.y) * k)
+	return out
+
+# rain_park: shiny puddles on the court and around it (fixed seed), the lines showing through
+func _draw_puddles() -> void:
+	var FT: float = game.FT
+	var rng := RandomNumberGenerator.new()
+	rng.seed = PUDDLE_SEED
+	for k in PUDDLES:
+		var c := Vector2(rng.randf_range(-3.0 * FT, game.COURT_W + 3.0 * FT), rng.randf_range(-2.0 * FT, game.COURT_H + 2.0 * FT))
+		var lx: float = rng.randf_range(PUDDLE_FT.x, PUDDLE_FT.y) * FT / 2.0
+		var r := Vector2(lx, lx * rng.randf_range(0.4, 0.7))
+		var wob: Array = []
+		for s in 18:
+			wob.append(rng.randf_range(-0.12, 0.12))
+		var pts: PackedVector2Array = _ellipse_pts(c, r, 18, wob)
+		_fill(pts, PUDDLE_COLOR)
+		# the light on the far edge (the top of the ellipse on screen) and a small glint
+		var rim := PackedVector2Array()
+		for s in range(10, 17):
+			rim.append(pts[s])
+		_stroke(rim, PUDDLE_SHINE, 2.0)
+		_fill(_ellipse_pts(c + Vector2(-0.3 * r.x, -0.35 * r.y), Vector2(0.25 * r.x, 0.12 * r.y), 10), PUDDLE_SHINE)
+
+# beach: drifts of sand blown over the court, most along the sidelines and in the corners, half over the lines
+func _draw_sand_drifts() -> void:
+	var FT: float = game.FT
+	var W: float = game.COURT_W
+	var H: float = game.COURT_H
+	var base: Color = _look["floor"]
+	var sand: Color = base.lightened(SAND_LIGHT)
+	sand.a = SAND_ALPHA
+	var ripple: Color = base.darkened(SAND_RIPPLE)
+	ripple.a = 0.6
+	var rng := RandomNumberGenerator.new()
+	rng.seed = SAND_SEED
+	for k in SAND_DRIFTS:
+		var c: Vector2
+		var where: int = k % 4
+		if where <= 1:   # along a sideline, across its line
+			c = Vector2(rng.randf_range(0.0, W), (0.0 if where == 0 else H) + rng.randf_range(-1.5, 1.5) * FT)
+		elif where == 2:   # a corner or a baseline
+			c = Vector2((0.0 if rng.randf() < 0.5 else W) + rng.randf_range(-2.0, 2.0) * FT, rng.randf_range(0.0, H))
+		else:   # anywhere on the court
+			c = Vector2(rng.randf_range(0.0, W), rng.randf_range(0.0, H))
+		var lx: float = rng.randf_range(SAND_FT.x, SAND_FT.y) * FT / 2.0
+		var r := Vector2(lx, lx * rng.randf_range(0.25, 0.45))
+		var wob: Array = []
+		for s in 16:
+			wob.append(rng.randf_range(-0.2, 0.2))
+		var pts: PackedVector2Array = _ellipse_pts(c, r, 16, wob)
+		_fill(pts, sand)
+		var shade := PackedVector2Array()
+		for s in range(1, 8):   # sin > 0: the near half, lower on screen
+			shade.append(pts[s])
+		var sc: Color = base.darkened(SAND_SHADE)
+		sc.a = 0.7
+		_stroke(shade, sc, 2.0)
+		# two wind ripples across the drift
+		for j in 2:
+			var dy: float = (float(j) - 0.5) * 0.6 * r.y
+			var hw: float = r.x * (0.6 - 0.15 * float(j))
+			_stroke(PackedVector2Array([c + Vector2(-hw, dy), c + Vector2(-hw * 0.3, dy - 0.15 * r.y),
+					c + Vector2(hw * 0.4, dy), c + Vector2(hw, dy - 0.1 * r.y)]), ripple, 1.0)
+
+# cage: a low chain-link fence along the near sideline (the cage's far side is in the backdrop art): see-through
+# diamond mesh, posts, a top rail. Drawn in the floor layer, so every player draws over it.
+func _draw_front_fence() -> void:
+	var FT: float = game.FT
+	var y: float = game.COURT_H + FRONT_FENCE_GAP_FT * FT
+	var x0: float = -BACK_SIDE_FT * FT
+	var x1: float = game.COURT_W + BACK_SIDE_FT * FT
+	var base_l: Vector2 = _p(Vector2(x0, y))
+	var base_r: Vector2 = _p(Vector2(x1, y))
+	var top: float = _p(Vector2(x0, y), FRONT_FENCE_H_FT * FT).y
+	var base: float = base_l.y
+	var hgt: float = base - top
+	var m: float = FRONT_FENCE_MESH_FT * FT * View.HEIGHT_SCALE
+	var sx: float = base_l.x - hgt
+	while sx < base_r.x:
+		draw_line(Vector2(sx, base), Vector2(sx + hgt, top), FRONT_FENCE_MESH, 1.0)
+		draw_line(Vector2(sx + hgt, base), Vector2(sx, top), FRONT_FENCE_MESH, 1.0)
+		sx += m
+	var px: float = x0
+	while px <= x1:
+		var a: Vector2 = _p(Vector2(px, y))
+		draw_line(a, Vector2(a.x, top), FRONT_FENCE_POST, 3.0)
+		px += FRONT_FENCE_POST_FT * FT
+	draw_line(Vector2(base_l.x, top), Vector2(base_r.x, top), FRONT_FENCE_RAIL, 3.0)
+	draw_line(Vector2(base_l.x, base), Vector2(base_r.x, base), FRONT_FENCE_POST.darkened(0.3), 2.0)
 
 # the court floor without a texture: plain color, plank stripes, worn patches (the procedural fallback)
 func _draw_floor_plain() -> void:
@@ -552,12 +686,19 @@ func _draw_board(n: Node2D, i: int) -> void:
 	# pole with its padded base, and the arm out to the back of the board
 	var foot: Vector2 = View.to_screen(pole)
 	var head: Vector2 = View.to_screen(pole, POLE_TOP_FT * FT)
-	n.draw_line(foot, head, pole_c, POLE_W)
-	# the pad: a box around the pole foot, its near face toward the camera
-	var pad_near: Vector2 = View.to_screen(pole + Vector2(0, PAD_FT * FT))
-	var pad_far_top: Vector2 = View.to_screen(pole + Vector2(0, -PAD_FT * FT), PAD_H_FT * FT)
-	var pad_w: float = 0.7 * FT
-	n.draw_rect(Rect2(pad_near.x - pad_w, pad_far_top.y, 2.0 * pad_w, pad_near.y - pad_far_top.y), pole_c.darkened(0.35))
+	var wood: bool = str(_look.get("backboard", "glass")) == "wood"
+	if wood:
+		# a square timber post (barn): the lit face and a shaded side, no pad
+		n.draw_line(foot, head, pole_c, WOOD_POLE_W)
+		var side := Vector2(WOOD_POLE_W * 0.3, 0)
+		n.draw_line(foot + side, head + side, pole_c.darkened(WOOD_GRAIN), WOOD_POLE_W * 0.4)
+	else:
+		n.draw_line(foot, head, pole_c, POLE_W)
+		# the pad: a box around the pole foot, its near face toward the camera
+		var pad_near: Vector2 = View.to_screen(pole + Vector2(0, PAD_FT * FT))
+		var pad_far_top: Vector2 = View.to_screen(pole + Vector2(0, -PAD_FT * FT), PAD_H_FT * FT)
+		var pad_w: float = 0.7 * FT
+		n.draw_rect(Rect2(pad_near.x - pad_w, pad_far_top.y, 2.0 * pad_w, pad_near.y - pad_far_top.y), pole_c.darkened(0.35))
 	var back: Vector2 = _board_pt(i, 0.0, POLE_TOP_FT - 0.4)
 	n.draw_line(head, back, pole_c, ARM_W)
 	n.draw_line(View.to_screen(pole, (POLE_TOP_FT - 1.8) * FT), _board_pt(i, 0.0, BOARD_BOTTOM_FT + 0.3), pole_c, 3.0)
@@ -566,6 +707,11 @@ func _draw_board(n: Node2D, i: int) -> void:
 			_board_pt(i, BOARD_HALF_FT, BOARD_TOP_FT), _board_pt(i, BOARD_HALF_FT, BOARD_BOTTOM_FT)])
 	var glass: bool = _look["backboard"] == "glass"
 	n.draw_colored_polygon(quad, Color(0.80, 0.92, 1.0, 0.35) if glass else pole_c.lightened(0.15))
+	if wood:
+		# plank seams across the board
+		for k in range(1, WOOD_PLANKS):
+			var hk: float = lerpf(BOARD_BOTTOM_FT, BOARD_TOP_FT, float(k) / float(WOOD_PLANKS))
+			n.draw_line(_board_pt(i, -BOARD_HALF_FT, hk), _board_pt(i, BOARD_HALF_FT, hk), pole_c.darkened(WOOD_GRAIN), 1.5)
 	var closed := quad.duplicate()
 	closed.append(quad[0])
 	n.draw_polyline(closed, Color(1, 1, 1, 0.95) if glass else pole_c.darkened(0.3), 3.0)

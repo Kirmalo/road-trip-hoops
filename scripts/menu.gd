@@ -11,10 +11,15 @@ extends CanvasLayer
 # --autoplay and --humantest never show it (main.gd); they keep Difficulty.from_cmdline() (Hard by default).
 # P5-06: a TITLE button next to COURT and MUSIC goes back to the title screen (title.gd), where QUICK GAME brings
 # this start panel back. title.gd's Settings use set_music() and save_setting() below. Desktop: T or Escape = TITLE.
+# P6-17 (owner Q9): COURT cycles the gym, the blacktop and the courts of the cities whose boss you have beaten on a
+# Road Trip (Difficulty.unlock_court; a locked city's court doesn't show). A city court brings its city's twist
+# (quick_twist(), read by main.gd), shown in a line under the buttons. Test flags: --unlock-all, --unlock-none.
 
 const Difficulty = preload("res://scripts/difficulty.gd")
 const Looks = preload("res://scripts/court_looks.gd")
 const Flow = preload("res://scripts/flow.gd")
+const Cities = preload("res://scripts/cities.gd")     # which city owns a court look, and its twist (P6-17)
+const Twists = preload("res://scripts/twists.gd")     # the twist's line under the buttons
 
 const BUTTON_SIZE := Vector2(300, 140)   # px at the 1280x720 base: finger-sized on a tablet (board: at least 200x110)
 const BUTTON_GAP := 40                   # px between the buttons
@@ -40,6 +45,8 @@ const OFF_TEXT := Color.WHITE
 const ARM_TIME_OVER := 0.8               # seconds before the game-over panel takes a tap (a thumb still on SHOOT
                                          # when the game ends must not pick a level by accident)
 const LAYER := 20                        # over the HUD (10)
+const TWIST_FONT := 28                   # the court's twist line under the buttons (P6-17)
+const TWIST_COLOR := Color(1.0, 0.9, 0.55)   # as main.gd's tip-off twist line
 
 static var start_done := false           # the launch panel was answered this run (survives reload_current_scene())
 static var _prepared := false
@@ -57,6 +64,7 @@ var _buttons: Array = []
 var _court_btn: Button
 var _music_btn: Button
 var _title_btn: Button
+var _twist_lbl: Label
 
 # Once per run, before the players are made (player.gd calls Difficulty.init_once() too, later, which is then a no-op):
 # first launch (nothing saved) plays Normal; a saved level wins; --difficulty (and autoplay/humantest = Hard) win over both.
@@ -76,13 +84,55 @@ static func prepare_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(Difficulty.SAVE_PATH) != OK:
 		return
-	Looks.set_current(str(cfg.get_value(Difficulty.SAVE_SECTION, SAVE_COURT, Looks.current)))
+	var saved: String = str(cfg.get_value(Difficulty.SAVE_SECTION, SAVE_COURT, Looks.current))
+	if quick_courts().has(saved):   # a city court only while it is unlocked (else the default court)
+		Looks.set_current(saved)
 	music_on = bool(cfg.get_value(Difficulty.SAVE_SECTION, SAVE_MUSIC, music_on))
 
 # the MUSIC choice, saved (title.gd's Settings; the panel's own MUSIC button too)
 static func set_music(on: bool) -> void:
 	music_on = on
 	save_setting(SAVE_MUSIC, music_on)
+
+# ---------------- Quick Game courts and twists (P6-17) ----------------
+
+# The courts the COURT button offers, in Looks.names() order: gym, blacktop, and every unlocked city's court
+static func quick_courts() -> Array:
+	var open_cities: Array = Difficulty.unlocked_cities(Cities.ROUTE)
+	var out: Array = []
+	for n in Looks.names():
+		var c: String = city_of_look(str(n))
+		if Looks.always_open(str(n)) or (c != "" and open_cities.has(c)):
+			out.append(str(n))
+	return out
+
+# the city whose court this look is ("" for gym, blacktop or an unknown look)
+static func city_of_look(look_id: String) -> String:
+	for id in Cities.ROUTE:
+		if str(Cities.city(id).get("look", "")) == look_id:
+			return str(id)
+	return ""
+
+# The twist of a Quick Game on the current court: the city's twist on an unlocked city court, else "none". main.gd
+# calls it before the court is built, so the -- --court test flag is read here first (a locked court from --court
+# plays without the twist, unless --unlock-all).
+static func quick_twist() -> String:
+	Looks.parse_args()
+	var c: String = city_of_look(Looks.current)
+	if c == "" or Looks.always_open(Looks.current) or not Difficulty.is_court_unlocked(c):
+		return "none"
+	return Cities.twist(c)
+
+# "WIND: long shots and lobs drift" for a twist id (the banner with its first word in capitals); "" for none. Used by
+# this panel, the trip map's city card and the pause screen.
+static func twist_line(twist_id: String) -> String:
+	if twist_id == "" or twist_id == "none":
+		return ""
+	var banner: String = str(Twists.info(twist_id).get("banner", ""))
+	var cut: int = banner.find(":")
+	if cut < 0:
+		return banner
+	return banner.substr(0, cut).to_upper() + banner.substr(cut)
 
 static func save_setting(key: String, value) -> void:
 	_save_setting(key, value)
@@ -138,6 +188,8 @@ func _ready() -> void:
 	_title_btn = _opt_button(opts, _go_title)
 	_title_btn.custom_minimum_size = TITLE_BTN_SIZE
 	_title_btn.text = "TITLE"
+	_twist_lbl = _label(box, TWIST_FONT)
+	_twist_lbl.modulate = TWIST_COLOR
 
 func _opt_button(parent: Control, on_tap: Callable) -> Button:
 	var b := Button.new()
@@ -188,6 +240,9 @@ func _open(arm: float) -> void:
 	_refresh()
 	if game != null:
 		game.stat("menu_shown")
+		if game.get("menushot"):
+			print("QUICK COURTS %s | court %s | twist %s" % [", ".join(PackedStringArray(quick_courts())), Looks.current,
+					quick_twist()])
 		game.audio.play_music("menu")   # menu music on the panels, full volume (owner Q5 a)
 		game.audio.set_music_ducked(false)
 
@@ -214,6 +269,7 @@ func _refresh() -> void:
 		b.disabled = _arm_t > 0.0
 		b.modulate.a = 0.6 if _arm_t > 0.0 else 1.0
 	_court_btn.text = "COURT: " + str(Looks.look().get("name", Looks.current))
+	_twist_lbl.text = twist_line(quick_twist())   # "" on gym and blacktop
 	_music_btn.text = "MUSIC: ON" if music_on else "MUSIC: OFF"
 	var mc: Color = OFF_TEXT if music_on else OPT_OFF_TEXT
 	for k in ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color"]:
@@ -268,7 +324,9 @@ func _pick_court() -> void:
 	if not showing or _arm_t > 0.0:
 		return
 	showing = false
-	Looks.set_current(Looks.next_name())
+	var open: Array = quick_courts()
+	var i: int = open.find(Looks.current)   # -1 (a court opened by --court only) -> the first one
+	Looks.set_current(str(open[(i + 1) % open.size()]))
 	_save_setting(SAVE_COURT, Looks.current)
 	start_done = false
 	if game != null:

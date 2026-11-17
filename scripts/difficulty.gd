@@ -18,6 +18,12 @@ const CPU_TEAM := 1                   # the only team the level changes (team 0 
 const SAVE_PATH := "user://settings.cfg"
 const SAVE_SECTION := "settings"
 const SAVE_KEY := "difficulty"
+# P6-17 (owner Q9): Quick Game court unlocks. A city's court unlocks when its boss game is won on any Road Trip
+# (trip.gd calls unlock_court(city)); kept for good (a new trip doesn't lock it again), saved here with the settings,
+# not in the trip save. Test flags: --unlock-all (every city open), --unlock-none (a fresh install; nothing saved is read).
+const UNLOCK_KEY := "unlocked_courts"    # an Array of city ids in SAVE_SECTION
+const UNLOCK_ALL_FLAG := "--unlock-all"
+const UNLOCK_NONE_FLAG := "--unlock-none"
 
 # P3-10 values (owner Q6: the CPU is less sharp, not slower: worse shooting, slower reactions, worse steal/block
 # timing, bites on fakes more, less help defense; speed and stamina stay Hard on every level). Each entry is
@@ -182,3 +188,42 @@ static func init_once() -> void:
 	_inited = true
 	load_saved()
 	from_cmdline()
+
+# ---------------- Quick Game court unlocks (P6-17) ----------------
+
+# A won boss game (trip.gd): the city's court is open in Quick Game from now on. Saved at once; a city already open
+# changes nothing.
+static func unlock_court(city_id: String) -> void:
+	if city_id == "":
+		return
+	var cfg := ConfigFile.new()
+	cfg.load(SAVE_PATH)   # keep the other settings in the file
+	var got: Array = _as_ids(cfg.get_value(SAVE_SECTION, UNLOCK_KEY, []))
+	if got.has(city_id):
+		return
+	got.append(city_id)
+	cfg.set_value(SAVE_SECTION, UNLOCK_KEY, got)
+	cfg.save(SAVE_PATH)
+	print("COURT UNLOCKED %s" % city_id)
+
+# The city ids whose court is open (saved; every city in `all_ids` under --unlock-all, none under --unlock-none)
+static func unlocked_cities(all_ids: Array = []) -> Array:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	if args.has(UNLOCK_ALL_FLAG):
+		return all_ids.duplicate()
+	if args.has(UNLOCK_NONE_FLAG):
+		return []
+	var cfg := ConfigFile.new()
+	if cfg.load(SAVE_PATH) != OK:
+		return []
+	return _as_ids(cfg.get_value(SAVE_SECTION, UNLOCK_KEY, []))
+
+static func is_court_unlocked(city_id: String) -> bool:
+	return unlocked_cities([city_id]).has(city_id)
+
+static func _as_ids(v) -> Array:
+	var out: Array = []
+	if v is Array:
+		for x in v:
+			out.append(str(x))
+	return out
