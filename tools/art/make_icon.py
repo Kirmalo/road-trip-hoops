@@ -17,7 +17,7 @@ Output: assets/icon/icon.png         256 x 256  project icon and web favicon (64
                                                 motif stays inside the 264 px safe circle)
         assets/icon/icon_bg_432.png  432 x 432  Android adaptive background (opaque, full bleed)
         docs/release/cover.png       630 x 500  itch.io cover (315 x 250 art at 2x)
-        docs/art/icon_cover_preview_v1.png  the icon at 48 / 96 / 192 / 512, the adaptive icon under round and
+        docs/art/icon_cover_preview_v2.png  the icon at 48 / 96 / 192 / 512, the adaptive icon under round and
                                             squircle masks, and the cover (for the owner)
 Reruns are byte-identical (no randomness, no time stamps). Needs: Pillow, numpy
 """
@@ -30,7 +30,7 @@ from PIL import Image, ImageDraw
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 ICON_DIR = os.path.join(ROOT, "assets", "icon")
 COVER = os.path.join(ROOT, "docs", "release", "cover.png")
-PREVIEW = os.path.join(ROOT, "docs", "art", "icon_cover_preview_v1.png")
+PREVIEW = os.path.join(ROOT, "docs", "art", "icon_cover_preview_v2.png")
 VAN = os.path.join(ROOT, "assets", "map", "van.png")
 CARDS = os.path.join(ROOT, "assets", "players2", "cards")
 FLOOR = os.path.join(ROOT, "assets", "courts", "blacktop_floor.png")
@@ -281,30 +281,31 @@ def round_mask(img, rad, border=1):
 
 # ----------------------------------------------------------------------------- the icon motif
 
-BALL_R = 17
-BALL_C = (0, -11)         # cells from the tile centre
-VAN_AT = (0, 20)          # where the van's anchor (between the wheels, on the road) goes
-ROAD_TOP = 14             # road surface starts this far below the centre
-ROAD_H = 14
+BALL_R = 21
+BALL_C = (0, -6)          # cells from the tile centre: the ball sets on the horizon, its lower part behind the corn
+VAN_AT = (0, 22)          # where the van's anchor (between the wheels, on the road) goes
+ROAD_TOP = -4             # the road's far edge (the horizon) this far below the centre
+ROAD_H = 30
 
 
 def motif(n, c):
-    """Ball setting behind the van, centred at cell c of an n-cell transparent tile."""
+    """The van alone (the adaptive foreground), centred at cell c of an n-cell transparent tile."""
     img = Image.new("RGBA", (n, n), (0, 0, 0, 0))
-    b = ball(BALL_R)
-    img.alpha_composite(b, (c + BALL_C[0] - b.width // 2, c + BALL_C[1] - b.height // 2))
     v = van_right()
     img.alpha_composite(v, (c + VAN_AT[0] - VAN_ANCHOR[0], c + VAN_AT[1] - VAN_ANCHOR[1]))
     return img
 
 
 def backdrop(n, c):
-    """Sunset bands, a corn line and the road, so the van's wheels sit on the road at cell c + VAN_AT."""
+    """Sunset bands, the basketball setting on the horizon behind a corn line, and the road, so the van's wheels
+    sit on the road at cell c + VAN_AT."""
     img = Image.new("RGBA", (n, n), (0, 0, 0, 255))
     ry = c + ROAD_TOP
     sky_bands(img, 0, ry - 3, 7)
+    b = ball(BALL_R)
+    img.alpha_composite(b, (c + BALL_C[0] - b.width // 2, c + BALL_C[1] - b.height // 2))
     corn(img, ry, 5)
-    road(img, ry, n - ry, dash=6, gap=5, offset=2)
+    road(img, ry, ROAD_H, dash=6, gap=5, offset=2)
     d = ImageDraw.Draw(img)
     d.rectangle([0, ry + ROAD_H, n - 1, n - 1], fill=VERGE + (255,))
     d.line([(0, ry + ROAD_H), (n - 1, ry + ROAD_H)], fill=ROAD_EDGE + (255,))
@@ -332,9 +333,9 @@ def make_cover():
     img = Image.new("RGBA", (W, H), (0, 0, 0, 255))
     horizon = 160
     sky_bands(img, 0, horizon - 4, 12)
-    # the ball sets over the cornfield, left of centre
-    b = ball(44)
-    img.alpha_composite(b, (96 - b.width // 2, horizon - 8 - b.height // 2))
+    # the ball sets on the horizon behind the cornfield, between the van and the crew
+    b = ball(50)
+    img.alpha_composite(b, (166 - b.width // 2, horizon + 6 - b.height // 2))
     corn(img, horizon, 9)
     road(img, horizon, 26, dash=14, gap=10, offset=4)
     # the blacktop in front: floor tile (1x), a painted line and the edge
@@ -347,7 +348,7 @@ def make_cover():
     d.line([(0, ct + 10), (W - 1, ct + 10)], fill=(232, 232, 226, 255))
     # the van on the road, 2x, driving right
     v = van_right().resize((96, 64), Image.NEAREST)
-    img.alpha_composite(v, (22, horizon + 20 - VAN_ANCHOR[1] * 2))
+    img.alpha_composite(v, (6, horizon + 20 - VAN_ANCHOR[1] * 2))
     # the underdogs on the blacktop (cards 1x): Jojo, Tank behind, Deuce in front
     # the underdogs on the blacktop, cards at 2x (the van's pixel size): Jojo and Tank behind, Deuce in front
     feet = 226
