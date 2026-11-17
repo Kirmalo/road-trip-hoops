@@ -9,12 +9,12 @@ extends RefCounted
 #   v2 (owner-approved animation sample v1, docs/art/anim_sample_v1.md): assets/players2/format.json is the truth.
 #      64 x 96 frames, art scale 1.25, drawn 2x in the game; the floor point under the pelvis is on row 88, x 32.
 #      Each direction is one row of `cols` logical columns (animation "start" + frame). The columns are stored in
-#      pages of at most `page_cols` (64) columns, so no texture is wider than 4096 px:
+#      pages of at most `page_cols` (32) columns, so no texture is wider than 2048 px:
 #        cols <= page_cols:  assets/players2/<sheet>.png              (one page; <sheet>_p0.png also accepted)
 #        cols >  page_cols:  assets/players2/<sheet>_p0.png, _p1.png ...  (page p holds columns p*page_cols ...)
 #      Every page is len(dirs) rows high (5 x 96 = 480 px); the last page may be narrower (or padded).
 #      format.json: {"version": 2, "frame": [64, 96], "feet_row": 88, "center_x": 32, "head_px": 50,
-#                    "draw_scale": 2.0, "dirs": ["S", "SE", "E", "NE", "N"], "cols": N, "page_cols": 64,
+#                    "draw_scale": 2.0, "dirs": ["S", "SE", "E", "NE", "N"], "cols": N, "page_cols": 32,
 #                    "anims": {"idle": {"start": 0, "frames": 6, "fps": 6, "loop": true}, ...}}
 #      hands.json (the sample's points file, keyed by animation and direction, so it doesn't depend on the columns):
 #                   {"frame": [64, 96], "feet_row": 88,
@@ -37,7 +37,7 @@ const HANDS_FILE := "hands.json"
 const CARD_SUBDIR := "cards/"
 const CREW_SUFFIX := "_crew"          # a city player's recolor in your colors (cities.gd crew_sheet)
 const PAGE_SUFFIX := "_p"             # v2 page files: <sheet>_p0.png, <sheet>_p1.png ...
-const MAX_TEXTURE := 4096             # px: no page may be wider or taller (Android GL Compatibility)
+const MAX_TEXTURE := 2048             # px: no page may be wider or taller (GLES3 / WebGL2 minimum)
 const DIR_NAMES := ["S", "SE", "E", "NE", "N"]
 
 # today's v1 sheet (player.gd SHEET_FRAME, SHEET_COLS, SHEET_FEET_Y, ANIMS and the *_FPS constants). fps 0 = the
@@ -542,9 +542,9 @@ static func _v2_test() -> bool:
 	var ok := true
 	DirAccess.make_dir_recursive_absolute(TEST_DIR + CARD_SUBDIR)
 	v2_dir = TEST_DIR
-	# 100 columns: page 0 = 64 columns (4096 px), page 1 = 36; run_dribble starts on page 1
+	# 100 columns: pages of 32 columns (2048 px): 0-31, 32-63, 64-95, 96-99; run_dribble starts on page 2
 	var fmt := {"version": 2, "frame": [64, 96], "feet_row": 88, "center_x": 32, "head_px": 50, "draw_scale": 2.0,
-		"dirs": DIR_NAMES, "cols": 100, "page_cols": 64,
+		"dirs": DIR_NAMES, "cols": 100, "page_cols": 32,
 		"anims": {"idle": {"start": 0, "frames": 6, "fps": 6, "loop": true},
 			"run": {"start": 6, "frames": 12, "fps": 20, "loop": true},
 			"dribble": {"start": 18, "frames": 8, "fps": 13.3, "loop": true},
@@ -558,24 +558,25 @@ static func _v2_test() -> bool:
 			body[str(SAMPLE_ANIM_NAMES.get(a, a))] = pts["anims"][a]
 	_write_text(TEST_DIR + HANDS_FILE, JSON.stringify({"frame": [64, 96], "feet_row": 88,
 			"bodies": {"lanky": body}, "sheets": {"test_v2": "lanky", "test_v2_crew": "lanky"}}))
-	var p0 := Image.create(64 * 64, 96 * 5, false, Image.FORMAT_RGBA8)
-	var p1 := Image.create(36 * 64, 96 * 5, false, Image.FORMAT_RGBA8)
-	p0.fill(Color(1, 0, 0, 1))
-	p1.fill(Color(0, 0, 1, 1))
-	p0.save_png(TEST_DIR + "test_v2" + PAGE_SUFFIX + "0.png")
-	p1.save_png(TEST_DIR + "test_v2" + PAGE_SUFFIX + "1.png")
-	p1.save_png(TEST_DIR + "bad_v2" + PAGE_SUFFIX + "0.png")   # wrong size: not a usable sheet
+	var widths := [32, 32, 32, 4]
+	var last: Image = null
+	for pi in widths.size():
+		var img := Image.create(int(widths[pi]) * 64, 96 * 5, false, Image.FORMAT_RGBA8)
+		img.fill(Color(1, 0, 0, 1) if pi % 2 == 0 else Color(0, 0, 1, 1))
+		img.save_png(TEST_DIR + "test_v2" + PAGE_SUFFIX + str(pi) + ".png")
+		last = img
+	last.save_png(TEST_DIR + "bad_v2" + PAGE_SUFFIX + "0.png")   # wrong size: not a usable sheet
 	clear_cache()
 	var s: Dictionary = load_sheet("test_v2")
 	var f: Dictionary = s.get("fmt", {})
-	ok = _t(int(s.get("version", 0)) == 2 and (s.get("pages", []) as Array).size() == 2, "v2 loads in 2 pages") and ok
+	ok = _t(int(s.get("version", 0)) == 2 and (s.get("pages", []) as Array).size() == 4, "v2 loads in 4 pages") and ok
 	ok = _t(load_sheet("bad_v2").is_empty(), "v2 page of the wrong size is refused") and ok
 	if f.is_empty():
 		return false
 	var i_rd: int = frame_index(f, 1, "run_dribble", 4)
 	var reg: Dictionary = frame_region(s, i_rd)
-	ok = _t(i_rd == 100 + 66 + 4 and reg.get("texture", null) == s["pages"][1]
-			and reg.get("region", Rect2()) == Rect2((70 - 64) * 64, 96, 64, 96), "v2 frame on page 1") and ok
+	ok = _t(i_rd == 100 + 66 + 4 and reg.get("texture", null) == s["pages"][2]
+			and reg.get("region", Rect2()) == Rect2((70 - 64) * 64, 96, 64, 96), "v2 frame on page 2") and ok
 	var reg0: Dictionary = frame_region(s, frame_index(f, 2, "run", 11))
 	ok = _t(reg0.get("texture", null) == s["pages"][0] and reg0.get("region", Rect2()) == Rect2(17 * 64, 2 * 96, 64, 96),
 			"v2 frame on page 0") and ok

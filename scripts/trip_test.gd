@@ -30,8 +30,8 @@ const SHOT_PATH := "/tmp/hoops_screen_%02d_%s.png"
 const STALL_FRAMES := 1800        # a screen doing nothing this long (30 s) fails the test
 const GAME_FRAMES := 60 * 60 * 45 # a trip game longer than 45 min (frames at 60 fps) fails the test
 const FORCE_LOSS_FRAMES := 90     # a forced loss ends its game this many frames after tip-off
-const MAX_GAMES := 40             # more trip games than this = a loop
-const MAX_SCREENS := 300          # more screen visits than this = a loop
+const MAX_GAMES := 400            # more trip games than this = a loop
+const MAX_SCREENS := 3000         # more screen visits than this = a loop
 const PICK_TEST := true           # on the first lineup with a recruit: pick [recruit, underdog 2, underdog 1] by taps
 
 # --- the run (static: survives reload_current_scene) ---

@@ -164,7 +164,7 @@ The sample (`docs/art/anim_sample_v1.md`, `_points.json`) replaced the guessed 5
 ```
 assets/players2/format.json         {"version": 2, "frame": [64, 96], "feet_row": 88, "center_x": 32, "head_px": 50,
                                      "draw_scale": 2.0, "dirs": ["S", "SE", "E", "NE", "N"],
-                                     "cols": <logical columns per direction>, "page_cols": 64,
+                                     "cols": <logical columns per direction>, "page_cols": 32,
                                      "anims": {"idle": {"start": 0, "frames": 6, "fps": 6, "loop": true}, ...}}
 assets/players2/<sheet>.png         one page (when cols <= 64); <sheet>_p0.png is accepted too
 assets/players2/<sheet>_p0.png ...  pages when cols > 64: page p holds logical columns p*64 .. p*64+63
@@ -178,9 +178,8 @@ assets/players2/cards/<sheet>.png   one 64 x 96 frame: the idle frame facing the
   720 px screen; today 40 art px). The floor point under the pelvis is row 88, x 32. Ids are today's (`ud_deuce`,
   `ht_g1`, `ht_g1_crew`, ...).
 - Layout: each direction is one row of `cols` logical columns (animation `start` + frame); rows 0-4 = S, SE, E, NE,
-  N (SW, W, NW mirrored: `x' = 63 - x`, L and R swap). The columns are stored in pages of up to `page_cols` = 64
-  columns, so a page is at most 4096 x 480 px (the coordinator's limit for player sheets, after the sample: about
-  180 columns = 3 pages). An animation may cross a page edge; `Sheets.frame_region()` finds the page.
+  N (SW, W, NW mirrored: `x' = 63 - x`, L and R swap). The columns are stored in pages of up to `page_cols` = 32
+  columns, so a page is at most 2048 x 480 px (the 2048 texture limit; about 180 columns = 6 pages). An animation may cross a page edge; `Sheets.frame_region()` finds the page.
 - hands.json is keyed by animation and direction, like the sample's `_points.json` (so it doesn't depend on the column
   layout). `ball` is the ball centre for the game's 11 px ball, `front` 1 = drawn over the sprite; null = the ball is
   free (after a dunk's slam). Directions without points (the sample has SE and E only) return `{}`.
@@ -279,8 +278,8 @@ drawn in the hand of every held-ball frame**, including run_dribble, cross, catc
     sheets.
   - Q8 sets the budget. P6-A6 measures the real size on the first 3 v2 sheets before the rest are drawn. P6-31
     measures fps in Chromium against P6-00.
-- **Texture size limits.** At most 2048 x 2048 per sheet (format above). Over that, split by direction (P6-05
-  supports `"pages"` if P6-A0 needs it).
+- **Texture size limits.** At most 2048 x 2048 per texture (the GLES3 / WebGL2 minimum). v2 sheets are split into
+  pages of 32 columns (32 x 64 = 2048 px wide, 5 x 96 = 480 px high); `format.json` `page_cols` is 32.
 - **Twists unfair or invisible.** Every hook ignores `team`. P6-30 compares each city with and without its twist
   (100 games each) for the score split and pace, and checks the twist is felt:
   - wind: long-shot FG% drops by about the set amount;

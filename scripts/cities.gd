@@ -436,7 +436,7 @@ const PLAYERS := {
 		"spec": ["speed", "finishing"], "steal_bias": 8, "block_bias": -6,
 		"look": "lanky guard, tan skin, braids, black tank with gold trim, black shorts, gold wristbands",
 		"bio": "The quickest first step in five boroughs, and he'll tell you so."},
-	"ny_f2": {"name": "HAMMER", "full": "Hank \"Hammer\" Doyle",
+	"ny_f2": {"name": "HAMMER", "full": "Vic \"Hammer\" Doyle",
 		"sheet": "ny_f2", "portrait": "ny_f2", "number": 6, "role": "big", "tier": "good",
 		"spec": ["finishing", "defense"], "steal_bias": -8, "block_bias": 12,
 		"look": "heavy big, light skin, shaved head, black sleeveless hoodie with gold trim, black long shorts",
