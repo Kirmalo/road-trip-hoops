@@ -1,5 +1,8 @@
 extends Control
 # Floating joystick (touch anywhere on the left side) plus two action buttons on the right.
+# Left-handed (Difficulty.is_left_handed()): the same layout mirrored, joystick on the right half, buttons bottom left.
+
+const Difficulty = preload("res://scripts/difficulty.gd")   # is_left_handed() (P7-01)
 
 signal a_pressed
 signal a_released
@@ -23,10 +26,21 @@ var b_dim := false                 # set by main.gd: CALL is cooling down after 
 const CALL_LIT_COLOR := Color(0.45, 0.8, 1.0)
 const BLOCK_COLOR := Color(0.9, 0.3, 0.12)   # BLOCK is a deeper orange than STEAL, so the switch is noticed
 var _glow_t := 0.0
+const JOY_HINT_POS := Vector2(150, -150)   # the idle joystick hint: x from the left, y from the bottom (right-handed)
+var left_handed := false           # mirrored layout: joystick on the right half, A/B at the bottom left
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	left_handed = Difficulty.is_left_handed()
+
+# a right-handed layout point, mirrored across the screen when left-handed
+func mirror_x(p: Vector2) -> Vector2:
+	return Vector2(size.x - p.x, p.y) if left_handed else p
+
+# true where a touch starts the joystick: the left half (right-handed) or the right half (left-handed)
+func on_joy_side(pos: Vector2) -> bool:
+	return pos.x >= size.x * 0.5 if left_handed else pos.x < size.x * 0.5
 
 func joystick() -> Vector2:
 	if joy_index < 0:
@@ -39,10 +53,10 @@ func turbo_pull() -> bool:
 	return joy_index >= 0 and joy_finger.distance_to(joy_center) >= JOY_RADIUS * TURBO_PULL
 
 func a_center() -> Vector2:
-	return Vector2(size.x - 120, size.y - 130)
+	return mirror_x(Vector2(size.x - 120, size.y - 130))
 
 func b_center() -> Vector2:
-	return Vector2(size.x - 280, size.y - 90)
+	return mirror_x(Vector2(size.x - 280, size.y - 90))
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
@@ -53,7 +67,7 @@ func _input(event: InputEvent) -> void:
 			elif event.position.distance_to(b_center()) < 70.0:
 				b_index = event.index
 				b_pressed.emit()
-			elif event.position.x < size.x * 0.5 and joy_index < 0:
+			elif on_joy_side(event.position) and joy_index < 0:
 				joy_index = event.index
 				joy_center = event.position
 				joy_knob = event.position
@@ -85,7 +99,7 @@ func _draw() -> void:
 		draw_arc(joy_center, JOY_RADIUS * TURBO_PULL, 0, TAU, 64, Color(1.0, 0.6, 0.2, 0.55 if sprint else 0.22), 2.0)
 		draw_circle(joy_knob, 34.0, Color(1.0, 0.6, 0.2, 0.8) if sprint else Color(1, 1, 1, 0.55))
 	else:
-		var hint := Vector2(150, size.y - 150)
+		var hint := mirror_x(Vector2(JOY_HINT_POS.x, size.y + JOY_HINT_POS.y))
 		draw_arc(hint, JOY_RADIUS, 0, TAU, 48, Color(1, 1, 1, 0.25), 3.0)
 		draw_circle(hint, 34.0, Color(1, 1, 1, 0.18))
 	# buttons

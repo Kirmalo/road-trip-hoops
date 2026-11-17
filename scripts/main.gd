@@ -196,7 +196,7 @@ static var _quick_look := ""
 static var _quick_level := -1
 
 # --humantest scripted thumb (developer testing only): drives the real touch joystick with synthetic touch events
-const HT_FINGER_POS := Vector2(260, 460)   # where the scripted thumb touches down (left half of the screen)
+const HT_FINGER_POS := Vector2(260, 460)   # where the scripted thumb touches down (left half of the screen; mirrored by controls.mirror_x() when left-handed)
 const HT_STEER_RATE := 450.0         # degrees per second the thumb turns while steering (a flick needs 100 in 0.12 s)
 const HT_SNAP_EVERY := 3.0           # seconds of ball time between 120-degree snaps (should each be one flick)
 const HT_SNAP_DEG := 120.0
@@ -1599,7 +1599,7 @@ func _humantest_thumb(delta: float) -> void:
 		var down := InputEventScreenTouch.new()
 		down.index = 0
 		down.pressed = true
-		down.position = HT_FINGER_POS
+		down.position = controls.mirror_x(HT_FINGER_POS)
 		controls._input(down)
 	var goal: Vector2 = attack_hoop(HUMAN_TEAM) if possession == HUMAN_TEAM else ball.position
 	var goal_angle: float = (goal - human_player.position).angle()
