@@ -36,8 +36,8 @@ const DUST_R := 14.0              # sim px: radius a full-strength puff grows to
 const DUST_COLOR := Color(0.85, 0.8, 0.7)
 # P6-23 motion effects (visual only; Q7 "medium")
 const FOOT_DUST_TIME := 0.4       # seconds a puff at the feet lasts (cuts and landings)
-const FOOT_DUST_R := 16.0         # sim px: radius a full-strength foot puff grows to
-const FOOT_DUST_ALPHA := 0.55     # its opacity at the start (x strength)
+const FOOT_DUST_R := 18.0         # sim px: radius a full-strength foot puff grows to
+const FOOT_DUST_ALPHA := 0.75     # its opacity at the start (x strength)
 const FOOT_DUST_PUSH := 0.6       # a cut's puff drifts this x its radius against the new direction (kicked back)
 const SPLASH_RISE := 10.0         # sim px of height: wet court puffs are splashes, droplets thrown up this high
 const PUNCH_ZOOM := 0.04          # zoom_punch() peaks at 1 + this at strength 1 (board: +3-5%)
@@ -328,7 +328,7 @@ func _draw_foot_dust(d: Dictionary) -> void:
 		if wet:
 			h = 1.0 + SPLASH_RISE * k * 4.0 * a * (1.0 - a)
 		var c: Vector2 = View.to_screen(center + off, h)
-		var br: float = (2.5 + 3.5 * k) * (1.0 - 0.5 * a)
+		var br: float = (3.0 + 4.0 * k) * (1.0 - 0.5 * a)
 		if wet:
 			br *= 0.6
 		_dust_node.draw_circle(c, br, col)
