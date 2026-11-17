@@ -2126,10 +2126,24 @@ func _v2_anchor_x(anchors: Array, f: float) -> float:
 # floor on the animation's "floor" frame exactly when the sim's dribble does
 func _v2_phase_x(anim: String, p: float) -> float:
 	var n: float = float(Sheets.anim_frames(_v_fmt, anim))
-	var fl: float = float(Sheets.anim_event(_v_fmt, anim, "floor", int(n / 2.0)))
+	# "bounces": 2 (P6-A7 run_dribble): the cycle is 2 steps and 2 dribbles, "floor" lists one frame per bounce; the
+	# sim's bounce count picks the half (1 = the old rule: one bounce per cycle)
+	var b: int = maxi(1, Sheets.anim_event(_v_fmt, anim, "bounces", 1))
+	var floors = ((_v_fmt.get("anims", {}) as Dictionary).get(anim, {}) as Dictionary).get("floor", null)
+	var j: int = 0
+	if b > 1:
+		var bl = game.ball
+		j = posmod(floori(float(bl.anim_time) * float(bl.DRIBBLE_RATE) / PI - 0.5), b)
+	var seg: float = n / float(b)
+	var start: float = seg * float(j)
+	var fl: float = start + float(int(seg / 2.0))
+	if floors is Array and (floors as Array).size() > j:
+		fl = float(floors[j])
+	elif floors != null and j == 0:
+		fl = float(Sheets.anim_event(_v_fmt, anim, "floor", int(n / 2.0)))
 	if p < 0.5:
-		return p / 0.5 * fl
-	return fl + (p - 0.5) / 0.5 * (n - fl)
+		return start + p / 0.5 * (fl - start)
+	return fl + (p - 0.5) / 0.5 * (start + seg - fl)
 
 # Q6: the dunk's look. Score chance is the sim's; this only picks the frames (a hash of the player and the play)
 func _v2_dunk_style() -> String:
