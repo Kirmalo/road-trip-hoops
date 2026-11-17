@@ -1,5 +1,5 @@
 extends RefCounted
-# Story scenes for the Road Trip (P5-10, board "Story script format"): plain const data, played by story.gd.
+# Story scenes for the Road Trip (P5-10, Phase 6 P6-11): plain const data, played by story.gd.
 # Use it through   const StoryText = preload("res://scripts/story_text.gd")   (never instanced).
 # Safe to edit on the tablet: a typo shows as a parse error in the Godot editor right away.
 #
@@ -12,7 +12,14 @@ extends RefCounted
 #   "mood"  optional: a portrait expression ("happy", "smug"): assets/portraits/<id>_<mood>.png if it exists,
 #           else the plain portrait. Missing portraits show a silhouette in the crew's color.
 # Scene ids: cities.gd names each city's "arrive" and "won" scene; trip.gd adds trip_start, first_loss, ending.
-# ALL TEXT IS PLACEHOLDER (Phase 6 writes the real story).
+#
+# Tone (owner Phase 6 Q4 a): light comedy with heart. Each city crew is a rival who respects you after you win, the
+# boss offers to join. Arrival scenes 4-6 lines, after-win scenes 3-5. Every arrival names or hints at the city's
+# twist (wind, crowd, humid, thin air, wet court, sand, the cage). Running jokes, paid off in New York:
+#   - Jojo's napkin math (trip_start, Chicago, New Orleans, Los Angeles -> final_before, ending)
+#   - Deuce's knee (trip_start, Memphis, Seattle -> ending)
+#   - The Biscuit breaks down once, climbing to Denver (Denver arrive -> final_before, ending)
+#   - Tank's grandpa sayings and the cup holder (trip_start, first_loss, Seattle -> ending)
 
 const SCENES := {
 	# the title's NEW TRIP, before the map
@@ -31,10 +38,10 @@ const SCENES := {
 			"text": "...Alright. One more shot, bad knee and all. Load up {van}. The {crew} are going to New York."},
 	],
 
-	# Hometown: County Line, boss Mayor (ht_boss)
+	# Hometown: County Line, boss Mayor (ht_boss). No twist: the tutorial city.
 	"hometown_arrive": [
 		{"who": "narrator", "side": "left",
-			"text": "The county rec court, behind the feed store. Somebody is already sitting on the ball."},
+			"text": "The barn driveway hoop at the edge of town. No wind, no crowd, no tricks. Just corn, and the Mayor."},
 		{"who": "ht_boss", "side": "right", "mood": "smug",
 			"text": "Well, well. The {crew}, in MY town? Go home, boys. The county line is mine."},
 		{"who": "ud_jojo", "side": "left",
@@ -50,25 +57,25 @@ const SCENES := {
 		{"who": "ud_tank", "side": "left", "mood": "happy",
 			"text": "Thank you, sir. I also fix lawn mowers."},
 		{"who": "ud_jojo", "side": "left", "mood": "happy",
-			"text": "We did it! Next stop: Chicago! Tank, you're driving. {van} likes you."},
+			"text": "Next stop: Chicago! Tank, you're driving. {van} likes you. She tolerates me."},
 		{"who": "ht_boss", "side": "right", "mood": "smug",
 			"text": "Go on, then. And if you need a real player for the big city, you know where my chair is."},
 	],
 
-	# Chicago: Lakeshore Gusts, boss Big Lou (chi_boss)
+	# Chicago: Lakeshore Gusts, boss Big Lou (chi_boss). Twist: wind off the lake.
 	"chicago_arrive": [
 		{"who": "narrator", "side": "left",
 			"text": "Chicago. A rooftop court by the lake, and a wind that never takes a day off."},
 		{"who": "ud_jojo", "side": "left",
-			"text": "Whoa. The buildings here are taller than our grain silo. Like, WAY taller."},
+			"text": "I did the napkin math. Wind from the lake, times our arc... The napkin blew away. Bad sign."},
 		{"who": "chi_g1", "side": "right",
-			"text": "Farm boys on our roof? Hope you brought sandbags. The lake wind eats shots for breakfast."},
+			"text": "Farm boys on our roof? Hope you brought sandbags. The lake wind eats long shots for breakfast."},
 		{"who": "chi_boss", "side": "right",
 			"text": "Easy, Nico. Let 'em play. I'm Big Lou. Nobody scores on me twice in {city}."},
 		{"who": "ud_tank", "side": "left",
 			"text": "That's okay. I only need to score on you once. Then a different once."},
 		{"who": "ud_deuce", "side": "left",
-			"text": "Ball up, {crew}. Keep it low and keep it moving."},
+			"text": "Ball up, {crew}. Keep it low, keep it moving, and don't float the lobs."},
 	],
 	"chicago_won": [
 		{"who": "chi_boss", "side": "right",
@@ -76,9 +83,122 @@ const SCENES := {
 		{"who": "ud_deuce", "side": "left", "mood": "happy",
 			"text": "Good game, Lou. That wind made me earn every bucket."},
 		{"who": "ud_jojo", "side": "left", "mood": "happy",
-			"text": "Somebody write this down! The {crew}, rooftop champs! Somebody? Tank, you got a pen?"},
+			"text": "Somebody write this down! The {crew}, rooftop champs! Somebody? Tank, you got a napkin?"},
 		{"who": "chi_boss", "side": "right",
 			"text": "New York's a different animal, kid. Want a big man who knows the city game? Just ask."},
+	],
+
+	# Memphis: Riverside Soul, boss Smoke (mem_boss). Twist: full house (18 s shot clock, faster, loud).
+	"memphis_arrive": [
+		{"who": "narrator", "side": "left",
+			"text": "Memphis. An old gym by the river, packed to the rafters, and the whole place smells like barbecue."},
+		{"who": "mem_boss", "side": "right", "mood": "smug",
+			"text": "Welcome to my house. I'm Smoke. This crowd don't wait, so neither does the shot clock: eighteen seconds."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "EIGHTEEN? I can't even tie my shoes in eighteen seconds! Wait, are they chanting our name?"},
+		{"who": "mem_g1", "side": "right",
+			"text": "Nah. They're chanting \"brisket\". Smoke brought brisket."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "Loud gym, quick clock. My knee likes neither. Get it up the floor fast and take the first good look."},
+	],
+	"memphis_won": [
+		{"who": "mem_boss", "side": "right",
+			"text": "Mm. Low and slow, that's how I cook. You boys play fast and hot. It works too, I guess."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "Mister Smoke, sir. Is the brisket for winners, or for everybody?"},
+		{"who": "mem_boss", "side": "right", "mood": "happy",
+			"text": "Everybody, big man. And if your crew wants somebody who can cook in the paint, I'm listening."},
+	],
+
+	# New Orleans: Bayou Brass, boss Gator (nol_boss). Twist: humid (stamina refills slowly).
+	"new_orleans_arrive": [
+		{"who": "narrator", "side": "left",
+			"text": "New Orleans. A blacktop by the bayou, string lights in the cypress, and air you could drink."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math says it's a hundred percent humidity. The napkin is also a hundred percent wet."},
+		{"who": "nol_boss", "side": "right", "mood": "smug",
+			"text": "Bayou Brass, baby! I'm Gator. Out here you get tired fast and you STAY tired. We just run anyway."},
+		{"who": "nol_g1", "side": "right",
+			"text": "We play like the band marches: fast, loud, and nobody stops till the song's over."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "Then we pick our sprints. Save the legs, make 'em chase. Don't burn the turbo early."},
+	],
+	"new_orleans_won": [
+		{"who": "nol_boss", "side": "right",
+			"text": "Whoo! Y'all played that slow and smart, like a funeral march. Then you hit the high note."},
+		{"who": "ud_jojo", "side": "left", "mood": "happy",
+			"text": "Was that a compliment? It sounded like a compliment. I'm taking it."},
+		{"who": "nol_boss", "side": "right", "mood": "happy",
+			"text": "It was. Need a man with fast feet and a trombone? The trombone stays home. Probably."},
+	],
+
+	# Denver: Switchbacks, boss Ridge (den_boss). Twist: thin air (long shots carry, the ball floats, tired fast).
+	# Running joke: the van's one breakdown, on the climb.
+	"denver_arrive": [
+		{"who": "narrator", "side": "left",
+			"text": "Halfway up a mountain road, {van} makes a noise like a goose and stops. Steam. Silence."},
+		{"who": "ud_tank", "side": "left",
+			"text": "She's just out of breath. Thin air up here. Grandpa says a tired mule still pulls if you sing to her."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "I'm NOT singing to the van. ...Fine. One verse. ...Hey, she started!"},
+		{"who": "den_boss", "side": "right", "mood": "smug",
+			"text": "Saw you boys pushing that van up the hill. I'm Ridge. Up here the ball flies and the lungs don't."},
+		{"who": "den_g1", "side": "right",
+			"text": "Long shots carry a mile up. Lobs hang forever. And you'll be gassed by the second possession."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "Then we let it fly from deep, and we sub our breath, not our effort. Let's go."},
+	],
+	"denver_won": [
+		{"who": "den_boss", "side": "right",
+			"text": "Not bad for flatlanders. You didn't even need the oxygen tank I brought."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "Can I borrow it anyway? For {van}. She liked the singing, but I think she'd like oxygen more."},
+		{"who": "den_boss", "side": "right", "mood": "happy",
+			"text": "Ha! Tell you what: take the tank, and if you want a guy who never runs out of air, take me too."},
+	],
+
+	# Seattle: Puddle Jumpers, boss Downpour (sea_boss). Twist: wet court (hard cuts slide).
+	"seattle_arrive": [
+		{"who": "narrator", "side": "left",
+			"text": "Seattle. A park court in the rain. Puddles at both ends. The rain does not stop. Ever."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "My knee said it was going to rain. Jojo said it's Seattle, it's always going to rain. You were both right."},
+		{"who": "sea_boss", "side": "right", "mood": "smug",
+			"text": "I'm Downpour. Cut hard on this court at full speed and you'll skate right past your man. Ask him."},
+		{"who": "sea_a1", "side": "right",
+			"text": "Hi. I'm him. I'd open my umbrella, but then they'd know I'm scared."},
+		{"who": "ud_tank", "side": "left",
+			"text": "Grandpa says plow slow when the field is wet. Short steps. Crossovers, not hard cuts."},
+	],
+	"seattle_won": [
+		{"who": "sea_boss", "side": "right",
+			"text": "You stayed on your feet. Most crews spend the whole game sliding into the bushes."},
+		{"who": "ud_jojo", "side": "left", "mood": "happy",
+			"text": "I slid into the bushes ONE time. And I found a really nice rock in there."},
+		{"who": "sea_boss", "side": "right", "mood": "happy",
+			"text": "Keep it. And if you want a man who doesn't mind bad weather, my boat can wait a week."},
+	],
+
+	# Los Angeles: Boardwalk Bombers, boss Sunset (la_boss). Twist: sand (everyone slower, turbo matters more).
+	"los_angeles_arrive": [
+		{"who": "narrator", "side": "left",
+			"text": "Los Angeles. A court right on the beach. The sand gets everywhere. Everywhere."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math: sand slows you down, plus sun, plus ocean... equals me taking a nap. Wrong napkin."},
+		{"who": "la_boss", "side": "right", "mood": "smug",
+			"text": "Sunset, head lifeguard. On sand, everybody's slow. The crew that saves its turbo for the right moment wins."},
+		{"who": "la_g1", "side": "right",
+			"text": "We grew up sprinting in this stuff. You grew up in... corn? Is corn soft?"},
+		{"who": "ud_deuce", "side": "left",
+			"text": "Corn's not soft. Neither are we. Walk it up, then burst. One more city and it's New York."},
+	],
+	"los_angeles_won": [
+		{"who": "la_boss", "side": "right",
+			"text": "Respect. You picked your sprints like a lifeguard picks a wave. That's the whole job."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "Thanks. My legs feel like they're full of sand. Because they are."},
+		{"who": "la_boss", "side": "right", "mood": "happy",
+			"text": "New York's next, huh? I've always wanted to see a court with no beach. Want a lifeguard on the bench?"},
 	],
 
 	# the first loss of the trip (once), before the retry
@@ -93,18 +213,20 @@ const SCENES := {
 			"text": "We don't go home on one loss. Run it back. Same court, same {crew}."},
 	],
 
-	# arriving in New York, before the bracket
+	# arriving in New York, before the bracket. Twist: the cage (a loose ball bounces off the sideline fence).
 	"final_before": [
 		{"who": "narrator", "side": "left",
 			"text": "New York. The Big City Showdown. {van} coughs once and parks itself next to a fire hydrant."},
+		{"who": "ud_tank", "side": "left",
+			"text": "Only broke down the one time. On a mountain. I'm counting that as a win for her."},
 		{"who": "ud_jojo", "side": "left",
-			"text": "We made it! The flyer was REAL! I was like eighty percent sure!"},
+			"text": "We made it! The flyer was REAL! My napkin said eighty percent. Napkins: one for one!"},
+		{"who": "ny_boss", "side": "right", "mood": "smug",
+			"text": "So you're the {crew}. Heard you came all the way from a cornfield. This is a cage court, farm boys."},
 		{"who": "ny_boss", "side": "right",
-			"text": "So you're the {crew}. Heard you came all the way from a cornfield."},
-		{"who": "ny_boss", "side": "right",
-			"text": "Win three on my cage courts and you'll see me in the final. Most crews don't."},
+			"text": "Fence on both sides. The ball bounces off it and stays live. Win three on my courts and you'll see me in the final."},
 		{"who": "ud_deuce", "side": "left",
-			"text": "We're not most crews. Bracket's up. Let's go."},
+			"text": "Nothing goes out, so nothing's over till it's over. Bracket's up. Let's go."},
 	],
 
 	# the final won: the end of the trip, then the title
@@ -112,13 +234,13 @@ const SCENES := {
 		{"who": "ny_boss", "side": "right",
 			"text": "...A cornfield. You came out of a cornfield and took my crown. Respect, {crew}."},
 		{"who": "ud_deuce", "side": "left", "mood": "happy",
-			"text": "The knee held up. The whole trip, it held up. Guess this was my second shot after all."},
+			"text": "The knee held up. Eight cities, rain and sand and mountains, and it held up. Guess this was my second shot."},
 		{"who": "ud_tank", "side": "right", "mood": "happy",
-			"text": "I'm proud of you guys. And of {van}. She only caught fire one time."},
+			"text": "I'm proud of you guys. And of {van}. She only broke down the one time, and we sang her back."},
 		{"who": "ud_jojo", "side": "left", "mood": "happy",
-			"text": "Champions of New York! Somebody call my uncle! Tell him to frame the slushie machine!"},
+			"text": "Final napkin math: three underdogs, one van, a thousand miles... equals CHAMPIONS. I'm framing this napkin."},
 		{"who": "narrator", "side": "left",
-			"text": "And so the {crew} drove home to Indiana, a trophy in the cup holder. THE END... for now."},
+			"text": "And so the {crew} drove home to Indiana, the trophy in Tank's cup holder. THE END... for now."},
 	],
 }
 
