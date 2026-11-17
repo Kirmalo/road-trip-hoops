@@ -382,3 +382,72 @@ static func is_release_tap(event: InputEvent) -> bool:
 	if event is InputEventMouseButton:
 		return not (event as InputEventMouseButton).pressed
 	return false
+
+# ---------------- Left-handed layout and run-only test flags (P7-01) ----------------
+# LEFT-HANDED (Settings, P7-04) puts the joystick on the right and A/B on the left (touch_controls.gd, P7-03). Saved as
+# `left_handed` in SAVE_SECTION of SAVE_PATH; a fresh install reads false (today's right-handed layout).
+# Test runs never write the owner's file: a run with any command-line user argument (every test mode passes one) keeps
+# set_left_handed() for this run only, and reads false instead of the saved choice, so every test mode without the
+# flags plays today's layout. --left-handed / --right-handed set the layout for this run and win over everything.
+# --music-volume X (0..1) is only parsed here and kept in music_volume_flag for audio.gd (P7-02; < 0 = no flag).
+const LEFT_HANDED_KEY := "left_handed"          # bool in SAVE_SECTION
+const LEFT_HANDED_FLAG := "--left-handed"       # this run only, never saved
+const RIGHT_HANDED_FLAG := "--right-handed"     # this run only, never saved
+const MUSIC_VOLUME_FLAG := "--music-volume"     # --music-volume X or --music-volume=X, X in 0..1
+
+# the --music-volume value for this run (0..1), -1.0 = no flag; read when the script loads, so it is set before any use
+static var music_volume_flag: float = parse_music_volume_flag()
+static var _lh_inited := false                  # the saved choice (or the test-run default) has been read
+static var _left_handed := false                # the choice this run (saved, or set this run)
+
+# true when the layout is mirrored for the left hand. The flags win; else the choice made this run; else the saved one
+# (test runs: false).
+static func is_left_handed() -> bool:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	if args.has(LEFT_HANDED_FLAG):
+		return true
+	if args.has(RIGHT_HANDED_FLAG):
+		return false
+	if not _lh_inited:
+		_lh_inited = true
+		_left_handed = false if is_test_run() else left_handed_saved()
+	return _left_handed
+
+# The LEFT-HANDED switch: takes effect from the next game (touch_controls reads it in _ready()) and is saved at once;
+# a test run keeps it for the run only.
+static func set_left_handed(on: bool) -> void:
+	_lh_inited = true
+	_left_handed = on
+	if is_test_run():
+		return
+	var cfg := ConfigFile.new()
+	cfg.load(SAVE_PATH)   # keep the other settings in the file
+	cfg.set_value(SAVE_SECTION, LEFT_HANDED_KEY, on)
+	cfg.save(SAVE_PATH)
+
+# the choice in settings.cfg (false when there is no file or no key)
+static func left_handed_saved() -> bool:
+	var cfg := ConfigFile.new()
+	if cfg.load(SAVE_PATH) != OK:
+		return false
+	return bool(cfg.get_value(SAVE_SECTION, LEFT_HANDED_KEY, false))
+
+# a developer / test run: any user argument after "--" (the owner's builds pass none)
+static func is_test_run() -> bool:
+	return not OS.get_cmdline_user_args().is_empty()
+
+# --music-volume X / --music-volume=X -> X clamped to 0..1; -1.0 without the flag (or with a value that isn't a number)
+static func parse_music_volume_flag() -> float:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	for i in args.size():
+		var a: String = args[i]
+		var s := ""
+		if a.begins_with(MUSIC_VOLUME_FLAG + "="):
+			s = a.substr(MUSIC_VOLUME_FLAG.length() + 1)
+		elif a == MUSIC_VOLUME_FLAG and i + 1 < args.size():
+			s = args[i + 1]
+		else:
+			continue
+		if s.is_valid_float():
+			return clampf(s.to_float(), 0.0, 1.0)
+	return -1.0
