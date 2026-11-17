@@ -16,7 +16,8 @@ extends Node2D
 # Keyboard (for testing): WASD/arrows move, J = shoot/steal, K = pass/switch.
 # Phase 5: _ready() first hands non-game screens to Flow.build_screen(). A trip game reads Flow.match (target, look,
 # music, level, crew names, per-player sheet and ratings) and ends with Flow.game_finished(); Flow.match empty =
-# Quick Game exactly as before. Test flags: -- --ratingtest, -- --city <id> --cgame N.
+# Quick Game exactly as before. Test flags: -- --ratingtest, -- --city <id> --cgame N, -- --backtest (P7-10, the
+# Android back gesture on every screen).
 
 const PlayerScript = preload("res://scripts/player.gd")
 const BallScript = preload("res://scripts/ball.gd")
@@ -156,6 +157,12 @@ const MENUSHOT_FRAMES := 40          # test only (--menushot): frames the panel 
 # Phase 5 hooks (P5-02): the trip match (Flow.match), the pause screen, the --city test flags
 const TRIP_PATH := "res://scripts/trip.gd"      # P5-05: Trip.match_for(city, n) builds Flow.match (if it exists)
 const PAUSE_PATH := "res://scripts/pause.gd"    # P5-08: added to the HUD if the file exists
+# P7-10: the Android back gesture (NOTIFICATION_WM_GO_BACK_REQUEST; project.godot has quit_on_go_back = false)
+const BACKTEST_FLAG := "--backtest"  # test only: sends the back request on every screen and checks where it lands
+const BACKTEST_ARM_FRAMES := 90      # frames on a screen before the request (every screen's tap guard has passed)
+const BACKTEST_LAND_FRAMES := 30     # frames after the request before the check (a Flow.go reload has happened)
+const BACKTEST_GAME_WAIT := 1200     # most frames to wait in a game for the pause to be allowed (tip-off)
+static var _backtest_node: Node = null   # the --backtest driver (on the root, survives the reloads)
 const TOP_BAR_FONT_TRIP := 24       # top bar font in a trip game (crew names are longer than BLUE / RED; Quick Game 30)
 # --city <id> --cgame N without trip.gd: this hand-built match (your 3 underdogs vs a Hometown-like crew; ratings
 # near the contract's example). The flags set its label, target, look and music from cities.gd. Sheets fall back to
@@ -282,7 +289,8 @@ var fps_print := false               # test only (-- --fps): print "FPS n" every
 var _fps_t := 0.0
 var shot_serial := 0                # counts released shots, so each defender gets one block try per shot (defense.gd)
 var menu                            # menu.gd: the EASY / NORMAL / HARD panel (launch and game over, P3-08)
-var menu_wait := false              # the launch panel is up: the game waits behind it
+var pause_node: Node = null         # pause.gd (P5-08), null in CPU-only games; the back gesture closes it (P7-10)
+var menu_wait := false             # the launch panel is up: the game waits behind it
 var menushot := false               # test only (-- --menushot): screenshots of both panels, see _debug_screenshots
 var _menu_frames := 0
 var force_fouls := false            # test only: -- --force-fouls fouls some field goals (until P3-06 commits fouls)
@@ -351,6 +359,9 @@ func _ready() -> void:
 		Flow.screen = Flow.GAME
 		rng.seed = HOWTO_SEED
 		seed(HOWTO_SEED)
+	if OS.get_cmdline_user_args().has(BACKTEST_FLAG) and _backtest_node == null:
+		_backtest_node = BackTest.new()   # test only (P7-10): starts on the title, walks the screens
+		get_tree().root.add_child.call_deferred(_backtest_node)
 	# screen hand-off (Phase 5): the test modes play a game at once, as before; otherwise Flow decides the screen
 	if Flow.skip_title():
 		Flow.screen = Flow.GAME
@@ -826,6 +837,7 @@ func _add_pause(hud: CanvasLayer, root: Control) -> void:
 	var node = s.new()
 	if not (node is Node):
 		return
+	pause_node = node
 	if "game" in node:
 		node.set("game", self)
 	if node is Control:
@@ -1371,6 +1383,57 @@ func _unhandled_input(event: InputEvent) -> void:
 				_on_a_released()
 		elif event.keycode == KEY_K and event.pressed:
 			_on_b_pressed()
+
+# P7-10: the Android back gesture. In a game: the pause panel opens (pause.gd does that itself on this same request)
+# or, when it is open, closes (RESUME); the Quick Game start / game-over panel gets Escape (to the title). On the
+# title's main panel it quits the app. Every other screen (and the title's sub-panels) gets an Escape press, so it
+# does exactly what its own BACK / Escape does; a screen without one (result, points, recruit) does nothing.
+# Desktop Escape stays with each screen's own handler (nothing here reads ui_cancel, so it is never handled twice).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		_on_go_back()
+
+func _on_go_back() -> void:
+	var scr: String = str(Flow.screen)
+	var did := "escape"
+	if scr == Flow.GAME:
+		stat("back_requests")
+		if pause_node != null and is_instance_valid(pause_node) and bool(pause_node.get("_open")):
+			pause_node.call("resume")   # main gets the request before its child pause.gd, whose open() is then a no-op
+			did = "resume"
+		elif menu != null and menu.showing:
+			menu.key(_escape_key(true))   # straight to menu.gd: pause.gd's _input marks every Escape as handled
+		else:
+			did = "pause"   # pause.gd opens the panel on this same request (when the game allows it)
+	elif scr == "title" and _title_main_panel():
+		did = "quit"
+	else:
+		_send_escape()
+	print("BACK on %s -> %s" % [scr, did])
+	if _backtest_node != null and is_instance_valid(_backtest_node):
+		_backtest_node.call("note", did)   # the test stays alive instead of quitting
+	elif did == "quit":
+		get_tree().quit()
+
+# the title screen shows its main panel (not ROAD TRIP / START OVER / the level pick)
+func _title_main_panel() -> bool:
+	var node: Node = Flow.current_screen()
+	if node == null:
+		return true
+	var panel = node.get("_panel")
+	return panel == null or str(panel) == "main"
+
+# an Escape press and release, as from a keyboard (each screen's _unhandled_key_input, pause.gd and menu.gd take it)
+func _send_escape() -> void:
+	Input.parse_input_event(_escape_key(true))
+	Input.parse_input_event(_escape_key(false))
+
+func _escape_key(down: bool) -> InputEventKey:
+	var k := InputEventKey.new()
+	k.keycode = KEY_ESCAPE
+	k.physical_keycode = KEY_ESCAPE
+	k.pressed = down
+	return k
 
 # the stick in sim (world) terms: what the human player, human_input (flicks, pass direction) and the assist get
 func _input_vector() -> Vector2:
@@ -2023,3 +2086,139 @@ func _update_hud() -> void:
 	controls.a_glow = controls.a_text == "STEAL" and not autoplay and human_steal_cue()
 	if controls.a_glow:
 		stat("human_steal_cue_frames")
+
+# ---------------- -- --backtest (P7-10) ----------------
+# On the root, so it lives across the reloads. Goes to each screen, waits until its tap guard has passed, sends the
+# back request the way the engine does (propagated from the root) and checks where it landed. Trip screens use the
+# test save (user://trip_test.json). Prints BACKTEST lines, then BACKTEST OK (exit 0) or BACKTEST FAILED (exit 1).
+#   godot --headless --path . --fixed-fps 60 --quit-after 20000 -- --backtest
+class BackTest extends Node:
+	const FlowS = preload("res://scripts/flow.gd")
+	const SaveS = preload("res://scripts/save.gd")
+	const TripS = preload("res://scripts/trip.gd")
+	const MenuS = preload("res://scripts/menu.gd")
+	# go: the screen to open ("" = stay in this game); expect: the screen after back; did: what main.gd reports
+	const STEPS := [
+		{"go": "title", "expect": "title", "did": "quit"},
+		{"go": "title", "panel": "trip", "expect": "title", "expect_panel": "main", "did": "escape"},
+		{"go": "settings", "expect": "title", "did": "escape"},
+		{"go": "crew", "expect": "title", "did": "escape"},
+		{"go": "howto", "args": {"back": "title"}, "expect": "title", "did": "escape"},
+		{"go": "map", "trip": true, "expect": "title", "did": "escape"},
+		{"go": "lineup", "trip": true, "expect": "map", "did": "escape"},
+		{"go": "story", "trip": true, "args": {"scene": "hometown_arrive", "then": "lineup"}, "expect": "lineup",
+				"did": "escape"},
+		{"go": "bracket", "trip": true, "expect": "title", "did": "escape"},
+		{"go": "points", "trip": true, "args": {"then": "map"}, "expect": "points", "did": "escape"},
+		{"go": "recruit", "trip": true, "expect": "recruit", "did": "escape"},
+		{"go": "game", "quick": true, "expect": "title", "did": "escape"},
+		{"go": "game", "trip": true, "expect": "game", "did": "pause", "paused": true},
+		{"go": "", "expect": "game", "did": "resume", "paused": false},
+		{"go": "", "expect": "game", "did": "pause", "paused": true},
+	]
+	var _i := -1
+	var _t := 0
+	var _phase := 0          # 0 = open the next screen, 1 = wait, then send back, 2 = wait, then check
+	var _did := ""
+	var _errors := 0
+
+	func _ready() -> void:
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		SaveS.use_test_file = true
+		print("BACKTEST start | save file %s" % SaveS.path())
+
+	func note(did: String) -> void:
+		_did = did
+
+	func _process(_delta: float) -> void:
+		_t += 1
+		match _phase:
+			0:
+				_i += 1
+				if _i >= STEPS.size():
+					_finish()
+					return
+				_open(STEPS[_i])
+				_t = 0
+				_phase = 1
+			1:
+				var st: Dictionary = STEPS[_i]
+				if _t >= BACKTEST_ARM_FRAMES and _ready_for(st):
+					if st.has("panel"):
+						var node: Node = FlowS.current_screen()
+						if node != null and node.has_method("_show_panel"):
+							node.call("_show_panel", st["panel"])
+					_did = ""
+					get_tree().root.propagate_notification(NOTIFICATION_WM_GO_BACK_REQUEST)
+					_t = 0
+					_phase = 2
+				elif _t > BACKTEST_GAME_WAIT:
+					_fail("step %d: %s never got ready for the back request" % [_i + 1, str(FlowS.screen)])
+					_phase = 0
+			2:
+				if _t >= BACKTEST_LAND_FRAMES:
+					_check(STEPS[_i])
+					_phase = 0
+
+	func _open(st: Dictionary) -> void:
+		var to: String = str(st.get("go", ""))
+		if to == "":
+			return
+		if bool(st.get("trip", false)) and not TripS.active:
+			TripS.new_trip()
+		if to == FlowS.GAME:
+			if bool(st.get("quick", false)):
+				MenuS.start_done = false   # the start panel (level, court) shows
+				FlowS.match = {}
+			else:
+				FlowS.match = TripS.match_for()
+		FlowS.go(to, st.get("args", {}))
+
+	# a game: wait until the pause is allowed (after tip-off and the resume guard), or the start panel is up
+	func _ready_for(st: Dictionary) -> bool:
+		if str(FlowS.screen) != FlowS.GAME:
+			return true
+		var m: Node = get_tree().current_scene
+		if m == null:
+			return false
+		if bool(st.get("quick", false)):
+			var menu = m.get("menu")
+			return menu != null and bool(menu.get("showing"))
+		var p = m.get("pause_node")
+		if p == null:
+			return false
+		if bool(p.get("_open")):
+			return true
+		return float(p.get("_guard_t")) <= 0.0 and bool(p.call("can_pause"))
+
+	func _check(st: Dictionary) -> void:
+		var scr: String = str(FlowS.screen)
+		var name_s: String = str(st.get("go", ""))
+		var what: String = "step %d (%s): did %s, now on %s" % [_i + 1, name_s if name_s != "" else "same game",
+				_did, scr]
+		var ok: bool = scr == str(st["expect"]) and _did == str(st["did"])
+		if st.has("expect_panel"):
+			var node: Node = FlowS.current_screen()
+			var panel: String = str(node.get("_panel")) if node != null else ""
+			what += " panel " + panel
+			ok = ok and panel == str(st["expect_panel"])
+		if st.has("paused"):
+			var m: Node = get_tree().current_scene
+			var p = m.get("pause_node") if m != null else null
+			var open: bool = p != null and bool(p.get("_open"))
+			what += " | pause panel %s, tree paused %s" % ["open" if open else "closed", str(get_tree().paused)]
+			ok = ok and open == bool(st["paused"]) and get_tree().paused == bool(st["paused"])
+		print("BACKTEST %s %s" % ["ok  " if ok else "FAIL", what])
+		if not ok:
+			_errors += 1
+
+	func _fail(why: String) -> void:
+		print("BACKTEST FAIL " + why)
+		_errors += 1
+
+	func _finish() -> void:
+		set_process(false)
+		get_tree().paused = false
+		SaveS.erase()
+		print("BACKTEST OK" if _errors == 0 else "BACKTEST FAILED (%d)" % _errors)
+		get_tree().quit(0 if _errors == 0 else 1)
