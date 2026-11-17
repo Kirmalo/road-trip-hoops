@@ -1,0 +1,14 @@
+{
+ "_help": "v2.1 (indexed): palettes.<id>.pages = the sheet whose index pages <id> draws with its own palette palettes/<id>.png (256 x 1 RGBA; index 0 = transparent). A _crew recolor has no pages of its own.",
+ "palettes": {
+  "ud_deuce": {
+   "pages": "ud_deuce"
+  },
+  "ud_jojo": {
+   "pages": "ud_jojo"
+  },
+  "ud_tank": {
+   "pages": "ud_tank"
+  }
+ }
+}

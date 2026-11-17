@@ -1,5 +1,5 @@
 {
- "_help": "v2 player sheets (P6-A6, tools/art/make_players_v2.py). Frame 64 x 96 art px, art scale 1.25, drawn 2x; floor point row 88, x 32. Rows S, SE, E, NE, N (SW, W, NW mirrored). Logical columns in pages of page_cols: <sheet>_p<N>.png. fps 0 = the game drives the frame from a progress. ms = the drawn timing per frame (previews; a hint). Events are frame indexes: release (the ball leaves the hands), floor (dribble bounce), catch, takeoff, hang, rim (hands on the rim), land, swat, air [first, last] (feet off the floor). *_l = left-hand versions; cross ends in the left hand, cross_l in the right.",
+ "_help": "v2 player sheets (P6-A6, tools/art/make_players_v2.py). Frame 64 x 96 art px, art scale 1.25, drawn 2x; floor point row 88, x 32. Rows S, SE, E, NE, N (SW, W, NW mirrored). Logical columns in pages of page_cols: <sheet>_p<N>.png. indexed (v2.1): the pages are 8-bit gray (value = palette index, 0 = transparent), drawn with palettes/<id>.png; palettes.json maps a recolor to its base pages. fps 0 = the game drives the frame from a progress. ms = the drawn timing per frame (previews; a hint). Events are frame indexes: release (the ball leaves the hands), floor (dribble bounce), catch, takeoff, hang, rim (hands on the rim), land, swat, air [first, last] (feet off the floor). *_l = left-hand versions; cross ends in the left hand, cross_l in the right.",
  "version": 2,
  "frame": [
   64,
@@ -19,6 +19,9 @@
  ],
  "cols": 237,
  "page_cols": 32,
+ "indexed": true,
+ "palette_dir": "palettes/",
+ "palette_map": "palettes.json",
  "anims": {
   "idle": {
    "start": 0,
