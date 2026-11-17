@@ -1,0 +1,183 @@
+extends SceneTree
+# P8-01: makes the 1.0.0 save fixtures with the 1.0.0 build (commit 4302f4e), through trip.gd's own API (the calls the
+# screens make: record_result + after_result after each game, spend / finish_points on the points screen, recruit,
+# set_starters on the lineup, mark_seen for the map's arrival story). Every file is the bytes save.gd wrote.
+# Run in a copy of 4302f4e whose config/name is changed (its own user:// dir, no test flags = the owner's file names):
+#   FIXTURE_OUT=/abs/dir godot --headless --path <copy> -s res://make_fixtures_v1.gd
+# No user arguments on purpose: then Save.path() is user://trip.json and the unlocks and settings go to
+# user://settings.cfg exactly as on the owner's tablet (set_left_handed() saves only outside test runs).
+
+const Trip = preload("res://scripts/trip.gd")
+const Save = preload("res://scripts/save.gd")
+const Cities = preload("res://scripts/cities.gd")
+const Ratings = preload("res://scripts/ratings.gd")
+const Difficulty = preload("res://scripts/difficulty.gd")
+const Menu = preload("res://scripts/menu.gd")
+const Audio = preload("res://scripts/audio.gd")
+
+var out := ""
+
+func _initialize() -> void:
+	out = OS.get_environment("FIXTURE_OUT")
+	if out == "":
+		print("FIXTURE ERROR: set FIXTURE_OUT")
+		quit(1)
+		return
+	DirAccess.make_dir_recursive_absolute(out)
+	print("FIXTURE save file %s, settings %s, unlocks %s" % [Save.path(), Difficulty.SAVE_PATH, Difficulty.unlock_path()])
+	_wipe()
+	_owner_settings()
+	_trip_chicago()
+	_wipe_trip()
+	_trip_memphis_ny()
+	_wipe_trip()
+	_trip_bosses()
+	print("FIXTURE DONE")
+	quit(0)
+
+func _wipe() -> void:
+	_wipe_trip()
+	if FileAccess.file_exists(Difficulty.SAVE_PATH):
+		DirAccess.remove_absolute(Difficulty.SAVE_PATH)
+
+func _wipe_trip() -> void:
+	Save.erase()
+
+# the settings an owner would have: level, Quick Game picks, music and volumes, full screen, left-handed
+func _owner_settings() -> void:
+	Difficulty.level = Difficulty.NORMAL
+	Difficulty.save()
+	Menu.save_setting(Menu.SAVE_MUSIC, true)
+	Menu.save_setting(Menu.SAVE_TEAMS[0], "cornfield_kings")
+	Menu.save_setting(Menu.SAVE_TEAMS[1], "bridge_runners")
+	Audio.sfx_volume = 0.8
+	Audio.save_sfx_volume()
+	Audio.music_volume = 0.6
+	Audio.save_music_volume()
+	Difficulty.save_fullscreen(true)
+	Difficulty.set_left_handed(true)
+
+# ---- the screens' calls ----
+
+func _arrive() -> void:
+	var arrive: String = str(Cities.city(Trip.city).get("story", {}).get("arrive", ""))
+	if arrive != "":
+		Trip.mark_seen(arrive)
+
+func _game(won: bool) -> void:
+	Trip.match_for()
+	var o: Dictionary = Trip.record_result({"won": won})
+	var r: Dictionary = Trip.after_result()
+	print("FIXTURE   game %s %d: %s (+%d) -> %s | phase %s game %d points %d" % [str(o.get("city", "")),
+			int(o.get("game", 0)), "WON" if won else "LOST", int(o.get("points_won", 0)), str(r.get("screen", "")),
+			Trip.phase, Trip.game, Trip.points])
+
+# spends n points (all when n < 0) on the starters, lowest stat first, round robin
+func _spend(n: int) -> void:
+	var i := 0
+	var guard := 0
+	while Trip.points > 0 and n != 0 and guard < 500:
+		guard += 1
+		var id: String = str(Trip.starters[i % Trip.starters.size()])
+		i += 1
+		var best := ""
+		var low := 1000
+		var p: Dictionary = Trip.roster_player(id)
+		for s in Ratings.STATS:
+			var v: int = int((p.get("ratings", {}) as Dictionary).get(s, 0))
+			if v < Trip.STAT_CAP and v < low:
+				low = v
+				best = s
+		if best != "" and Trip.spend(id, best):
+			n -= 1
+
+func _city(lose_first: bool = false) -> void:
+	_arrive()
+	if lose_first:
+		_game(false)
+	for g in 3:
+		_game(true)
+
+func _after_city(spend_n: int, recruit_id: String) -> void:
+	_spend(spend_n)
+	Trip.finish_points()
+	if recruit_id != "":
+		print("FIXTURE   recruit %s: %s" % [recruit_id, Trip.recruit(recruit_id)])
+
+func _snap(name: String) -> void:
+	var src: String = Save.path()
+	var f: FileAccess = FileAccess.open(src, FileAccess.READ)
+	var text: String = f.get_as_text()
+	f.close()
+	var w: FileAccess = FileAccess.open(out.path_join(name), FileAccess.WRITE)
+	w.store_string(text)
+	w.close()
+	print("FIXTURE wrote %s | level %s city %s game %d phase %s points %d | roster %s | starters %s | beaten %s | bracket %s" % [
+			name, Trip.level, Trip.city, Trip.game, Trip.phase, Trip.points, str(Trip.roster_ids()), str(Trip.starters),
+			str(Trip.beaten), str(Trip.bracket)])
+
+func _snap_settings(name: String) -> void:
+	var f: FileAccess = FileAccess.open(Difficulty.SAVE_PATH, FileAccess.READ)
+	var text: String = f.get_as_text()
+	f.close()
+	var w: FileAccess = FileAccess.open(out.path_join(name), FileAccess.WRITE)
+	w.store_string(text)
+	w.close()
+	print("FIXTURE wrote %s" % name)
+
+# ---- the trips ----
+
+# Easy: Hometown (one loss), 3 of 6 points left unspent, a good player recruited, Chicago game 1 won -> on the map
+# before Chicago game 2 with 5 points in the pool
+func _trip_chicago() -> void:
+	print("FIXTURE trip A (easy)")
+	Trip.new_trip("easy")
+	Trip.mark_seen("trip_start")
+	_city(true)
+	_after_city(3, "ht_g1")
+	_arrive()
+	Trip.set_starters(["ud_deuce", "ht_g1", "ud_jojo"], "ud_deuce")
+	_game(true)
+	_snap("trip_v1_chicago.json")
+
+# Normal: Hometown, Chicago, Memphis won -> on the points screen after Memphis (2 points left over from Chicago +
+# 6 new); the owner's settings.cfg at that moment; then on to New York, round 1 won, 1 point spent of 2
+func _trip_memphis_ny() -> void:
+	print("FIXTURE trip B (normal)")
+	Trip.new_trip("normal")
+	Trip.mark_seen("trip_start")
+	_city()
+	_after_city(-1, "ht_g2")
+	_city(true)
+	_after_city(4, "chi_g1")
+	Trip.set_starters(["ud_deuce", "chi_g1", "ht_g2"], "ud_deuce")
+	_city()
+	_snap("trip_v1_points.json")
+	Menu.save_setting(Menu.SAVE_COURT, "barn")             # Hometown's court, unlocked by now
+	Menu.save_setting(Menu.SAVE_TEAMS[1], Difficulty.team_of("chicago", 3))
+	_snap_settings("settings_v1.cfg")
+	_after_city(-1, "mem_boss")
+	Trip.set_starters(["ud_deuce", "mem_boss", "chi_g1"], "ud_deuce")
+	for c in ["new_orleans", "denver", "seattle", "los_angeles"]:
+		_city(c == "denver")
+		_after_city(-1, Cities.recruits(c)[0])
+	_arrive()   # New York: the bracket
+	_game(true)
+	_spend(1)
+	_snap("trip_v1_ny.json")
+
+# Hard: the 3 bosses recruited (Hometown, Chicago, Memphis), all 3 starting, a boss as you; New Orleans game 1 won
+func _trip_bosses() -> void:
+	print("FIXTURE trip C (hard)")
+	Trip.new_trip("hard")
+	Trip.mark_seen("trip_start")
+	_city()
+	_after_city(-1, "ht_boss")
+	_city()
+	_after_city(-1, "chi_boss")
+	_city(true)
+	_after_city(-1, "mem_boss")
+	_arrive()
+	print("FIXTURE   starters: %s" % Trip.set_starters(["chi_boss", "ht_boss", "mem_boss"], "chi_boss"))
+	_game(true)
+	_snap("trip_v1_bosses.json")

@@ -1,0 +1,69 @@
+extends SceneTree
+# P8-01 check: every fixture in FIXTURE_DIR loads in this build (Trip.continue_trip from user://trip.json), the loaded
+# state is the file's own (to_dict == the file minus version/serial), and CONTINUE's screen is printed.
+# settings_v1.cfg is put in as user://settings.cfg and its unlocks and settings are read back.
+#   FIXTURE_DIR=/abs/dir godot --headless --path <copy> -s res://check_fixtures_v1.gd
+
+const Trip = preload("res://scripts/trip.gd")
+const Save = preload("res://scripts/save.gd")
+const Difficulty = preload("res://scripts/difficulty.gd")
+
+const NAMES := ["trip_v1_chicago.json", "trip_v1_points.json", "trip_v1_bosses.json", "trip_v1_ny.json",
+	"trip_v1_done.json"]
+
+func _copy(src: String, dst: String) -> bool:
+	if not FileAccess.file_exists(src):
+		return false
+	var f: FileAccess = FileAccess.open(src, FileAccess.READ)
+	var b: PackedByteArray = f.get_buffer(f.get_length())
+	f.close()
+	var w: FileAccess = FileAccess.open(dst, FileAccess.WRITE)
+	w.store_buffer(b)
+	w.close()
+	return true
+
+func _initialize() -> void:
+	var dir: String = OS.get_environment("FIXTURE_DIR")
+	var ok := true
+	for n in NAMES:
+		Save.erase()
+		if not _copy(dir.path_join(n), Save.path()):
+			print("CHECK %s: MISSING" % n)
+			ok = false
+			continue
+		var raw: Dictionary = Save.read()
+		var loaded: bool = Trip.continue_trip()
+		var want: Dictionary = raw.duplicate(true)
+		want.erase("version")
+		want.erase("serial")
+		var same: bool = loaded and JSON.stringify(Trip.to_dict(), "", true) == JSON.stringify(want, "", true)
+		var bosses := 0
+		for id in Trip.starters:
+			if str(Trip.roster_player(str(id)).get("tier", "")) == "boss":
+				bosses += 1
+		print("CHECK %s: version %s loaded %s, same state %s, CONTINUE -> %s | level %s city %s game %d phase %s points %d | roster %d | starters %s (bosses %d) human %s | beaten %d | bracket %s | record %s" % [
+				n, str(raw.get("version", "?")), loaded, same, Trip.resume_screen(), Trip.level, Trip.city, Trip.game,
+				Trip.phase, Trip.points, Trip.roster_ids().size(), str(Trip.starters), bosses, Trip.human,
+				Trip.beaten.size(), str(Trip.bracket), str(Trip.record)])
+		if not (loaded and same):
+			ok = false
+	Save.erase()
+	# settings
+	var cfg_in: String = dir.path_join("settings_v1.cfg")
+	if _copy(cfg_in, Difficulty.SAVE_PATH):
+		Difficulty.load_saved()
+		var courts: Array = Difficulty.unlocked_cities()
+		var teams: Array = []
+		for t in Difficulty.all_teams():
+			if Difficulty.team_unlocked(str(t["id"])):
+				teams.append(str(t["id"]))
+		print("CHECK settings_v1.cfg: level %s | courts %s | quick teams %s | left-handed %s | fullscreen %s" % [
+				Difficulty.level_name(), str(courts), str(teams), Difficulty.is_left_handed(), Difficulty.fullscreen_saved()])
+		if courts.size() != 3:
+			ok = false
+		DirAccess.remove_absolute(Difficulty.SAVE_PATH)
+	else:
+		print("CHECK settings_v1.cfg: MISSING")
+		ok = false
+	print("CHECK %s" % ("OK" if ok else "FAILED"))
+	quit(0 if ok else 1)
