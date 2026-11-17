@@ -89,6 +89,7 @@ tablet with a joystick and two buttons.
 | Phase 6 music picks | Memphis "New Blue Shoes" (congusbongus, CC-BY 4.0), New Orleans "Swingshot" (Haley Halcyon, CC0), Denver "Lasso Lady" (congusbongus, CC0), Seattle "My Friends Will Cry" (Christovix, CC-BY 3.0, credit "Music by Christovix Games"), Los Angeles "Happy Ukelele Island Surfing Theme" (Tarush Singhal, CC0); listening list in docs/audio_preview/LIST.md |
 | Phase 6 court details | New York cage: the near-sideline fence about 2 ft tall (lowered from 3.5). Hometown driveway: barn-red court lines on the light concrete |
 | Phase 6 animation preview | Owner on docs/art/players_v3_moves.gif (the 3 underdogs, every animation): looks good. Redraw every player in this style |
+| Phase 6 download size | Owner: about 31 MB for the web download is fine (all the new animation frames kept; only the first load is slower) |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
