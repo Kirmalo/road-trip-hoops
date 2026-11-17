@@ -269,6 +269,9 @@ func _update_trail() -> void:
 # ---------------- drawing ----------------
 
 func _draw() -> void:
+	# P6-B1: the visible area in this node's coordinates, so a popup near the edge of the view stays whole
+	var inv: Transform2D = get_global_transform_with_canvas().affine_inverse()
+	var vis := Rect2(inv * Vector2.ZERO, Vector2.ZERO).expand(inv * get_viewport_rect().size)
 	for p in _popups:
 		var k: float = p.t / POPUP_TIME
 		var scale_k := 1.0
@@ -280,6 +283,12 @@ func _draw() -> void:
 		var center: Vector2 = p.pos + Vector2(0, -POPUP_RISE * k)
 		var w: Vector2 = _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size)
 		var base := Vector2(-w.x / 2.0, size * 0.35)   # center the text on the point
+		var half_x: float = (w.x * 0.5 + POPUP_OUTLINE + 4.0) * scale_k
+		if vis.size.x > half_x * 2.0:
+			center.x = clampf(center.x, vis.position.x + half_x, vis.end.x - half_x)
+		var half_y: float = (size * 0.7 + POPUP_OUTLINE) * scale_k
+		if vis.size.y > half_y * 2.0:
+			center.y = clampf(center.y, vis.position.y + half_y, vis.end.y - half_y)
 		var col: Color = p.color
 		col.a *= alpha
 		var outline := Color(0.05, 0.05, 0.1, 0.9 * alpha)

@@ -1996,6 +1996,8 @@ def tile_test(img, n=4, zoom=2):
 
 def load_frame(pid, col, row):
     path = os.path.join(ROOT, "assets", "players", pid + ".png")
+    if not os.path.exists(path):
+        return Image.new("RGBA", (40, 64), (0, 0, 0, 0))   # P6-25: v1 sheets removed; the v1 preview shows no players
     sh = Image.open(path).convert("RGBA")
     return sh.crop((col * 40, row * 64, col * 40 + 40, row * 64 + 64))
 

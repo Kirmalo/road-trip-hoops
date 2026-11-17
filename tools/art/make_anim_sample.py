@@ -826,7 +826,12 @@ def main(argv):
     extras = dunk_extras(all_data["dunk"])
     for a in ORDER:
         anim_gif(a, all_data[a], extras, os.path.join(OUT, "anim_sample_v1_%s.gif" % a))
-    total, nf = compare_gif(all_data, extras, os.path.join(OUT, "anim_sample_v1_compare.gif"))
+    total, nf = 0, 0
+    if os.path.exists(CUR_SHEET):
+        total, nf = compare_gif(all_data, extras, os.path.join(OUT, "anim_sample_v1_compare.gif"))
+    else:
+        # P6-25 removed the v1 sheets; the old side-by-side GIF stays in docs/art as it was
+        print("skip compare gif: %s is gone (v1 sheets removed)" % os.path.relpath(CUR_SHEET, ROOT))
     contact_sheet(all_data, extras, os.path.join(OUT, "anim_sample_v1_sheet.png"))
     with open(os.path.join(OUT, "anim_sample_v1_points.json"), "w") as f:
         json.dump(points, f, separators=(",", ":"))
