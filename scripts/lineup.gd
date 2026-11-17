@@ -150,9 +150,24 @@ func _build_head() -> void:
 	var lbl := UI.subtitle(_frame, sub, UI.LIT_COLOR)
 	lbl.position = SIDE_POS - Vector2(0, SIDE_POS.y - HEAD_Y)
 	lbl.size = Vector2(SIDE_SIZE.x, SIDE_POS.y - HEAD_Y - 6.0)
+	_fit_font(lbl, SIDE_SIZE.x - 16.0)
 	_hint = UI.label(_frame, "", SMALL_FONT + 4, HINT_COLOR)
 	_hint.position = Vector2(HINT_X, HINT_Y)
 	_hint.size = Vector2(LIST_POS.x + LIST_SIZE.x - HINT_X, 36)
+
+# shrinks a label's font until its longest line fits max_w (long match labels such as "NEW YORK - QUARTERFINAL")
+static func _fit_font(lbl: Label, max_w: float) -> void:
+	var ls: LabelSettings = lbl.label_settings
+	var font: Font = ls.font if ls.font != null else lbl.get_theme_font("font")
+	if font == null:
+		return
+	while ls.font_size > 14:
+		var widest: float = 0.0
+		for line in lbl.text.split("\n"):
+			widest = maxf(widest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, ls.font_size).x)
+		if widest + 2.0 * ls.outline_size <= max_w:
+			return
+		ls.font_size -= 2
 
 func _build_list() -> void:
 	_scroll = ScrollContainer.new()

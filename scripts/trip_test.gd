@@ -118,6 +118,11 @@ func _process(_delta: float) -> void:
 		return
 	# end conditions are checked before any step (the title would start a new trip)
 	if _screen == "title" and Trip.is_done():
+		if _shoot and _shot_count.get(_shot_key(), 0) < 1:
+			if _frames == SHOT_WAIT:
+				_screenshot("title_champions")
+			if _frames < SHOT_WAIT + 4:
+				return
 		_end()
 		return
 	if _stop_after != "" and _screen == "map" and Trip.beaten.has(_stop_after) and Trip.city != _stop_after:
@@ -127,7 +132,7 @@ func _process(_delta: float) -> void:
 		_quit(0 if not saved.is_empty() else 1)
 		return
 	var wait: int = STEP_WAIT
-	if _shoot and _shot_count.get(_screen, 0) < SHOTS_PER_SCREEN:
+	if _shoot and _shot_count.get(_shot_key(), 0) < SHOTS_PER_SCREEN:
 		wait = SHOT_WAIT + 4
 		if _frames == SHOT_WAIT:
 			_screenshot()
@@ -339,8 +344,20 @@ func _quit(code: int) -> void:
 	_finished = true
 	get_tree().quit(code)
 
+# screenshots are counted per screen, per story scene (every scene and the ending get theirs) and for the finished
+# trip's title (CHAMPIONS); the lineup once per city
+func _shot_key() -> String:
+	if _screen == "story":
+		return "story:" + str(Flow.args.get("scene", ""))
+	if _screen == "title" and Trip.is_done():
+		return "title_done"
+	if _screen == "lineup":
+		return "lineup:" + str(Trip.city)
+	return _screen
+
 func _screenshot(tag: String = "") -> void:
-	_shot_count[_screen] = int(_shot_count.get(_screen, 0)) + 1
+	var key: String = _shot_key()
+	_shot_count[key] = int(_shot_count.get(key, 0)) + 1
 	_shot_n += 1
 	var path: String = SHOT_PATH % [_shot_n, tag if tag != "" else _screen]
 	await RenderingServer.frame_post_draw

@@ -413,7 +413,10 @@ Answer with the letter; (a) is the recommendation each time. Answers go here and
   `--city chicago --cgame 1..3` on Normal (win share, length: a game to 11 should take about 5-8 min); humantest;
   `--screens` and a look at every screen at 1280x720 and 1280x800; web build in Chromium with touch: whole flow by
   taps, pause in game, save survives a page reload; `index.pck` size | qa | `docs/qa/phase5.md` | report written;
-  bugs filed on this board | all | none
+  bugs filed on this board | all | **done** (report merged; bugs 1-5 fixed by the coordinator: `--difficulty` in
+  `--city` games, bracket "QUARTERFINAL WINNER", lineup header font fits, NEW TRIP is gold on a finished trip,
+  `--screens` shoots every story scene, the lineup per city and the CHAMPIONS title. Open for the owner: no
+  difficulty ramp from game 1 to game 3 in a city, about 60-70% for your crew on Normal in every game)
 - **P5-17** | Docs: README.txt (title screen, the Road Trip, pause, stat points, lineup, saving, what's placeholder),
   the CLAUDE.md Testing section (new flags), CREDITS.md check | gameplay A | `README.txt`, `CLAUDE.md` (Testing
   section only, coordinator approves), `CREDITS.md` (check only) | the owner can follow the README on the tablet |

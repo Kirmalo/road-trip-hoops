@@ -197,11 +197,13 @@ func _show_panel(which: String) -> void:
 		"trip":
 			UI.subtitle(box, _trip_summary() if _has_trip() else "No trip saved yet. Start one and hit the road!")
 			var row := UI.hbox(box)
-			var cont: Button = _btn(row, "CONTINUE", _on_continue, UI.KIND_LIT if _has_trip() else UI.KIND_MAIN,
+			# a finished trip has nothing to continue: NEW TRIP is the gold button then
+			var can_go: bool = _has_trip() and not _trip_finished()
+			var cont: Button = _btn(row, "CONTINUE", _on_continue, UI.KIND_LIT if can_go else UI.KIND_MAIN,
 					MAIN_BTN)
-			if not _has_trip():
+			if not can_go:
 				cont.set_meta("off", true)
-			_btn(row, "NEW TRIP", _on_new_trip, UI.KIND_MAIN if _has_trip() else UI.KIND_LIT, MAIN_BTN)
+			_btn(row, "NEW TRIP", _on_new_trip, UI.KIND_MAIN if can_go else UI.KIND_LIT, MAIN_BTN)
 			_btn(UI.hbox(box), "BACK", _show_panel.bind("main"), UI.KIND_OPT, UI.SMALL_SIZE)
 		"confirm":
 			UI.subtitle(box, "Start a new trip? Your saved trip will be lost:")
@@ -254,7 +256,7 @@ func _on_quick_game() -> void:
 	_go(Flow.GAME)
 
 func _on_continue() -> void:
-	if not _has_trip():
+	if not _has_trip() or _trip_finished():
 		return
 	_stat("title_continue")
 	var trip: GDScript = _script(TRIP_PATH)
@@ -478,6 +480,9 @@ static func _has_trip() -> bool:
 	if s != null and s.has_method("exists"):
 		return bool(s.call("exists"))
 	return false
+
+static func _trip_finished() -> bool:
+	return _has_trip() and str(_read_save().get("phase", "")) == "done"
 
 # the trip save as a Dictionary ({} = none); read only when save.gd says there is a trip
 static func _read_save() -> Dictionary:

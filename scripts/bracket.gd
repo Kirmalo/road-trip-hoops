@@ -333,7 +333,7 @@ class BracketArt extends Control:
 		var you_here: bool = i <= won
 		var you: String = Cities.CREW_NAME
 		if not you_here and i > 0:
-			you = "WINNER OF THE " + str((rounds[i - 1] as Dictionary).get("round", ""))
+			you = str((rounds[i - 1] as Dictionary).get("round", "")) + " WINNER"
 		var you_col: Color = UI.TEXT_COLOR if you_here else DIM_TEXT
 		draw_rect(Rect2(pos + Vector2(14, row_h / 2.0 - 9), Vector2(18, 18)), UI.OFF_COLOR if you_here else LINE_DIM)
 		draw_rect(Rect2(pos + Vector2(14, row_h / 2.0 + 3), Vector2(18, 6)), UI.LIT_COLOR if you_here else LINE_DIM)

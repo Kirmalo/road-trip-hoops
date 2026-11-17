@@ -476,6 +476,15 @@ func _has_difficulty_flag() -> bool:
 			return true
 	return false
 
+func _difficulty_flag_value() -> String:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	for i in args.size():
+		if args[i].begins_with("--difficulty="):
+			return args[i].get_slice("=", 1).to_lower()
+		if args[i] == "--difficulty" and i + 1 < args.size():
+			return args[i + 1].to_lower()
+	return ""
+
 # after rules.gd is made: a trip game's target (side switch at (target + 1) / 2, as --target does; a --target flag
 # wins) and the crew names for the top bar and the messages
 func _apply_match_rules() -> void:
@@ -529,6 +538,9 @@ func _parse_city_args() -> void:
 			if str(crew.get("name", "")) != "":
 				built["teams"][1]["name"] = str(crew["name"])
 				built["teams"][1]["style"] = str(crew.get("style", ""))
+	var lvl: String = _difficulty_flag_value()
+	if lvl != "":
+		built["level"] = lvl   # --difficulty sets the city crew's level in --city games too
 	Flow.match = built
 	var tms: Array = built.get("teams", [])
 	var names: Array = []
