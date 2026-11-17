@@ -4,7 +4,13 @@
   "chi_a1": {
    "pages": "chi_a1"
   },
+  "chi_a1_crew": {
+   "pages": "chi_a1"
+  },
   "chi_a2": {
+   "pages": "chi_a2"
+  },
+  "chi_a2_crew": {
    "pages": "chi_a2"
   },
   "chi_boss": {
@@ -28,7 +34,13 @@
   "den_a1": {
    "pages": "den_a1"
   },
+  "den_a1_crew": {
+   "pages": "den_a1"
+  },
   "den_a2": {
+   "pages": "den_a2"
+  },
+  "den_a2_crew": {
    "pages": "den_a2"
   },
   "den_boss": {
@@ -52,7 +64,13 @@
   "ht_a1": {
    "pages": "ht_a1"
   },
+  "ht_a1_crew": {
+   "pages": "ht_a1"
+  },
   "ht_a2": {
+   "pages": "ht_a2"
+  },
+  "ht_a2_crew": {
    "pages": "ht_a2"
   },
   "ht_boss": {
@@ -76,7 +94,13 @@
   "la_a1": {
    "pages": "la_a1"
   },
+  "la_a1_crew": {
+   "pages": "la_a1"
+  },
   "la_a2": {
+   "pages": "la_a2"
+  },
+  "la_a2_crew": {
    "pages": "la_a2"
   },
   "la_boss": {
@@ -100,7 +124,13 @@
   "mem_a1": {
    "pages": "mem_a1"
   },
+  "mem_a1_crew": {
+   "pages": "mem_a1"
+  },
   "mem_a2": {
+   "pages": "mem_a2"
+  },
+  "mem_a2_crew": {
    "pages": "mem_a2"
   },
   "mem_boss": {
@@ -124,7 +154,13 @@
   "nol_a1": {
    "pages": "nol_a1"
   },
+  "nol_a1_crew": {
+   "pages": "nol_a1"
+  },
   "nol_a2": {
+   "pages": "nol_a2"
+  },
+  "nol_a2_crew": {
    "pages": "nol_a2"
   },
   "nol_boss": {
@@ -148,34 +184,67 @@
   "ny_boss": {
    "pages": "ny_boss"
   },
+  "ny_boss_crew": {
+   "pages": "ny_boss"
+  },
   "ny_f1": {
+   "pages": "ny_f1"
+  },
+  "ny_f1_crew": {
    "pages": "ny_f1"
   },
   "ny_f2": {
    "pages": "ny_f2"
   },
+  "ny_f2_crew": {
+   "pages": "ny_f2"
+  },
   "ny_q1": {
+   "pages": "ny_q1"
+  },
+  "ny_q1_crew": {
    "pages": "ny_q1"
   },
   "ny_q2": {
    "pages": "ny_q2"
   },
+  "ny_q2_crew": {
+   "pages": "ny_q2"
+  },
   "ny_q3": {
+   "pages": "ny_q3"
+  },
+  "ny_q3_crew": {
    "pages": "ny_q3"
   },
   "ny_s1": {
    "pages": "ny_s1"
   },
+  "ny_s1_crew": {
+   "pages": "ny_s1"
+  },
   "ny_s2": {
+   "pages": "ny_s2"
+  },
+  "ny_s2_crew": {
    "pages": "ny_s2"
   },
   "ny_s3": {
    "pages": "ny_s3"
   },
+  "ny_s3_crew": {
+   "pages": "ny_s3"
+  },
   "sea_a1": {
    "pages": "sea_a1"
   },
+  "sea_a1_crew": {
+   "pages": "sea_a1"
+  },
   "sea_a2": {
+   "pages": "sea_a2"
+  },
+  "sea_a2_crew": {
    "pages": "sea_a2"
   },
   "sea_boss": {

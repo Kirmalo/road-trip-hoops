@@ -30,6 +30,7 @@ else is a list of key poses ("rigs": pelvis height, foot targets, hand targets, 
 in-betweens. Legs are two-bone IK to foot targets on the floor, arms IK to hand targets (clamped to the arm's reach).
 
 Usage:  python3 tools/art/make_players_v2.py [--only ID[,ID...] | --all] [--jobs N] [--skip-render] [--no-preview]
+        [--draft-strip]  (only docs/art/draft_recolors.png, the P8-05 draft recolors, from the written files)
         [--anims a,b --frames DIR]   (a quick look: strips of those animations to DIR, no files written)
 Output: assets/players2/format.json, hands.json, palettes.json, <id>_p<N>.png, palettes/<id>.png, cards/<id>.png;
         docs/art/players_preview_v3.png, docs/art/players_v3_moves.gif (the underdogs),
@@ -1075,8 +1076,9 @@ def check(img, rec, tag):
 
 
 def players_v2():
-    """crews.json players (make_players.load_players), with the v2-only changes in V2_OVERRIDES applied."""
-    ps = M.load_players()
+    """crews.json players (make_players.load_players), with the v2-only changes in V2_OVERRIDES applied. Entries with
+    'draft': true (P8-05: city average and New York players) also get their _crew recolor, like a recruit."""
+    ps = _load_with_drafts()
     pals = json.load(open(M.CREWS))["palettes"]
     for p in ps:
         swap = V2_OVERRIDES.get(p["id"])
@@ -1087,6 +1089,25 @@ def players_v2():
                 if v == pals[old]:
                     p[k] = pals[new]
     return ps
+
+
+def _load_with_drafts():
+    """make_players.load_players() on crews.json with 'draft': true treated as 'recruit': true (the retired v1
+    generator's loader makes the _crew recolor; its own output is not rebuilt, so only this generator sees them)."""
+    raw = json.load(open(M.CREWS))
+    if not any(e.get("draft") and not e.get("recruit") for e in raw["players"]):
+        return M.load_players()
+    for e in raw["players"]:
+        if e.get("draft"):
+            e["recruit"] = True
+    import tempfile
+    fd, tmp = tempfile.mkstemp(suffix=".json")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(raw, f)
+        return M.load_players(tmp)
+    finally:
+        os.remove(tmp)
 
 
 # v2 only (crews.json is shared with the other art tasks): palette swaps per sheet id. ny_boss matches his v2
@@ -1598,6 +1619,46 @@ def preview_v4(only, groups, path=PREVIEW4):
     return path
 
 
+DRAFT_STRIP = os.path.join(ROOT, "docs", "art", "draft_recolors.png")
+DRAFT_CELLS = [("idle", "S", 0), ("run_dribble", "SE", 2), ("shoot", "E", 6)]
+
+
+def draft_strip(path=DRAFT_STRIP):
+    """P8-05 contact strip: every 'draft': true player (crews.json) as his crew wears him (idle S) and in your colors
+    (his _crew palette on the same pages: idle S, run dribble SE, jump shot release E), read from the written files
+    (no render, no cache needed; the ball is left out)."""
+    raw = json.load(open(M.CREWS))
+    notes = {k: v.get("_note", k) for k, v in raw["crews"].items()}
+    ids = [e["id"] for e in raw["players"] if e.get("draft")]
+    ids.sort(key=lambda i: CREW_ORDER.index(next(e["crew"] for e in raw["players"] if e["id"] == i)))
+    names = {e["id"]: (e.get("name", ""), e["crew"]) for e in raw["players"]}
+    Z, pad, per_line = 2, 8, 4
+    cw, chh = FW * Z, FH * Z
+    block = (1 + len(DRAFT_CELLS)) * cw + pad * 2
+    W = pad + per_line * block
+    rows = [ids[i:i + per_line] for i in range(0, len(ids), per_line)]
+    H = 40 + len(rows) * (chh + 30)
+    img = S.floor_bg(W, H)
+    dr = ImageDraw.Draw(img)
+    dr.rectangle([0, 0, W, 32], fill=(28, 26, 38, 255))
+    S.label(dr, (8, 8), "Draft recolors (P8-05): %d players. Per player: his crew's colors (idle S) | your blue and gold "
+                        "(<id>_crew: idle S, run dribble SE, jump shot E), shown 2x as in the game." % len(ids), 14)
+    y = 40
+    for row in rows:
+        for bi, b in enumerate(row):
+            x0 = pad + bi * block
+            cells = [(b, DRAFT_CELLS[0])] + [(b + "_crew", c) for c in DRAFT_CELLS]
+            for ci, (pal, (name, dn, k)) in enumerate(cells):
+                fr = cut(decoded_pages(b, pal), name, dn, k)
+                cell = S.compose_frame(fr, {"ball": None}, top=0)
+                img.alpha_composite(cell.resize((cw, chh), Image.NEAREST), (x0 + ci * cw + (pad if ci else 0), y + 22))
+            nm, crew = names[b]
+            S.label(dr, (x0 + 2, y + 4), "%s %s  (%s)" % (b, nm, notes.get(crew, crew).split(":")[0]), 13)
+        y += chh + 30
+    img.convert("RGB").save(path, optimize=True)
+    return path
+
+
 # ----------------------------------------------------------------------------- main
 
 def all_bases():
@@ -1606,6 +1667,9 @@ def all_bases():
 
 
 def main(argv):
+    if "--draft-strip" in argv:      # only the P8-05 contact strip, from the written files
+        print("wrote", draft_strip())
+        return
     if "--only" in argv:
         only = argv[argv.index("--only") + 1].split(",")
     elif "--all" in argv:
