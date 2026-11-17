@@ -4,9 +4,10 @@ Current phase: **Phase 7: release** (planned 2026-11-17 by `lead-producer`). The
 `docs/board-phase6.md` (Phase 5: `docs/board-phase5.md`, Phase 4: `docs/board-phase4.md`, Phase 3:
 `docs/board-phase3.md`, Phase 2: `docs/board-phase2.md`, Phase 1: `docs/board-phase1.md`).
 
-**STATUS: PLANNED.** Waves 1 and 2 can start now. The tasks that depend on an owner question (Q1-Q5, at the bottom)
-say so in their last column. Those tasks build with the recommended answer as a placeholder in one clearly marked
-constant or field, and are only finished once the coordinator relays the answer.
+**STATUS: BUILT AND QA'D (2026-11-17).** Every Phase 7 task is merged and done except **P7-42** (the release
+files to the owner and the check-in) and the open bug **P7-B1**. Q1-Q5 are answered (below); the Android signing key
+is "later" (VISION "Phase 7 signing key"). Final QA: `docs/qa/phase7.md` (release-ready). The phase summary for the
+owner is `docs/phase7-summary.md`. The plan below is kept as written; the task status is in Todo / Doing / Done.
 
 Scope (from `docs/VISION.md`: roadmap Phase 7, the rows "Phase 6 check-in", "Phase 6 tuning check-in" and
 "Phase 7 design"):
@@ -263,6 +264,38 @@ MUSIC in Settings only; no source link on itch, GitHub Pages stays the test buil
 Coordinator: Android back = pause/BACK, quits only on the title; APK keeps 32- and 64-bit ARM.
 
 ## Todo
+- **P7-B1** | Web: the second tap on QUIT? / RESTART? sometimes ignored (details under "Bugs from P7-40" below).
+  Check on the owner's tablet first (`docs/qa/phase7.md` section 6, step 6).
+
+## Doing
+- **P7-42** | Coordinator: release files to the owner (web ZIP, debug APK, `UPLOAD.md`, page text, cover,
+  screenshots), the web publish, and the owner check-in. The summary `docs/phase7-summary.md` is written.
+
+## Review
+
+## Done
+All merged on `ccr-f5c087b2-3ojk5f` by `a201ef1`. The task text below is as planned; what changed is in the notes.
+- P7-01 left-handed setting and test flags (`4a2cf42`); P7-02 music volume (`3d4459d`).
+- P7-03 left-handed touch layout (`bb83784`); P7-04 Settings LEFT-HANDED and MUSIC, HOW TO PLAY button, version,
+  credits (`fbde3a8`).
+- P7-05 icons and cover (`c7557f9`), then the ball as a sunset, the owner's pick (`0ffcc9a`, preview
+  `docs/art/icon_cover_preview_v2.png`).
+- P7-06 `build_web.sh --zip` (`4d66cde`); P7-07 Android preset, `build_android.sh`, `ANDROID.md` (`6783553`).
+- P7-08 release metadata: version 1.0.0, icon, `quit_on_go_back=false`, Android icons (`b944698`).
+- P7-10 Android back gesture (`d8faa67`; fix `1b326d1`: Escape on the menus works again, `--backtest` documented).
+- P7-H1 capture driver (`2ddecaf`); P7-H2 pictures (`b412f97`); P7-H3 How to Play screen (`73e42ba`; fix `7834d98`:
+  BACK came back after the tap guard).
+- P7-S1 store screenshots (`ff95bf5`, contact sheet `docs/art/store_screens_preview.png`); P7-S2 itch page text and
+  `UPLOAD.md` (`08eefde`).
+- P7-40 final release QA (`a201ef1`, `docs/qa/phase7.md`): release-ready, bug P7-B1 filed.
+- P7-41 README, CLAUDE.md and CREDITS.md (`b72349b`; `6ef4a44` adds the How to Play pictures to the credits row).
+
+**Done notes:**
+- Added during the phase: the title's road sign moved below the three-button row (`430ce34`).
+- P7-40: the 10 Quick Game autoplay games are longer than Phase 6's (12.96 min, 97 shots, 5.0 fouls on average),
+  all means inside CLAUDE.md's ranges. No sim script changed in Phase 7; QA traces it to the owner's tuning
+  `073c3a5` (RED plays its crew's style). Open for the lead: take them as the new reference, or rerun 40+ games.
+- P7-42: no release APK yet (the owner's key is "later"); the debug APK is for testing only.
 
 ### Wave 1 (start now; six tasks, no shared files)
 - **P7-01** | Left-handed setting:
@@ -504,12 +537,6 @@ Coordinator: Android back = pause/BACK, quits only on the title; APK keeps 32- a
   | gameplay | `scripts/pause.gd` (investigate only first) | the owner's tablet and a real Chromium both quit on the
   second tap every time, or the cause is found and fixed | - | none
 
-## Doing
-
-## Review
-
-## Done
-
 ## Parallel plan (never two tasks on the same file in one wave)
 | Wave | Tasks (owner role) | Files touched | Notes |
 |---|---|---|---|
@@ -522,7 +549,7 @@ The file most at risk is `main.gd`: P7-H1 (wave 1), P7-03 (wave 2) and P7-10 (wa
 order. The same goes for `project.godot` and `export_presets.cfg`: P7-07 (wave 1), then P7-08 (wave 2). `CREDITS.md`
 gets one row in P7-05 (wave 1) and one in P7-H2 (wave 2), and P7-41 checks it (wave 4).
 
-## Open questions for the owner
+## Open questions for the owner (Q1-Q5 answered, see "Owner answers")
 Answer with the letter. (a) is the recommendation each time. Answers go into `docs/VISION.md` and "Owner answers"
 above.
 
