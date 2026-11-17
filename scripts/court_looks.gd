@@ -30,9 +30,14 @@ extends RefCounted
 #   ambience          an ambience loop name for audio / twist_fx ("rain", "wind", "crowd")
 #   front_fence       true: low fence posts and mesh along the near sideline, drawn on the floor under the players (cage)
 #   floor_overlay     "puddles" (rain_park: shiny puddles) or "sand_drift" (beach: drifts of sand over the lines)
+# Phase 8 (P8-06), only on the star reward looks (midnight, gold_hall):
+#   reward            the star reward id that opens this look ("court_1", "court_2"; stars.gd / cosmetics.gd)
+#   twist             always "none" (a reward look brings no twist)
 #
 # The city looks (barn ... cage) belong to the Road Trip cities (cities.gd "look"). In Quick Game the COURT button
 # offers ALWAYS_OPEN plus the court of every city whose boss you have beaten (owner Q9, menu.gd quick_courts()).
+# The reward looks (midnight, gold_hall) belong to no city and are not ALWAYS_OPEN, so quick_courts() leaves them out
+# until the star rewards are wired in (Cosmetics.open_court_looks()); --court <look> shows them in a test run.
 const LOOKS := {
 	"gym": {
 		"name": "GYM",
@@ -281,6 +286,61 @@ const LOOKS := {
 		"net": Color(0.60, 0.63, 0.66, 0.90),
 		"front_fence": true,
 	},
+	# ---- Phase 8 star rewards (P8-06; tools/art/make_courts.py --print-looks): Quick Game courts opened by stars,
+	# "reward" is the Stars / Cosmetics id. No twist. Never in quick_courts() until Cosmetics.open_court_looks()
+	# says they are open (menu.gd, a later task) ----
+	"midnight": {
+		"name": "MIDNIGHT",
+		"music": "blacktop",
+		"floor_texture": "res://assets/courts/midnight_floor.png",
+		"floor_scale": 2.0,
+		"floor": Color(0.17, 0.18, 0.27),
+		"floor_stripe": Color(0.17, 0.18, 0.27),
+		"stripe_ft": 0.0,
+		"speckle": 0,
+		"line": Color(0.85, 0.96, 1.00, 0.92),
+		"paint": Color(0.75, 0.23, 0.62, 0.70),
+		"logo": Color(0.16, 0.71, 0.82, 0.70),
+		"apron": Color(0.13, 0.14, 0.22),
+		"backdrop": "fence",
+		"backdrop_texture": "res://assets/courts/midnight_backdrop.png",
+		"backdrop_scale": 2.0,
+		"wall": Color(0.10, 0.12, 0.26),
+		"wall_dark": Color(0.05, 0.05, 0.15),
+		"backboard": "glass",
+		"board_square": Color(0.42, 0.94, 1.00),
+		"pole": Color(0.08, 0.09, 0.16),
+		"rim": Color(0.94, 0.42, 0.12),
+		"net": Color(0.91, 0.93, 1.00, 0.85),
+		"reward": "court_1",
+		"twist": "none",
+	},
+	"gold_hall": {
+		"name": "GOLD HALL",
+		"music": "gym",
+		"floor_texture": "res://assets/courts/gold_hall_floor.png",
+		"floor_scale": 2.0,
+		"floor": Color(0.92, 0.77, 0.49),
+		"floor_stripe": Color(0.89, 0.72, 0.44),
+		"stripe_ft": 3.0,
+		"speckle": 0,
+		"line": Color(1.00, 1.00, 1.00, 0.95),
+		"paint": Color(0.15, 0.19, 0.49, 0.88),
+		"logo": Color(0.78, 0.59, 0.16, 0.85),
+		"apron": Color(0.10, 0.09, 0.19),
+		"backdrop": "bleachers",
+		"backdrop_texture": "res://assets/courts/gold_hall_backdrop.png",
+		"backdrop_scale": 2.0,
+		"wall": Color(0.13, 0.13, 0.24),
+		"wall_dark": Color(0.07, 0.07, 0.15),
+		"backboard": "glass",
+		"board_square": Color(0.94, 0.78, 0.25),
+		"pole": Color(0.10, 0.09, 0.19),
+		"rim": Color(0.94, 0.42, 0.12),
+		"net": Color(1.00, 1.00, 1.00, 0.85),
+		"reward": "court_2",
+		"twist": "none",
+	},
 }
 const DEFAULT := "gym"
 const ALWAYS_OPEN := ["gym", "blacktop"]   # Quick Game courts that need no unlock (twist none)
@@ -292,10 +352,21 @@ static var _args_done := false
 static func look() -> Dictionary:
 	return LOOKS.get(current, LOOKS[DEFAULT])
 
-# the look names in button order: gym, blacktop, then the city courts in route order (menu.gd keeps only the open
-# ones for the COURT button)
+# the look names in button order: gym, blacktop, the city courts in route order, then the reward looks (menu.gd
+# keeps only the open ones for the COURT button)
 static func names() -> Array:
 	return LOOKS.keys()
+
+# the star reward id of a look ("court_1", "court_2"), "" for every other look (P8-06)
+static func reward_of(n: String) -> String:
+	return str((LOOKS.get(n, {}) as Dictionary).get("reward", ""))
+
+# the look opened by a star reward id ("court_1" -> "midnight"), "" when none
+static func look_for_reward(reward_id: String) -> String:
+	for n in LOOKS.keys():
+		if reward_of(str(n)) == reward_id and reward_id != "":
+			return str(n)
+	return ""
 
 # true for gym and blacktop (always in Quick Game)
 static func always_open(n: String) -> bool:
@@ -308,9 +379,12 @@ static func set_current(n: String) -> bool:
 	current = n
 	return true
 
-# the next look after the current one (for a COURT button that cycles)
+# the next look after the current one (for a COURT button that cycles); skips the reward looks, as before P8-06
 static func next_name() -> String:
-	var keys: Array = LOOKS.keys()
+	var keys: Array = []
+	for n in LOOKS.keys():
+		if reward_of(str(n)) == "":
+			keys.append(n)
 	var i: int = keys.find(current)
 	return keys[(i + 1) % keys.size()]
 
