@@ -22,7 +22,7 @@ version that goes on itch.io.
 ## The release kit (for itch.io)
 Everything is in the repo, ready for you to upload. Follow `docs/release/UPLOAD.md` step by step (about 30 minutes).
 - **The web ZIP**: `road-trip-hoops-1.0.0-web.zip` (about 38 MB, 8 files). Upload it as is, don't unzip it. The team
-  hands it to you as a GitHub release on the repo (UPLOAD.md, part 0). It is built by `tools/build_web.sh --zip`
+  sent it to you in the chat with this summary (UPLOAD.md, part 0). It is built by `tools/build_web.sh --zip`
   into `build/release/`.
 - **The page text**: `docs/release/itch_page.md` (title, tagline, description, tags, credits). Copy and paste.
 - **The cover**: `docs/release/cover.png` (630 x 500).

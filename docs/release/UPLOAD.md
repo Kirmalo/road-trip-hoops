@@ -5,7 +5,7 @@ Step by step, for a first upload. It works in a tablet browser (Chrome) or on a 
 What you need:
 - the web ZIP, `road-trip-hoops-1.0.0-web.zip` (about 38 MB, 8 files inside); see part 0;
 - the cover, `docs/release/cover.png` (630 x 500);
-- the screenshots in `docs/release/screenshots/` (being made right now; use every PNG in that folder);
+- the screenshots in `docs/release/screenshots/` (`shot_1.png` to `shot_5.png`, in that order);
 - the page text, `docs/release/itch_page.md`.
 
 itch.io changes its pages now and then. If a field's name differs a little from the one written here, pick the one
@@ -15,9 +15,8 @@ something like ..." where we weren't sure.
 ## Part 0: get the files onto the device
 
 ### The web ZIP: two ways
-- **From the team (easiest).** The team attaches the ZIP to a GitHub release. On the repo's GitHub page tap
-  **Releases** (on the right, or near the bottom on a phone layout), open the newest release, and under **Assets**
-  tap `road-trip-hoops-1.0.0-web.zip`. It goes to your Downloads folder.
+- **From the team (easiest).** The team sends the ZIP to you in the Claude chat. Tap the file there to download
+  `road-trip-hoops-1.0.0-web.zip`. It goes to your Downloads folder.
 - **Build it yourself (on a computer with Linux, Godot 4.3 and its web templates).** In the project folder run
   `tools/build_web.sh --zip`. It writes `build/release/road-trip-hoops-1.0.0-web.zip` and prints the number of
   files (8) and the size.
