@@ -92,6 +92,7 @@ tablet with a joystick and two buttons.
 | Phase 6 download size | Owner: about 31 MB for the web download is fine (all the new animation frames kept; only the first load is slower) |
 | Phase 6 check-in | New players and moves: good as is (dust, bounce passes, ankle-breakers kept). Twists and late-trip difficulty: all good. Recruit lines kept. Download 30.8 MB fine. Tune Phase 6 before Phase 7: (1) camera closer again (undo the 5% zoom-out that came with the bigger players); (2) a FULL SCREEN option in Settings and on the pause panel, remembered; (3) Quick Game team pick on both sides: your team and the opponent, from the Cornfield Kings plus every crew you have beaten on the Road Trip (unlocked for good, like the courts) |
 | Phase 6 tuning check-in | Camera at 1.72 (closer, small depth slide on 16:9): good now. Quick Game crews play their road-trip style (inside/outside etc.), stats stay even (each player averages 50). Start Phase 7 |
+| Phase 7 design | Release on itch.io: the web version plus a downloadable Android APK on the same page; no Google Play for now. Price: pay what you want (free with an optional tip). How to Play: picture pages from the title (controls, flicks, steals, blocks, dunks), no playable tutorial. The owner uploads: the team builds the release files (web ZIP, APK signed with a key the owner creates), writes step-by-step upload instructions and the store page text and screenshots |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
