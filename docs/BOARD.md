@@ -325,44 +325,14 @@ drawn in the hand of every held-ball frame**, including run_dribble, cross, catc
 (Phase 6 tuning round, from the owner's Phase 6 check-in; see VISION "Phase 6 check-in". Then publish and Phase 7.)
 
 ## Doing
-- **P6-T1** | Camera closer: back to about the Phase 5 zoom with the taller players, HUD readable | programmer |
-  main.gd camera code only | zoom >= Phase 5 at 1280x720 and 16:10, screenshots | - | none
-- **P6-T2** | FULL SCREEN button in Settings and on the pause panel, remembered; works in the web build | programmer |
-  title.gd, pause.gd, difficulty.gd (end of file) | Chromium test, screenshots | - | none
-- **P6-T3** | Quick Game team pick, both sides: the Cornfield Kings, the Bridge Runners and every crew beaten on the
-  trip (unlocked for good like the courts); boss-game lineups, each player's stats shifted to a 50 average |
-  programmer | menu.gd, difficulty.gd (near unlock_court), trip.gd, main.gd Quick Game setup | `--quick-teams`
-  runs to FINAL, trip tests, menushots | - | none
-- **P6-42** | Web publish and summary: published 57032ac (Phase 6 build), summary sent; republish after P6-T1..T3 |
-  coordinator | - | published | P6-T1..T3 | none
-
-## Parallel plan
-
-| Wave | Programmer A | Programmer B | Art-audio | QA |
-|---|---|---|---|---|
-| 0 | - | - | P6-A0 sample (Doing) | P6-00 baseline |
-| 1 | P6-01 twists.gd, then P6-02 main.gd, P6-03 player.gd, P6-04 ball.gd + rules.gd | P6-10 cities + trip, then P6-05 sheets.gd, P6-06 cards, P6-11 story | P6-A1 v1 sheets, P6-A2 courts, P6-A3 music | quick check per merge |
-| 2 | P6-24 anim_test.gd, P6-13 court.gd, P6-14 twist_fx.gd, P6-15 audio.gd, P6-16 map + pause | P6-21 player.gd anims, P6-22 ball.gd | P6-12 looks data, P6-A4 portraits, P6-A5 sounds; after G2: P6-A6 | quick check per merge |
-| 3 | P6-26 main.gd size pass | P6-23 player.gd + fx.gd effects | P6-A7 all v2 sheets | P6-30 cities + ramp, P6-31 animation |
-| 4 | P6-41 docs | | P6-25 remove v1 sheets | P6-40, then P6-42 publish |
-
-Why this split:
-- **Files with two tasks are handed over between waves, never shared within one.**
-  - player.gd: P6-03 (A, wave 1), then P6-21 (B, wave 2), then P6-23 (B, wave 3).
-  - ball.gd: P6-04 (A, wave 1), then P6-22 (B, wave 2).
-  - main.gd: P6-02 (A, wave 1), then P6-26 (A, wave 3).
-  - fx.gd: only P6-23. court.gd: only P6-13. audio.gd: only P6-15. cities.gd and trip.gd: only P6-10 (then P6-30
-    tunes constants after every other task on them is merged).
-- New files (`twists.gd`, `sheets.gd`, `twist_fx.gd`, `anim_test.gd`) have one owner each.
-- `tools/`, `assets/` and `CREDITS.md` belong to the art-audio agent until P6-41. `crews.json` is touched by
-  P6-A1, P6-A4 and P6-A7 in that order.
-- Nothing waits on art: sheets fall back to v1 and then Kenney, looks fall back to colors, missing music or sound is
-  silent.
-- Nothing in the cities waits on G2: P6-A1 makes v1 sheets so every city plays now.
 
 ## Review
 
 ## Done
+- **Tuning round (owner's Phase 6 check-in), merged:** P6-T1 camera 1.60 -> 1.72 with a small depth slide at 16:9
+  (2583a9e); P6-T2 FULL SCREEN in Settings and pause, first tap restores it on the web (7ba7a00); P6-T3 Quick Game
+  team pick on both sides, unlocks with the boss/bracket wins, stats shifted to a 50 average, test unlocks go to
+  `user://settings_test.cfg` (bcff4b0). P6-42 republished after them.
 All merged on `ccr-f5c087b2-3ojk5f` by `c6a8491` (P6-41 in the docs commit after it). The task text is as planned;
 what changed is in the **Done notes** below.
 
