@@ -774,8 +774,15 @@ def shade_level(i):
     return 3
 
 
+ARM_PARTS = ("delt", "upper", "fore", "hand")
+BODY_PARTS = ("torso", "pelvis", "neck", "thigh", "calf")
+
+
 def render(p, pose, yaw, w=FRAME_W, h=FRAME_H, ox=None, oy=GROUND_Y, scale=1.0,
-           expr="focus", portrait=False, face_stamp=True, ox_body=0.0):
+           expr="focus", portrait=False, face_stamp=True, ox_body=0.0, limb_line=0.0):
+    """limb_line > 0 (new, make_players_v2): an arm in front of the torso or legs gets its contour line when it is at
+    least this much closer (model units) instead of the usual 1.6, so an arm close to the body (a navy sleeve on a
+    blue jersey) still reads. 0 = the original look, pixel-identical."""
     prims, info, pp = build(p, pose, expr, portrait)
     if ox is None:
         ox = w / 2.0
@@ -873,20 +880,31 @@ def render(p, pose, yaw, w=FRAME_W, h=FRAME_H, ox=None, oy=GROUND_Y, scale=1.0,
     # internal contour lines: where a closer part overlaps a farther one, darken the far pixel
     th = 1.6 / 1.0
     line = np.zeros((H, Wd), bool)
+    rim = []
+    ink = set()
     for j in range(H):
         for i in range(Wd):
             if not opaque[j, i]:
                 continue
             for a, b in ((j - 1, i), (j + 1, i), (j, i - 1), (j, i + 1)):
                 if 0 <= a < H and 0 <= b < Wd and opaque[a, b]:
-                    if cv.z[a, b] > cv.z[j, i] + th * (scale if portrait else 1.0) and part[a, b] != part[j, i]:
+                    if (limb_line > 0.0 and part[a, b] in ARM_PARTS and part[j, i] in BODY_PARTS
+                            and cv.z[a, b] > cv.z[j, i] + limb_line):
+                        line[j, i] = True
+                        ink.add((j, i))
+                        rim.append((b, a))
+                    elif cv.z[a, b] > cv.z[j, i] + th * (scale if portrait else 1.0) and part[a, b] != part[j, i]:
                         line[j, i] = True
     for j in range(H):
         for i in range(Wd):
             if line[j, i]:
                 m = mat[j, i]
                 base = pp[m][3] if m not in FLAT else FLAT[m]
-                px[i, j] = darker(base, 0.62) + (255,)
+                px[i, j] = (OUTLINE_INK if (j, i) in ink else darker(base, 0.62)) + (255,)
+    for i, j in rim:   # limb_line: the arm's edge over the body one tone lighter (a rim light), the line under it ink
+        m = mat[j, i]
+        if not line[j, i] and m not in FLAT:
+            px[i, j] = pp[m][max(0, lvl[j, i] - 1)] + (255,)
 
     # sprite faces: placed pixel by pixel
     if face_stamp and not portrait:
