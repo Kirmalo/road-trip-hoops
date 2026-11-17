@@ -16,6 +16,10 @@
 # Tempos (checked by onset autocorrelation and file length = whole bars):
 #   menu 140 bpm (24 bars), gym 154 (36 bars), blacktop 181 (56 bars), hometown ~171 (6/8 feel),
 #   chicago ~125 shuffle, newyork 122 (20 bars).
+#
+# Phase 6 listening list (P6-A3): docs/audio_preview/*.ogg are 30 s samples, not loops, made with
+#   python3 tools/make_music.py preview SRC docs/audio_preview/<city>_<a|b>_<title>.ogg
+# (sources and licenses in docs/audio_preview/LIST.md). The owner's picks get a cut line below.
 set -e
 D="$1"
 M="python3 tools/make_music.py cut"

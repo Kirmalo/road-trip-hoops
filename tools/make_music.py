@@ -13,6 +13,9 @@ Two jobs (the commands used for assets/music are in tools/make_music.sh):
          --start 0 --end full uses the whole file (for tracks made to loop); then the crossfade uses the file's
          own first and last samples (a short equal-power blend of the wrap point; it shortens the loop by XFADE,
          so keep it to a few ms there). --xfade 0 keeps the file exactly as is.
+  preview python3 tools/make_music.py preview SRC OUT [--start S] [--len 30] [--lufs -20] [--q 2]
+         A listening sample (not a loop): LEN seconds from S (default: the busiest LEN seconds after the first 4 s,
+         by short-term energy), mono, 0.3 s fade in, 2 s fade out, matched loudness. For docs/audio_preview/.
 
 Needs numpy and ffmpeg (libvorbis, ebur128). The source files stay outside the repo (see CREDITS.md for pages).
 """
@@ -147,6 +150,39 @@ def cut(args):
           % (args.out, len(out) / SR, lu, lu + 20 * np.log10(g), 20 * np.log10(np.max(np.abs(out))), jump))
 
 
+def preview(args):
+    y = decode(args.src)
+    n = int(args.len * SR)
+    if args.start >= 0:
+        s = int(args.start * SR)
+    else:
+        # the busiest window: mean energy per 0.5 s block, best LEN-second run that starts after 4 s
+        blk = SR // 2
+        e = np.array([np.mean(y[k:k + blk] ** 2) for k in range(0, len(y) - blk, blk)])
+        m = int(args.len * 2)
+        lo = min(8, max(0, len(e) - m))
+        best, s = -1.0, 0
+        for k in range(lo, max(lo + 1, len(e) - m + 1)):
+            v = float(e[k:k + m].mean())
+            if v > best:
+                best, s = v, k * blk
+    out = y[s:s + n].copy()
+    fi, fo = int(0.3 * SR), int(2.0 * SR)
+    out[:fi] *= np.linspace(0, 1, fi)
+    out[-fo:] *= np.linspace(1, 0, fo)
+    lu = loudness(out)
+    g = 10 ** ((args.lufs - lu) / 20)
+    pk = np.max(np.abs(out)) * g
+    if pk > PEAK:
+        g *= PEAK / pk
+    out *= g
+    cmd = ["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", "-",
+           "-c:a", "libvorbis", "-q:a", str(args.q), args.out]
+    subprocess.run(cmd, input=out.astype(np.float32).tobytes(), check=True)
+    print("%s: %.1f-%.1f s of %.1f s, loudness %.1f -> %.1f LUFS"
+          % (args.out, s / SR, (s + len(out)) / SR, len(y) / SR, lu, lu + 20 * np.log10(g)))
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -164,8 +200,15 @@ def main():
     c.add_argument("--xfade", type=float, default=0.04)
     c.add_argument("--lufs", type=float, default=-16.0)
     c.add_argument("--q", type=float, default=3)
+    p = sub.add_parser("preview")
+    p.add_argument("src")
+    p.add_argument("out")
+    p.add_argument("--start", type=float, default=-1.0)
+    p.add_argument("--len", type=float, default=30.0)
+    p.add_argument("--lufs", type=float, default=-20.0)
+    p.add_argument("--q", type=float, default=2)
     a = ap.parse_args()
-    find(a) if a.cmd == "find" else cut(a)
+    {"find": find, "cut": cut, "preview": preview}[a.cmd](a)
 
 
 if __name__ == "__main__":
