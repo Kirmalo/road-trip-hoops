@@ -25,11 +25,16 @@
 | `assets/music/hometown.ogg` | [Chiptune] Medieval: Minstrel Dance (loop version) | RandomMind | https://opengameart.org/content/chiptune-medieval-minstrel-dance | CC0 | Whole loop file (56.1 s), 5 ms wrap blend, mono, -20 LUFS, Ogg Vorbis q3 |
 | `assets/music/chicago.ogg` | 8-Bit Bluesy Battle Theme | emanresU | https://opengameart.org/content/8-bit-bluesy-battle-theme | CC0 | Whole loop file (38.3 s), 5 ms wrap blend, mono, -20 LUFS, Ogg Vorbis q3 |
 | `assets/music/newyork.ogg` | NES chiptune "Slam-Funk" | Haley Halcyon | https://opengameart.org/content/nes-chiptune-slam-funk | CC-BY 4.0 | Loop 6.10-45.45 s of the looping OGG, 60 ms loop crossfade, mono, -20 LUFS, Ogg Vorbis q3 |
+| `assets/music/memphis.ogg` | New Blue Shoes | congusbongus | https://opengameart.org/content/new-blue-shoes | CC-BY 4.0 (also offered as OGA-BY 4.0) | Loop 41.90-76.46 s, 60 ms loop crossfade, mono, -20 LUFS, Ogg Vorbis q3 |
+| `assets/music/new_orleans.ogg` | NES chiptune "Swingshot" (Swing Jazz) | Haley Halcyon | https://opengameart.org/content/nes-chiptune-swingshot-swing-jazz | CC0 | Looping OGG from its loop offset (11.36 s) to the end (40.43 s), 10 ms wrap blend, mono, -20 LUFS, Ogg Vorbis q3 |
+| `assets/music/denver.ogg` | Lasso Lady (seamless loop) | congusbongus | https://opengameart.org/content/lasso-lady-seamless-loop | CC0 | Whole loop file (73.7 s), 5 ms wrap blend, mono, -20 LUFS, Ogg Vorbis q3 |
+| `assets/music/seattle.ogg` | My Friends Will Cry. (title theme) | Christovix ("Music by Christovix Games") | https://opengameart.org/content/my-friends-will-cry | CC-BY 3.0 | Loop 11.20-93.25 s, 60 ms loop crossfade, mono, -20 LUFS, Ogg Vorbis q3 |
+| `assets/music/los_angeles.ogg` | Happy Ukelele Island Surfing Theme | Tarush Singhal | https://opengameart.org/content/happy-ukelele-island-surfing-theme | CC0 | Loop 6.40-93.67 s, 60 ms loop crossfade, mono, -21.8 LUFS (peak-limited), Ogg Vorbis q3 |
 
 Sound effects were processed with `tools/make_sfx.py` (commands in `tools/make_sfx.sh`). Music was cut into loops with
 `tools/make_music.py` (commands and loop points in `tools/make_music.sh`).
 
-Only CC0 and CC-BY assets are used (no share-alike, no non-commercial). The CC-BY crowd sound and New York music need the credit above
+Only CC0 and CC-BY assets are used (no share-alike, no non-commercial). The CC-BY crowd sound and the New York, Memphis and Seattle music need the credit above
 to stay with the game. Preview images in `docs/art/` are made by the same scripts and are not part of the game. The 30-second music samples
 in `docs/audio_preview/` are a listening list for the owner (sources and licenses in `docs/audio_preview/LIST.md`);
-they are not part of the game, and a track gets a row here only once it is picked and added to `assets/music/`.
+they are not part of the game; the picked tracks have rows above.
