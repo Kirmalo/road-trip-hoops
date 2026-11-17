@@ -3,3 +3,5 @@
 *.uid
 .claude/worktrees/
 build/
+*.keystore
+*.jks
