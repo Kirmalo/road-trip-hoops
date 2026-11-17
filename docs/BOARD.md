@@ -261,7 +261,8 @@ Everything in the waves below that is not in Doing, Review or Done. Carried over
 ### Wave 8
 - **P8-28** | Docs and the version
   | gameplay-programmer C | `CLAUDE.md`, `README.txt`, `CREDITS.md` (cosmetics row), `scripts/title.gd`
-  (`CREDITS_LIST` check), `project.godot` and `export_presets.cfg` (version per Q4), `docs/release/itch_page.md`
+  (`CREDITS_LIST` check; add "star, stat-up, unlock" + `tools/make_ui_sfx.py` to the sounds row and the van paints
+  to the map row, per P8-04/P8-07), `project.godot` and `export_presets.cfg` (version per Q4), `docs/release/itch_page.md`
   (one line on stars and replays)
   | every new script, screen, flag and file documented; version as answered | P8-23..27, Q4
 - **P8-29** | Final Phase 8 QA
