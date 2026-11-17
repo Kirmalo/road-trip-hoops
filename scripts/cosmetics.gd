@@ -44,9 +44,9 @@ const ITEMS := {
 	"ball_1": {"kind": "ball", "name": "BALL 1", "n": 1, "files": ["res://assets/ball/ball_1.png"]},
 	"ball_2": {"kind": "ball", "name": "BALL 2", "n": 2, "files": ["res://assets/ball/ball_2.png"]},
 	"ball_3": {"kind": "ball", "name": "BALL 3", "n": 3, "files": ["res://assets/ball/ball_3.png"]},
-	"van_1": {"kind": "van", "name": "VAN PAINT 1", "n": 1, "files": ["res://assets/map/van_1.png"]},
-	"van_2": {"kind": "van", "name": "VAN PAINT 2", "n": 2, "files": ["res://assets/map/van_2.png"]},
-	"van_3": {"kind": "van", "name": "VAN PAINT 3", "n": 3, "files": ["res://assets/map/van_3.png"]},
+	"van_1": {"kind": "van", "name": "HOT SAUCE", "n": 1, "files": ["res://assets/map/van_1.png"]},
+	"van_2": {"kind": "van", "name": "SURF WOODIE", "n": 2, "files": ["res://assets/map/van_2.png"]},
+	"van_3": {"kind": "van", "name": "GOLD RUSH", "n": 3, "files": ["res://assets/map/van_3.png"]},
 	"court_1": {"kind": "court", "name": "COURT 1", "n": 1, "files": []},
 	"court_2": {"kind": "court", "name": "COURT 2", "n": 2, "files": []},
 }
