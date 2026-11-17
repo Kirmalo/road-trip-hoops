@@ -4,14 +4,9 @@ Current phase: **Phase 6: content (all 8 cities) and the animation upgrade** (pl
 The Phase 5 board is archived in `docs/board-phase5.md` (Phase 4: `docs/board-phase4.md`, Phase 3:
 `docs/board-phase3.md`, Phase 2: `docs/board-phase2.md`, Phase 1: `docs/board-phase1.md`).
 
-**STATUS: WAITING FOR THE OWNER.** Two gates:
-- **G1, owner answers.** The owner answers the questions at the end of this board. Wave 1 starts after that; the
-  answers go into `docs/VISION.md` and the "Owner answers" section here, and the plan changes where an answer isn't
-  the recommended option. Only **P6-A0** (the animation sample, already running) and **P6-00** (baseline, no design
-  in it) run before G1.
-- **G2, owner approves the animation sample** (`docs/art/anim_sample_v1*`, P6-A0). The full player redraw (P6-A6,
-  P6-A7) and removing the old sheets (P6-25) wait for it. The code for the new animations (P6-05, P6-21 to P6-24)
-  doesn't wait: it is built and tested against the sample sheet, with every other player still on the old sheets.
+**STATUS: BUILT AND QA'D (2026-11-17).** Every Phase 6 task is merged and done except **P6-42** (web publish and the
+owner check-in). Both gates passed: G1 (owner answers, below) and G2 (animation sample approved). The phase summary
+for the owner is `docs/phase6-summary.md`. The plan below is kept as written; the task list is in "Done".
 
 Scope (from `docs/VISION.md`, rows "Phase 5 check-in", "Phase 6 design: animation", "Phase 6 design: cities", the
 starting city list and the Phase 6 roadmap):
@@ -327,8 +322,58 @@ drawn in the hand of every held-ball frame**, including run_dribble, cross, catc
   on a blue jersey), and push the running-dribble ball a bit more to the side so it doesn't cover the legs.
 
 ## Todo
+- **P6-42** | Web publish (`tools/build_web.sh --publish`) and the lead's phase summary | coordinator, lead | - |
+  published, summary sent | P6-41 | none
 
-### Wave 0: now (no owner answer needed)
+## Parallel plan
+
+| Wave | Programmer A | Programmer B | Art-audio | QA |
+|---|---|---|---|---|
+| 0 | - | - | P6-A0 sample (Doing) | P6-00 baseline |
+| 1 | P6-01 twists.gd, then P6-02 main.gd, P6-03 player.gd, P6-04 ball.gd + rules.gd | P6-10 cities + trip, then P6-05 sheets.gd, P6-06 cards, P6-11 story | P6-A1 v1 sheets, P6-A2 courts, P6-A3 music | quick check per merge |
+| 2 | P6-24 anim_test.gd, P6-13 court.gd, P6-14 twist_fx.gd, P6-15 audio.gd, P6-16 map + pause | P6-21 player.gd anims, P6-22 ball.gd | P6-12 looks data, P6-A4 portraits, P6-A5 sounds; after G2: P6-A6 | quick check per merge |
+| 3 | P6-26 main.gd size pass | P6-23 player.gd + fx.gd effects | P6-A7 all v2 sheets | P6-30 cities + ramp, P6-31 animation |
+| 4 | P6-41 docs | | P6-25 remove v1 sheets | P6-40, then P6-42 publish |
+
+Why this split:
+- **Files with two tasks are handed over between waves, never shared within one.**
+  - player.gd: P6-03 (A, wave 1), then P6-21 (B, wave 2), then P6-23 (B, wave 3).
+  - ball.gd: P6-04 (A, wave 1), then P6-22 (B, wave 2).
+  - main.gd: P6-02 (A, wave 1), then P6-26 (A, wave 3).
+  - fx.gd: only P6-23. court.gd: only P6-13. audio.gd: only P6-15. cities.gd and trip.gd: only P6-10 (then P6-30
+    tunes constants after every other task on them is merged).
+- New files (`twists.gd`, `sheets.gd`, `twist_fx.gd`, `anim_test.gd`) have one owner each.
+- `tools/`, `assets/` and `CREDITS.md` belong to the art-audio agent until P6-41. `crews.json` is touched by
+  P6-A1, P6-A4 and P6-A7 in that order.
+- Nothing waits on art: sheets fall back to v1 and then Kenney, looks fall back to colors, missing music or sound is
+  silent.
+- Nothing in the cities waits on G2: P6-A1 makes v1 sheets so every city plays now.
+
+## Doing
+
+## Review
+
+## Done
+All merged on `ccr-f5c087b2-3ojk5f` by `c6a8491` (P6-41 in the docs commit after it). The task text is as planned;
+what changed is in the **Done notes** below.
+
+**Done notes:**
+- P6-A6b (v2.1 indexed pages + palettes, `bdd2e60`) and the recruit joining lines (`631be3f`, `story_text.gd`
+  `RECRUIT_LINES`, `recruit.gd`) were added during the phase.
+- P6-30 and P6-31 wrote one report, `docs/qa/phase6.md` (not `phase6-cities.md` / `phase6-anim.md`), with 40 games
+  per city game (not 100). Applied tuning: wet court (`twists.gd` `cut_angle_deg` 150, `cut_min_speed` 0.9;
+  `player.gd` `SLIDE_MIN_WANT` 0.9). No STAGE_AVG change.
+- P6-40 is folded into `docs/qa/phase6.md` plus the coordinator's checks on `c6a8491`: import clean,
+  `--trip-test --target 3` plays all 8 cities to `TRIP END`, Seattle game 3 `--autoplay` FINAL 21-17 in 9:44.
+  Quick Game against P6-00 was 20 autoplay games (all stats inside the limit; fouls 2.90 vs 3.77, just inside) and
+  18 humantests. Not run separately in this phase: the forced loss and stop/resume across all 8 cities, the
+  per-city touch walk in Chromium, the save-survives-reload check. `index.pck` is 34.2 MB against the owner's
+  "about 31 MB" (owner question in the summary).
+- P6-B1 fixed in `c6a8491`: popups are clamped to the visible view in `fx.gd` `_draw`.
+- P6-41: `README.txt` and `CLAUDE.md` updated; `CREDITS.md` checked (every Phase 6 track, twist sound, court,
+  portrait and `assets/players2/` has a row; the removed v1 sheets are noted), no change needed.
+
+### Wave 0
 - **P6-00** | Baseline on the current dev build:
   - 100 Quick Game `--autoplay` and 6 `--humantest` (stats table as in `docs/qa/phase5.md` section 3);
   - `--city hometown|chicago --cgame 1..3`, 100 games each on Normal;
@@ -337,7 +382,7 @@ drawn in the hand of every held-ball frame**, including run_dribble, cross, catc
 
   | qa | `docs/qa/phase6-baseline.md` | table written, commit recorded | - | none
 
-### Wave 1: after G1 (owner answers)
+### Wave 1
 - **P6-01** | Twist table and getters as in the contract, with the Q1/Q2 numbers as commented constants; `info()`
   for banners | gameplay A | `scripts/twists.gd` (new) | parses in 4.3; every key in the hook table has its
   default; `value()` returns the default for `"none"` | - | Q1, Q2
@@ -411,7 +456,7 @@ drawn in the hand of every held-ball frame**, including run_dribble, cross, catc
   through `audio.play_music(<id>)`; licenses checked | - | Q5
 - **P6-A0** (Done: approved, see Owner answers).
 
-### Wave 2: after the wave 1 tasks on the same files merge
+### Wave 2
 - **P6-12** | Court looks data: the 8 new looks with their textures, colors, music, ambience and the optional keys
   from the contract; `names()` order per Q9 | art-audio | `scripts/court_looks.gd` | `--court <each>` and `--city
   <each> --shots` look right; Quick Game COURT button per Q9 | P6-A2 | Q9
@@ -518,7 +563,7 @@ drawn in the hand of every held-ball frame**, including run_dribble, cross, catc
 
   | qa | `docs/qa/phase6-anim.md` | report written; bugs filed here | P6-21..P6-24, P6-A6 | none
 
-### Wave 4: everything above merged
+### Wave 4
 - **P6-25** | Remove the v1 player sheets and `assets/players/hands.json` once every v2 sheet exists. Keep the Kenney
   fallback and sheets.gd's v1 path (it then falls to Kenney). Update CREDITS | art-audio | `assets/players/*`,
   `CREDITS.md` | full trip and Quick Game run with only v2; pck shrinks | P6-A7, P6-31, G2 | none
@@ -537,8 +582,6 @@ drawn in the hand of every held-ball frame**, including run_dribble, cross, catc
   - CREDITS check.
 
   | gameplay A | `README.txt`, `CLAUDE.md`, `CREDITS.md` (check only) | the owner can follow it | P6-40 | none
-- **P6-42** | Web publish (`tools/build_web.sh --publish`) and the lead's phase summary | coordinator, lead | - |
-  published, summary sent | P6-41 | none
 
 ### Bugs from QA (P6-30 / P6-31, `docs/qa/phase6.md` section 7)
 - **P6-B1** | BALL! popup clipped at the screen edge: the caller stands at the edge of the view, and the popup at
@@ -546,42 +589,11 @@ drawn in the hand of every held-ball frame**, including run_dribble, cross, catc
   gameplay A | `scripts/human_input.gd` or `scripts/fx.gd` | the popup fully on screen in `--shots --humantest --city
   memphis --cgame 3` | - | none
 
-## Parallel plan
-
-| Wave | Programmer A | Programmer B | Art-audio | QA |
-|---|---|---|---|---|
-| 0 | - | - | P6-A0 sample (Doing) | P6-00 baseline |
-| 1 | P6-01 twists.gd, then P6-02 main.gd, P6-03 player.gd, P6-04 ball.gd + rules.gd | P6-10 cities + trip, then P6-05 sheets.gd, P6-06 cards, P6-11 story | P6-A1 v1 sheets, P6-A2 courts, P6-A3 music | quick check per merge |
-| 2 | P6-24 anim_test.gd, P6-13 court.gd, P6-14 twist_fx.gd, P6-15 audio.gd, P6-16 map + pause | P6-21 player.gd anims, P6-22 ball.gd | P6-12 looks data, P6-A4 portraits, P6-A5 sounds; after G2: P6-A6 | quick check per merge |
-| 3 | P6-26 main.gd size pass | P6-23 player.gd + fx.gd effects | P6-A7 all v2 sheets | P6-30 cities + ramp, P6-31 animation |
-| 4 | P6-41 docs | | P6-25 remove v1 sheets | P6-40, then P6-42 publish |
-
-Why this split:
-- **Files with two tasks are handed over between waves, never shared within one.**
-  - player.gd: P6-03 (A, wave 1), then P6-21 (B, wave 2), then P6-23 (B, wave 3).
-  - ball.gd: P6-04 (A, wave 1), then P6-22 (B, wave 2).
-  - main.gd: P6-02 (A, wave 1), then P6-26 (A, wave 3).
-  - fx.gd: only P6-23. court.gd: only P6-13. audio.gd: only P6-15. cities.gd and trip.gd: only P6-10 (then P6-30
-    tunes constants after every other task on them is merged).
-- New files (`twists.gd`, `sheets.gd`, `twist_fx.gd`, `anim_test.gd`) have one owner each.
-- `tools/`, `assets/` and `CREDITS.md` belong to the art-audio agent until P6-41. `crews.json` is touched by
-  P6-A1, P6-A4 and P6-A7 in that order.
-- Nothing waits on art: sheets fall back to v1 and then Kenney, looks fall back to colors, missing music or sound is
-  silent.
-- Nothing in the cities waits on G2: P6-A1 makes v1 sheets so every city plays now.
-
-## Doing
-- **P6-A0** | Animation sample: one player at the new size, run, running dribble and a dunk as a moving preview, plus
-  the proposed v2 format (frame size, layout, `format.json`, hands) for P6-05 | art-audio | `docs/art/anim_sample_v1*`,
-  `tools/art/*` (as the coordinator assigned), and the sample's `assets/players2/` files once the format is fixed |
-  the owner sees the moving preview (G2); the format numbers are written into this board's contract | - | none
-  (started by the coordinator)
-
-## Review
-
-## Done
 
 ## Open questions for the owner
+**All answered** (see "Owner answers" above and `docs/VISION.md`); kept for the record. The Phase 6 check-in
+questions are in `docs/phase6-summary.md`.
+
 Answer with the letter; (a) is the recommendation each time. Answers go into `docs/VISION.md` and "Owner answers"
 above.
 

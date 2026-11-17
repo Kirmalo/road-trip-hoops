@@ -16,7 +16,8 @@ The game opens on the title screen with four buttons:
   NEW TRIP then asks for the level: EASY, NORMAL or HARD. If you already have a saved trip, NEW TRIP first asks
   START OVER (your old trip is gone) or KEEP MY TRIP.
 - QUICK GAME: one game to 21, the same as before: the panel picks the level (EASY / NORMAL / HARD), the COURT and the
-  MUSIC, then you play. After the game the panel comes back; its TITLE button goes back to the title.
+  MUSIC, then you play. A city's court joins the COURT button once you beat that city's boss on a Road Trip (see
+  DIFFICULTY below). After the game the panel comes back; its TITLE button goes back to the title.
 - SETTINGS: MUSIC on or off, the SOUND volume slider and the LEVEL (for Quick Game and new trips; with a saved trip
   it also changes that trip's level). More settings come in a later update.
 - CREW & CREDITS: your crew and their stats (from your saved trip, if any) and the art and music credits. Drag the
@@ -27,9 +28,12 @@ THE ROAD TRIP
 You are the Cornfield Kings, three underdogs from a small town in Indiana: Deuce (shooting wing, the leader), Jojo
 (quick point guard) and Tank (big man). You drive your van, The Biscuit, across the country to a streetball
 tournament in New York.
-- The map: the USA with a pin for every city. Gold = where you play next, a trophy = beaten, grey = coming soon.
-  The card at the bottom left shows the city, the game (1, 2 or 3), the points to win and the crew you face. Tap a
-  pin to look at that city; tap the map to go back to yours. GO plays on. MENU (top right) goes to the title.
+- The route: Hometown (Indiana), Chicago, Memphis, New Orleans, Denver, Seattle, Los Angeles, then the tournament in
+  New York. Every city has its own court, music, crew, story scenes and twist (see THE CITIES AND THEIR TWISTS).
+- The map: the USA with a pin for every city. Gold = where you play next, a trophy = beaten.
+  The card at the bottom left shows the city, the game (1, 2 or 3), the points to win, the crew you face and the
+  city's twist. Tap a pin to look at that city; tap the map to go back to yours. GO plays on. MENU (top right) goes
+  to the title.
 - Each city has one local crew, and you play them 3 times, each time stronger:
   game 1 to 11 points (1 good player and 2 average ones), game 2 to 15 (2 good, 1 average), game 3 to 21 against
   2 good players and the crew's BOSS. Win all 3 to move on. A city's first visit starts with a short story scene.
@@ -41,33 +45,56 @@ tournament in New York.
   tap +3 next to one of his stats (Speed, Shooting, Finishing, Defense, Stamina). Each point adds 3; no stat goes
   above 90. UNDO takes back the last point. DONE moves on (points you don't spend are kept for later).
 - Recruit: after a city you pick ONE of its 3 best players (its 2 good players or the boss) to join your bench.
-  Tap his card, then tap SIGN (his name) to confirm. He keeps his ratings and wears your blue and gold.
+  Tap his card, then tap SIGN (his name) to confirm. He says a line as he joins (tap to go on). He keeps his
+  ratings and wears your blue and gold.
 - Lineup: before every game you pick your 3 starters from the whole crew. Tap a card to put him in; the FIRST one
   you pick is you (he gets the YOU badge), the next two are your teammates. Tap a starter again to bench him. The
   game remembers your lineup for the next game. PLAY starts the game.
-- New York: the tournament, a bracket of 3 rounds (quarterfinal, semifinal, final), all to 21. The final is against
-  the champions and their boss, King. A loss just replays that round. Wins still earn stat points; when you have
+- New York: the tournament, a bracket of 3 rounds (quarterfinal, semifinal, final), all to 21, in a fenced cage.
+  You meet the Bridge Runners, the Bodega Bandits and, in the final, the champions, the Concrete Crowns, with their
+  boss, King. A loss just replays that round. Wins still earn stat points; when you have
   some, the bracket shows a POINTS button to spend them between rounds. Win the final for the ending.
 - Saving: the trip saves by itself after every game and every choice. One trip at a time. Close the game whenever
   you like; ROAD TRIP > CONTINUE on the title brings you back to where you were.
 
 THE PAUSE SCREEN
 In every game a pause button (two bars) sits in the top right corner. Tap it to stop the game. The pause screen
-shows the score and the stats of both teams, and has:
+shows the score, the stats of both teams and the court's twist, and has:
 - RESUME: back to the game (the controls wait a moment, so the tap doesn't leak into the game)
 - RESTART: the same game again from 0-0 (tap twice to confirm)
 - QUIT: to the title in a Quick Game, to the trip map in a trip game; the quit game doesn't count and starts again at
   0-0 next time (tap twice to confirm)
 - MUSIC on/off and the SOUND volume (both remembered)
 
-WHAT IS STILL A PLACEHOLDER (until Phase 6)
-- Only Hometown, Chicago and New York can be played. Memphis, New Orleans, Denver, Seattle and Los Angeles are grey
-  "coming soon" pins; the van drives past them.
-- New York is a stub: the bracket works, but only King has his own art; the other New York players use the plain
-  red Quick Game players, and there is no special court yet.
-- The story text, the names of the city crews and their players, and the tournament name are placeholders. The
-  courts and music are borrowed (Hometown plays on the blacktop, Chicago in the gym, New York on the blacktop).
-- City twists (wind, crowd, humid air, ...) come in Phase 6. Your 3 underdogs, the crew name and the van are final.
+THE CITIES AND THEIR TWISTS
+Each city's twist works the same for both teams. A banner shows it at the tip-off and again after the switch.
+- Hometown (County Line, a barn driveway hoop): no twist, the warm-up city.
+- Chicago (Lakeshore Gusts, a lakefront rooftop): WIND. Long shots beyond the arc go in a bit less often and curve
+  in the air; lobs drift. Wind streaks and a wind gauge show how hard it blows.
+- Memphis (Riverside Soul, an old gym with a packed crowd): FULL HOUSE. An 18-second shot clock, everyone a bit
+  faster, a loud crowd and camera flashes.
+- New Orleans (Bayou Brass, a bayou blacktop): HUMID. Stamina refills more slowly. Heat shimmer, sweat when tired.
+- Denver (Switchbacks, a mountain park): THIN AIR. Long shots go in a bit more often, shots and lobs float higher,
+  and you tire faster. Breath puffs.
+- Seattle (Puddle Jumpers, a rainy park): WET COURT. A hard reversal at full speed slides before you change
+  direction (crossovers keep their grip). Rain and splashes.
+- Los Angeles (Boardwalk Bombers, a beach court): SAND. Everyone is slower and turbo gives a bigger boost. Sand puffs.
+- New York (the tournament, a fenced cage): THE CAGE. A loose ball bounces off the side fence back into play, so there
+  is no out of bounds on the sidelines (the baselines are as usual).
+
+THE PLAYERS AND THEIR MOVES
+The players are bigger now (about 100 pixels tall) and have many more animation frames:
+- Dribbling: a standing dribble and a running dribble with the legs moving and the ball in time with the hand,
+  and a crossover that switches hands.
+- Dunks: 4 styles (one-hand, two-hand, tomahawk, windmill), plus the alley-oop catch and slam. The style depends on
+  speed, turbo and the dunker's finishing; it is only the look, the chance to score is the same. Windmills come on
+  turbo or from great finishers. After a made dunk he hangs on the rim for a moment.
+- Layups and jump shots with a gather, release and follow-through; chest, bounce and lob passes.
+- Defense: a defensive slide, a steal swipe, a block swat. A defender beaten up close by a crossover sometimes falls
+  down and gets back up (an "ankle-breaker", about 1-3 a game).
+- Motion effects: players squash and stretch on take-offs and landings, dust flies on hard cuts (sand on the
+  beach, splashes in Seattle), and the camera punches in a little on big dunks.
+All of it is only the look: steal and block timing are the same as before.
 
 THE VIEW
 You see the court at an angle from the near sideline, like a TV camera in the stands: the far sideline is at the
@@ -114,9 +141,11 @@ DIFFICULTY
   SETTINGS). The game remembers your choice (the lit button) the next time you open it. The first
   time it starts on NORMAL.
 - Under the levels are two more buttons:
-  - COURT: GYM or COURT: BLACKTOP. Tap it to pick the other court (an indoor gym with bleachers, or an outdoor
-    blacktop with a fence and the street behind it). The panel comes back with the new court behind it; then tap a
-    level to play. The game remembers the court.
+  - COURT: GYM, COURT: BLACKTOP, ... Tap it to pick the next court (an indoor gym with bleachers, an outdoor
+    blacktop with a fence and the street behind it, and every city court you have unlocked). A city's court unlocks
+    when you beat that city's boss on a Road Trip, and it stays unlocked (a new trip doesn't lock it again). A city
+    court brings its city's twist, shown in a line under the buttons; the gym and the blacktop have none. The panel
+    comes back with the new court behind it; then tap a level to play. The game remembers the court.
   - MUSIC: ON / MUSIC: OFF. Tap it to switch the music on or off at once. The game remembers it.
 - Only the CPU team (RED) changes; it is never slower. On NORMAL and EASY the CPU shoots worse, reacts later to
   crossovers and shots, times its steals and blocks worse, bites on pump fakes more and helps less on defense.
@@ -179,8 +208,9 @@ ON FIRE
 
 SOUND AND MUSIC
 The game has sound effects (swish, rim, bounce, dunk, block, crowd, whistle, fire) and music. The panels play the
-menu music; in a game each court has its own track (gym or blacktop), played softer so the game sounds come
-through. Switch the music off with the MUSIC button on the panel. Credits are in CREDITS.md.
+menu music; in a game each court has its own track (every city has its own), played softer so the game sounds come
+through. Some twists add a background sound: wind in Chicago, a loud crowd in Memphis, rain in Seattle, plus a fence
+rattle, splashes and sand steps. Switch the music off with the MUSIC button on the panel. Credits are in CREDITS.md.
 No sound in the browser? Make sure the tablet's media volume is up (not just the ringer), then tap the screen once.
 
 EASY THINGS TO CHANGE (at the top of each file)
@@ -190,9 +220,9 @@ scripts/cities.gd (the cities, crews and players, all plain data):
 - TIER: what good players and bosses add on top: "good" +4 on everything and +12 on their two specialties ("spec"),
   "boss" +20 on everything
 - CITY_TARGETS: points to win games 1, 2 and 3 in a city ([11, 15, 21]); TOURNAMENT_TARGET: New York rounds (21)
-- CITIES: one block per city: "name", "state", "look" (the court: "gym" or "blacktop"), "music", "built" (false =
-  "coming soon" pin, the trip skips it), and its "crew" ("name", "style": inside / outside / balanced, the good,
-  boss and average players). New York's "rounds" list the 3 tournament crews.
+- CITIES: one block per city: "name", "state", "look" (the court, e.g. "barn" or "rain_park"), "music", "twist"
+  (e.g. "wind" or "none"), "built" (false = "coming soon" pin, the trip skips it), and its "crew" ("name", "style":
+  inside / outside / balanced, the good, boss and average players). New York's "rounds" list the 3 tournament crews.
 - PLAYERS: one block per player: "name", "role", "number", "tier", "spec", "steal_bias" / "block_bias" (steal and
   block = defense + bias). Your 3 underdogs have their "ratings" written out (speed, shooting, finishing, defense,
   stamina; 0-100, 50 = a Quick Game player).
@@ -207,7 +237,13 @@ scripts/story_text.gd (the story):
 - SCENES: every scene as a list of lines. Each line has "who" (a player id from cities.gd, or "narrator"), "side"
   ("left" or "right"), "text" and maybe "mood" ("happy" or "smug"). In the text, {crew} becomes Cornfield Kings,
   {van} The Biscuit and {city} the city's name. Keep a line to about 2 short sentences.
-  Scenes: trip_start, hometown_arrive, hometown_won, chicago_arrive, chicago_won, first_loss, final_before, ending.
+  Scenes: trip_start, <city>_arrive and <city>_won for every city before New York (e.g. memphis_arrive), first_loss,
+  final_before, ending.
+- RECRUIT_LINES: the line each player says when he joins your crew.
+scripts/twists.gd (the city twists):
+- TWISTS: one block per twist with its numbers, each with a comment, e.g. "speed_mult": 0.9 (sand: everyone 10%
+  slower), "shot_clock": 18.0 (Memphis), "stamina_refill_mult": 0.7 (humid: 30% slower). The "banner" text is what
+  the banner, the map card and the pause screen show.
 scripts/trip_map.gd: DRIVE_TIME: seconds the van drives to the next city (3.0)
 scripts/story.gd: TYPE_CPS: how fast the story text types out (48 letters per second)
 
@@ -220,14 +256,16 @@ scripts/view.gd (the angled view):
 - SIDE_FLIP: false = the camera stays on the same sideline when the teams switch sides; true = it moves to the
   other sideline
 scripts/main.gd (the camera):
-- CAM_ZOOM: how close the camera is in the angled view (1.68; bigger = closer, less court on screen)
+- CAM_ZOOM: how close the camera is in the angled view (1.68 at most; bigger = closer, less court on screen). With
+  the bigger players the camera zooms out to about 1.59 so the heads at the far sideline stay under the top bar
 - CAM_ZOOM_MIN: how far it may zoom out on a short screen (1.2)
 - CAM_ZOOM_FLAT: the zoom of the flat view (1.15)
 - CAM_FOLLOW_X / CAM_FOLLOW_Y: how much the camera follows the ball left/right (1 = fully) and up/down (0 = not)
 - CAM_SMOOTHING: how quickly the camera catches up (4.0)
 scripts/court_looks.gd (the courts):
-- LOOKS: one block per court ("gym", "blacktop"): its name on the button, its music track, the floor and backdrop
-  pictures, and the colors of the floor, lines, paint, backboard, rim, net and pole. Colors are
+- LOOKS: one block per court ("gym", "blacktop" and the 8 city courts): its name on the button, its music track,
+  its background sound ("ambience"), the floor and backdrop pictures, and the colors of the floor, lines, paint,
+  backboard, rim, net and pole. Colors are
   Color(red, green, blue) from 0 to 1, an optional fourth number is see-through (1 = solid).
 - DEFAULT: the court the first game uses ("gym")
 scripts/rules.gd (the rules):
@@ -282,6 +320,9 @@ scripts/player.gd (values are being tuned, so check the file for the current num
 - DUNK_OPEN_PCT / LAYUP_OPEN_PCT: make chance when nobody is near you
 - FIRE_GREEN_LO / FIRE_GREEN_HI: green zone while on fire (normal is GREEN_LO / GREEN_HI)
 - FIRE_SHOT_BONUS: extra make odds while on fire
+- ANKLE_BREAK_PCT: how often a defender beaten up close by a crossover falls down (30 = 30% of them)
+- DUST_CUT, DUST_LAND, ...: how strong the dust puffs at the feet are (0 to 1)
+- PUNCH_STRENGTH: how hard the camera punches in on a big dunk (1.0; 0 = off)
 scripts/defense.gd (CPU defense, also being tuned):
 - CPU_JUMP_CHANCE: how often a CPU defender jumps at a shot
 - CPU_FAKE_BITE: how often he bites on a pump fake
@@ -297,6 +338,7 @@ scripts/audio.gd:
 - MASTER_DB: sound effects volume (lower = quieter, e.g. -6.0)
 - MUSIC_DB: music volume (-14.0; lower = quieter, e.g. -20.0)
 - MUSIC_DUCK_DB: how much softer the music plays during a game than on the panels (-8.0; 0.0 = just as loud)
+- AMBIENCE_DB: the volume of the twist background sounds (rain, wind, loud crowd) (-20.0; lower = quieter)
 Shooting odds are in shot_probability() in main.gd. CPU behavior is in scripts/player.gd and scripts/defense.gd.
 
 FILES
@@ -311,7 +353,11 @@ FILES
 - court.gd: draws the court, rims and nets (through view.gd)
 - view.gd: the angled view: turns positions on the court into spots on the screen (the game itself still plays on a
   flat top-down court), and the stick into a direction on the court
-- court_looks.gd: the court looks (gym, blacktop): colors, pictures and music of each court
+- court_looks.gd: the court looks (gym, blacktop and the 8 city courts): colors, pictures and music of each court
+- twists.gd: the city twists (wind, crowd, humid, thin air, wet, sand, cage) and their numbers
+- twist_fx.gd: what you see and hear of a twist (banner, rain, wind streaks, sand puffs, background sound)
+- sheets.gd: reads the player pictures (assets/players2) and where the hands and the ball are in each frame;
+  shaders/palette.gdshader colors them in
 - touch_controls.gd: joystick and buttons
 - audio.gd: plays the sound effects (files in assets/sfx) and the music (files in assets/music)
 - fx.gd: popups, screen shake, fire trail
@@ -331,20 +377,24 @@ The Road Trip:
 - bracket.gd: the New York tournament bracket
 - pause.gd: the pause button and screen
 - trip_test.gd: a test that plays a whole trip by itself (for the team, not used in play)
+- anim_test.gd: a test that checks every player's pictures (for the team, not used in play)
 
 Art: the players, courts, ball, trip map and story portraits are original art made for this game by the scripts
-in tools/art. The
-old Kenney Sports Pack sprites (www.kenney.nl, CC0) in assets/ are only a fallback if a new picture is missing.
+in tools/art. The old Kenney Sports Pack sprites (www.kenney.nl, CC0) in assets/ are only a fallback if a player
+has no picture at all.
 Sounds and music: see CREDITS.md.
 
 MAKING THE ART AGAIN (for the curious; needs a computer with Python 3, Pillow and numpy)
 The pictures are drawn by scripts, not by hand, so they can be changed and made again:
-- python3 tools/art/make_players.py   makes the player sheets in assets/players (and hands.json, where the ball
-  sits in each frame). Each player is described in tools/art/crews.json: body, skin, hair, top, shorts, colors,
-  number. A new player is one more entry there (the help text at the top of the file lists the choices); then run
-  the script again. "--only ID" makes just one player.
-- python3 tools/art/make_courts.py    makes the court floors and backdrops in assets/courts and the ball in
-  assets/ball.
+- python3 tools/art/make_players_v2.py --all   makes the player pictures in assets/players2: every animation
+  frame of every player (gray pages plus a color palette per player, so a recruit in your colors is only a new
+  palette), hands.json (where the hands and the ball are in each frame), format.json (the list of animations) and
+  the cards for the lineup screen. Each player is described in tools/art/crews.json: body, skin, hair, top, shorts,
+  colors, number. A new player is one more entry there; then run the script again. "--only ID" makes just one
+  player. Drawing all of them takes a long time. (tools/art/make_players.py made the old, smaller players; it is
+  only kept because the new script borrows its parts.)
+- python3 tools/art/make_courts.py    makes the court floors and backdrops in assets/courts (gym, blacktop and the
+  8 city courts) and the ball in assets/ball.
 - python3 tools/art/make_portraits_v2.py   makes the story portraits in assets/portraits (comic style).
 - python3 tools/art/make_map.py       makes the trip map, pins and van in assets/map.
 - Preview pictures go to docs/art (not used by the game). Copy the new files into the project on the tablet and
