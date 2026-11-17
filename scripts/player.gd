@@ -7,6 +7,7 @@ const Difficulty = preload("res://scripts/difficulty.gd")   # CPU skill knobs by
 const View = preload("res://scripts/view.gd")               # projection (Phase 4): FLAT draws as before, ANGLED below
 const Ratings = preload("res://scripts/ratings.gd")         # stat -> gameplay multipliers (P5; rating 50 = 1.0)
 const Twists = preload("res://scripts/twists.gd")           # Phase 6 city twists (speed, turbo, stamina, wet grip)
+const Sheets = preload("res://scripts/sheets.gd")           # sprite sheet formats v1 / v2 (P6-05; drawing only)
 
 var game
 var team := 0
@@ -661,6 +662,7 @@ func cross_beat_check() -> void:
 	if not beaten:
 		return
 	best.stumble(CROSS_STUN)
+	best.view_crossed(self, best_d / game.FT)   # drawing only: a close one is an ankle-breaker (he falls)
 	game.stat("cross_beats_t%d" % team)
 	if game.is_human(best):
 		game.stat("human_cross_beaten")
@@ -1698,10 +1700,15 @@ func _build_view() -> void:
 	_v_body = Node2D.new()
 	_v_body.name = "PlayerView%d_%d" % [team, index]
 	_v_spr = Sprite2D.new()
+	var sh: Dictionary = Sheets.load_first(sheet_ids())   # v2 then v1 of each id, in sheet_path()'s order
 	var path: String = sheet_path()
-	if ResourceLoader.exists(path):
+	if int(sh.get("version", 0)) == 2:
+		_build_view_v2(sh)
+	elif ResourceLoader.exists(path):
 		_v_spr.texture = load(path)
-	if _v_spr.texture != null and _v_spr.texture.get_size() == SHEET_FRAME * Vector2(SHEET_COLS, SHEET_ROWS):
+	if _v_ver == 2:
+		pass
+	elif _v_spr.texture != null and _v_spr.texture.get_size() == SHEET_FRAME * Vector2(SHEET_COLS, SHEET_ROWS):
 		_v_sheet = true
 		_v_spr.hframes = SHEET_COLS
 		_v_spr.vframes = SHEET_ROWS
@@ -1724,6 +1731,8 @@ func _process(delta: float) -> void:
 
 # the drawn height of the jump (dunks and alley-oops lifted so the hands reach the rim)
 func _view_lift() -> float:
+	if _v_ver == 2:
+		return _v_lift   # v2: the hang curve, set with the frame (_v2_lift)
 	if rim_kind == "dunk":
 		return jump_z * DUNK_VIEW_LIFT
 	return jump_z
@@ -1735,11 +1744,17 @@ func _update_view(delta: float) -> void:
 	var passing: bool = ball.state == ball.PASS and ball.passer == self
 	if passing and not _v_was_passing:
 		_v_pass_t = PASS_ANIM_TIME
+		if _v_ver == 2:
+			_v2_on_pass()
 	_v_was_passing = passing
 	if _v_was_shooting and not shooting and rim_kind == "" and ball.state == ball.SHOT and ball.shooter == self:
 		_v_follow_t = FOLLOW_TIME
+		if _v_ver == 2:
+			_v_follow_t = _v2_time_from("shoot", Sheets.anim_event(_v_fmt, "shoot", "release", 0))
 	_v_was_shooting = shooting
 	if ball.state == ball.SHOT and ball.shooter == self and ball.shot_made:
+		if not _v_make_seen:
+			_v_celebrate_b = ball.shot_kind == "dunk"   # v2: the big celebration after a dunk
 		_v_make_seen = true
 	elif _v_make_seen and ball.state != ball.SHOT:
 		_v_make_seen = false
@@ -1752,7 +1767,12 @@ func _update_view(delta: float) -> void:
 	_v_body.position = base
 	var sc: float = View.size_at(position)
 	var up: float = base.y - View.to_screen(position, _v_lift).y
-	if _v_sheet:
+	if _v_ver == 2:
+		_update_sheet_frame_v2(delta)   # also sets the drawn lift (_v_lift)
+		_v_spr.scale = Vector2.ONE * Sheets.draw_scale(_v_fmt) * sc
+		_v_spr.position = Vector2(0, -(base.y - View.to_screen(position, _v_lift).y))
+		_v2_texmem()
+	elif _v_sheet:
 		_update_sheet_frame(delta)
 		_v_spr.scale = Vector2(PLAYER_SCALE, PLAYER_SCALE) * sc
 		_v_spr.position = Vector2(0, -up)
@@ -1907,7 +1927,7 @@ func _draw_view_overlay() -> void:
 		return
 	var n := _v_over
 	var feet: Vector2 = View.to_screen(position, 0.0)
-	var head: Vector2 = View.to_screen(position, _v_lift) - Vector2(0, HEAD_PX * View.size_at(position))
+	var head: Vector2 = View.to_screen(position, _v_lift) - Vector2(0, view_head_px() * View.size_at(position))
 	var tri := PackedVector2Array([head + Vector2(-7, -16), head + Vector2(7, -16), head + Vector2(0, -6)])
 	n.draw_colored_polygon(tri, HUMAN_COLOR)
 	var bw := 48.0
@@ -1932,3 +1952,507 @@ func _draw_view_overlay() -> void:
 		n.draw_rect(Rect2(o + Vector2(w * glo / 1.2, 0), Vector2(w * (green_hi() - glo) / 1.2, 10)), gcol)
 		var c: float = minf(shot_charge, 1.2) / 1.2
 		n.draw_rect(Rect2(o + Vector2(w * c - 2, -3), Vector2(4, 16)), Color.WHITE)
+
+# ---------------- v2 sheets (P6-21; board "Animation table", "Player sheet format v2") ----------------
+# Visual only, like everything above: the frame comes from the sim (velocity, facing, timers, rim_kind, jump_t,
+# block_jump_t, the ball's dribble phase) and nothing here writes to the sim. v1 sheets never come here
+# (_update_sheet_frame above is today's mapping, unchanged). The frame counts, per-frame times (ms) and the event
+# frames (release, floor, hang, rim, swat, ...) come from assets/players2/format.json through Sheets.
+# Hooks for the motion effects (P6-23): the signals below, and v_anim, v_land_t, v_dunk_style, v_flip (read-only).
+
+signal view_takeoff(kind: String)               # the drawn jump left the floor: "dunk", "layup" or "block"
+signal view_landed(kind: String)                # feet back on the floor (a dunk: after the rim hang and the drop)
+signal view_dunk_slam(style: String, big: bool) # a dunk's release frame (the slam); big = turbo, alley, windmill, tomahawk
+
+const V2_RUN_RATE_MIN := 0.45     # run / slide never play slower than this x the drawn speed (v1: RUN_FPS_MIN / RUN_FPS)
+const RUN_DRIBBLE_FRAC := 0.4     # moving with the ball faster than this fraction of top speed: the running dribble
+const SLIDE_RANGE_FT := 15.0      # defensive slide: the opposing ball handler within this ...
+const SLIDE_MIN_DEG := 50.0       # ... and moving at least this far off the line to him (not running at him) ...
+const SLIDE_MAX_FRAC := 0.85      # ... and slower than this fraction of top speed (faster is a run), no turbo
+const SLIDE_FULL_FRAC := 0.6      # the slide plays at its drawn speed at this fraction of top speed
+const SLIDE_HOLD := 0.25          # seconds a slide keeps going after its angle stops qualifying (no flicker)
+const RUN_DRIBBLE_HYST := 0.05    # +/- this around RUN_DRIBBLE_FRAC to switch (no flicker at that speed)
+const DUNK_HANG_F := 0.3          # fraction of a dunk's jump when he reaches the hang frame (the top)
+const DUNK_HANG_ABOVE := 10.0     # px: the hands this far over the rim while he hangs before the slam
+const DUNK_RIM_GRIP := 4.0        # px: the hands this far over the rim at the slam and while he hangs on it
+const DUNK_RIM_REACH_F := 0.08    # fraction of the jump from the release frame to the hands-on-rim frame
+const DUNK_REACH_HEADS := 0.92    # without hand data: the hands reach this x the drawn height at the release
+const RIM_HANG_TIME := 0.3        # seconds on the rim after a made dunk (Q7 a: a short rim hang)
+const RIM_HANG_MAX_MOVE_FT := 1.5 # ... cut short once he has moved this far from where he came down
+const DUNK_DROP_TIME := 0.18      # seconds of the drawn drop from the rim to the floor
+const LIFT_FOLLOW := 30.0         # 1/s: the drawn lift follows the hands-on-rim height this fast
+const BIG_DUNK_STYLES := ["dunk_windmill", "dunk_tomahawk", "dunk_alley"]
+const WINDMILL_FINISH := 70       # a finishing rating this high (or a boss) can windmill without turbo
+const WINDMILL_PCT := 30          # % of the dunks that can windmill (turbo, great finisher or boss) that do ...
+const WINDMILL_BOTH_PCT := 50     # ... and when he is both on turbo and a great finisher / boss
+const TOMAHAWK_SPEED_FRAC := 0.9  # a dunk at this fraction of top speed (or turbo) is a tomahawk or a one-hander
+const TURBO_DUNK_WINDOW := 0.6    # seconds: a dunk this soon after sprinting looks like a turbo dunk
+const ANKLE_BREAK_FT := 2.25      # Q7 a: a crossover that beats a defender this close is an ankle-breaker (he falls;
+const ANKLE_BREAK_PCT := 30       # ... this % of them, by a hash of the play, no random call: about 1-3 a game)
+const FALL_GETUP_TIME := 0.35     # seconds of the get-up frames after an ankle-breaker's stumble ends
+const PUMP_TOP_FRAME := 4         # a pump fake rises through the shoot frames to this one and back
+const TEXMEM_FLAG := "--texmem"   # test: print the video memory once a game is running (xvfb, not headless)
+
+var _v_ver := 1                   # 2: a v2 sheet (pages, format.json), drawn by _update_sheet_frame_v2
+var _v_sheet_data := {}           # Sheets.load_sheet() of the drawn sheet
+var _v_fmt := {}
+var _v_sheet_id := ""             # the drawn sheet's id (hands.json key)
+var v_anim := ""                  # v2: the animation drawn this frame (after Sheets.resolve)
+var v_frame := 0                  # v2: its frame index (Sheets.frame_index: row * cols + column)
+var v_next_frame := 0             # ... the next frame, and how far into this one (ball.gd blends the ball point)
+var v_frame_frac := 0.0
+var v_flip := false               # the frame is mirrored (SW, W, NW)
+var v_dunk_style := ""            # this dunk's look (Q6: dunk_one, dunk_two, dunk_tomahawk, dunk_windmill, dunk_alley)
+var v_land_t := 0.0               # seconds left of the land frames (> 0 right after a jump came down)
+var v_turbo_dunk := false         # this dunk came off a sprint (TURBO_DUNK_WINDOW): a "big" dunk for the camera punch
+var _v_clock := 0.0               # seconds (x the play rate) into the current clock-driven animation
+var _v_was_air := false
+var _v_air_kind := ""
+var _v_slam := false              # this dunk went down (rim hang after it)
+var _v_rel_seen := false
+var _v_rim_t := -1.0              # seconds left hanging on the rim (< 0: not hanging)
+var _v_drop_t := -1.0             # seconds left of the drop from the rim
+var _v_rim_spot := Vector2.ZERO
+var _v_hold_lift := 0.0           # the drawn lift while on the rim (the drop starts from it)
+var _v_stumble_prev := 0.0
+var _v_stumble_len := 0.0
+var _v_fall := false              # the current stumble is an ankle-breaker
+var _v_getup_t := -1.0
+var _v_catch_t := 0.0
+var _v_had_ball := false
+var _v_ball_prev := -1            # the ball's state in the last drawn frame
+var _v_pass_kind := "pass_chest"
+var _v_celebrate_b := false
+var _v_texmem_frames := -1
+var _v_slide_hold := 0.0
+
+# the sheet ids to try, in today's order: team 0 his _crew recolor, his own sheet, then blue_n / red_n
+func sheet_ids() -> Array:
+	var out: Array = []
+	var sheet: String = str(pdata.get("sheet", ""))
+	if sheet != "":
+		if team == 0:
+			out.append(sheet + CREW_SHEET_SUFFIX)
+		out.append(sheet)
+	out.append("%s_%d" % ["blue" if team == 0 else "red", index + 1])
+	return out
+
+# the drawn height of the head above the feet (v1 80 px; v2 from format.json head_px x draw_scale, about 100)
+func view_head_px() -> float:
+	if _v_ver == 2:
+		return Sheets.head_px(_v_fmt) * Sheets.draw_scale(_v_fmt)
+	return HEAD_PX
+
+# how much taller this player is drawn than a v1 player (1.0 on v1; ball.gd scales its catch and reach heights)
+func view_head_scale() -> float:
+	return view_head_px() / HEAD_PX
+
+func _build_view_v2(sh: Dictionary) -> void:
+	_v_ver = 2
+	_v_sheet = true
+	_v_sheet_data = sh
+	_v_fmt = sh["fmt"]
+	_v_sheet_id = str(sh["id"])
+	_v_spr.texture = sh["texture"]
+	_v_spr.region_enabled = true
+	_v_spr.region_rect = Rect2(Vector2.ZERO, Sheets.frame_size(_v_fmt))
+	_v_spr.centered = false
+	_v_spr.offset = Vector2(-Sheets.center_x(_v_fmt), -Sheets.feet_y(_v_fmt))   # the floor point at the node's origin
+	var mat: ShaderMaterial = Sheets.material(sh)   # v2.1 indexed pages: drawn in this sheet's palette
+	if mat != null:
+		_v_spr.material = mat
+	if OS.get_cmdline_user_args().has(TEXMEM_FLAG) and team == 0 and index == 0:
+		_v_texmem_frames = 0
+
+# called by the handler's cross_beat_check right after this defender was beaten (drawing only)
+func view_crossed(by, d_ft: float) -> void:
+	if d_ft > ANKLE_BREAK_FT:
+		return
+	var h: int = absi(hash([by.team, by.index, team, index, game.shot_serial, int(game.score[0]), int(game.score[1])]))
+	if h % 100 >= ANKLE_BREAK_PCT:
+		return
+	_v_fall = true
+	_v_getup_t = -1.0
+	game.stat("ankle_breakers")
+
+# a pass left my hands: which throw it looks like (ball.gd picks it, so the ball flies the same way)
+func _v2_on_pass() -> void:
+	var ball = game.ball
+	var look: String = ball.pass_look() if ball.has_method("pass_look") else "chest"
+	_v_pass_kind = "pass_" + (look if look != "" else "chest")
+	_v_pass_t = _v2_time_from(_v_pass_kind, Sheets.anim_event(_v_fmt, _v_pass_kind, "release", 0))
+	game.stat("anim_" + _v_pass_kind)
+
+# seconds the frames from `k` to the end take (format.json ms)
+func _v2_time_from(anim: String, k: int) -> float:
+	var t := 0.0
+	var times: PackedFloat32Array = Sheets.anim_times(_v_fmt, anim)
+	for i in range(maxi(k, 0), times.size()):
+		t += times[i]
+	return t
+
+# a clock time -> frame position (frame + fraction) through the frame times; wraps or holds the last frame
+func _v2_clock_x(anim: String, t: float, loop: bool) -> float:
+	var times: PackedFloat32Array = Sheets.anim_times(_v_fmt, anim)
+	var total := 0.0
+	for d in times:
+		total += d
+	if total <= 0.0:
+		return 0.0
+	if loop:
+		t = fposmod(t, total)
+	elif t >= total:
+		return float(times.size()) - 0.001
+	t = maxf(t, 0.0)
+	for i in times.size():
+		if t < times[i]:
+			return float(i) + t / maxf(times[i], 0.0001)
+		t -= times[i]
+	return float(times.size()) - 0.001
+
+# a progress f -> frame position through [f, frame] anchors (f rising; frames rising)
+func _v2_anchor_x(anchors: Array, f: float) -> float:
+	if f <= float(anchors[0][0]):
+		return float(anchors[0][1])
+	for i in range(1, anchors.size()):
+		var a: Array = anchors[i - 1]
+		var b: Array = anchors[i]
+		if f <= float(b[0]):
+			var span: float = maxf(float(b[0]) - float(a[0]), 0.0001)
+			return lerpf(float(a[1]), float(b[1]), (f - float(a[0])) / span)
+	return float(anchors[anchors.size() - 1][1])
+
+# the dribble phase (0 = in the hand at the top, 0.5 = on the floor) -> frame position, so the drawn ball touches the
+# floor on the animation's "floor" frame exactly when the sim's dribble does
+func _v2_phase_x(anim: String, p: float) -> float:
+	var n: float = float(Sheets.anim_frames(_v_fmt, anim))
+	var fl: float = float(Sheets.anim_event(_v_fmt, anim, "floor", int(n / 2.0)))
+	if p < 0.5:
+		return p / 0.5 * fl
+	return fl + (p - 0.5) / 0.5 * (n - fl)
+
+# Q6: the dunk's look. Score chance is the sim's; this only picks the frames (a hash of the player and the play)
+func _v2_dunk_style() -> String:
+	if alley_oop:
+		return "dunk_alley"
+	var roll: int = absi(hash([team, index, pid, game.shot_serial, int(game.score[0]), int(game.score[1])])) % 100
+	var fast: bool = turbo or since_turbo < TURBO_DUNK_WINDOW
+	var great: bool = rating("finishing") >= WINDMILL_FINISH or str(pdata.get("tier", "")) == "boss"
+	if (fast or great) and roll < (WINDMILL_BOTH_PCT if fast and great else WINDMILL_PCT):
+		return "dunk_windmill"
+	if fast or velocity.length() >= TOMAHAWK_SPEED_FRAC * speed:
+		return "dunk_tomahawk" if roll % 2 == 0 else "dunk_one"
+	return "dunk_one" if roll % 3 == 0 else "dunk_two"
+
+# the direction a defensive slide faces (to the ball handler), or ZERO when he isn't sliding
+# (it holds on for SLIDE_HOLD after the angle stops qualifying, so it doesn't flicker with the run)
+func _v2_slide_face(spd: float, delta: float) -> Vector2:
+	_v_slide_hold = maxf(0.0, _v_slide_hold - delta)
+	if spd <= RUN_MIN_SPEED or spd > SLIDE_MAX_FRAC * speed or turbo or has_ball() or is_airborne():
+		_v_slide_hold = 0.0
+		return Vector2.ZERO
+	var ball = game.ball
+	if ball.state != ball.HELD or ball.holder == null or ball.holder.team == team:
+		_v_slide_hold = 0.0
+		return Vector2.ZERO
+	var to_h: Vector2 = ball.holder.position - position
+	if to_h.length() > SLIDE_RANGE_FT * game.FT or to_h.length() < 1.0:
+		_v_slide_hold = 0.0
+		return Vector2.ZERO
+	if absf(velocity.angle_to(to_h)) < deg_to_rad(SLIDE_MIN_DEG):
+		return to_h if _v_slide_hold > 0.0 else Vector2.ZERO
+	_v_slide_hold = SLIDE_HOLD
+	return to_h
+
+# the hands' height over the floor point in a frame, drawn (sim px of height)
+func _v2_hand_h(idx: int) -> float:
+	var hd: Dictionary = Sheets.hand(_v_fmt, _v_sheet_id, idx, false)
+	if hd.is_empty():
+		return DUNK_REACH_HEADS * view_head_px()
+	var top: float = minf((hd["L"] as Vector2).y, (hd["R"] as Vector2).y)
+	return (Sheets.feet_y(_v_fmt) - top) * Sheets.draw_scale(_v_fmt)
+
+func _v2_land(kind: String) -> void:
+	v_land_t = _v2_time_from("land", 0)
+	view_landed.emit(kind)
+
+# picks the v2 animation and frame (and the drawn lift) from the sim state
+func _update_sheet_frame_v2(delta: float) -> void:
+	var ball = game.ball
+	var fmt: Dictionary = _v_fmt
+	var spd: float = velocity.length()
+	var hb: bool = has_ball()
+	var air: bool = is_airborne()
+	# the direction row (as v1); a defensive slide faces the ball handler
+	var slide_to: Vector2 = _v2_slide_face(spd, delta)
+	var face: float = slide_to.angle() if slide_to != Vector2.ZERO else facing
+	var a: float = View.screen_angle(position, face)
+	var step := PI / 4.0
+	if _v_oct < 0 or absf(wrapf(a - float(_v_oct) * step, -PI, PI)) > step / 2.0 + deg_to_rad(DIR_HYST_DEG):
+		_v_oct = wrapi(roundi(a / step), 0, 8)
+	var row: int = OCT_ROW[_v_oct]
+	var flip: bool = OCT_FLIP[_v_oct]
+
+	# events seen from the sim: take-off, the slam, landing, the rim hang, a catch, stumbles
+	if air and not _v_was_air:
+		_v_air_kind = "block" if block_jump_t >= 0.0 else rim_kind
+		_v_slam = false
+		_v_rel_seen = false
+		_v_rim_t = -1.0
+		_v_drop_t = -1.0
+		v_land_t = 0.0
+		v_turbo_dunk = rim_kind == "dunk" and (turbo or since_turbo < TURBO_DUNK_WINDOW)
+		v_dunk_style = _v2_dunk_style() if rim_kind == "dunk" else ""
+		if v_dunk_style != "":
+			game.stat("anim_" + v_dunk_style)
+		view_takeoff.emit(_v_air_kind)
+	if rim_kind == "dunk" and jump_released and not _v_rel_seen:
+		_v_rel_seen = true
+		_v_slam = ball.state == ball.SHOT and ball.shooter == self and ball.shot_kind == "dunk" and ball.shot_made
+		view_dunk_slam.emit(v_dunk_style, BIG_DUNK_STYLES.has(v_dunk_style) or v_turbo_dunk)
+	if _v_was_air and not air:
+		if _v_air_kind == "dunk" and _v_slam and not hb:
+			_v_rim_t = RIM_HANG_TIME
+			_v_rim_spot = position
+			game.stat("anim_rim_hangs")
+		else:
+			_v2_land(_v_air_kind)
+	_v_was_air = air
+	if _v_rim_t >= 0.0:
+		_v_rim_t -= delta
+		if hb or air:
+			_v_rim_t = -1.0
+		elif _v_rim_t < 0.0 or position.distance_to(_v_rim_spot) > RIM_HANG_MAX_MOVE_FT * game.FT:
+			_v_rim_t = -1.0
+			_v_drop_t = DUNK_DROP_TIME
+	elif _v_drop_t >= 0.0:
+		_v_drop_t -= delta
+		if hb or air:
+			_v_drop_t = -1.0
+		elif _v_drop_t < 0.0:
+			_v2_land("dunk")
+	v_land_t = maxf(0.0, v_land_t - delta)
+	if hb and not _v_had_ball and not air and _v_ball_prev == ball.PASS:
+		_v_catch_t = _v2_time_from("catch", 0)
+	_v_had_ball = hb
+	_v_ball_prev = ball.state
+	_v_catch_t = maxf(0.0, _v_catch_t - delta) if hb else 0.0
+	if stumble_t > _v_stumble_prev:
+		_v_stumble_len = stumble_t
+	if _v_fall and stumble_t <= 0.0 and _v_stumble_prev > 0.0:
+		_v_getup_t = FALL_GETUP_TIME
+		game.stat("anim_falls")
+	_v_stumble_prev = stumble_t
+	if _v_getup_t >= 0.0:
+		_v_getup_t -= delta
+		if _v_getup_t < 0.0 or air or poke_t > 0.0:
+			_v_getup_t = -1.0
+			_v_fall = false
+	if _v_fall and stumble_t <= 0.0 and _v_getup_t < 0.0:
+		_v_fall = false
+
+	# the animation: x = frame position from a progress, or < 0 for the clock (x rate)
+	var anim := "idle"
+	var x := -1.0
+	var rate := 1.0
+	var loop := true
+	var start := 0.0              # clock-driven one-shots: seconds into the animation they start at
+	if rim_kind != "":
+		var f: float = clampf(jump_t / maxf(jump_time, 0.01), 0.0, 1.0)
+		if rim_kind == "dunk":
+			anim = Sheets.resolve(fmt, v_dunk_style if v_dunk_style != "" else "dunk_two")
+			var n: int = Sheets.anim_frames(fmt, anim)
+			var rel: int = Sheets.anim_event(fmt, anim, "release", n >> 1)
+			var rim: int = maxi(rel, Sheets.anim_event(fmt, anim, "rim", rel + 1))
+			var hang: int = clampi(Sheets.anim_event(fmt, anim, "hang", rel - 1), 0, rel)
+			var tk: int = clampi(Sheets.anim_event(fmt, anim, "takeoff", 0), 0, hang)
+			var hang_f: float = DUNK_HANG_F
+			var anchors: Array = [[0.0, tk]]
+			if alley_oop:
+				var cf: int = clampi(Sheets.anim_event(fmt, anim, "catch", hang), tk, hang)
+				anchors.append([ALLEY_CATCH_F, cf])
+				hang_f = (ALLEY_CATCH_F + DUNK_RELEASE) / 2.0
+			anchors.append([hang_f, hang])
+			anchors.append([DUNK_RELEASE, rel])
+			anchors.append([minf(1.0, DUNK_RELEASE + DUNK_RIM_REACH_F), rim])
+			anchors.append([1.0, float(rim) + 0.5])
+			x = _v2_anchor_x(anchors, f)
+		else:
+			anim = Sheets.resolve(fmt, "layup")
+			var n2: int = Sheets.anim_frames(fmt, anim)
+			var rel2: int = Sheets.anim_event(fmt, anim, "release", n2 >> 1)
+			var tk2: int = clampi(Sheets.anim_event(fmt, anim, "takeoff", 0), 0, rel2)
+			var ld: int = clampi(Sheets.anim_event(fmt, anim, "land", n2 - 1), rel2, n2 - 1)
+			x = _v2_anchor_x([[0.0, tk2], [LAYUP_RELEASE, rel2], [1.0, float(ld) - 0.001]], f)
+	elif block_jump_t >= 0.0:
+		anim = Sheets.resolve(fmt, "block")
+		var nb: int = Sheets.anim_frames(fmt, anim)
+		var sw: int = Sheets.anim_event(fmt, anim, "swat", nb >> 1)
+		var tkb: int = clampi(Sheets.anim_event(fmt, anim, "takeoff", 0), 0, sw)
+		# the swat frame at the top of the jump (block_height_frac's peak)
+		x = _v2_anchor_x([[0.0, tkb], [0.5, sw], [1.0, float(nb) - 0.001]], clampf(block_jump_t / BLOCK_JUMP_TIME, 0.0, 1.0))
+	elif fake_t > 0.0:
+		anim = Sheets.resolve(fmt, "shoot")
+		var top: int = mini(PUMP_TOP_FRAME, maxi(0, Sheets.anim_event(fmt, anim, "release", 1) - 1))
+		var g: float = clampf(1.0 - fake_t / PUMP_TIME, 0.0, 1.0)
+		x = (1.0 - absf(2.0 * g - 1.0)) * float(top)
+	elif shooting:
+		anim = Sheets.resolve(fmt, "shoot")   # jumper or free throw: gather and rise through the windup / meter
+		var fs := 0.0
+		if game.is_human(self):
+			fs = shot_charge
+		else:
+			fs = shot_elapsed / maxf(shot_elapsed + maxf(cpu_shot_time, 0.0), 0.01)
+		x = clampf(fs, 0.0, 0.999) * float(maxi(1, Sheets.anim_event(fmt, anim, "release", 3)))
+	elif _v_follow_t > 0.0:
+		anim = Sheets.resolve(fmt, "shoot")   # release, then the follow-through
+		var r0: int = Sheets.anim_event(fmt, anim, "release", 0)
+		var tot: float = _v2_time_from(anim, r0)
+		x = _v2_clock_x(anim, _v2_time_from(anim, 0) - minf(_v_follow_t, tot), false)
+	elif _v_rim_t >= 0.0 and not hb:
+		anim = Sheets.resolve(fmt, "rim_hang")
+		x = _v2_clock_x(anim, RIM_HANG_TIME - _v_rim_t, Sheets.anim_loops(fmt, anim))
+	elif _v_drop_t >= 0.0 and not hb:
+		anim = Sheets.resolve(fmt, v_dunk_style if v_dunk_style != "" else "dunk_two")
+		var nd: int = Sheets.anim_frames(fmt, anim)
+		var rimd: int = Sheets.anim_event(fmt, anim, "rim", nd - 2)
+		x = float(mini(rimd + 1, nd - 1))
+	elif poke_t > 0.0:
+		anim = "steal"
+		loop = false
+	elif _v_fall and (stumble_t > 0.0 or _v_getup_t >= 0.0):
+		anim = Sheets.resolve(fmt, "fall")   # ankle-breaker: down through the stumble, then up
+		var nf: int = Sheets.anim_frames(fmt, anim)
+		var gu: int = clampi(Sheets.anim_event(fmt, anim, "getup", nf - 1), 1, nf - 1)
+		if stumble_t > 0.0:
+			x = (1.0 - stumble_t / maxf(_v_stumble_len, 0.01)) * float(gu) * 0.999
+		else:
+			x = float(gu) + (1.0 - _v_getup_t / FALL_GETUP_TIME) * float(nf - gu) * 0.999
+	elif stumble_t > 0.0:
+		anim = Sheets.resolve(fmt, "stumble")
+		if Sheets.anim_fps(fmt, anim) > 0.0:
+			loop = Sheets.anim_loops(fmt, anim)
+		else:
+			x = (1.0 - stumble_t / maxf(_v_stumble_len, 0.01)) * float(Sheets.anim_frames(fmt, anim)) * 0.999
+	elif _v_pass_t > 0.0:
+		anim = _v_pass_kind
+		loop = false
+		start = _v2_time_from(anim, 0) - _v2_time_from(anim, Sheets.anim_event(fmt, anim, "release", 0))
+	elif v_land_t > 0.0:
+		anim = "land"
+		loop = false
+	elif (_v_celebrate_t > 0.0 and spd < CELEBRATE_MAX_SPEED) or _won_game():
+		anim = "celebrate_b" if _v_celebrate_b or _won_game() else "celebrate_a"
+	elif hb and at_free_throw():
+		anim = "hold"
+	elif hb:
+		if _v_catch_t > 0.0:
+			anim = "catch"
+			loop = false
+		elif cross_t > 0.0 or absf(hand_x) < 0.999:
+			# the crossover (or a slow switch of hands): "cross" ends in the left hand, "cross_l" in the right;
+			# a mirrored frame shows the other hand, so the mirrored version is the other one
+			anim = "cross_l" if (dribble_side > 0.0) != flip else "cross"
+			var pc: float = 1.0 - cross_t / CROSS_TIME if cross_t > 0.0 else (1.0 + hand_x * dribble_side) / 2.0
+			x = clampf(pc, 0.0, 0.999) * float(Sheets.anim_frames(fmt, Sheets.resolve(fmt, anim)))
+		else:
+			# locked to the sim's dribble: the ball is on the floor on the "floor" frame when the sim's bounce is
+			var was_run: bool = _v_anim.begins_with("run_dribble")
+			var frac: float = RUN_DRIBBLE_FRAC + (-RUN_DRIBBLE_HYST if was_run else RUN_DRIBBLE_HYST)
+			anim = "run_dribble" if spd > frac * speed else "dribble"
+			if (dribble_side < 0.0) != flip:
+				anim += "_l"
+			var p: float = ball.dribble_phase() if ball.has_method("dribble_phase") else 0.0
+			x = _v2_phase_x(Sheets.resolve(fmt, anim), p)
+	elif slide_to != Vector2.ZERO:
+		anim = "slide"   # drawn stepping to his left; played backwards for his right (mirrored: the other way)
+		var left := Vector2.from_angle(face - PI / 2.0)
+		var way: float = 1.0 if velocity.dot(left) >= 0.0 else -1.0
+		if flip:
+			way = -way
+		rate = way * maxf(V2_RUN_RATE_MIN, spd / maxf(SLIDE_FULL_FRAC * speed, 1.0))
+	elif spd > RUN_MIN_SPEED:
+		anim = "run"
+		rate = maxf(V2_RUN_RATE_MIN, spd / maxf(speed, 1.0))
+	var res: String = Sheets.resolve(fmt, anim)
+	if anim != _v_anim:
+		_v_anim = anim
+		_v_clock = start
+		if anim in ["slide", "steal", "catch", "land", "cross", "cross_l", "run_dribble", "run_dribble_l", "fall", "hold"]:
+			game.stat("anim_" + anim)
+	else:
+		_v_clock += delta * rate
+	if x < 0.0:
+		x = _v2_clock_x(res, _v_clock, loop and Sheets.anim_loops(fmt, res))
+	var n_frames: int = Sheets.anim_frames(fmt, res)
+	var k: int = floori(x)
+	v_frame_frac = clampf(x - float(k), 0.0, 1.0)
+	k = posmod(k, n_frames) if Sheets.anim_loops(fmt, res) else clampi(k, 0, n_frames - 1)
+	v_anim = res
+	v_flip = flip
+	v_frame = Sheets.frame_index(fmt, row, res, k)
+	v_next_frame = Sheets.frame_index(fmt, row, res, k + 1)
+	var reg: Dictionary = Sheets.frame_region(_v_sheet_data, v_frame)
+	if not reg.is_empty() and reg["texture"] != null:
+		_v_spr.texture = reg["texture"]
+		_v_spr.region_rect = reg["region"]
+	_v_spr.flip_h = flip
+	# crossover: lean into the cut, easing out over the burst (as v1)
+	var lean := 0.0
+	if cross_t > 0.0 and cross_dir.length() > 0.1:
+		var sx: float = (View.to_screen(position + cross_dir * game.FT) - View.to_screen(position)).x
+		lean = deg_to_rad(CROSS_LEAN_DEG) * signf(sx) * cross_t / CROSS_TIME
+	_v_spr.rotation = lean
+	_v_lift = _v2_lift(delta)
+
+# The drawn lift (Q7 a, visual only; the sim's jump_t, jump_z, DUNK_RELEASE and block windows are untouched). A dunk
+# rises to the hang frame with the hands over the rim, hangs there, slams on the release frame with the hands at the
+# rim, stays on the rim while the sim comes down and RIM_HANG_TIME after (a made dunk), then drops. Everything else
+# is the sim's jump_z.
+func _v2_lift(delta: float) -> float:
+	var rim_z: float = View.RIM_Z
+	if rim_kind == "dunk":
+		var f: float = clampf(jump_t / maxf(jump_time, 0.01), 0.0, 1.0)
+		var row_base: int = v_frame - posmod(v_frame, Sheets.cols(_v_fmt))
+		var st: int = int(((_v_fmt.get("anims", {}) as Dictionary).get(v_anim, {}) as Dictionary).get("start", 0))
+		var rel: int = Sheets.anim_event(_v_fmt, v_anim, "release", 0)
+		var hang: int = Sheets.anim_event(_v_fmt, v_anim, "hang", maxi(0, rel - 1))
+		var top: float = maxf(0.0, rim_z + DUNK_HANG_ABOVE - _v2_hand_h(row_base + st + hang))
+		var at_rel: float = maxf(0.0, rim_z + DUNK_RIM_GRIP - _v2_hand_h(row_base + st + rel))
+		var hang_f: float = (ALLEY_CATCH_F + DUNK_RELEASE) / 2.0 if alley_oop else DUNK_HANG_F
+		var lift := 0.0
+		if f < hang_f:
+			lift = top * sin(PI / 2.0 * f / hang_f)
+		elif f < DUNK_RELEASE:
+			lift = lerpf(top, at_rel, smoothstep(0.0, 1.0, (f - hang_f) / maxf(DUNK_RELEASE - hang_f, 0.01)))
+		elif _v_slam:
+			var hold: float = maxf(0.0, rim_z + DUNK_RIM_GRIP - _v2_hand_h(v_frame))
+			lift = lerpf(_v_lift, hold, 1.0 - exp(-LIFT_FOLLOW * delta))
+		else:
+			var q: float = (f - DUNK_RELEASE) / maxf(1.0 - DUNK_RELEASE, 0.01)   # missed or blocked: come down
+			lift = at_rel * (1.0 - q * q)
+		_v_hold_lift = lift
+		return lift
+	if _v_rim_t >= 0.0 and v_anim != "" and not has_ball():
+		var hold2: float = maxf(0.0, rim_z + DUNK_RIM_GRIP - _v2_hand_h(v_frame))
+		_v_hold_lift = lerpf(_v_hold_lift, hold2, 1.0 - exp(-LIFT_FOLLOW * delta))
+		return _v_hold_lift
+	if _v_drop_t >= 0.0 and not has_ball():
+		var p: float = 1.0 - clampf(_v_drop_t / DUNK_DROP_TIME, 0.0, 1.0)
+		return _v_hold_lift * (1.0 - p * p)
+	return jump_z
+
+# test only (-- --texmem, xvfb): the video memory once the game has drawn for a while
+func _v2_texmem() -> void:
+	if _v_texmem_frames < 0:
+		return
+	_v_texmem_frames += 1
+	if _v_texmem_frames == 120:
+		_v_texmem_frames = -1
+		var tex_mb: float = Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0
+		var vid_mb: float = Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0
+		var ids: Array = []
+		for p in game.players:
+			ids.append("%s(v%d%s)" % [p._v_sheet_id if p._v_ver == 2 else p.sheet_path().get_file().get_basename(),
+					p._v_ver, ",indexed" if bool(p._v_sheet_data.get("indexed", false)) else ""])
+		print("TEXMEM texture %.1f MB, video %.1f MB, players %s" % [tex_mb, vid_mb, ", ".join(ids)])

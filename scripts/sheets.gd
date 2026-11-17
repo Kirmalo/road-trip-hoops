@@ -28,7 +28,13 @@ extends RefCounted
 # Directions: rows 0..4 = S, SE, E, NE, N; SW, W and NW are SE, E and NE mirrored (x' = width - 1 - x, L and R swap).
 # Animation names are the board's "Animation table". A sheet without one gets the nearest it has (ALIASES), e.g. on a
 # v1 sheet run_dribble -> dribble, slide -> run, dunk_* -> dunk, pass_* -> pass, fall -> stumble, land -> idle.
+# v2.1 (board "v2.1: indexed pages + palettes"): format.json "indexed": true. Pages are 8-bit grayscale (L8), the gray
+#      value a palette index (0 = transparent); palettes/<id>.png (256 x 1 RGBA) per sheet AND per recolor. A recolor
+#      (<sheet>_crew) has only a palette and draws its base sheet's pages (palettes.json or format.json "recolors":
+#      {"<recolor>": "<base>"}, else the plain id before _crew). load_sheet() then has "indexed": true and "palette";
+#      the player draws it through material(sheet) (scripts/shaders/palette.gdshader). Cards stay RGBA files.
 # Test: Sheets.self_test() (prints SHEETS lines, ends with SHEETS OK / FAILED); it builds a v2 sheet in user://.
+# Test flag: -- --players2-dir DIR reads the v2 files from DIR (res://, user:// or an absolute path) instead.
 
 const V1_DIR := "res://assets/players/"
 const V2_DIR := "res://assets/players2/"
@@ -39,6 +45,12 @@ const CREW_SUFFIX := "_crew"          # a city player's recolor in your colors (
 const PAGE_SUFFIX := "_p"             # v2 page files: <sheet>_p0.png, <sheet>_p1.png ...
 const MAX_TEXTURE := 2048             # px: no page may be wider or taller (GLES3 / WebGL2 minimum)
 const DIR_NAMES := ["S", "SE", "E", "NE", "N"]
+const PALETTE_SUBDIR := "palettes/"   # v2.1: palettes/<sheet>.png, 256 x 1 RGBA (index 0 transparent)
+const PALETTES_FILE := "palettes.json"  # v2.1 (optional): {"<recolor>": "<base sheet>"} (or {"recolors": {...}})
+const PALETTE_SIZE := 256
+const PALETTE_SHADER := "res://scripts/shaders/palette.gdshader"
+const DIR_FLAG := "--players2-dir"    # test flag: read the v2 files from another folder
+const GRAY_SAMPLES := 48              # an index page imported as RGB: this x this pixels checked to be gray
 
 # today's v1 sheet (player.gd SHEET_FRAME, SHEET_COLS, SHEET_FEET_Y, ANIMS and the *_FPS constants). fps 0 = the
 # frame comes from a progress (jump, shot meter), not a clock.
@@ -67,6 +79,11 @@ const ALIASES := {
 	"run_dribble": ["rundribble", "dribble"],
 	"rundribble": ["run_dribble", "dribble"],
 	"cross": ["dribble"],
+	# *_l = the left-hand versions (mirrored in the body); a sheet without them uses the right-hand one
+	"dribble_l": ["dribble"],
+	"run_dribble_l": ["run_dribble", "rundribble", "dribble"],
+	"cross_l": ["cross", "dribble"],
+	"dunk_alley": ["dunk_two", "dunk"],
 	"hold": ["idle"],
 	"catch": ["dribble", "idle"],
 	"slide": ["run"],
@@ -96,11 +113,17 @@ static var _hands2 = null             # v2 hands.json; {} when missing
 static var _sheets := {}              # sheet id -> load_sheet() result ({} = no sheet of either format)
 static var _cards := {}               # sheet id -> card_info() result
 static var _ranges := {}              # fmt version -> [[start, end, anim], ...] (hand() lookups)
+static var _recolors = null           # v2.1: recolor id -> base sheet id (palettes.json / format.json "recolors")
+static var _materials := {}           # v2.1: palette texture -> ShaderMaterial (players with one sheet share it)
+static var _shader: Shader = null
+static var _dir_checked := false      # the --players2-dir flag was read
+static var _warned_rgb := false
 
 # ---------------- formats ----------------
 
 # the v2 format from format.json ({} when there is none or it is not a usable v2 format)
 static func v2_format() -> Dictionary:
+	_check_dir()
 	if _fmt2 == null:
 		_fmt2 = {}
 		var d = _read_json(v2_dir + FORMAT_FILE)
@@ -109,6 +132,17 @@ static func v2_format() -> Dictionary:
 		elif d != null:
 			push_warning("Sheets: %s%s is not a usable v2 format" % [v2_dir, FORMAT_FILE])
 	return _fmt2
+
+# the --players2-dir test flag (read once)
+static func _check_dir() -> void:
+	if _dir_checked:
+		return
+	_dir_checked = true
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var i: int = args.find(DIR_FLAG)
+	if i >= 0 and i + 1 < args.size():
+		v2_dir = args[i + 1].trim_suffix("/") + "/"
+		print("SHEETS v2 files from %s" % v2_dir)
 
 static func v1_format() -> Dictionary:
 	return V1_FORMAT
@@ -157,6 +191,10 @@ static func page_count(fmt: Dictionary) -> int:
 static func dir_rows(fmt: Dictionary) -> int:
 	return (fmt.get("dirs", DIR_NAMES) as Array).size()
 
+# v2.1: the pages are palette indexes (draw them through material())
+static func indexed(fmt: Dictionary) -> bool:
+	return bool(fmt.get("indexed", false))
+
 # ---------------- animations ----------------
 
 # the animation this format really plays for `anim` (itself, else the nearest in ALIASES, else "idle"; "" if none)
@@ -188,6 +226,30 @@ static func anim_fps(fmt: Dictionary, anim: String) -> float:
 
 static func anim_loops(fmt: Dictionary, anim: String) -> bool:
 	return bool(_anim(fmt, anim).get("loop", false))
+
+# an event frame of an animation (format.json, e.g. "release", "floor", "swat"), or `default` when it has none.
+# A [first, last] range gives its first frame.
+static func anim_event(fmt: Dictionary, anim: String, key: String, default: int = -1) -> int:
+	var v = _anim(fmt, anim).get(key, null)
+	if v is Array:
+		return int(v[0]) if (v as Array).size() > 0 else default
+	if v == null or not (v is float or v is int):
+		return default
+	return int(v)
+
+# the drawn time of each frame in seconds (format.json "ms"; else 1 / fps; else 0.1 s)
+static func anim_times(fmt: Dictionary, anim: String) -> PackedFloat32Array:
+	var a: Dictionary = _anim(fmt, anim)
+	var n: int = maxi(1, int(a.get("frames", 1)))
+	var out := PackedFloat32Array()
+	var ms = a.get("ms", null)
+	var fps: float = float(a.get("fps", 0.0))
+	for k in n:
+		var t: float = 1.0 / fps if fps > 0.0 else 0.1
+		if ms is Array and k < (ms as Array).size() and float(ms[k]) > 0.0:
+			t = float(ms[k]) / 1000.0
+		out.append(t)
+	return out
 
 # The frame index (dir_row * cols + column) of frame k of an animation, facing dir_row (0..4 = S, SE, E, NE, N).
 # k wraps for a looping animation and is clamped for a one-shot. Feed it to frame_region() / hand().
@@ -237,6 +299,74 @@ static func _load_v2(sheet_id: String) -> Dictionary:
 	var fmt: Dictionary = v2_format()
 	if fmt.is_empty():
 		return {}
+	if indexed(fmt):
+		return _load_indexed(fmt, sheet_id)
+	var pages: Array = _v2_pages(fmt, sheet_id)
+	if pages.is_empty():
+		return {}
+	return {"id": sheet_id, "version": 2, "fmt": fmt, "texture": pages[0], "pages": pages}
+
+# v2.1: the palette of this id, drawn on its own pages or (a recolor) on its base sheet's pages
+static func _load_indexed(fmt: Dictionary, sheet_id: String) -> Dictionary:
+	var pal: Texture2D = _texture(v2_dir + PALETTE_SUBDIR + sheet_id + ".png")
+	if pal == null:
+		return {}
+	if int(pal.get_width()) != PALETTE_SIZE or int(pal.get_height()) < 1:
+		push_warning("Sheets: palette %s is %dx%d, want %dx1" % [sheet_id, pal.get_width(), pal.get_height(), PALETTE_SIZE])
+		return {}
+	var base: String = pages_id(sheet_id)
+	var pages: Array = _v2_pages(fmt, base)
+	if pages.is_empty() and base != sheet_id:
+		pages = _v2_pages(fmt, sheet_id)
+		base = sheet_id
+	if pages.is_empty():
+		return {}
+	var img: Image = (pages[0] as Texture2D).get_image()
+	if img != null and not [Image.FORMAT_L8, Image.FORMAT_R8].has(img.get_format()):
+		# Godot's default lossless import stores a grayscale PNG as WebP, which comes back as RGB: it still draws right
+		# (the shader reads the red channel) but takes 3-4x the video memory. A color page is refused.
+		if not _gray_image(img):
+			push_warning("Sheets: %s pages are not index images (format %d)" % [base, img.get_format()])
+			return {}
+		if not _warned_rgb:
+			_warned_rgb = true
+			push_warning("Sheets: %s index pages were imported as format %d, not L8 (3-4x the video memory): set the project's rendering/textures/lossless_compression/force_png = true" % [base, img.get_format()])
+	return {"id": sheet_id, "version": 2, "fmt": fmt, "texture": pages[0], "pages": pages, "indexed": true,
+		"palette": pal, "pages_id": base}
+
+# an image whose pixels are all gray (r = g = b), checked on a grid of samples: an index page stored as RGB
+static func _gray_image(img: Image) -> bool:
+	if img.is_compressed():
+		return false
+	var w: int = img.get_width()
+	var h: int = img.get_height()
+	for gy in GRAY_SAMPLES:
+		for gx in GRAY_SAMPLES:
+			var c: Color = img.get_pixel(int((float(gx) + 0.5) * float(w) / float(GRAY_SAMPLES)),
+					int((float(gy) + 0.5) * float(h) / float(GRAY_SAMPLES)))
+			if not is_equal_approx(c.r, c.g) or not is_equal_approx(c.g, c.b):
+				return false
+	return true
+
+# v2.1: whose pages an id draws (a recolor -> its base sheet; anyone else -> himself)
+static func pages_id(sheet_id: String) -> String:
+	if _recolors == null:
+		_recolors = {}
+		var src = (v2_format() as Dictionary).get("recolors", null)
+		var d = _read_json(v2_dir + PALETTES_FILE)
+		if d is Dictionary:
+			src = (d as Dictionary).get("recolors", d)
+		if src is Dictionary:
+			for k in src:
+				if src[k] is String:
+					_recolors[str(k)] = str(src[k])
+	if (_recolors as Dictionary).has(sheet_id):
+		return str(_recolors[sheet_id])
+	var ids: Array = with_base(sheet_id)
+	return str(ids[ids.size() - 1])
+
+# the v2 pages of one sheet id ([] when any is missing or of the wrong size)
+static func _v2_pages(fmt: Dictionary, sheet_id: String) -> Array:
 	var n: int = page_count(fmt)
 	var fs: Vector2 = frame_size(fmt)
 	var h: int = int(fs.y) * dir_rows(fmt)
@@ -251,14 +381,33 @@ static func _load_v2(sheet_id: String) -> Dictionary:
 			if tex != null:
 				break
 		if tex == null:
-			return {}
+			return []
 		var want_w: int = mini(page_cols(fmt), cols(fmt) - p * page_cols(fmt)) * int(fs.x)
 		var sz: Vector2 = tex.get_size()
 		if int(sz.y) != h or int(sz.x) < want_w or sz.x > MAX_TEXTURE or sz.y > MAX_TEXTURE:
 			push_warning("Sheets: %s page %d is %dx%d, want %dx%d" % [sheet_id, p, int(sz.x), int(sz.y), want_w, h])
-			return {}
+			return []
 		pages.append(tex)
-	return {"id": sheet_id, "version": 2, "fmt": fmt, "texture": pages[0], "pages": pages}
+	return pages
+
+# v2.1: the material that draws an indexed sheet in its palette (one per palette, shared by everyone wearing it; the
+# sprite's flip and modulate still work). null for an RGBA sheet (draw it without a material).
+static func material(sheet: Dictionary) -> ShaderMaterial:
+	if not bool(sheet.get("indexed", false)) or sheet.get("palette", null) == null:
+		return null
+	var pal: Texture2D = sheet["palette"]
+	var key: String = str(pal.get_instance_id())
+	if _materials.has(key):
+		return _materials[key]
+	if _shader == null:
+		_shader = load(PALETTE_SHADER) as Shader
+	if _shader == null:
+		return null
+	var m := ShaderMaterial.new()
+	m.shader = _shader
+	m.set_shader_parameter("palette", pal)
+	_materials[key] = m
+	return m
 
 static func _load_v1(sheet_id: String) -> Dictionary:
 	var tex: Texture2D = _texture(V1_DIR + sheet_id + ".png")
@@ -417,13 +566,38 @@ static func card_info(sheet_id: String) -> Dictionary:
 		if not s.is_empty():
 			var f: Dictionary = s["fmt"]
 			var reg: Dictionary = frame_region(s, frame_index(f, 0, "idle", 0))
-			var at := AtlasTexture.new()
-			at.atlas = reg["texture"]
-			at.region = reg["region"]
-			out = {"id": sheet_id, "texture": at, "frame": frame_size(f), "version": int(s["version"]),
-				"feet": Vector2(center_x(f), feet_y(f)), "head_px": head_px(f)}
+			var tex: Texture2D = null
+			if bool(s.get("indexed", false)):
+				tex = _paint_indexed(reg["texture"], reg["region"], s["palette"])   # screens draw no shader
+			else:
+				var at := AtlasTexture.new()
+				at.atlas = reg["texture"]
+				at.region = reg["region"]
+				tex = at
+			if tex != null:
+				out = {"id": sheet_id, "texture": tex, "frame": frame_size(f), "version": int(s["version"]),
+					"feet": Vector2(center_x(f), feet_y(f)), "head_px": head_px(f)}
 	_cards[sheet_id] = out
 	return out
+
+# v2.1: one frame of an index page painted in its palette, as an RGBA texture (the card of an indexed sheet without a
+# card file). null if the images can't be read.
+static func _paint_indexed(page: Texture2D, region: Rect2, palette: Texture2D) -> Texture2D:
+	var src: Image = page.get_image() if page != null else null
+	var pal: Image = palette.get_image() if palette != null else null
+	if src == null or pal == null or src.is_compressed() or pal.is_compressed():
+		return null
+	var w: int = int(region.size.x)
+	var h: int = int(region.size.y)
+	var out := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	var ox: int = int(region.position.x)
+	var oy: int = int(region.position.y)
+	for y in h:
+		for x in w:
+			var idx: int = int(round(src.get_pixel(ox + x, oy + y).r * 255.0))
+			if idx > 0:
+				out.set_pixel(x, y, pal.get_pixel(mini(idx, pal.get_width() - 1), 0))
+	return ImageTexture.create_from_image(out)
 
 # the first of these ids with a card ({} if none), e.g. Sheets.card_first(Sheets.with_base(sheet) + ["red_1"])
 static func card_first(ids: Array) -> Dictionary:
@@ -452,7 +626,7 @@ static func card_rect(info: Dictionary, v1_pos: Vector2, v1_scale: float) -> Rec
 static func _texture(path: String) -> Texture2D:
 	if ResourceLoader.exists(path):
 		return load(path) as Texture2D
-	if path.begins_with("user://") and FileAccess.file_exists(path):
+	if (path.begins_with("user://") or path.begins_with("/")) and FileAccess.file_exists(path):
 		var img: Image = Image.load_from_file(path)
 		if img != null and not img.is_empty():
 			return ImageTexture.create_from_image(img)
@@ -476,6 +650,8 @@ static func clear_cache() -> void:
 	_sheets = {}
 	_cards = {}
 	_ranges = {}
+	_recolors = null
+	_materials = {}
 
 # ---------------- test ----------------
 
@@ -487,6 +663,7 @@ const SAMPLE_ANIM_NAMES := {"run": "run", "rundribble": "run_dribble", "dribble"
 # in user://sheets_test/ and checks frames, pages, aliases, hands, mirroring, cards and the fallback chain.
 static func self_test() -> bool:
 	var ok := true
+	_check_dir()
 	var real_v2: String = v2_dir
 	v2_dir = TEST_DIR + "no_v2/"   # the v1 checks see only v1 sheets, even where a v2 sheet exists
 	clear_cache()
@@ -531,6 +708,7 @@ static func self_test() -> bool:
 			and str(card_first(with_base("no_such_crew") + ["blue_1"]).get("id", "")) == "blue_1", "fallback chain") and ok
 	# v2: a built test sheet
 	ok = _v2_test() and ok
+	ok = _indexed_test() and ok
 	v2_dir = real_v2
 	clear_cache()
 	print("SHEETS %s" % ("OK" if ok else "FAILED"))
@@ -612,6 +790,58 @@ static func _v2_test() -> bool:
 		DirAccess.remove_absolute(TEST_DIR + CARD_SUBDIR + fn)
 	for fn in DirAccess.get_files_at(TEST_DIR):
 		DirAccess.remove_absolute(TEST_DIR + fn)
+	return ok
+
+# v2.1: an indexed one-page sheet with its palette and a recolor palette that draws the same pages
+static func _indexed_test() -> bool:
+	var ok := true
+	var dir: String = TEST_DIR + "idx/"
+	DirAccess.make_dir_recursive_absolute(dir + PALETTE_SUBDIR)
+	v2_dir = dir
+	var fmt := {"version": 2, "indexed": true, "frame": [64, 96], "feet_row": 88, "center_x": 32, "head_px": 50,
+		"draw_scale": 2.0, "dirs": DIR_NAMES, "cols": 8, "page_cols": 32,
+		"anims": {"idle": {"start": 0, "frames": 6, "fps": 6, "loop": true, "ms": [100, 200, 100, 100, 100, 100]},
+			"dribble": {"start": 6, "frames": 2, "fps": 10, "loop": true, "floor": 1}}}
+	_write_text(dir + FORMAT_FILE, JSON.stringify(fmt))
+	var page := Image.create(8 * 64, 5 * 96, false, Image.FORMAT_L8)
+	page.set_pixel(32, 50, Color8(5, 5, 5))
+	page.save_png(dir + "test_ix_p0.png")
+	var rgba := Image.create(8 * 64, 5 * 96, false, Image.FORMAT_RGBA8)
+	rgba.fill(Color(0.8, 0.2, 0.1, 1.0))
+	rgba.save_png(dir + "test_rgba_p0.png")   # flagged indexed but a color page: refused
+	var gray := Image.create(8 * 64, 5 * 96, false, Image.FORMAT_RGB8)
+	gray.set_pixel(32, 50, Color8(5, 5, 5))
+	gray.save_png(dir + "test_gray_p0.png")   # an index page stored as RGB (Godot's WebP import): drawn, with a warning
+	for pal_id in ["test_ix", "test_ix_crew", "test_rgba", "test_gray"]:
+		var pal := Image.create(PALETTE_SIZE, 1, false, Image.FORMAT_RGBA8)
+		pal.set_pixel(5, 0, Color(0, 0, 1, 1) if pal_id == "test_ix_crew" else Color(1, 0, 0, 1))
+		pal.save_png(dir + PALETTE_SUBDIR + pal_id + ".png")
+	clear_cache()
+	var s: Dictionary = load_sheet("test_ix")
+	var sc: Dictionary = load_sheet("test_ix_crew")
+	ok = _t(bool(s.get("indexed", false)) and s.get("palette", null) is Texture2D and (s.get("pages", []) as Array).size() == 1,
+			"v2.1 indexed sheet + palette") and ok
+	ok = _t(str(sc.get("pages_id", "")) == "test_ix" and bool(sc.get("indexed", false)), "v2.1 recolor = a palette on the base pages") and ok
+	var m: ShaderMaterial = material(s)
+	ok = _t(m != null and m == material(s) and material(sc) != m and m.get_shader_parameter("palette") == s["palette"]
+			and material(load_sheet("ud_deuce")) == null, "v2.1 one material per palette, none for RGBA") and ok
+	ok = _t(load_sheet("test_rgba").is_empty() and load_sheet("test_ix_nopal").is_empty(), "v2.1 color page or no palette is refused") and ok
+	ok = _t(bool(load_sheet("test_gray").get("indexed", false)), "v2.1 index page stored as gray RGB still loads") and ok
+	var c1: Texture2D = card("test_ix")
+	var c2: Texture2D = card("test_ix_crew")
+	var px1: Color = c1.get_image().get_pixel(32, 50) if c1 != null else Color.BLACK
+	var px2: Color = c2.get_image().get_pixel(32, 50) if c2 != null else Color.BLACK
+	var px0: Color = c1.get_image().get_pixel(10, 10) if c1 != null else Color.WHITE
+	ok = _t(px1.is_equal_approx(Color(1, 0, 0, 1)) and px2.is_equal_approx(Color(0, 0, 1, 1)) and px0.a == 0.0,
+			"v2.1 card painted in its palette (index 0 clear)") and ok
+	var tt: PackedFloat32Array = anim_times(fmt, "idle")
+	ok = _t(tt.size() == 6 and is_equal_approx(tt[1], 0.2) and is_equal_approx(anim_times(fmt, "dribble")[0], 0.1)
+			and anim_event(fmt, "dribble", "floor") == 1 and anim_event(fmt, "idle", "floor", -7) == -7
+			and resolve(fmt, "dribble_l") == "dribble" and resolve(fmt, "dunk_alley") == "idle", "v2 times, events, *_l aliases") and ok
+	for fn in DirAccess.get_files_at(dir + PALETTE_SUBDIR):
+		DirAccess.remove_absolute(dir + PALETTE_SUBDIR + fn)
+	for fn in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir + fn)
 	return ok
 
 static func _write_text(path: String, text: String) -> void:
