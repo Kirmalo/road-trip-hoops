@@ -337,6 +337,12 @@ func _ready() -> void:
 		set_process(false)
 		get_tree().quit()
 		return
+	if OS.get_cmdline_user_args().has("--startest"):
+		var ok_s: bool = load("res://scripts/stars.gd").self_test()   # test only: the star store and ladder (P8-02)
+		set_physics_process(false)
+		set_process(false)
+		get_tree().quit(0 if ok_s else 1)
+		return
 	if OS.get_cmdline_user_args().has("--twisttest"):
 		var ok_t: bool = Twists.self_test()   # test only: the twist table's defaults (P6-01)
 		set_physics_process(false)
