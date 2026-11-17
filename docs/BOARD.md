@@ -487,6 +487,23 @@ Coordinator: Android back = pause/BACK, quits only on the title; APK keeps 32- a
   | coordinator | (no repo files besides the summary) | the owner has the ZIP, the APK (or the steps to export
   it), `UPLOAD.md`, the page text and the images | P7-40, P7-41 | Q4, Q5
 
+### Bugs from P7-40 (details in `docs/qa/phase7.md`)
+- **P7-B1** | Web: the confirming second tap on the pause panel's QUIT? / RESTART? is sometimes ignored (intermittent).
+  - Build: release ZIP of `3cf6c7d`, served locally, Playwright Chromium 1280x720 (SwiftShader), touch through CDP
+    `Input.dispatchTouchEvent`, also seen with `page.mouse.click`.
+  - Steps: Quick Game, NORMAL; after ~4 s tap the pause button (top-right); ~1 s later tap QUIT (it turns gold,
+    "QUIT?"); 0.4-1.5 s later tap QUIT again.
+  - Expected: back to the title (Quick Game) or the map (trip).
+  - Actual: in 7 of 20 tries the second tap did nothing; "QUIT?" stayed until CONFIRM_TIME (2.5 s) ran out and it went
+    back to "QUIT". RESTART behaved the same once. A third tap after that worked; tapping another button (MUSIC) in
+    between also worked. A loop of 8 tries without a screenshot between the taps passed 8/8; 3/4 passed with a
+    screenshot between them; the phone viewport (Pixel 7 landscape) passed 1/1; native xvfb (touch and mouse through
+    `Input.parse_input_event`) passed 2/2. So it may be a harness effect (SwiftShader stalls during screenshots), but
+    it was not proven either way.
+  - Impact: low (tap again and it works; nothing is lost). Check on the tablet (checklist in `docs/qa/phase7.md`).
+  | gameplay | `scripts/pause.gd` (investigate only first) | the owner's tablet and a real Chromium both quit on the
+  second tap every time, or the cause is found and fixed | - | none
+
 ## Doing
 
 ## Review
