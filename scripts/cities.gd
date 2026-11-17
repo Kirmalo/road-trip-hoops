@@ -487,10 +487,12 @@ static func game_target(city_id: String, n: int) -> int:
 	return int(t[clampi(n - 1, 0, t.size() - 1)])
 
 # the sheet id a player wears: <sheet>_crew in your colors when a recruit plays for you (Q11 a)
+# his sheet; for_your_crew: anyone but your 3 starting underdogs (a recruit or a drafted player, P8-05) wears
+# <sheet>_crew, your blue and gold (Sheets falls back to the plain sheet if that recolor is missing)
 static func crew_sheet(id: String, for_your_crew: bool) -> String:
 	var p: Dictionary = player(id)
 	var s: String = p.get("sheet", id)
-	if for_your_crew and p.get("recruitable", false):
+	if for_your_crew and str(p.get("tier", "")) != "start" and not p.is_empty():
 		return s + "_crew"
 	return s
 
