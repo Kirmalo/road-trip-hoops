@@ -64,10 +64,13 @@ const SIDE_ARROW_LEFT := "<<"
 # doesn't move up and down), and it stays on the same sideline at the side switch (Q2 a, View.SIDE_FLIP false).
 # View.TILT_Y 0.48 makes the court 288 px deep; with zoom 1.68 the 1280x720 screen shows 762 px = 63.5 ft (68% of the
 # court length) and 429 px of height: HUD bar 32 + far players' heads 84 + court 288 + near margin 24 = 428.
-# v2 sheets (heads about 100 px, P6-26) need 104 over the far sideline: 1280x720 then zooms out to about 1.59.
-# 1280x800 (stretch expand) shows more height: the framing grows evenly and the court stays centered.
+# v2 sheets (heads about 100 px, P6-26) need 104 over the far sideline (frame 448 px): 1280x720 zoomed out to 1.60.
+# P6-T1 (owner: closer again): zoom 1.72 shows 744 px (62 ft) and 419 px of height, 29 px short of the frame, so
+# the camera slides those 29 px up and down with the ball's depth (CAM_DEPTH_SLACK_FT). A far player's head reaches
+# under the (translucent) HUD bar only while the ball is at the near sideline. 1280x800 (stretch expand) fits the
+# whole frame at 1.72: no slide, the framing grows evenly and the court stays centered.
 const CAM_ZOOM_FLAT := 1.15          # FLAT: the old zoom
-const CAM_ZOOM := 1.68               # ANGLED zoom (at most; a screen too short for both sidelines zooms out to fit)
+const CAM_ZOOM := 1.72               # ANGLED zoom (at most; P6-T1: a bit closer than Phase 5's 1.68 at 1280x720)
 const CAM_ZOOM_MIN := 1.2            # ANGLED: never zoom out further than this to fit (then it follows up and down)
 const CAM_SMOOTHING := 4.0           # Camera2D position smoothing speed (both modes, as today)
 const CAM_FOLLOW_X := 1.0            # ANGLED: 1 = the camera follows the ball left/right, 0 = stays at half court
@@ -77,7 +80,11 @@ const CAM_MARGIN_FT := 2.0           # ANGLED: room past the baselines and the n
 const CAM_TOP_FT := 7.0              # ANGLED: room above the far sideline for the players standing on it (feet, height),
                                      # at least: taller sheets (v2) raise it to their head plus CAM_TOP_PAD_PX (P6-26)
 const CAM_TOP_PAD_PX := 4.0          # ANGLED: room over the tallest far head (sim px of height), under the HUD bar
-                                     # (v1: 80 + 4 = CAM_TOP_FT exactly; v2 about 104, so the zoom is ~1.59, not 1.68)
+                                     # (v1: 80 + 4 = CAM_TOP_FT exactly; v2 about 104)
+const CAM_DEPTH_SLACK_FT := 3.0      # ANGLED (P6-T1): how much of the framed height (far heads + court + near margin,
+                                     # feet of floor) the screen may lack before zooming out; the camera then slides up
+                                     # and down over that bit with the ball's depth (far heads in view when the ball is
+                                     # far, the near margin when it is near). 1280x720: zoom 1.72 and ~29 px of slide
 const CAM_HUD_PX := 54.0             # the HUD top bar (screen px): the far sideline stays below it
 const FPS_PRINT_EVERY := 5.0         # -- --fps: seconds between "FPS n" lines
 
@@ -1458,7 +1465,8 @@ func _cam_top_room() -> float:
 
 # FLAT: the camera sits on the ball (as before). ANGLED: it follows the ball's projected floor point left and right
 # (CAM_FOLLOW_X) at a fixed depth (CAM_FOLLOW_Y), inside limits from the projected court corners plus margins. The
-# zoom is CAM_ZOOM, or less if the screen is too short to show the HUD bar, the far heads and the whole court depth.
+# zoom is CAM_ZOOM, or less if the screen is too short to show the HUD bar, the far heads and the whole court depth
+# (less CAM_DEPTH_SLACK_FT, which the camera covers by sliding with the ball's depth).
 func _update_camera() -> void:
 	View.flipped = View.SIDE_FLIP and rules.sides_swapped
 	var target: Vector2 = View.to_screen(ball.position, 0.0)
@@ -1476,7 +1484,8 @@ func _update_camera() -> void:
 	var screen: Vector2 = get_viewport_rect().size
 	var top_room: float = _cam_top_room()
 	var need_y: float = hi.y - lo.y + top_room + CAM_MARGIN_FT * FT
-	var zm: float = clampf((screen.y - CAM_HUD_PX) / need_y, CAM_ZOOM_MIN, CAM_ZOOM)
+	var fit_y: float = maxf(need_y - CAM_DEPTH_SLACK_FT * FT, 1.0)
+	var zm: float = clampf((screen.y - CAM_HUD_PX) / fit_y, CAM_ZOOM_MIN, CAM_ZOOM)
 	camera.zoom = Vector2(zm, zm)
 	var vis: Vector2 = screen / Vector2(zm, zm)
 	var left: float = lo.x - CAM_MARGIN_FT * FT
@@ -1484,9 +1493,12 @@ func _update_camera() -> void:
 	var top: float = lo.y - top_room - CAM_HUD_PX / zm
 	var bottom: float = hi.y + CAM_MARGIN_FT * FT
 	var mid := Vector2((left + right) / 2.0, (top + bottom) / 2.0)
-	var follow_y: float = CAM_FOLLOW_Y
+	var cam_y: float = lerpf(mid.y, target.y, CAM_FOLLOW_Y)
 	if bottom - top > vis.y:
-		follow_y = 1.0   # the screen can't show both sidelines: follow the ball up and down instead
+		# the screen can't show the whole frame: slide over the part it lacks with the ball's depth (far sideline =
+		# frame top in view, near sideline = frame bottom), so a far head nears the HUD bar only when play is near
+		var depth: float = clampf((target.y - lo.y) / maxf(hi.y - lo.y, 1.0), 0.0, 1.0)
+		cam_y = lerpf(top + vis.y / 2.0, bottom - vis.y / 2.0, depth)
 	# a screen bigger than the framed area: grow the limits evenly, so the court stays centered
 	if right - left < vis.x:
 		left = mid.x - vis.x / 2.0
@@ -1498,7 +1510,7 @@ func _update_camera() -> void:
 	camera.limit_right = int(ceilf(right))
 	camera.limit_top = int(floorf(top))
 	camera.limit_bottom = int(ceilf(bottom))
-	camera.position = Vector2(lerpf(mid.x, target.x, CAM_FOLLOW_X), lerpf(mid.y, target.y, follow_y))
+	camera.position = Vector2(lerpf(mid.x, target.x, CAM_FOLLOW_X), cam_y)
 	camera.zoom = Vector2(zm, zm) * _zoom_punch()   # the limits above use the zoom without the punch
 
 func _process(delta: float) -> void:
