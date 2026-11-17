@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """Player sprite sheets for Road Trip Hoops (original art, generated; no downloaded assets).
 
+RETIRED (P6-25): these are the v1 sheets (40 x 64 frames). Every player now has a v2 sheet from
+tools/art/make_players_v2.py (assets/players2/), and the v1 outputs below (assets/players/*.png and
+assets/players/hands.json) were removed from the project. The game no longer ships or expects them: scripts/sheets.gd
+still reads a v1 sheet if one is put back, and player.gd falls back to the Kenney sprites (assets/blue_n.png,
+red_n.png) when a player has no sheet at all. This script stays as a tool (its parts and renderer are shared with
+make_players_v2.py and make_anim_sample.py); running it writes the v1 files again, which are not needed and should
+not be committed.
+
 Reads the players' parts from tools/art/crews.json and renders each one with the style-sample renderer
 (tools/art/pixel3d.py) into one sheet per player, in the layout fixed on docs/BOARD.md:
 

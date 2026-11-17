@@ -42,7 +42,8 @@ const HINT_FLASH := 1.6                  # s the "bench one first" hint stays
 const SPRITE_SCALE := 2.0                # idle frame 40 x 64 source px on a card
 const OPP_SPRITE_SCALE := 1.5
 const SHEET_FRAME := Vector2(40, 64)     # the layout box of a card sprite (a v1 frame); Sheets.card_rect() fits v2
-const FALLBACK_SHEETS := ["blue_1", "red_1"]   # today's sheets when a player's own is missing (yours / theirs)
+const FALLBACK_SHEETS := ["ud_jojo", "ny_q2"]  # when a player's own sheet is missing (yours / theirs): Quick Game's
+                                               # slot-0 sheets (player.gd QUICK_SHEETS; the v1 blue_1 / red_1 are gone)
 const NAME_FONT := 30
 const SMALL_FONT := 20
 const STAT_FONT := 18
@@ -211,7 +212,7 @@ func _build_side() -> void:
 	_play = UI.button(_frame, "PLAY", _on_play, UI.KIND_LIT, PLAY_SIZE)
 	_play.position = PLAY_POS
 
-# a card ({} = draw a silhouette): the player's own, without _crew, then today's team sheet (Sheets.card_first)
+# a card ({} = draw a silhouette): the player's own, without _crew, then the team's fallback sheet (Sheets.card_first)
 func _sheet(sheet: String, team: int) -> Dictionary:
 	var key: String = "%s/%d" % [sheet, team]
 	if _tex.has(key):

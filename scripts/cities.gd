@@ -9,8 +9,9 @@ extends RefCounted
 #   steal = clampi(defense + steal_bias, 0, 100), block = clampi(defense + block_bias, 0, 100).
 #   City games (owner): game 1 = 1 good + 2 average, game 2 = 2 good + 1 average, game 3 = 2 good + the boss.
 #   A recruit keeps the ratings he had when he joined; stat points raise them later.
-# Sprite sheets: assets/players/<sheet>.png (missing file = today's blue_n / red_n, so a crew without art still
-# plays). A recruit playing for you uses <sheet>_crew.png (your blue and gold, owner Q11 a), see crew_sheet().
+# Sprite sheets: assets/players2/ (v2, scripts/sheets.gd; a missing sheet = his slot's Quick Game sheet, then the
+# Kenney sprite, so a crew without art still plays). A recruit playing for you wears <sheet>_crew (your blue and gold,
+# owner Q11 a), see crew_sheet().
 # Portraits: assets/portraits/<portrait>.png (missing = a silhouette in the crew's ui_color).
 
 # your crew and van (owner Q2)
@@ -177,7 +178,7 @@ const CITIES := {
 
 # Keys of a player:
 #   name              short name shown in game (top bar, lineup); full: full name for story and cards
-#   sheet, portrait   file ids (assets/players/<sheet>.png, assets/portraits/<portrait>.png)
+#   sheet, portrait   file ids (assets/players2/ through sheets.gd, assets/portraits/<portrait>.png)
 #   number, role      jersey digit and role text for the lineup cards
 #   tier              "start" (your underdogs, fixed ratings below), "avg", "good" or "boss"
 #   ratings           only for "start"; city players are computed from STAGE_AVG + TIER (see the top)

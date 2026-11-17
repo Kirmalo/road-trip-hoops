@@ -1,7 +1,8 @@
 extends Node
 # The --anim-test driver (Phase 6, P6-24). Test only: main.gd adds it to a game when run with -- --anim-test (and
-# sets `main` and `game`); the game itself is stopped. It works on v1 sheets now and on v2 sheets once
-# assets/players2/ exists (sheets.gd reads both, the board's "Player sheet format v2").
+# sets `main` and `game`); the game itself is stopped. It checks the v2 sheets in assets/players2/ and any v1 sheet in
+# assets/players/ (sheets.gd reads both, the board's "Player sheet format v2"; since P6-25 no v1 sheets ship, so the
+# v1 list is normally empty and only the v1 table is checked).
 #
 #   godot --headless --path . -- --anim-test                    checks every sheet, prints ANIM OK (exit 0) or the
 #                                                               problems and ANIM FAILED (exit 1)
@@ -15,7 +16,7 @@ extends Node
 #                             sample's hand and ball points) and runs the v2 checks and images on it (test of the
 #                             v2 path before the real v2 sheets exist)
 #
-# Checks, per sheet (v1: assets/players/<id>.png, v2: assets/players2/):
+# Checks, per sheet (v1: assets/players/<id>.png if any, v2: assets/players2/):
 #   - the format: every animation inside the columns, no two overlapping, frame counts and fps sane, pages within
 #     2048 px; every name in the board's animation table resolves (an alias is listed, not a problem);
 #   - the file loads at the format's size (a wrong size is refused by sheets.gd: a problem);
@@ -34,13 +35,13 @@ extends Node
 #                                              hand points marked (L red, R green), the floor point as a tick
 #   <out>/hoops_anim_<sheet>_<anim>_strip.png  the frames facing SE in a row at 3x: a moving preview, frame by frame
 #   <out>/hoops_anim_<sheet>.png               overview: one row per animation (SE), every frame
-# The per-animation images are written for the sheets in --anim-sheet, else for ud_deuce and every v2 sheet; the
-# overview for every sheet.
+# The per-animation images are written for the sheets in --anim-sheet, else for every v2 sheet (and a v1 sheet in
+# DEFAULT_DETAIL); the overview for every sheet.
 
 const Sheets = preload("res://scripts/sheets.gd")
 
 const OUT_DIR := "/tmp"
-const DEFAULT_DETAIL := ["ud_deuce"]   # per-animation images for these (plus every v2 sheet) without --anim-sheet
+const DEFAULT_DETAIL := ["ud_deuce"]   # v1 sheets with per-animation images without --anim-sheet (every v2 sheet has them)
 # the board's "Animation table" names (a sheet without one plays its alias)
 const TABLE_ANIMS := ["idle", "run", "dribble", "run_dribble", "cross", "hold", "catch", "shoot", "layup",
 	"dunk_one", "dunk_two", "dunk_tomahawk", "dunk_windmill", "rim_hang", "pass_chest", "pass_bounce", "pass_lob",
@@ -182,7 +183,9 @@ func _check_set(only: Array) -> void:
 
 func _list_v1() -> Array:
 	var out: Array = []
-	for f in DirAccess.get_files_at(Sheets.V1_DIR):
+	if not DirAccess.dir_exists_absolute(Sheets.v1_dir):
+		return out   # no v1 sheets ship since P6-25
+	for f in DirAccess.get_files_at(Sheets.v1_dir):
 		var fn: String = f.trim_suffix(".import")
 		if fn.ends_with(".png") and not out.has(fn.get_basename()):
 			out.append(fn.get_basename())

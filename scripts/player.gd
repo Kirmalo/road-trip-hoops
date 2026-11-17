@@ -70,8 +70,12 @@ const RIM_BLOCK_RATING_SPAN := 0.5  # rim-block dice (defense.rim_blocker) x0.5 
 
 var ratings := {"steal": 50, "block": 50}
 # P5-03: the player dict from Flow.match (board "Match config"); {} in Quick Game. Ratings missing from it are 50.
-const SHEET_DIR := "res://assets/players/"   # sheets are <SHEET_DIR><sheet>.png (recruits for you: <sheet>_crew.png)
 const CREW_SHEET_SUFFIX := "_crew"           # a city player's recolor in your colors, used when he plays for team 0
+# Quick Game (no match dict) and the last fallback of a trip player: the sheet of each slot (P6-25; the old v1
+# blue_n / red_n sheets are gone). BLUE wears your underdogs, RED the Bridge Runners (New York quarterfinal, red and
+# black), matched to the slot's steal / block (RATINGS_BY_INDEX): 0 quick hands, 1 shot-blocker, 2 the third man.
+# Sheets.load_first() finds them in assets/players2/; with no sheet at all the Kenney sprite (assets/blue_n.png) draws.
+const QUICK_SHEETS := [["ud_jojo", "ud_tank", "ud_deuce"], ["ny_q2", "ny_q1", "ny_q3"]]
 var pdata := {}
 var pid := ""                     # cities.gd PLAYERS id ("" in Quick Game)
 var pname := ""                   # shown name ("" in Quick Game)
@@ -368,19 +372,6 @@ func _apply_pdict(pdict: Dictionary) -> void:
 			ratings["steal"] = Ratings.derived(dfn, int(pdict.get("steal_bias", 0)))
 		if not r.has("block"):
 			ratings["block"] = Ratings.derived(dfn, int(pdict.get("block_bias", 0)))
-
-# The 3/4-view sheet: the match dict's sheet (team 0 prefers its _crew recolor), else today's blue_n / red_n.
-func sheet_path() -> String:
-	var sheet: String = str(pdata.get("sheet", ""))
-	if sheet != "":
-		if team == 0:
-			var crew_path: String = SHEET_DIR + sheet + CREW_SHEET_SUFFIX + ".png"
-			if ResourceLoader.exists(crew_path):
-				return crew_path
-		var own: String = SHEET_DIR + sheet + ".png"
-		if ResourceLoader.exists(own):
-			return own
-	return SHEET_DIR + "%s_%d.png" % ["blue" if team == 0 else "red", index + 1]
 
 func has_ball() -> bool:
 	return game.ball.state == game.ball.HELD and game.ball.holder == self
@@ -1700,12 +1691,12 @@ func _build_view() -> void:
 	_v_body = Node2D.new()
 	_v_body.name = "PlayerView%d_%d" % [team, index]
 	_v_spr = Sprite2D.new()
-	var sh: Dictionary = Sheets.load_first(sheet_ids())   # v2 then v1 of each id, in sheet_path()'s order
-	var path: String = sheet_path()
+	var sh: Dictionary = Sheets.load_first(sheet_ids())   # v2 then v1 of each id, in sheet_ids()'s order
 	if int(sh.get("version", 0)) == 2:
 		_build_view_v2(sh)
-	elif ResourceLoader.exists(path):
-		_v_spr.texture = load(path)
+	elif int(sh.get("version", 0)) == 1:
+		_v_spr.texture = sh["texture"]   # a v1 sheet (none ship since P6-25; the reader stays)
+		_v_sheet_id = str(sh["id"])
 	if _v_ver == 2:
 		pass
 	elif _v_spr.texture != null and _v_spr.texture.get_size() == SHEET_FRAME * Vector2(SHEET_COLS, SHEET_ROWS):
@@ -2004,7 +1995,7 @@ const TEXMEM_FLAG := "--texmem"   # test: print the video memory once a game is 
 var _v_ver := 1                   # 2: a v2 sheet (pages, format.json), drawn by _update_sheet_frame_v2
 var _v_sheet_data := {}           # Sheets.load_sheet() of the drawn sheet
 var _v_fmt := {}
-var _v_sheet_id := ""             # the drawn sheet's id (hands.json key)
+var _v_sheet_id := ""             # the drawn sheet's id (hands.json key; "" = the Kenney fallback)
 var v_anim := ""                  # v2: the animation drawn this frame (after Sheets.resolve)
 var v_frame := 0                  # v2: its frame index (Sheets.frame_index: row * cols + column)
 var v_next_frame := 0             # ... the next frame, and how far into this one (ball.gd blends the ball point)
@@ -2034,7 +2025,7 @@ var _v_celebrate_b := false
 var _v_texmem_frames := -1
 var _v_slide_hold := 0.0
 
-# the sheet ids to try, in today's order: team 0 his _crew recolor, his own sheet, then blue_n / red_n
+# the sheet ids to try, in order: team 0 his _crew recolor, his own sheet, then his slot's Quick Game sheet
 func sheet_ids() -> Array:
 	var out: Array = []
 	var sheet: String = str(pdata.get("sheet", ""))
@@ -2042,7 +2033,8 @@ func sheet_ids() -> Array:
 		if team == 0:
 			out.append(sheet + CREW_SHEET_SUFFIX)
 		out.append(sheet)
-	out.append("%s_%d" % ["blue" if team == 0 else "red", index + 1])
+	var slot: Array = QUICK_SHEETS[clampi(team, 0, 1)]
+	out.append(str(slot[clampi(index, 0, slot.size() - 1)]))
 	return out
 
 # the drawn height of the head above the feet (v1 80 px; v2 from format.json head_px x draw_scale, about 100)
@@ -2475,7 +2467,7 @@ func _v2_texmem() -> void:
 		var vid_mb: float = Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0
 		var ids: Array = []
 		for p in game.players:
-			ids.append("%s(v%d%s)" % [p._v_sheet_id if p._v_ver == 2 else p.sheet_path().get_file().get_basename(),
+			ids.append("%s(v%d%s)" % [p._v_sheet_id if p._v_sheet_id != "" else "kenney",
 					p._v_ver, ",indexed" if bool(p._v_sheet_data.get("indexed", false)) else ""])
 		print("TEXMEM texture %.1f MB, video %.1f MB, players %s" % [tex_mb, vid_mb, ", ".join(ids)])
 

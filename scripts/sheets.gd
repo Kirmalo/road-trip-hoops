@@ -4,8 +4,10 @@ extends RefCounted
 #   const Sheets = preload("res://scripts/sheets.gd")
 #
 # Two formats:
-#   v1 (built in, today's Phase 4/5 sheets): assets/players/<sheet>.png, 37 columns x 5 rows of 40 x 64 frames, the
-#      floor on row 59; hands in assets/players/hands.json ("players".<sheet>[row][column] = {L, R}).
+#   v1 (built in, the Phase 4/5 layout): assets/players/<sheet>.png, 37 columns x 5 rows of 40 x 64 frames, the
+#      floor on row 59; hands in assets/players/hands.json ("players".<sheet>[row][column] = {L, R}). P6-25 removed
+#      the v1 files (every player has a v2 sheet), so the folder is gone and nothing ships as v1; the reader stays
+#      (a v1 sheet dropped back into the folder still draws) and self_test() checks it on a fixture it builds.
 #   v2 (owner-approved animation sample v1, docs/art/anim_sample_v1.md): assets/players2/format.json is the truth.
 #      64 x 96 frames, art scale 1.25, drawn 2x in the game; the floor point under the pelvis is on row 88, x 32.
 #      Each direction is one row of `cols` logical columns (animation "start" + frame). The columns are stored in
@@ -23,8 +25,8 @@ extends RefCounted
 #                    "sheets": {"<sheet>": "<body>"}}       # recolors share their body's points
 #      cards/<sheet>.png: the idle frame facing the camera (one 64 x 96 frame) for the lineup / recruit / bracket.
 # Fallback chain: a v2 sheet, then a v1 sheet, of each id the caller lists (load_first / card_first: e.g. the _crew
-# recolor, then his own sheet, then today's blue_n / red_n); nothing at all = {} / null (the caller draws the Kenney
-# sprite or a silhouette). v1 and v2 players can share a court.
+# recolor, then his own sheet, then the Quick Game sheet of his slot); nothing at all = {} / null (the caller draws
+# the Kenney sprite, assets/blue_n.png / red_n.png, or a silhouette). v1 and v2 players can share a court.
 # Directions: rows 0..4 = S, SE, E, NE, N; SW, W and NW are SE, E and NE mirrored (x' = width - 1 - x, L and R swap).
 # Animation names are the board's "Animation table". A sheet without one gets the nearest it has (ALIASES), e.g. on a
 # v1 sheet run_dribble -> dribble, slide -> run, dunk_* -> dunk, pass_* -> pass, fall -> stumble, land -> idle.
@@ -107,6 +109,7 @@ const ALIASES := {
 }
 
 static var v2_dir := V2_DIR           # tests point this at a scratch folder (then clear_cache())
+static var v1_dir := V1_DIR           # the same for v1 (self_test's fixture; no v1 files ship since P6-25)
 static var _fmt2 = null               # format.json (Dictionary), {} when missing or invalid; null = not read yet
 static var _hands1 = null             # v1 hands.json "players"; {} when missing
 static var _hands2 = null             # v2 hands.json; {} when missing
@@ -280,7 +283,7 @@ static func load_sheet(sheet_id: String) -> Dictionary:
 	_sheets[sheet_id] = out
 	return out
 
-# The first of these ids that has a sheet (each tried v2 then v1), e.g. [<sheet>_crew, <sheet>, "red_1"]. {} if none.
+# The first of these ids that has a sheet (each tried v2 then v1), e.g. [<sheet>_crew, <sheet>, "ny_q2"]. {} if none.
 static func load_first(ids: Array) -> Dictionary:
 	for id in ids:
 		var s: Dictionary = load_sheet(str(id))
@@ -410,7 +413,7 @@ static func material(sheet: Dictionary) -> ShaderMaterial:
 	return m
 
 static func _load_v1(sheet_id: String) -> Dictionary:
-	var tex: Texture2D = _texture(V1_DIR + sheet_id + ".png")
+	var tex: Texture2D = _texture(v1_dir + sheet_id + ".png")
 	if tex == null:
 		return {}
 	var want: Vector2 = frame_size(V1_FORMAT) * Vector2(cols(V1_FORMAT), dir_rows(V1_FORMAT))
@@ -476,7 +479,7 @@ static func _v2(a) -> Vector2:
 static func _hand_v1(sheet_id: String, row: int, col: int):
 	if _hands1 == null:
 		_hands1 = {}
-		var d = _read_json(V1_DIR + HANDS_FILE)
+		var d = _read_json(v1_dir + HANDS_FILE)
 		if d is Dictionary and (d as Dictionary).get("players", null) is Dictionary:
 			_hands1 = d["players"]
 	var rows = null
@@ -599,7 +602,7 @@ static func _paint_indexed(page: Texture2D, region: Rect2, palette: Texture2D) -
 				out.set_pixel(x, y, pal.get_pixel(mini(idx, pal.get_width() - 1), 0))
 	return ImageTexture.create_from_image(out)
 
-# the first of these ids with a card ({} if none), e.g. Sheets.card_first(Sheets.with_base(sheet) + ["red_1"])
+# the first of these ids with a card ({} if none), e.g. Sheets.card_first(Sheets.with_base(sheet) + ["ny_q2"])
 static func card_first(ids: Array) -> Dictionary:
 	for id in ids:
 		var c: Dictionary = card_info(str(id))
@@ -657,15 +660,21 @@ static func clear_cache() -> void:
 
 const TEST_DIR := "user://sheets_test/"
 const SAMPLE_POINTS := "res://docs/art/anim_sample_v1_points.json"   # the approved sample's hand and ball points
+const V1_TEST_SUBDIR := "v1/"         # self_test's v1 fixture folder (inside TEST_DIR)
+const V1_TEST_ID := "test_v1"
 const SAMPLE_ANIM_NAMES := {"run": "run", "rundribble": "run_dribble", "dribble": "dribble", "dunk": "dunk_two"}
 
-# Checks the v1 numbers against player.gd and hands.json, then builds a 2-page v2 sheet (with the sample's points)
-# in user://sheets_test/ and checks frames, pages, aliases, hands, mirroring, cards and the fallback chain.
+# Checks the v1 numbers against player.gd, then builds a v1 fixture sheet (with its hands.json) and a 2-page v2 sheet
+# (with the sample's points) in user://sheets_test/ and checks frames, pages, aliases, hands, mirroring, cards and the
+# fallback chain. Needs no shipped sheet of either format.
 static func self_test() -> bool:
 	var ok := true
 	_check_dir()
 	var real_v2: String = v2_dir
-	v2_dir = TEST_DIR + "no_v2/"   # the v1 checks see only v1 sheets, even where a v2 sheet exists
+	var real_v1: String = v1_dir
+	v2_dir = TEST_DIR + "no_v2/"   # the v1 checks see only the v1 fixture
+	v1_dir = TEST_DIR + V1_TEST_SUBDIR
+	_v1_fixture()
 	clear_cache()
 	# v1: today's numbers
 	var pl: GDScript = load("res://scripts/player.gd") as GDScript
@@ -678,8 +687,8 @@ static func self_test() -> bool:
 	ok = _t(same and consts.get("SHEET_FRAME", Vector2.ZERO) == frame_size(V1_FORMAT)
 			and int(consts.get("SHEET_COLS", 0)) == cols(V1_FORMAT)
 			and float(consts.get("SHEET_FEET_Y", 0.0)) == feet_y(V1_FORMAT), "v1 table = player.gd's") and ok
-	var s1: Dictionary = load_sheet("ud_deuce")
-	ok = _t(int(s1.get("version", 0)) == 1 and (s1.get("texture", null) as Texture2D) != null, "ud_deuce loads as v1") and ok
+	var s1: Dictionary = load_sheet(V1_TEST_ID)
+	ok = _t(int(s1.get("version", 0)) == 1 and (s1.get("texture", null) as Texture2D) != null, "v1 fixture loads") and ok
 	var f1: Dictionary = V1_FORMAT
 	ok = _t(frame_index(f1, 1, "run", 3) == 1 * 37 + 2 + 3 and frame_index(f1, 0, "run", 8) == 2 + 2
 			and frame_index(f1, 2, "shoot", 9) == 2 * 37 + 12 + 3, "v1 frame_index (loop wraps, one-shot clamps)") and ok
@@ -690,26 +699,29 @@ static func self_test() -> bool:
 	ok = _t(anim_frames(f1, "dunk_two") == 5 and anim_fps(f1, "run_dribble") == 7.0, "v1 frames / fps via alias") and ok
 	var r1: Dictionary = frame_region(s1, frame_index(f1, 2, "dribble", 1))
 	ok = _t(r1.get("region", Rect2()) == Rect2(9 * 40, 2 * 64, 40, 64), "v1 frame_region") and ok
-	var raw = _read_json(V1_DIR + HANDS_FILE)
-	var want = raw["players"]["ud_deuce"][1][9] if raw is Dictionary else null
-	var h1: Dictionary = hand(f1, "ud_deuce", frame_index(f1, 1, "dribble", 1))
-	ok = _t(want is Dictionary and h1.get("R", Vector2(-1, -1)) == _v2(want["R"]), "v1 hand = hands.json") and ok
-	var h1f: Dictionary = hand(f1, "ud_deuce", frame_index(f1, 1, "dribble", 1), true)
+	var raw = _read_json(v1_dir + HANDS_FILE)
+	var want = raw["players"][V1_TEST_ID][1][9] if raw is Dictionary else null
+	var h1: Dictionary = hand(f1, V1_TEST_ID, frame_index(f1, 1, "dribble", 1))
+	ok = _t(want is Dictionary and h1.get("R", Vector2(-1, -1)) == _v2(want["R"])
+			and h1.get("R", Vector2.ZERO) == _v1_fixture_hand(1, 9, "R"), "v1 hand = hands.json") and ok
+	var h1f: Dictionary = hand(f1, V1_TEST_ID, frame_index(f1, 1, "dribble", 1), true)
 	var wr: Vector2 = _v2(want["R"]) if want is Dictionary else Vector2(-99, -99)
 	ok = _t(h1f.get("L", Vector2.ZERO) == Vector2(39.0 - wr.x, wr.y), "v1 hand mirrored") and ok
-	var hc: Dictionary = hand(f1, "ht_g1_crew", frame_index(f1, 0, "idle", 0))
-	ok = _t(not hc.is_empty(), "v1 hand of a _crew recolor") and ok
-	var c1: Dictionary = card_info("ud_deuce")
+	var hc: Dictionary = hand(f1, V1_TEST_ID + CREW_SUFFIX, frame_index(f1, 0, "idle", 0))
+	ok = _t(not hc.is_empty(), "v1 hand of a _crew recolor (its base sheet's)") and ok
+	var c1: Dictionary = card_info(V1_TEST_ID)
 	ok = _t((c1.get("texture", null) is AtlasTexture) and (c1["texture"] as AtlasTexture).region == Rect2(0, 0, 40, 64)
 			and card_rect(c1, Vector2(10, 20), 2.0) == Rect2(10, 20, 80, 128), "v1 card = column 0 row 0, today's box") and ok
 	ok = _t(load_sheet("no_such_player").is_empty() and card("no_such_player") == null
-			and str(load_first(["no_such_crew", "no_such", "red_1"]).get("id", "")) == "red_1"
-			and str(card_first(with_base("ht_g1_crew")).get("id", "")) == "ht_g1_crew"
-			and str(card_first(with_base("no_such_crew") + ["blue_1"]).get("id", "")) == "blue_1", "fallback chain") and ok
+			and str(load_first(["no_such_crew", "no_such", V1_TEST_ID]).get("id", "")) == V1_TEST_ID
+			and str(card_first(with_base(V1_TEST_ID + CREW_SUFFIX)).get("id", "")) == V1_TEST_ID + CREW_SUFFIX
+			and str(card_first(with_base("no_such_crew") + [V1_TEST_ID]).get("id", "")) == V1_TEST_ID, "fallback chain") and ok
 	# v2: a built test sheet
 	ok = _v2_test() and ok
 	ok = _indexed_test() and ok
+	_remove_files(TEST_DIR + V1_TEST_SUBDIR)
 	v2_dir = real_v2
+	v1_dir = real_v1
 	clear_cache()
 	print("SHEETS %s" % ("OK" if ok else "FAILED"))
 	return ok
@@ -784,8 +796,9 @@ static func _v2_test() -> bool:
 	var c2: Dictionary = card_info("test_v2")
 	ok = _t(c2.get("texture", null) is ImageTexture and c2.get("feet", Vector2.ZERO) == Vector2(32, 88),
 			"v2 card image file wins") and ok
-	ok = _t(str(load_first(with_base("ud_deuce_crew")).get("id", "")) == "ud_deuce"
-			and int(load_sheet("ud_deuce").get("version", 0)) == 1, "v1 and v2 side by side") and ok
+	ok = _t(str(load_first(with_base("no_such_crew") + [V1_TEST_ID]).get("id", "")) == V1_TEST_ID
+			and int(load_sheet(V1_TEST_ID).get("version", 0)) == 1 and int(load_sheet("test_v2").get("version", 0)) == 2,
+			"v1 and v2 side by side") and ok
 	for fn in DirAccess.get_files_at(TEST_DIR + CARD_SUBDIR):
 		DirAccess.remove_absolute(TEST_DIR + CARD_SUBDIR + fn)
 	for fn in DirAccess.get_files_at(TEST_DIR):
@@ -824,7 +837,7 @@ static func _indexed_test() -> bool:
 	ok = _t(str(sc.get("pages_id", "")) == "test_ix" and bool(sc.get("indexed", false)), "v2.1 recolor = a palette on the base pages") and ok
 	var m: ShaderMaterial = material(s)
 	ok = _t(m != null and m == material(s) and material(sc) != m and m.get_shader_parameter("palette") == s["palette"]
-			and material(load_sheet("ud_deuce")) == null, "v2.1 one material per palette, none for RGBA") and ok
+			and material(load_sheet(V1_TEST_ID)) == null, "v2.1 one material per palette, none for RGBA") and ok
 	ok = _t(load_sheet("test_rgba").is_empty() and load_sheet("test_ix_nopal").is_empty(), "v2.1 color page or no palette is refused") and ok
 	ok = _t(bool(load_sheet("test_gray").get("indexed", false)), "v2.1 index page stored as gray RGB still loads") and ok
 	var c1: Texture2D = card("test_ix")
@@ -843,6 +856,34 @@ static func _indexed_test() -> bool:
 	for fn in DirAccess.get_files_at(dir):
 		DirAccess.remove_absolute(dir + fn)
 	return ok
+
+# the v1 fixture: <V1_TEST_ID>.png and its _crew recolor (37 x 5 frames of 40 x 64) and a hands.json for the plain
+# sheet only (a recolor uses its base sheet's points), in TEST_DIR + V1_TEST_SUBDIR
+static func _v1_fixture() -> void:
+	var dir: String = TEST_DIR + V1_TEST_SUBDIR
+	DirAccess.make_dir_recursive_absolute(dir)
+	var sz: Vector2 = frame_size(V1_FORMAT) * Vector2(cols(V1_FORMAT), dir_rows(V1_FORMAT))
+	for id in [V1_TEST_ID, V1_TEST_ID + CREW_SUFFIX]:
+		var img := Image.create(int(sz.x), int(sz.y), false, Image.FORMAT_RGBA8)
+		img.fill(Color(0.2, 0.4, 1.0, 1.0) if id == V1_TEST_ID else Color(1.0, 0.8, 0.2, 1.0))
+		img.save_png(dir + id + ".png")
+	var rows: Array = []
+	for r in dir_rows(V1_FORMAT):
+		var row: Array = []
+		for c in cols(V1_FORMAT):
+			var hl: Vector2 = _v1_fixture_hand(r, c, "L")
+			var hr: Vector2 = _v1_fixture_hand(r, c, "R")
+			row.append({"L": [hl.x, hl.y], "R": [hr.x, hr.y]})
+		rows.append(row)
+	_write_text(dir + HANDS_FILE, JSON.stringify({"players": {V1_TEST_ID: rows}}))
+
+# the fixture's hand point of a row and column: different on every frame, inside the 40 x 64 frame
+static func _v1_fixture_hand(row: int, col: int, side: String) -> Vector2:
+	return Vector2(float(8 + col % 10 + (12 if side == "R" else 0)), float(20 + row * 4 + col % 7))
+
+static func _remove_files(dir: String) -> void:
+	for fn in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir + fn)
 
 static func _write_text(path: String, text: String) -> void:
 	var fw: FileAccess = FileAccess.open(path, FileAccess.WRITE)

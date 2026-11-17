@@ -530,16 +530,15 @@ func _draw() -> void:
 # Visual only: reads the sim state (state, position, z, shot_t, lob_t, the holder's view sprite) and never writes it.
 # Two nodes: the ball in game.world (y-sorted: its position.y is the sort y, normally the projected floor point) and
 # its shadow in game.decals. Heights follow the board's "Heights": the held ball sits in the hand drawn by the
-# player's sheet (assets/players/hands.json), a shot rises to View.RIM_Z at the hoop, a rim rebound or a block
-# falls from where it was drawn, a make drops through the net. Every change of state blends from the drawn spot.
+# player's sheet (Sheets.hand: assets/players2/hands.json, or a v1 sheet's), a shot rises to View.RIM_Z at the hoop,
+# a rim rebound or a block falls from where it was drawn, a make drops through the net. Every change of state blends from the drawn spot.
 
 const BALL_SHEET := "res://assets/ball/ball.png"   # P4-08: 4 spin frames of 16 x 16 (Kenney ball.png if missing)
 const BALL_FRAMES := 4
 const BALL_VIEW_SCALE := 2.0      # the sheet is drawn at 2x (like the players)
 const BALL_FALLBACK_SCALE := 1.1  # the Kenney ball, as in FLAT
 const BALL_VIEW_R := 12.0         # drawn radius in screen pixels at 2x (12 px of ball in a 16 px frame)
-const HANDS_PATH := "res://assets/players/hands.json"
-const SHEET_COLS := 37            # player sheet layout (board contract)
+const SHEET_COLS := 37            # v1 player sheet layout (board contract; its hands come from Sheets.hand)
 const SHEET_W := 40.0
 const SHEET_FEET_Y := 59.0
 # drawn heights of the ball's center above the floor (sim pixels of height, through View.to_screen)
@@ -577,7 +576,6 @@ const BOUNCE_LANE_FT := 3.0       # ... or with a defender this close to the mid
 const BOUNCE_LANE_FROM := 0.2     # "the middle": between these fractions of the way
 const BOUNCE_LANE_TO := 0.8
 
-static var _hands = null          # hands.json "players" (null: missing, the held ball uses the heights above)
 var _pass_look := ""              # the pass in flight looks like: "chest", "bounce" or "lob" ("" = not picked yet)
 var _v_front := true              # v2: the held ball is drawn in front of the holder (hands.json "ball" front flag)
 var _v_holder_anim := ""          # v2: the holder's animation last frame (a change blends the drawn ball over)
@@ -605,10 +603,6 @@ var _v_ready := false
 func _build_view() -> void:
 	sprite.visible = false
 	process_priority = 10          # after the players' views, so the ball sits in this frame's hand
-	if _hands == null and ResourceLoader.exists(HANDS_PATH):
-		var j = load(HANDS_PATH)
-		if j != null and j is JSON and j.data is Dictionary and j.data.has("players"):
-			_hands = j.data["players"]
 	_v_node = Node2D.new()
 	_v_node.name = "BallView"
 	_v_spr = Sprite2D.new()
@@ -712,28 +706,16 @@ func _hand_point(p, kind: String):
 		elif kind == "up":
 			g = hl if hl.y < hr.y else hr           # the higher hand
 		return _frame_to_screen(p, g)
-	if _hands == null or p == null or not ("_v_sheet" in p) or not p._v_sheet or p._v_spr == null:
-		return null
-	# hands.json is keyed by sheet id: the file the player actually loaded (a trip crew sheet, a _crew recolor, or
-	# blue_n / red_n in Quick Game)
-	var id := "%s_%d" % ["blue" if p.team == 0 else "red", p.index + 1]
-	if p.has_method("sheet_path"):
-		id = String(p.sheet_path()).get_file().get_basename()
-	if not _hands.has(id):
+	# a v1 sheet (none ship since P6-25; the reader stays): its hands.json points through Sheets (null without data,
+	# then the held ball uses the heights above; the Kenney fallback has no sheet id)
+	if p == null or not ("_v_sheet" in p) or not p._v_sheet or p._v_spr == null or str(p._v_sheet_id) == "":
 		return null
 	var spr: Sprite2D = p._v_spr
-	var row: int = spr.frame / SHEET_COLS
-	var col: int = spr.frame % SHEET_COLS
-	var rows: Array = _hands[id]
-	if row >= rows.size() or col >= (rows[row] as Array).size():
+	var hd1: Dictionary = Sheets.hand(Sheets.v1_format(), str(p._v_sheet_id), spr.frame, spr.flip_h)   # flip: L/R swap
+	if hd1.is_empty():
 		return null
-	var hd: Dictionary = rows[row][col]
-	var l := Vector2(float(hd["L"][0]), float(hd["L"][1]))
-	var r := Vector2(float(hd["R"][0]), float(hd["R"][1]))
-	if spr.flip_h:   # mirrored row: x' = 39 - x and the hands swap
-		var ml := Vector2(SHEET_W - 1.0 - r.x, r.y)
-		r = Vector2(SHEET_W - 1.0 - l.x, l.y)
-		l = ml
+	var l: Vector2 = hd1["L"]
+	var r: Vector2 = hd1["R"]
 	var f: Vector2
 	if kind == "dribble":
 		# the sheet dribbles with its right hand; mirrored (a left-hand dribble facing or backing the camera) it is L
