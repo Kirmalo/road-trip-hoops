@@ -266,7 +266,16 @@ drawn in the hand of every held-ball frame**, including run_dribble, cross, catc
   file has one task per wave (parallel plan below).
 
 ## Owner answers
-(empty until G1)
+- Q1 twists: (a) as proposed. Q2 New York: (a) fenced cage. Q3 crews: (a) all as written (Subway Sparks renamed).
+  Q4 story: (a) light comedy with heart. Q5 music: (a) listening list first. Q6 dunks: (a) 4 styles. Q7 motion:
+  (a) medium. Q8 size: (a) 15-20 MB is fine. Q10 trip length: (a) keep 11/15/21 (about 3.5 hours).
+- **Q9 (owner's own answer):** Quick Game offers every city court WITH its twist, but a city's court unlocks only
+  after you beat that city's boss on the Road Trip (gym and blacktop always open, twist none). Coordinator default:
+  an unlock is kept for good (a new trip doesn't lock it again), stored with the settings, not in the trip save.
+  New task P6-17.
+- **G2 passed: the owner approved animation sample v1** (`docs/art/anim_sample_v1*`: 64x96 frames at 2x, art scale
+  1.25), with two fixes for the full redraw: make the dribbling arm read against the jersey (side view: navy sleeve
+  on a blue jersey), and push the running-dribble ball a bit more to the side so it doesn't cover the legs.
 
 ## Todo
 
@@ -351,7 +360,7 @@ drawn in the hand of every held-ball frame**, including run_dribble, cross, catc
   flavor, CC0 or CC-BY from OpenGameArt. Loops cut with `tools/make_music.sh`, -20 LUFS like the others. Listening
   list for the owner if Q5 (a) | art-audio | `tools/make_music.sh`, `assets/music/*`, `CREDITS.md` | 5 files play
   through `audio.play_music(<id>)`; licenses checked | - | Q5
-- **P6-A0** (Doing, see below).
+- **P6-A0** (Done: approved, see Owner answers).
 
 ### Wave 2: after the wave 1 tasks on the same files merge
 - **P6-12** | Court looks data: the 8 new looks with their textures, colors, music, ambience and the optional keys
@@ -418,6 +427,14 @@ drawn in the hand of every held-ball frame**, including run_dribble, cross, catc
 
   | art-audio | `tools/art/make_players_v2.py` (new), `tools/art/pixel3d.py`, `assets/players2/*`, `docs/art/*`,
   `CREDITS.md` | `--anim-test` shows `ANIM OK` for the 3; hands checked | G2, P6-A1 | Q6, Q8
+
+- **P6-17** | Quick Game court unlocks (Q9): a court unlocks when its city's boss game is won on any trip (kept for
+  good, saved with the settings, not in the trip save); the COURT button cycles the gym, the blacktop and the
+  unlocked city courts, and a city court brings its twist; a locked city shows nothing. `--unlock-all` test flag |
+  gameplay A | `scripts/menu.gd`, `scripts/difficulty.gd` (settings file), one call from `trip.gd` (coordinate with
+  P6-10: `Trip` calls `Difficulty.unlock_court(city)` after a boss win) | a fresh install shows gym + blacktop only;
+  after `--trip-test` the beaten cities' courts appear; Quick Game on Chicago's court plays with wind | P6-02, P6-10 |
+  Q9
 
 ### Wave 3
 - **P6-23** | Motion effects as in the contract:
