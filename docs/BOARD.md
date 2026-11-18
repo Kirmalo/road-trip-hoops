@@ -283,7 +283,8 @@ Everything in the waves below that is not in Doing, Review or Done. Carried over
   here as P8-Bn | P8-12, P8-13, P8-15, P8-16, P8-18, P8-20, P8-10
 
 ### Wave 8
-- **P8-28** | Docs and the version
+- **P8-28** | DONE (lead: `CLAUDE.md`, `README.txt`, `itch_page.md`; version stays 1.0.0 (owner), so `project.godot`
+  and `export_presets.cfg` unchanged; `CREDITS.md` / `CREDITS_LIST` checked: in step, except that the in-game sounds row doesn't name GO!) | Docs and the version
   | gameplay-programmer C | `CLAUDE.md`, `README.txt`, `CREDITS.md` (cosmetics row), `scripts/title.gd`
   (`CREDITS_LIST` check; add "star, stat-up, unlock" + `tools/make_ui_sfx.py` to the sounds row and the van paints
   to the map row, per P8-04/P8-07), `project.godot` and `export_presets.cfg` (version per Q4), `docs/release/itch_page.md`

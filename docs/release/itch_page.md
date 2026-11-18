@@ -35,8 +35,13 @@ tournament in New York, beating every local crew on the way.
 - Every city has its own court, its own music, a local crew and a story scene with comic-style portraits.
 - Play each crew 3 times, and each game is tougher: first to 11, then to 15, then to 21 against their boss.
 - Lost a game? No penalty. Just retry it.
-- Every win earns stat points. Spend them on Speed, Shooting, Finishing, Defense and Stamina.
-- After each city, sign one of its best players for your bench, then pick your 3 starters before every game.
+- Every win earns stat points for each of your 3 starters. Spend them on Speed, Shooting, Finishing, Defense and
+  Stamina.
+- After each city, sign one of its best players for your bench, then pick your 3 starters before every game (only
+  one boss among them).
+- Every game earns stars: 1 on Easy, 2 on Normal, 3 on Hard. Replay any game you've won from the map to get more.
+- Stars open extra roster spots (draft any player from a crew you've beaten, bosses too), new jerseys, balls and
+  van paint jobs in the LOCKER, two new Quick Game courts, and at all 72 stars the LEGEND level.
 - New York is a 3-round bracket in a fenced cage, all games to 21, with the champions waiting in the final.
 - The trip saves by itself after every game and every choice.
 
@@ -56,11 +61,11 @@ Each city plays a little differently, and the twist is the same for both teams:
 - 4 dunk styles (one-hand, two-hand, tomahawk, windmill), alley-oops and a hang on the rim.
 - Steals and blocks are all about timing. Bad timing is a foul, and fouls mean free throws.
 - Hit 3 in a row and your player catches fire.
-- Easy, Normal and Hard levels.
+- Easy, Normal and Hard levels, and LEGEND once you've earned every star.
 
 ## Quick Game
 One game to 21 whenever you like. Pick the level, the court and the music, plus your team and your opponent. Each
-city court and each crew you beat on the road trip joins Quick Game for good.
+city court and each crew you beat on the road trip joins Quick Game for good, and so do the two star courts.
 
 ## Controls
 - Touch: drag anywhere on the left half of the screen to move (pull past the ring to sprint). Two buttons on the
@@ -74,7 +79,7 @@ city court and each crew you beat on the road trip joins Quick Game for good.
 Plays in landscape. Tap the fullscreen button under the game for the best view on a phone or tablet.
 
 ## Saves
-Your road trip and settings are saved in your browser on this device. They stay there between visits, but clearing
+Your road trip, stars and settings are saved in your browser on this device. They stay there between visits, but clearing
 the browser's site data deletes them, and they don't move to another device or browser.
 
 ## Coming later
