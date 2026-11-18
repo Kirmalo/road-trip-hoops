@@ -395,8 +395,10 @@ func _build_points() -> void:
 		_point_sfx = POINT_SFX_NEW
 	_ids = []
 	if _per_win:
-		for id in Trip.starters:
-			if Trip.roster_ids().has(str(id)):
+		# args.ids (the lineup's badge): these players instead of the starters, so the save's starters never change
+		var want = a.get("ids", null)
+		for id in (want if want is Array else Trip.starters):
+			if Trip.roster_ids().has(str(id)) and not _ids.has(str(id)):
 				_ids.append(str(id))
 	if _ids.is_empty():
 		_per_win = false

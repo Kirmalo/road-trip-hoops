@@ -11,10 +11,9 @@ extends CanvasLayer
 # Phase 8 (P8-18):
 #   - Stat points: a gold badge ("2 PTS") bottom-left on every card with points of his own, and a gold STAT POINTS
 #     card first in the list when anyone has points or there are crew points (it names who has some and the crew
-#     points). Tapping the badge (or that card) opens the points screen in its per-win mode, which lists the 3
-#     Trip.starters: so the lineup makes the tapped player and the others with points the starters for that visit
-#     (not saved unless a point is spent), and the points screen's then_args bring back the real starters and the
-#     picks here (args "starters", "human", "picks").
+#     points). Tapping the badge (or that card) opens the points screen in its per-win mode with args.ids = the
+#     tapped player and the others with points (the save's starters never change); its then_args bring back the
+#     picks here (arg "picks").
 #   - Roster slots: one OPEN SLOT card per Trip.open_slots() after the roster (tap = the draft, back to here), then
 #     one locked card for the next star slot ("OPENS AT 24 STARS"); drafted players carry a DRAFTED tag.
 #   Leaving for the draft keeps a full lineup (Trip.set_starters, like PLAY).
@@ -407,13 +406,13 @@ func tap_badge(id: String) -> bool:
 	if _busy or not can_spend_now():
 		return false
 	var group: Array = spend_group(id)
-	var back := {PICKS_ARG: _picks.duplicate(), STARTERS_ARG: Trip.starters.duplicate(), HUMAN_ARG: Trip.human}
-	if not Trip.set_starters(group, group[0] if group.size() > 0 else "", false):
+	var back := {PICKS_ARG: _picks.duplicate()}
+	if group.is_empty():
 		return false
 	if audio != null:
 		audio.play("bounce", -4.0)
 	_stat("lineup_points")
-	_go("points", {"then": "lineup", "then_args": back, "per_win": true})
+	_go("points", {"then": "lineup", "then_args": back, "per_win": true, "ids": group})
 	return true
 
 # the STAT POINTS card: the first player with points of his own (else you), see tap_badge()
