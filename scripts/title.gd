@@ -1,7 +1,8 @@
 extends CanvasLayer
 # Title screen (P5-06): one script for three Flow screens ("title", "settings", "crew"), built in code with ui_kit.gd.
 #   title     the game name, the Cornfield Kings and their van The Biscuit on the road, and six buttons:
-#             ROAD TRIP -> CONTINUE / NEW TRIP (NEW TRIP over a saved trip asks to confirm) -> EASY / NORMAL / HARD
+#             ROAD TRIP -> CONTINUE / NEW TRIP (NEW TRIP over a saved trip asks to confirm) -> EASY / NORMAL / HARD;
+#             CONTINUE on a finished trip opens the map in replay mode (P8-20)
 #             QUICK GAME -> today's game (its start panel picks the level and court, as before)
 #             LOCKER (P8-13, owner Q3 a: Flow screen "locker", args {"back": "title"}; the star ladder and the
 #             jersey / ball / van picks, P8-15), with a "STARS n/72" tab on the ROAD TRIP button (Stars.total())
@@ -298,13 +299,14 @@ func _show_panel(which: String) -> void:
 		"trip":
 			UI.subtitle(box, _trip_summary() if _has_trip() else "No trip saved yet. Start one and hit the road!")
 			var row := UI.hbox(box)
-			# a finished trip has nothing to continue: NEW TRIP is the gold button then
-			var can_go: bool = _has_trip() and not _trip_finished()
-			var cont: Button = _btn(row, "CONTINUE", _on_continue, UI.KIND_LIT if can_go else UI.KIND_MAIN,
-					MAIN_BTN)
+			# a finished trip continues on the map in replay mode (P8-20); NEW TRIP is the gold button then
+			var can_go: bool = _has_trip()
+			var lit_new: bool = can_go and _trip_finished()
+			var cont: Button = _btn(row, "CONTINUE", _on_continue,
+					UI.KIND_LIT if can_go and not lit_new else UI.KIND_MAIN, MAIN_BTN)
 			if not can_go:
 				cont.set_meta("off", true)
-			_btn(row, "NEW TRIP", _on_new_trip, UI.KIND_MAIN if can_go else UI.KIND_LIT, MAIN_BTN)
+			_btn(row, "NEW TRIP", _on_new_trip, UI.KIND_LIT if lit_new or not can_go else UI.KIND_MAIN, MAIN_BTN)
 			_btn(UI.hbox(box), "BACK", _show_panel.bind("main"), UI.KIND_OPT, UI.SMALL_SIZE)
 		"confirm":
 			UI.subtitle(box, "Start a new trip? Your saved trip will be lost:")
@@ -406,7 +408,7 @@ func _on_how_to_play() -> void:
 	_go("howto", {"back": "title"})
 
 func _on_continue() -> void:
-	if not _has_trip() or _trip_finished():
+	if not _has_trip():
 		return
 	_stat("title_continue")
 	var trip: GDScript = _script(TRIP_PATH)
@@ -415,7 +417,7 @@ func _on_continue() -> void:
 	if trip != null and trip.has_method("continue_trip"):
 		loaded = bool(trip.call("continue_trip"))
 	if not _busy and str(Flow.screen) == before:
-		# continue where the trip left off (map, points, recruit or bracket); a finished trip stays on the title
+		# continue where the trip left off (map, points, recruit or bracket); a finished trip opens the map (replays)
 		var where: String = "map"
 		if loaded and trip.has_method("resume_screen"):
 			where = str(trip.call("resume_screen"))
@@ -762,8 +764,8 @@ static func _trip_summary() -> String:
 	var city: String = str(Cities.city(str(s.get("city", ""))).get("name", str(s.get("city", "")).to_upper()))
 	var rec: Dictionary = s.get("record", {}) if s.get("record", {}) is Dictionary else {}
 	if str(s.get("phase", "")) == "done":
-		return "TRIP COMPLETE - CHAMPIONS!  %d-%d  -  %s  -  start a NEW TRIP to go again" % [int(rec.get("wins", 0)),
-				int(rec.get("losses", 0)), str(s.get("level", "normal")).to_upper()]
+		return "TRIP COMPLETE - CHAMPIONS!  %d-%d  -  %s  -  CONTINUE to replay, or a NEW TRIP" % [
+				int(rec.get("wins", 0)), int(rec.get("losses", 0)), str(s.get("level", "normal")).to_upper()]
 	return "%s, GAME %d  -  %d-%d  -  %s" % [city, int(s.get("game", 1)), int(rec.get("wins", 0)),
 			int(rec.get("losses", 0)), str(s.get("level", "normal")).to_upper()]
 
