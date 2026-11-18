@@ -193,8 +193,9 @@ godot --headless --path . --fixed-fps 60 --quit-after 20000 -- --titletest
   stat point on Deuce, recruits on the bench): a lower bound for the ramp.
 
 After gameplay changes, run several `--autoplay` games and check the stats look sane. A typical game to 21 is about
-75-120 shots and 10-15 minutes of game time (`GAME LENGTH`), ends 21-x (the loser usually 12-20), has about 2-6
-fouls and 2-3 out of bounds, one side switch, and few interceptions or shot-clock violations.
+50-80 shots at about 50% (P7-T1: was 75-120 at about 35%) and 7-11 minutes of game time (`GAME LENGTH`), ends 21-x
+(the loser usually 12-20), has about 1-5 fouls and 1-2 out of bounds, one side switch, and few interceptions or
+shot-clock violations.
 Look at a screenshot after visual changes.
 Judge team balance on 200+ `--autoplay` games: 40-game batches swing up to about 65/35 by chance
 (docs/qa/phase3-length.md). `--autoplay` picks the first ball at random.
