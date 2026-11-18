@@ -38,9 +38,9 @@ const SELFTEST_PATH := "user://cosmetics_selftest.cfg"   # self_test() only; del
 # files: what must exist for the item to show (court looks: their row in court_looks.gd is the truth, its textures
 # already fall back to plain colors).
 const ITEMS := {
-	"jersey_1": {"kind": "jersey", "name": "JERSEY 1", "n": 1, "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j1.png"]},
-	"jersey_2": {"kind": "jersey", "name": "JERSEY 2", "n": 2, "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j2.png"]},
-	"jersey_3": {"kind": "jersey", "name": "JERSEY 3", "n": 3, "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j3.png"]},
+	"jersey_1": {"kind": "jersey", "name": "HOME WHITES", "n": 1, "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j1.png"]},
+	"jersey_2": {"kind": "jersey", "name": "AFTER HOURS", "n": 2, "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j2.png"]},
+	"jersey_3": {"kind": "jersey", "name": "THROWBACK", "n": 3, "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j3.png"]},
 	"ball_1": {"kind": "ball", "name": "SKY", "n": 1, "files": ["res://assets/ball/ball_1.png"]},
 	"ball_2": {"kind": "ball", "name": "NIGHT GLOW", "n": 2, "files": ["res://assets/ball/ball_2.png"]},
 	"ball_3": {"kind": "ball", "name": "GOLD", "n": 3, "files": ["res://assets/ball/ball_3.png"]},
