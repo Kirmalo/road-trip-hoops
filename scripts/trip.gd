@@ -41,7 +41,7 @@ extends RefCounted
 # Both use user://trip_test.json (save.gd), never the owner's save.
 # Phase 6 (P6-10): match_for() adds the city's "twist"; a city look or track that doesn't exist yet falls back to the
 # city's "fallback" look / music; --expected-roster (with --city) plays a city game with the crew a trip would have
-# there (expected_roster()); a won boss game unlocks the city's court for Quick Game (P6-17, Difficulty.unlock_court)
+# there (expected_roster()), --best-roster the strongest legal three (best_roster(), P8-21); a won boss game unlocks the city's court for Quick Game (P6-17, Difficulty.unlock_court)
 # and its crew as a Quick Game team (P6-T3, Difficulty.unlock_team; a New York crew when its round is won).
 # quick_team(crew_id) builds such a team for main.gd.
 # Save version 2 (P8-08, board "Save"): each roster entry has "pts" (his unspent points) and "via" (start / recruit /
@@ -329,6 +329,7 @@ static func _reset() -> void:
 	phase = "map"
 	last_outcome = {}
 	_spend_log = []
+	_slots_override = -1
 
 # a new roster entry: his starting ratings, no points, "via" from the data
 static func _new_entry(id: String, via: String = "") -> Dictionary:
@@ -591,8 +592,10 @@ static func match_for(city_id: String = "", n: int = 0) -> Dictionary:
 	var c: Dictionary = Cities.city(city_id)
 	if c.is_empty() or not bool(c.get("built", false)):
 		return {}
-	if not active and OS.get_cmdline_user_args().has(EXPECTED_ROSTER_FLAG):
-		return _expected_match(city_id, n)
+	if not active:
+		var cmd: PackedStringArray = OS.get_cmdline_user_args()
+		if cmd.has(BEST_ROSTER_FLAG) or cmd.has(EXPECTED_ROSTER_FLAG):
+			return _test_roster_match(city_id, n, cmd.has(BEST_ROSTER_FLAG))
 	var stage: int = int(c.get("stage", 1))
 	var is_replay: bool = _is_replay_of(city_id, n)
 	if is_replay:
@@ -666,45 +669,77 @@ static func music_for(city_id: String) -> String:
 	var alt: String = str((fb as Dictionary).get("music", "")) if fb is Dictionary else ""
 	return alt if alt != "" else own
 
-# ---------------- --expected-roster (QA, P6-30) ----------------
-
-# Puts the trip state (in memory, nothing saved) where a trip would be at game n of city_id when every game is won
-# on the first try and every screen takes the trip test's default choice (each screen's auto_step()):
+# ---------------- --expected-roster and --best-roster (QA, P6-30, P8-21) ----------------
+# The two bounds of the ramp (docs/progression-plan.md part 6), both built by playing a trip in memory (nothing
+# saved, no stars, no unlocks) up to game n of city_id, every game won on the first try, the points of every win
+# spent at once (P8-11: the STAT POINTS screen after every win), with the per-starter rule (P8-08: each starter gets
+# his own points; spend() takes his own first, so a player's points only ever raise that player).
+#
+# Lower bound, expected_roster(): what the trip test's default choices give (each screen's auto_step()):
 #   - points (after_game.gd): one point at a time on the lowest stat (first in Ratings.STATS order on a tie) of the
 #     first roster player who can still take one, until none is left;
-#   - recruit (recruit.gd): the first candidate (the city's first good player);
-#   - lineup (lineup.gd): keeps the starters it opens with, so the 3 underdogs start every game;
-#   - New York: points won in earlier rounds stay unspent (the bracket's PLAY doesn't spend them).
-# Every win pays the 3 starters (P8-08), so the underdogs earn every point and the bench (the recruits) none.
-# False for an unknown or not-built city. The caller clears the state (_reset()) when done.
+#   - recruit (recruit.gd): the first candidate (the city's first good player); he sits on the bench;
+#   - lineup (lineup.gd): keeps the starters it opens with, so the 3 underdogs start every game and earn every point;
+#   - no drafts (no star slots).
+# Upper bound, best_roster(): the strongest three a trip could legally field there:
+#   - BEST_ROSTER_SLOTS star slots open from the start (a trip after earlier trips earned 48+ stars; stars are kept
+#     across trips, so this is legal);
+#   - before every game the 3 strongest roster players start (rating sum, the strongest is you);
+#   - recruit: the strongest candidate (the boss);
+#   - drafts: held until just before game n, then the slots take the strongest players of every crew beaten by then
+#     (a player drafted early would earn a few points, but a later crew's player joins at a higher stage; holding
+#     the slots also keeps every crew in the pool);
+#   - points: the starters' own points, each on his lowest stat (the same rule as above).
+# Each returns false for an unknown or not-built city. The caller clears the state (_reset()) when done.
+
+const BEST_ROSTER_FLAG := "--best-roster"   # test flag (with --city): BLUE = the strongest legal three (best_roster())
+const BEST_ROSTER_SLOTS := 4                # --best-roster: star slots open (Stars REWARDS has 4 slot rewards)
+static var _slots_override := -1            # >= 0: slot_count() returns this (the in-memory roster sims only)
+
 static func expected_roster(city_id: String, n: int = 1) -> bool:
+	return _sim_roster(city_id, n, false)
+
+static func best_roster(city_id: String, n: int = 1) -> bool:
+	return _sim_roster(city_id, n, true)
+
+static func _sim_roster(city_id: String, n: int, best: bool) -> bool:
 	if not Cities.is_built(city_id):
 		return false
 	var was: bool = saving
 	saving = false
 	new_trip(DEFAULT_LEVEL)
-	var guard: int = Cities.ROUTE.size() + 1
-	while city != "" and city != city_id and guard > 0:
+	_slots_override = BEST_ROSTER_SLOTS if best else 0
+	var games: int = maxi(1, _rounds(city_id).size()) if is_tournament(city_id) else GAMES_PER_CITY
+	var want: int = clampi(n, 1, games)
+	var guard: int = (Cities.ROUTE.size() + 1) * (GAMES_PER_CITY + 2)
+	while city != "" and guard > 0:
 		guard -= 1
-		for i in GAMES_PER_CITY:
-			record_result({"won": true})
+		var at: int = bracket_round() + 1 if is_tournament(city) else game
+		if city == city_id and at >= want:
+			break
+		if best:
+			_start_strongest()
+		record_result({"won": true})
 		_auto_spend_all()
-		finish_points()
+		if phase == "win_points" or phase == "points":
+			finish_points()
 		if phase == "recruit":
 			var cands: Array = recruit_candidates()
 			if cands.size() > 0:
-				recruit(str((cands[0] as Dictionary).get("id", "")))
+				var pick: Dictionary = cands[0]
+				if best:
+					for c in cands:
+						if _sum_of((c as Dictionary).get("ratings", {})) > _sum_of(pick.get("ratings", {})):
+							pick = c
+				recruit(str(pick.get("id", "")))
 	if city != city_id:
 		saving = was
 		return false
 	if is_tournament(city_id):
-		var rounds: int = maxi(1, _rounds(city_id).size())
-		for i in clampi(n, 1, rounds) - 1:
-			record_result({"won": true})   # the earlier rounds won: +2 points each, unspent
 		phase = "bracket"
-	else:
-		for i in clampi(n, 1, GAMES_PER_CITY) - 1:
-			record_result({"won": true})   # this city's earlier games won: each starter's points, not spent yet
+	if best:
+		_draft_strongest()
+		_start_strongest()
 	saving = was
 	return true
 
@@ -727,22 +762,84 @@ static func _auto_spend_all() -> void:
 				break
 	_spend_log = []
 
-# match_for() under --expected-roster with no trip loaded: the expected crew's match; the state is cleared after
-static func _expected_match(city_id: String, n: int) -> Dictionary:
-	if not expected_roster(city_id, n):
+# the five stats added up (how the roster sims rank players)
+static func _sum_of(r: Dictionary) -> int:
+	var t := 0
+	for s in Ratings.STATS:
+		t += int(r.get(s, 0))
+	return t
+
+# the 3 strongest roster players start (rating sum; roster order on a tie), the strongest first (you)
+static func _start_strongest() -> void:
+	var ids: Array = roster_ids()
+	var top: Array = []
+	for i in STARTERS:
+		var pick := ""
+		var hi: int = -1
+		for id in ids:
+			var v: int = _sum_of(_entry(str(id)).get("ratings", {}))
+			if not top.has(str(id)) and v > hi:
+				hi = v
+				pick = str(id)
+		if pick != "":
+			top.append(pick)
+	if starters_ok(top) == "":
+		set_starters(top, str(top[0]), false)
+
+# every open slot takes the strongest player left in the draft pool (quietly; draft() would print each one)
+static func _draft_strongest() -> void:
+	while open_slots() > 0:
+		var pool: Array = draft_pool()
+		if pool.is_empty():
+			return
+		var pick: Dictionary = pool[0]
+		for p in pool:
+			if _sum_of((p as Dictionary).get("ratings", {})) > _sum_of(pick.get("ratings", {})):
+				pick = p
+		var id: String = str(pick.get("id", ""))
+		if not can_draft(id):
+			return
+		roster_data.append(_new_entry(id, DRAFT_VIA))
+
+# match_for() under --expected-roster / --best-roster with no trip loaded: that crew's match (best wins if both are
+# given); prints the whole roster and a one-line summary for the ramp (RAMP ...); the state is cleared after
+static func _test_roster_match(city_id: String, n: int, best: bool) -> Dictionary:
+	if not _sim_roster(city_id, n, best):
 		_reset()
 		return {}
 	level = _test_level()   # --difficulty legend: the opponents get the LEGEND bonus
 	var m: Dictionary = match_for(city_id, n)
 	var lines: Array = []
 	for e in roster_data:
-		var rt: Dictionary = e["ratings"]
-		lines.append("%s %d/%d/%d/%d/%d" % [str(e["id"]), int(rt["speed"]), int(rt["shooting"]),
-				int(rt["finishing"]), int(rt["defense"]), int(rt["stamina"])])
-	print("EXPECTED ROSTER %s | starters %s | roster (spd/sht/fin/def/sta) %s" % [str(m.get("label", "")),
-			", ".join(PackedStringArray(starters)), " | ".join(PackedStringArray(lines))])
+		lines.append("%s%s %s" % [str(e["id"]), "*" if str(e.get("via", "")) == DRAFT_VIA else "",
+				_stat_line(e["ratings"])])
+	print("%s ROSTER %s | starters %s | roster (spd/sht/fin/def/sta, * drafted) %s" % [
+			"BEST" if best else "EXPECTED", str(m.get("label", "")), ", ".join(PackedStringArray(starters)),
+			" | ".join(PackedStringArray(lines))])
+	print(ramp_line(m, "best" if best else "expected"))
 	_reset()
 	return m
+
+# "RAMP <kind> <city> game <n> <level> | BLUE id s/s/s/s/s, ... (avg A) | RED ... (avg B)": one line per --city run
+static func ramp_line(m: Dictionary, kind: String) -> String:
+	var parts: Array = []
+	for t in 2:
+		var ps: Array = []
+		var sum := 0
+		var cnt := 0
+		for p in (m["teams"][t] as Dictionary).get("players", []):
+			var r: Dictionary = (p as Dictionary).get("ratings", {})
+			ps.append("%s %s" % [str(p.get("id", "")), _stat_line(r)])
+			sum += _sum_of(r)
+			cnt += Ratings.STATS.size()
+		parts.append("%s %s (avg %.1f)" % ["BLUE" if t == 0 else "RED", ", ".join(PackedStringArray(ps)),
+				float(sum) / float(maxi(1, cnt))])
+	return "RAMP %s %s game %d %s | %s" % [kind, str(m.get("city", "")), int(m.get("game", 0)),
+			str(m.get("level", "")), " | ".join(PackedStringArray(parts))]
+
+static func _stat_line(r: Dictionary) -> String:
+	return "%d/%d/%d/%d/%d" % [int(r.get("speed", 0)), int(r.get("shooting", 0)), int(r.get("finishing", 0)),
+			int(r.get("defense", 0)), int(r.get("stamina", 0))]
 
 # Records a finished trip game (flow.gd's game_finished calls it with Flow.last_result) and saves. Returns and keeps
 # in last_outcome: {"won", "city", "game", "points_won", "points_each", "city_done", "trip_done", "first_loss",
@@ -1129,6 +1226,8 @@ static func drafted_ids() -> Array:
 
 # the star slots open for good (Stars.slots(), 0..4), filled or not
 static func slot_count() -> int:
+	if _slots_override >= 0:
+		return _slots_override   # the --expected-roster / --best-roster sims
 	return Stars.slots()
 
 # slots still free on this trip: the star slots minus the players drafted (0 without a trip; never below 0, also if a
@@ -1387,6 +1486,7 @@ static func self_test(load_only: bool = false) -> bool:
 	print("TRIPDATA recruits %s" % " | ".join(PackedStringArray(rc)))
 	ok = _check_city_data() and ok
 	ok = _check_expected_rosters() and ok
+	ok = _check_best_rosters() and ok
 	ok = _check_rules() and ok
 	ok = _check_stars() and ok
 	ok = _check_draft() and ok
@@ -1473,6 +1573,33 @@ static func _check_expected_rosters() -> bool:
 				int(deuce.get("stamina", 0))]) and ok
 		before += 1
 		_reset()
+	return ok
+
+# --best-roster (P8-21): at every city's game 1 and every New York round, the strongest three are legal starters,
+# at most BEST_ROSTER_SLOTS drafted, never weaker than the expected three; printed for QA
+static func _starters_sum() -> int:
+	var t := 0
+	for id in starters:
+		t += _sum_of(_entry(str(id)).get("ratings", {}))
+	return t
+
+static func _check_best_rosters() -> bool:
+	var ok := true
+	for cid in Cities.built_route():
+		var n_games: int = _rounds(cid).size() if is_tournament(cid) else 1
+		for n in range(1, n_games + 1):
+			var low_ok: bool = expected_roster(cid, n)
+			var low: int = _starters_sum()
+			_reset()
+			var good: bool = best_roster(cid, n) and low_ok
+			var high: int = _starters_sum()
+			var lines: Array = []
+			for id in starters:
+				lines.append("%s %s" % [str(id), _stat_line(_entry(str(id)).get("ratings", {}))])
+			ok = _check(good and starters_ok(starters) == "" and drafted_ids().size() <= BEST_ROSTER_SLOTS
+					and high >= low, "best roster at %s %d: %s (sum %d >= %d)" % [cid, n,
+					", ".join(PackedStringArray(lines)), high, low]) and ok
+			_reset()
 	return ok
 
 # the 3-game rule: game 1 = 1 good + 2 avg, 2 = 2 good + 1 avg, 3 = 2 good + boss (New York rounds the same)
