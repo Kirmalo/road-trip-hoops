@@ -48,7 +48,7 @@ const SCREENS := {
 	                                          # a missing howto.gd shows the "not built yet" panel (BACK to the title)
 	"draft": "res://scripts/draft.gd",        # P8-16 (draft a player into an open roster slot), args {"back": "lineup"}
 	"locker": "res://scripts/locker.gd",      # P8-15 (star ladder, jersey / ball / van picks), args {"back": "title"};
-	                                          # nothing routes to either before its script exists (else "not built yet")
+	                                          # the title's LOCKER button routes there already; a missing script shows "not built yet"
 }
 # Test modes that skip the title and play a game at once, as today (main.gd checks skip_title()).
 const TEST_FLAGS := ["--autoplay", "--humantest", "--shots", "--ballshots", "--menushot", "--viewtest", "--city",
