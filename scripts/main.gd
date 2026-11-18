@@ -566,6 +566,12 @@ func _apply_quick_teams() -> void:
 			print("QUICK TEAMS: no team '%s', playing BLUE vs RED" % str(ids[t]))
 			return
 		built.append(tm)
+	# LEGEND (P8-19): RED's players get the level's rating bonus, capped (Hard and below: no change)
+	var lv_bonus: int = MenuScript.Difficulty.rating_bonus(MenuScript.Difficulty.effective_level())
+	if lv_bonus > 0:
+		for pd in ((built[1] as Dictionary).get("players", []) as Array):
+			if pd is Dictionary and (pd as Dictionary).has("ratings"):
+				pd["ratings"] = MenuScript.Difficulty.bonus_ratings(pd["ratings"], MenuScript.Difficulty.effective_level())
 	quick_teams = built
 	for t in 2:
 		TEAM_NAMES[t] = str((built[t] as Dictionary).get("name", TEAM_NAMES[t]))
