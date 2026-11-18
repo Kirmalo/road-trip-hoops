@@ -35,6 +35,10 @@ extends RefCounted
 #      (<sheet>_crew) has only a palette and draws its base sheet's pages (palettes.json or format.json "recolors":
 #      {"<recolor>": "<base>"}, else the plain id before _crew). load_sheet() then has "indexed": true and "palette";
 #      the player draws it through material(sheet) (scripts/shaders/palette.gdshader). Cards stay RGBA files.
+# Jerseys (P8-10): your crew's sheet ids may carry a jersey, <sheet>_j<N> (an underdog) or <sheet>_crew_j<N> (anyone
+#      else; cities.gd crew_sheet()). A jersey id whose palette is missing falls back to the normal look: with_base()
+#      lists it before <sheet>_crew and <sheet>, and load_sheet() / card_info() of a missing jersey id give the first of
+#      those that exists (so a sheet without that jersey wears the plain crew colors, never the Quick Game slot sheet).
 # Test: Sheets.self_test() (prints SHEETS lines, ends with SHEETS OK / FAILED); it builds a v2 sheet in user://.
 # Test flag: -- --players2-dir DIR reads the v2 files from DIR (res://, user:// or an absolute path) instead.
 
@@ -44,6 +48,7 @@ const FORMAT_FILE := "format.json"
 const HANDS_FILE := "hands.json"
 const CARD_SUBDIR := "cards/"
 const CREW_SUFFIX := "_crew"          # a city player's recolor in your colors (cities.gd crew_sheet)
+const JERSEY_TAG := "_j"              # P8-10: a jersey palette <sheet>_j<N> / <sheet>_crew_j<N> (a star reward)
 const PAGE_SUFFIX := "_p"             # v2 page files: <sheet>_p0.png, <sheet>_p1.png ...
 const MAX_TEXTURE := 2048             # px: no page may be wider or taller (GLES3 / WebGL2 minimum)
 const DIR_NAMES := ["S", "SE", "E", "NE", "N"]
@@ -280,6 +285,10 @@ static func load_sheet(sheet_id: String) -> Dictionary:
 	var out: Dictionary = _load_v2(sheet_id)
 	if out.is_empty():
 		out = _load_v1(sheet_id)
+	if out.is_empty() and is_jersey(sheet_id):
+		# P8-10: no such jersey for this sheet: the look without it (its "id" says which one is drawn)
+		var ids: Array = with_base(sheet_id)
+		out = load_first(ids.slice(1))
 	_sheets[sheet_id] = out
 	return out
 
@@ -291,12 +300,35 @@ static func load_first(ids: Array) -> Dictionary:
 			return s
 	return {}
 
-# [id] plus, for a _crew recolor, the plain sheet after it (the order the screens fall back in)
+# [id] plus, for a _crew recolor, the plain sheet after it (the order the screens fall back in). A jersey id (P8-10)
+# lists the look without the jersey after it: x_crew_j2 -> [x_crew_j2, x_crew, x], ud_deuce_j1 -> [ud_deuce_j1,
+# ud_deuce], ud_deuce_j1_crew -> [ud_deuce_j1_crew, ud_deuce_j1, ud_deuce].
 static func with_base(sheet_id: String) -> Array:
 	var out: Array = [sheet_id]
+	var rest := ""
 	if sheet_id.ends_with(CREW_SUFFIX):
-		out.append(sheet_id.substr(0, sheet_id.length() - CREW_SUFFIX.length()))
+		rest = sheet_id.substr(0, sheet_id.length() - CREW_SUFFIX.length())
+	else:
+		rest = strip_jersey(sheet_id)
+	if rest != "":
+		out.append_array(with_base(rest))
 	return out
+
+# P8-10: the id without its jersey (x_crew_j2 -> x_crew, ud_deuce_j1 -> ud_deuce); "" when it ends in no _j<N>
+static func strip_jersey(sheet_id: String) -> String:
+	var at: int = sheet_id.rfind(JERSEY_TAG)
+	if at <= 0:
+		return ""
+	var num: String = sheet_id.substr(at + JERSEY_TAG.length())
+	if num == "" or num.lstrip("0123456789") != "":
+		return ""
+	return sheet_id.substr(0, at)
+
+# P8-10: a jersey id (with_base() strips a jersey somewhere along it, e.g. x_crew_j1 or ud_deuce_j1_crew)
+static func is_jersey(sheet_id: String) -> bool:
+	if sheet_id.ends_with(CREW_SUFFIX):
+		return is_jersey(sheet_id.substr(0, sheet_id.length() - CREW_SUFFIX.length()))
+	return strip_jersey(sheet_id) != ""
 
 static func _load_v2(sheet_id: String) -> Dictionary:
 	var fmt: Dictionary = v2_format()
@@ -566,7 +598,9 @@ static func card_info(sheet_id: String) -> Dictionary:
 			"head_px": head_px(fmt) if fit else sz.y * 0.85}
 	else:
 		var s: Dictionary = load_sheet(sheet_id)
-		if not s.is_empty():
+		if not s.is_empty() and str(s.get("id", sheet_id)) != sheet_id:
+			out = card_info(str(s["id"]))   # P8-10: a missing jersey: the card of the look drawn instead
+		elif not s.is_empty():
 			var f: Dictionary = s["fmt"]
 			var reg: Dictionary = frame_region(s, frame_index(f, 0, "idle", 0))
 			var tex: Texture2D = null
@@ -726,6 +760,10 @@ static func self_test() -> bool:
 	print("SHEETS %s" % ("OK" if ok else "FAILED"))
 	return ok
 
+# the id of the sheet load_sheet() gives for an id ("" for none)
+static func _sid(sheet_id: String) -> String:
+	return str(load_sheet(sheet_id).get("id", ""))
+
 static func _t(good: bool, what: String) -> bool:
 	print("SHEETS check %-60s %s" % [what, "ok" if good else "WRONG"])
 	return good
@@ -825,9 +863,10 @@ static func _indexed_test() -> bool:
 	var gray := Image.create(8 * 64, 5 * 96, false, Image.FORMAT_RGB8)
 	gray.set_pixel(32, 50, Color8(5, 5, 5))
 	gray.save_png(dir + "test_gray_p0.png")   # an index page stored as RGB (Godot's WebP import): drawn, with a warning
-	for pal_id in ["test_ix", "test_ix_crew", "test_rgba", "test_gray"]:
+	var pal_colors := {"test_ix_crew": Color(0, 0, 1, 1), "test_ix_j1": Color(0, 1, 0, 1), "test_ix_crew_j2": Color(1, 1, 0, 1)}
+	for pal_id in ["test_ix", "test_ix_crew", "test_rgba", "test_gray", "test_ix_j1", "test_ix_crew_j2"]:
 		var pal := Image.create(PALETTE_SIZE, 1, false, Image.FORMAT_RGBA8)
-		pal.set_pixel(5, 0, Color(0, 0, 1, 1) if pal_id == "test_ix_crew" else Color(1, 0, 0, 1))
+		pal.set_pixel(5, 0, pal_colors.get(pal_id, Color(1, 0, 0, 1)))
 		pal.save_png(dir + PALETTE_SUBDIR + pal_id + ".png")
 	clear_cache()
 	var s: Dictionary = load_sheet("test_ix")
@@ -847,6 +886,21 @@ static func _indexed_test() -> bool:
 	var px0: Color = c1.get_image().get_pixel(10, 10) if c1 != null else Color.WHITE
 	ok = _t(px1.is_equal_approx(Color(1, 0, 0, 1)) and px2.is_equal_approx(Color(0, 0, 1, 1)) and px0.a == 0.0,
 			"v2.1 card painted in its palette (index 0 clear)") and ok
+	# P8-10 jerseys: a jersey palette draws on the base pages; a missing one falls back to the look without it
+	ok = _t(_sid("test_ix_j1") == "test_ix_j1" and str(load_sheet("test_ix_j1").get("pages_id", "")) == "test_ix"
+			and _sid("test_ix_crew_j2") == "test_ix_crew_j2"
+			and str(load_sheet("test_ix_crew_j2").get("pages_id", "")) == "test_ix", "v2.1 jersey palettes on the base pages") and ok
+	ok = _t(_sid("test_ix_j3") == "test_ix" and _sid("test_ix_crew_j3") == "test_ix_crew"
+			and _sid("test_ix_j1_crew") == "test_ix_j1" and _sid("test_ix_j3_crew") == "test_ix"
+			and load_sheet("test_none_j1").is_empty(), "v2.1 a missing jersey falls back (crew, then base)") and ok
+	ok = _t(with_base("a_crew_j2") == ["a_crew_j2", "a_crew", "a"] and with_base("ud_deuce_j1") == ["ud_deuce_j1", "ud_deuce"]
+			and with_base("ud_jojo") == ["ud_jojo"] and with_base("a_j") == ["a_j"] and with_base("a_jx1") == ["a_jx1"]
+			and with_base("a_crew") == ["a_crew", "a"] and not is_jersey("ud_jojo") and is_jersey("a_j1_crew"),
+			"jersey ids in with_base()") and ok
+	var cj: Texture2D = card("test_ix_j1")
+	var cm: Texture2D = card("test_ix_crew_j3")
+	ok = _t(cj != null and cj.get_image().get_pixel(32, 50).is_equal_approx(Color(0, 1, 0, 1)) and cm != null
+			and cm.get_image().get_pixel(32, 50).is_equal_approx(Color(0, 0, 1, 1)), "v2.1 jersey cards (and the fallback's)") and ok
 	var tt: PackedFloat32Array = anim_times(fmt, "idle")
 	ok = _t(tt.size() == 6 and is_equal_approx(tt[1], 0.2) and is_equal_approx(anim_times(fmt, "dribble")[0], 0.1)
 			and anim_event(fmt, "dribble", "floor") == 1 and anim_event(fmt, "idle", "floor", -7) == -7
