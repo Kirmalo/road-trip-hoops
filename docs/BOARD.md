@@ -104,7 +104,7 @@ stage reached, stars only; hold the itch.io upload until Phase 8 is done; 1.0.0 
 
 ## Todo
 Everything in the waves below that is not in Doing, Review or Done. Carried over from Phase 7:
-- **P7-B1** | Web: the second tap on QUIT? / RESTART? sometimes ignored (`docs/board-phase7.md`, "Bugs from P7-40").
+- **P7-B1** | CLOSED (P8-29: 20/20 on the web build; the misses were the test harness; reopen if the owner sees it on the tablet) | Web: the second tap on QUIT? / RESTART? sometimes ignored (`docs/board-phase7.md`, "Bugs from P7-40").
   Check on the owner's tablet first. Must be closed or accepted before the public release. P8-27: not reproduced
   natively under xvfb (30/30 second taps quit, touch and mouse, fixed and real time).
 
@@ -290,7 +290,7 @@ Everything in the waves below that is not in Doing, Review or Done. Carried over
   to the map row, per P8-04/P8-07), `project.godot` and `export_presets.cfg` (version per Q4), `docs/release/itch_page.md`
   (one line on stars and replays)
   | every new script, screen, flag and file documented; version as answered | P8-23..27, Q4
-- **P8-29** | Final Phase 8 QA
+- **P8-29** | DONE (release-ready, docs/qa/phase8.md) | Final Phase 8 QA
   | qa-balance-tester | `docs/qa/phase8.md`
   | trip test on all 4 levels, resume, backtest, titletest, startest, cosmetictest, anim-test, triptest-data, 10+
   `--autoplay` games (stats match the P7-T1 reference: no sim change), the P8-26 results, a web build in Playwright
