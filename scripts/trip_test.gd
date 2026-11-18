@@ -16,12 +16,30 @@ extends Node
 #                                  is then decided at once: won, or lost when forced; the screens are the point)
 # Prints TRIP lines (screen, city, game, phase, points, record, roster, save check, each game's result) and ends with
 # "TRIP END" (exit 0), "TRIP STOP" (exit 0) or "TRIP ERROR: <why>" (exit 1). Uses user://trip_test.json (save.gd).
+# Phase 8 checks (P8-23), each with its own TRIP line, any broken one is a TRIP ERROR:
+#   - after every trip game (the result screen): the game's stars (best = max(before, Stars.stars_for(level)) on a
+#     win, unchanged on a loss), its key paid once with Trip.game_points() each (a loss or a replay pays nothing);
+#     at TRIP END all 24 games paid and every game's best >= the level's stars, and the level is --difficulty's
+#   - LOCKER: on the first title of a run (before NEW TRIP) the driver taps LOCKER; the locker's auto_step() must
+#     land back on the title
+#   - DRAFT: at the first lineup with an open star slot (Trip.open_slots(), e.g. --stars 12) and a draft pool, the
+#     lineup's OPEN SLOT card (tap_open_slot()), then the draft screen's auto_step() signs the first card; back on
+#     the lineup he must be on the roster as drafted (and in the save). TRIP END fails if slots were open but no one
+#     was drafted
+#   - REPLAY: on the first map once REPLAY_AFTER is beaten (between games), the driver opens that pin's picker
+#     (open_picker) and presses its first PLAY; the replay plays like any game, then back on the map the trip must
+#     not have moved (city, game, phase, bracket, record, points, paid, beaten and starters as before, marker gone).
+#     Starters: the driver keeps the trip's starters in a replay (the lineup's auto_step keeps the picks; the pick
+#     test and the draft never run on a replay's lineup), so they are part of the check. A real player may change
+#     them in a replay's lineup (P8-20 allows it); this test does not cover that.
+#   With --mapshot the map drives its own replay: the driver then skips its replay but still checks the one played.
 
 const Flow = preload("res://scripts/flow.gd")
 const Trip = preload("res://scripts/trip.gd")
 const Save = preload("res://scripts/save.gd")
 const Cities = preload("res://scripts/cities.gd")
 const Ratings = preload("res://scripts/ratings.gd")
+const Stars = preload("res://scripts/stars.gd")    # P8-23: the stars each win records, the star slots
 
 const STEP_WAIT := 12             # frames on a screen between auto_step() calls
 const SHOT_WAIT := 40             # with --screens: frames before a screen's screenshot (layout and drawing settled)
@@ -33,6 +51,11 @@ const FORCE_LOSS_FRAMES := 90     # a forced loss ends its game this many frames
 const MAX_GAMES := 400            # more trip games than this = a loop
 const MAX_SCREENS := 3000         # more screen visits than this = a loop
 const PICK_TEST := true           # on the first lineup with a recruit: pick [recruit, underdog 2, underdog 1] by taps
+const LOCKER_TEST := true         # P8-23: visit the LOCKER from the first title of a run (back to the title)
+const DRAFT_TEST := true          # P8-23: draft one player through the lineup's OPEN SLOT card at the first chance
+const REPLAY_AFTER := "memphis"   # P8-23: replay this city's first won game from the map once it is beaten ("" = off)
+const ALL_GAMES := 24             # games that pay at TRIP END (Stars.all_keys(): 8 cities x 3)
+const MAPSHOT_FLAG := "--mapshot" # trip_map.gd's test: it drives its own replay on the first map
 
 # --- the run (static: survives reload_current_scene) ---
 static var _started := false
@@ -48,6 +71,21 @@ static var _shot_count := {}      # screen name -> screenshots taken
 static var _picked := false       # PICK_TEST done
 static var _losses_forced := 0
 static var _pick_want: Array = [] # the lineup the pick test chose; the next game's team 0 must be it
+static var _prev_screen := ""     # the screen (or "game") before this one
+static var _locker_state := 0     # 0 not yet, 1 tapped (the locker must lead back to the title), 2 checked
+static var _drafted := false      # the draft test ran (once per run)
+static var _draft_before: Array = []   # drafted ids before the OPEN SLOT tap
+static var _draft_wait := false        # OPEN SLOT tapped: the next screen after the draft is checked
+static var _replay_state := 0     # 0 not yet, 1 picker opened by the driver, 2 PLAY pressed, 3 checked
+static var _replay_snap := ""     # _progress() when the replay started ("" = no replay to check)
+static var _replays := 0          # replays played and checked in this run
+static var _game_key := ""        # the key (Stars.key) of the game being played
+static var _game_city := ""
+static var _game_n := 0
+static var _game_replay := false
+static var _star_before := 0      # that game's best stars before it
+static var _paid_before := 0      # Trip.paid.size() before it
+static var _star_checks := 0      # result screens checked
 
 var main                          # main.gd (Flow sets it)
 var _screen := ""
@@ -64,9 +102,10 @@ func _ready() -> void:
 		_parse_args()
 		if _shoot:
 			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)   # xvfb: don't wait for frames
-		print("TRIP TEST start | save file %s | target %s | force loss %s | stop after %s | resume %s" % [
+		print("TRIP TEST start | save file %s | target %s | force loss %s | stop after %s | resume %s | level %s | stars %d (real %d), slots %d, legend %s" % [
 				Save.path(), _arg_after("--target", "-"), str(_force), _stop_after if _stop_after != "" else "-",
-				"yes" if _resume else "no"])
+				"yes" if _resume else "no", _level_want() if _level_want() != "" else "(saved)", Stars.total(),
+				Stars.real_total(), Stars.slots(), "open" if Stars.legend_open() else "closed"])
 		if _resume:
 			if not Trip.continue_trip():
 				_fail("--trip-resume: no trip save to load (%s)" % Save.last_error)
@@ -85,6 +124,8 @@ func _ready() -> void:
 		var built: String = "" if _script_exists(_screen) else " (not built yet)"
 		var a: String = (" " + JSON.stringify(Flow.args)) if Flow.args.size() > 0 else ""
 		print("TRIP screen %s%s%s | %s | %s" % [_screen, built, a, _state(), _save_check()])
+		_on_arrive()
+	_prev_screen = _screen
 
 func _parse_args() -> void:
 	var cmd: PackedStringArray = OS.get_cmdline_user_args()
@@ -139,8 +180,19 @@ func _process(_delta: float) -> void:
 	if _frames < wait:
 		return
 	_frames = 0
-	if _screen == "lineup" and PICK_TEST and not _picked and Trip.roster_ids().size() > Trip.STARTERS:
+	if _screen == "lineup" and PICK_TEST and not _picked and not Trip.replaying() \
+			and Trip.roster_ids().size() > Trip.STARTERS:
 		_pick_test()
+		return
+	if _screen == "lineup" and DRAFT_TEST and not _drafted and not Trip.replaying() and Trip.open_slots() > 0 \
+			and Trip.draft_pool().size() > 0:
+		_draft_test()
+		return
+	if _screen == "title" and LOCKER_TEST and _locker_state == 0 and not Trip.is_done():
+		_locker_test()
+		return
+	if _screen == "map" and _replay_wanted():
+		_replay_step()
 		return
 	var done: bool = Flow.auto_step()
 	if not done:
@@ -187,6 +239,20 @@ func _start_game() -> void:
 		_pick_want = []
 	if mine.size() != Trip.STARTERS or theirs.size() != Trip.STARTERS:
 		_fail("the match does not have 3 players a side")
+		return
+	# P8-23: what this game's result must record (checked on the result screen)
+	_game_replay = Trip.replaying()
+	if _game_replay:
+		_game_city = str(Trip.replay.get("city", ""))
+		_game_n = int(Trip.replay.get("game", 1))
+		if _replay_snap == "":
+			_replay_snap = _progress()   # a replay the driver did not start (--mapshot)
+	else:
+		_game_city = Trip.city
+		_game_n = Trip.bracket_round() + 1 if Trip.is_tournament(Trip.city) else Trip.game
+	_game_key = Stars.key(_game_city, _game_n)
+	_star_before = Stars.best(_game_key)
+	_paid_before = Trip.paid.size()
 
 func _watch_game() -> void:
 	if main == null:
@@ -309,6 +375,217 @@ func _pick_test() -> void:
 	if _shoot:
 		_screenshot("lineup_picked")
 
+# ---------------- Phase 8 checks (P8-23) ----------------
+
+# a new screen (not a game): the checks that look at where the last step led
+func _on_arrive() -> void:
+	if _locker_state == 1 and _prev_screen == "locker":
+		_locker_state = 2
+		print("TRIP locker back: %s" % ("ok, on the title" if _screen == "title" else "WRONG (on %s)" % _screen))
+		if _screen != "title":
+			_fail("the locker's auto_step did not go back to the title")
+			return
+	if _screen == "result":
+		_check_result()
+	if _draft_wait and _prev_screen == "draft":
+		_check_draft()
+	if _screen == "map" and _replay_snap != "" and not Trip.replaying() \
+			and bool(Trip.last_outcome.get("replay", false)):
+		_check_replay_back()
+
+# the trip's progress, everything a replay must leave alone (the save is checked by _save_check)
+static func _progress() -> String:
+	return "city %s game %d phase %s bracket %d | record %d-%d | points %d | paid %d | beaten %s | starters %s" % [
+			Trip.city, Trip.game, Trip.phase, Trip.bracket_round(), int(Trip.record.get("wins", 0)),
+			int(Trip.record.get("losses", 0)), Trip.points, Trip.paid.size(), str(Trip.beaten), str(Trip.starters)]
+
+# the result screen: the game's stars and points as the rules say (Trip.last_outcome, recorded by flow.gd)
+func _check_result() -> void:
+	var o: Dictionary = Trip.last_outcome
+	if _game_key == "":
+		return   # no game of this run before this result
+	_star_checks += 1
+	var won: bool = bool(o.get("won", false))
+	var per: int = Stars.stars_for(Trip.level)
+	var want_best: int = maxi(_star_before, per) if won else _star_before
+	var now: int = Stars.best(_game_key)
+	var errs: Array = []
+	if str(o.get("star_key", "")) != _game_key:
+		errs.append("outcome key %s, game %s" % [str(o.get("star_key", "")), _game_key])
+	if bool(o.get("replay", false)) != _game_replay:
+		errs.append("outcome replay %s" % str(o.get("replay", false)))
+	if now != want_best or int(o.get("stars_game", -1)) != want_best:
+		errs.append("stars %d (outcome %s), want %d" % [now, str(o.get("stars_game", "?")), want_best])
+	if int(o.get("stars_gained", -1)) != want_best - _star_before:
+		errs.append("gained %s, want %d" % [str(o.get("stars_gained", "?")), want_best - _star_before])
+	var each: int = int(o.get("points_each", -1))
+	if won and not _game_replay:
+		if not Trip.is_paid(_game_key) or Trip.paid.size() != _paid_before + 1:
+			errs.append("not paid once (paid %d -> %d)" % [_paid_before, Trip.paid.size()])
+		if each != Trip.game_points(_game_city, _game_n):
+			errs.append("points each %d, want %d" % [each, Trip.game_points(_game_city, _game_n)])
+	elif Trip.paid.size() != _paid_before or each != 0:
+		errs.append("paid %d -> %d, points each %d (a %s pays nothing)" % [_paid_before, Trip.paid.size(), each,
+				"replay" if _game_replay else "loss"])
+	print("TRIP stars %s%s %s | level %s (%d a win) | best %d -> %d (+%s) | points each %d | paid %d/%d | %s" % [
+			_game_key, " (replay)" if _game_replay else "", "won" if won else "lost", Trip.level, per, _star_before,
+			now, str(o.get("stars_gained", "?")), each, Trip.paid.size(), ALL_GAMES,
+			"ok" if errs.is_empty() else "WRONG: " + "; ".join(PackedStringArray(errs))])
+	var k: String = _game_key
+	_game_key = ""
+	if not errs.is_empty():
+		_fail("the result of %s did not record its stars / points right" % k)
+
+# LOCKER from the title (the title's own button), then the locker's auto_step() must bring us back
+func _locker_test() -> void:
+	_locker_state = 1
+	var node: Node = Flow.current_screen()
+	if node == null:
+		_fail("no title screen to tap LOCKER on")
+		return
+	node.set("_arm_t", 0.0)
+	var tapped := false
+	var btns = node.get("_buttons")
+	if btns is Array:
+		for b in btns:
+			if b is Button and is_instance_valid(b) and (b as Button).text == "LOCKER":   # (greyed while armed)
+				(b as Button).pressed.emit()
+				tapped = true
+				break
+	print("TRIP locker: %s | stars %d (real %d) | slots %d" % ["tapped LOCKER on the title" if tapped else "NO BUTTON",
+			Stars.total(), Stars.real_total(), Stars.slots()])
+	if not tapped:
+		_fail("the title has no LOCKER button")
+
+# the lineup's OPEN SLOT card -> the draft screen (its auto_step signs the first card) -> back to the lineup
+func _draft_test() -> void:
+	_drafted = true
+	var node: Node = Flow.current_screen()
+	if node == null or not node.has_method("tap_open_slot"):
+		_fail("the lineup has no OPEN SLOT tap (tap_open_slot)")
+		return
+	_draft_before = Trip.drafted_ids()
+	print("TRIP draft: OPEN SLOT tapped | slots %d, open %d | pool %d players | drafted before %s" % [
+			Trip.slot_count(), Trip.open_slots(), Trip.draft_pool().size(), str(_draft_before)])
+	_draft_wait = true
+	if not bool(node.call("tap_open_slot")):
+		_fail("the lineup's OPEN SLOT tap did nothing (open slots %d)" % Trip.open_slots())
+
+func _check_draft() -> void:
+	_draft_wait = false
+	var now: Array = Trip.drafted_ids()
+	var added: Array = []
+	for id in now:
+		if not _draft_before.has(id):
+			added.append(str(id))
+	var saved := 0
+	for e in Save.read().get("roster", []):
+		if e is Dictionary and str((e as Dictionary).get("via", "")) == Trip.DRAFT_VIA:
+			saved += 1
+	var ok: bool = added.size() == 1 and Trip.roster_ids().has(added[0]) and saved == now.size() \
+			and _screen == "lineup"
+	print("TRIP draft %s | back on %s | roster %s | open slots %d | in the save %d | %s" % [str(added), _screen,
+			str(Trip.roster_ids()), Trip.open_slots(), saved, "ok" if ok else "WRONG"])
+	if not ok:
+		_fail("the draft did not add exactly one player (saved) and come back to the lineup")
+
+# the map: replay REPLAY_AFTER's first won game once, between games (not when --mapshot drives the map)
+func _replay_wanted() -> bool:
+	if REPLAY_AFTER == "" or _replay_state >= 2 or Trip.is_done() or Trip.phase != "map" or Trip.replaying():
+		return false
+	if OS.get_cmdline_user_args().has(MAPSHOT_FLAG) or not Trip.beaten.has(REPLAY_AFTER):
+		return false
+	for n in range(1, Trip.GAMES_PER_CITY + 1):
+		if Trip.can_replay(REPLAY_AFTER, n):
+			return true
+	return false
+
+func _replay_step() -> void:
+	var node: Node = Flow.current_screen()
+	if node == null or not node.has_method("open_picker"):
+		_fail("the map has no replay picker (open_picker)")
+		return
+	if float(node.get("_drive_t")) >= 0.0:
+		node.call("_end_drive")   # the van parks first, as auto_step would
+		return
+	if _replay_state == 0 or node.get("_picker") == null:
+		_replay_state = 1
+		node.call("open_picker", REPLAY_AFTER)   # what a tap on the pin does (prints MAP PICKER)
+		return
+	var btns = node.get("_play_btns")
+	if not (btns is Dictionary) or (btns as Dictionary).is_empty():
+		_fail("the %s picker has no PLAY button" % REPLAY_AFTER)
+		return
+	var n: int = int((btns as Dictionary).keys()[0])
+	_replay_snap = _progress()
+	_replay_state = 2
+	print("TRIP replay: PLAY %s from the map's picker | before: %s" % [Stars.key(REPLAY_AFTER, n), _replay_snap])
+	node.set("_arm_t", 0.0)
+	((btns as Dictionary)[n] as Button).pressed.emit()
+	if not Trip.replaying() or str(Trip.replay.get("city", "")) != REPLAY_AFTER or int(Trip.replay.get("game", 0)) != n:
+		_fail("PLAY did not start the replay of %s (marker %s)" % [Stars.key(REPLAY_AFTER, n), str(Trip.replay)])
+
+# back on the map after a replay's result: the trip did not move, the marker is gone, the save agrees
+func _check_replay_back() -> void:
+	var now: String = _progress()
+	var sc: String = _save_check()
+	var ok: bool = now == _replay_snap and not Trip.replaying() and sc == "saved ok"
+	print("TRIP replay back on the map | %s %s | trip %s | %s" % [str(Trip.last_outcome.get("star_key", "?")),
+			"won" if bool(Trip.last_outcome.get("won", false)) else "lost",
+			"unchanged" if now == _replay_snap else "MOVED (now: %s)" % now, sc])
+	_replay_snap = ""
+	_replay_state = 3
+	_replays += 1
+	if not ok:
+		_fail("the replay moved the trip (or left its marker / a different save)")
+
+# the level this run asked for ("" = none): --difficulty's; LEGEND needs the stars open, else the game plays hard
+static func _level_want() -> String:
+	var v: String = _arg_after("--difficulty", "")
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--difficulty="):
+			v = a.get_slice("=", 1)
+	v = v.strip_edges().to_lower()
+	if not Trip.LEVELS.has(v):
+		return ""
+	if v == "legend" and not Stars.legend_open():
+		return "hard"
+	return v
+
+# TRIP END: every game paid, every game's stars at least the level's, the level asked for, the draft and the replay
+# checked when they had their chance. False (after TRIP ERROR) when one fails.
+func _end_checks() -> bool:
+	var per: int = Stars.stars_for(Trip.level)
+	var unpaid: Array = []
+	var low: Array = []
+	for k in Stars.all_keys():
+		if not Trip.is_paid(str(k)):
+			unpaid.append(str(k))
+		if Stars.best(str(k)) < per:
+			low.append(str(k))
+	print("TRIP stars at the end | level %s (%d a win) | paid %d/%d%s | every game >= %d stars: %s | total %d (real %d)"
+			% [Trip.level, per, Trip.paid.size(), ALL_GAMES, (" missing " + str(unpaid)) if unpaid.size() > 0 else "",
+			per, "ok" if low.is_empty() else "NO " + str(low), Stars.total(), Stars.real_total()])
+	if Trip.paid.size() != ALL_GAMES or unpaid.size() > 0 or low.size() > 0:
+		_fail("the finished trip did not pay all %d games or record their stars" % ALL_GAMES)
+		return false
+	var want: String = _level_want()
+	if want != "" and Trip.level != want:
+		_fail("the trip played %s, --difficulty asked for %s" % [Trip.level, want])
+		return false
+	print("TRIP draft at the end | slots %d | drafted %s | %s" % [Trip.slot_count(), str(Trip.drafted_ids()),
+			"ok" if Trip.slot_count() == 0 or Trip.drafted_ids().size() > 0 else "NO DRAFT"])
+	if DRAFT_TEST and Trip.slot_count() > 0 and Trip.drafted_ids().is_empty():
+		_fail("star slots were open but no one was drafted")
+		return false
+	if _replay_state == 1 or _replay_state == 2 or _replay_snap != "":
+		_fail("a replay was started but never checked back on the map")
+		return false
+	print("TRIP checks | replays %d | locker %s | draft %s" % [_replays,
+			"ok" if _locker_state == 2 else "not visited (no fresh title in this run)",
+			"done in this run" if _drafted else "not in this run"])
+	return true
+
 # ---------------- prints ----------------
 
 static func _state() -> String:
@@ -331,8 +608,10 @@ static func _save_check() -> String:
 
 func _end() -> void:
 	var ok: bool = Trip.beaten.has("new_york") and Trip.is_done()
-	print("TRIP END | %s | games %d (forced losses %d) | screens %d | %s" % [_state(), _games, _losses_forced,
-			_screens, "complete" if ok else "INCOMPLETE"])
+	if ok and not _end_checks():
+		return
+	print("TRIP END | %s | games %d (forced losses %d) | screens %d | results checked %d | replays %d | %s" % [
+			_state(), _games, _losses_forced, _screens, _star_checks, _replays, "complete" if ok else "INCOMPLETE"])
 	_quit(0 if ok else 1)
 
 func _fail(why: String) -> void:
