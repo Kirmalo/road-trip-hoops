@@ -71,6 +71,7 @@ const STAT_COLS := [["points", "PTS"], ["fg", "FG"], ["dunks", "DUNKS"], ["steal
 const STATS := [["speed", "SPEED"], ["shooting", "SHOOTING"], ["finishing", "FINISHING"], ["defense", "DEFENSE"],
 		["stamina", "STAMINA"]]
 const HEAD_H := 120.0                      # px: the header row (title, points left, UNDO, DONE)
+const PAGE_W := 1280.0                     # px: the points page column, centred on wider screens (P8-B8)
 const LIST_W := 290.0                      # the player list column
 const LIST_BTN := Vector2(260, 110)
 const LIST_FONT := 30                      # a list button: the name, then "2 POINTS" under it
@@ -409,6 +410,15 @@ func _build_points() -> void:
 			if Trip.player_points(str(id)) > 0:
 				_pick = str(id)   # open on a starter who has points of his own
 				break
+	# P8-B8: the page is a 1280-wide column centred on wider screens (like the lineup's FRAME_SIZE)
+	var page := Control.new()
+	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.anchor_left = 0.5
+	page.anchor_right = 0.5
+	page.anchor_bottom = 1.0
+	page.offset_left = -PAGE_W / 2.0
+	page.offset_right = PAGE_W / 2.0
+	_root.add_child(page)
 	# header: title and points left on the left, UNDO and DONE (SKIP) on the right
 	var head := HBoxContainer.new()
 	head.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -418,7 +428,7 @@ func _build_points() -> void:
 	head.offset_bottom = HEAD_H
 	head.add_theme_constant_override("separation", 24)
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(head)
+	page.add_child(head)
 	var tcol := UI.vbox(head, 0, false)
 	tcol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tcol.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -442,7 +452,7 @@ func _build_points() -> void:
 	scroll.offset_top = HEAD_H + 10
 	scroll.offset_bottom = -10
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_root.add_child(scroll)
+	page.add_child(scroll)
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", ROW_GAP)
 	list.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -467,7 +477,7 @@ func _build_points() -> void:
 	right.add_theme_constant_override("separation", ROW_GAP)
 	right.alignment = BoxContainer.ALIGNMENT_CENTER
 	right.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(right)
+	page.add_child(right)
 	for s in STATS:
 		var key: String = str(s[0])
 		var row := HBoxContainer.new()

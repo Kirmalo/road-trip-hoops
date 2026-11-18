@@ -57,6 +57,9 @@ const DISABLED_ALPHA := 0.6                      # a button that can't be tapped
 const KIND_MAIN := "main"                # blue
 const KIND_LIT := "lit"                  # gold
 const KIND_OPT := "opt"                  # grey
+const KIND_LEGEND := "legend"            # purple: the LEGEND level when not picked (P8-B6, as in the Quick Game panel)
+const LEGEND_COLOR := Color(0.45, 0.16, 0.42)
+const LEGEND_BORDER := Color(1.0, 0.7, 0.95, 0.8)
 
 const _FONT_KEYS := ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color", "font_focus_color"]
 
@@ -159,6 +162,9 @@ static func set_kind(b: Button, kind: String) -> void:
 	elif kind == KIND_OPT:
 		fill = OPT_COLOR
 		border = OPT_BORDER
+	elif kind == KIND_LEGEND:
+		fill = LEGEND_COLOR
+		border = LEGEND_BORDER
 	var sb := style_box(fill, border, width)
 	b.add_theme_stylebox_override("normal", sb)
 	b.add_theme_stylebox_override("hover", sb)

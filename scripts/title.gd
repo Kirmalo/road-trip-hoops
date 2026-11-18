@@ -80,6 +80,7 @@ const DETAIL_FONT := 22
 const STAT_W := 120                            # px per rating column in the crew list
 const NAME_W := 340                            # px: the crew list's name column
 const ROLE_W := 175                            # px: the crew list's role column
+const ROLE_MIN_FONT := 15                      # the smallest a long role shrinks to (P8-B4)
 const TAG_W := 110                             # px: the crew list's last column (his points, DRAFTED)
 const TAG_FONT := 20
 const NAME_MIN_FONT := 20                      # a long nicknamed name shrinks down to this to fit NAME_W
@@ -320,7 +321,7 @@ func _show_panel(which: String) -> void:
 			var levels: Array = level_choices()
 			for lv in levels:
 				_btn(row3, String(Difficulty.NAMES[lv]).to_upper(), _on_trip_level.bind(lv),
-						UI.KIND_LIT if lv == Difficulty.level else UI.KIND_MAIN,
+						UI.KIND_LIT if lv == Difficulty.level else _level_kind(lv),
 						TRIP_LEVEL_BTN4 if levels.size() > 3 else Vector2.ZERO)
 			_btn(UI.hbox(box), "BACK", _show_panel.bind("trip"), UI.KIND_OPT, UI.SMALL_SIZE)
 		_:
@@ -370,6 +371,10 @@ static func level_choices() -> Array:
 	if lg > Difficulty.HARD and Stars.legend_open():
 		out.append(lg)
 	return out
+
+# an unpicked level button's look: LEGEND purple like the Quick Game panel (P8-B6), the others blue
+static func _level_kind(lv: int) -> String:
+	return UI.KIND_LEGEND if lv == Difficulty.NAMES.find(LEGEND_NAME) else UI.KIND_MAIN
 
 # a button that waits out the panel's arm time and ignores taps once a screen change is on its way
 func _btn(parent: Control, text: String, on_tap: Callable, kind: String, size := Vector2.ZERO) -> Button:
@@ -493,7 +498,7 @@ func _refresh_settings() -> void:
 	_lh_btn.text = "LEFT-HANDED: ON" if lh else "LEFT-HANDED: OFF"
 	UI.set_text_color(_lh_btn, UI.OFF_TEXT if lh else UI.OPT_OFF_TEXT)
 	for i in _level_btns.size():
-		UI.set_kind(_level_btns[i], UI.KIND_LIT if i == Difficulty.level else UI.KIND_MAIN)
+		UI.set_kind(_level_btns[i], UI.KIND_LIT if i == Difficulty.level else _level_kind(i))
 
 func _toggle_music() -> void:
 	MenuScript.set_music(not MenuScript.music_on)
@@ -641,9 +646,9 @@ func _crew_section(list: Control) -> void:
 		_left(list, "Van: %s.  No trip yet: tap ROAD TRIP on the title to start one." % Cities.VAN_NAME.capitalize(),
 				DETAIL_FONT)
 	else:
-		var rec: Dictionary = save.get("record", {}) if save.get("record", {}) is Dictionary else {}
-		_left(list, "Van: %s.   Record %d-%d.   %s.   Crew points: %d." % [Cities.VAN_NAME.capitalize(),
-				int(rec.get("wins", 0)), int(rec.get("losses", 0)), _trip_summary(), crew_points_of(save)], DETAIL_FONT)
+		# P8-B5: the record is in _trip_summary() already ("DENVER, GAME 1 - 12-1 - HARD")
+		_left(list, "Van: %s.   %s.   Crew points: %d." % [Cities.VAN_NAME.capitalize(), _trip_summary(),
+				crew_points_of(save)], DETAIL_FONT)
 	var roster: Array = []
 	var starters: Array = []
 	if save.get("roster", null) is Array:
@@ -669,7 +674,9 @@ func _crew_section(list: Control) -> void:
 		var name_text: String = who + ("  *" if starters.has(id) else "")
 		var nl := _left(row, name_text, _fit_font(name_text, NAME_W, ENTRY_FONT, NAME_MIN_FONT))
 		nl.custom_minimum_size = Vector2(NAME_W, 0)
-		var role := _left(row, str(p.get("role", "")), DETAIL_FONT, STUB_COLOR)
+		var role_text: String = str(p.get("role", ""))
+		# P8-B4: a long role ("fast-break guard") shrinks to keep a gap before SPD
+		var role := _left(row, role_text, _fit_font(role_text, ROLE_W - 12, DETAIL_FONT, ROLE_MIN_FONT), STUB_COLOR)
 		role.custom_minimum_size = Vector2(ROLE_W, 0)
 		for s in STAT_NAMES:
 			var sl := _left(row, "%s %d" % [s[1], int(ratings.get(s[0], 50))], DETAIL_FONT)
