@@ -12,10 +12,13 @@ extends RefCounted
 #   - each city has one crew, played 3 times: game 1 = 1 good + 2 average, game 2 = 2 good + 1 average,
 #     game 3 = 2 good + the boss (crew_for_game); targets 11 / 15 / 21 (cities.gd game_target)
 #   - win all 3 to move on; a loss just retries that game (no penalty)
-#   - 2 stat points per win; each point +3 on one stat of one player; no stat above 90; spent after each city
+#   - Phase 8 (P8-08): every win pays each of the 3 starters his own points (POINTS_CITY_GAME for city games 1-2,
+#     POINTS_BOSS_GAME for the boss game and each New York round), each game once per trip ("paid"); the bench gets
+#     nothing. Crew points (a 1.0.0 save's pool + its catch-up) go to anyone. Each point +3 on one stat of one
+#     player; no stat above 90; spent (for now) after each city and between New York rounds (SPEND_PHASES)
 #   - after a city: recruit ONE of its 2 good players or the boss (he keeps his ratings, wears your colors)
 #   - roster = the 3 underdogs + recruits; 3 starters picked before each game (remembered); starter 0 = you
-#   - level (easy / normal / hard) picked at trip start, changeable (set_level)
+#   - level (easy / normal / hard, legend once the stars open it) picked at trip start, changeable (set_level)
 #   - fixed route (cities.gd ROUTE), cities with "built": false are skipped, no replays
 #   - New York tournament: 3 rounds, all to 21; a loss replays that round
 # Phases (where CONTINUE resumes): "map" (next game from the map), "points" (spend after a city), "recruit",
@@ -28,25 +31,38 @@ extends RefCounted
 # there (expected_roster()); a won boss game unlocks the city's court for Quick Game (P6-17, Difficulty.unlock_court)
 # and its crew as a Quick Game team (P6-T3, Difficulty.unlock_team; a New York crew when its round is won).
 # quick_team(crew_id) builds such a team for main.gd.
+# Save version 2 (P8-08, board "Save"): each roster entry has "pts" (his unspent points) and "via" (start / recruit /
+# draft); the trip has "crew_points", "paid" (game keys, Stars.key) and "replay" ({} or {"city", "game"}); "points"
+# is still written (the total of all unspent points) so a 1.0.0 build reads it as its shared pool. A version 1 save
+# migrates on load (from_dict): its pool + the catch-up become crew points, every game already won is paid, "via"
+# comes from the player data; boss starters stay as they are (owner: no one-boss rule for now).
 
 const Flow = preload("res://scripts/flow.gd")
 const Cities = preload("res://scripts/cities.gd")
 const Ratings = preload("res://scripts/ratings.gd")
 const Save = preload("res://scripts/save.gd")
+const Stars = preload("res://scripts/stars.gd")            # key(city, n): the "paid" game keys ("chicago:2")
 const Looks = preload("res://scripts/court_looks.gd")      # which look ids exist (city look or its fallback)
 const StoryText = preload("res://scripts/story_text.gd")   # the data check: every scene a city names exists
 const DIFFICULTY_PATH := "res://scripts/difficulty.gd"     # loaded at call time: unlock_court() (P6-17) if it exists
 const MUSIC_DIR := "res://assets/music/"                   # <music>.ogg (audio.gd); missing = the city's fallback
 const EXPECTED_ROSTER_FLAG := "--expected-roster"          # test flag (with --city): the crew a trip would have there
 
-const LEVELS := ["easy", "normal", "hard"]   # difficulty.gd NAMES
+const LEVELS := ["easy", "normal", "hard", "legend"]   # difficulty.gd NAMES + legend (P8: opened by 72 stars)
 const DEFAULT_LEVEL := "normal"     # a trip with no level given; also the --city test matches
-const POINTS_PER_WIN := 2           # owner Q5 a
+const POINTS_CITY_GAME := 1         # P8 (owner Q1 a): each starter, city games 1 and 2
+const POINTS_BOSS_GAME := 2         # P8: each starter, a city's boss game (game 3) and each New York round
+const POINTS_PER_WIN := 2           # 1.0.0's crew pool per win: only award_points()'s default (crew points) now
+const CATCHUP_CITY := 6             # a version 1 save: crew points per beaten city (3 x (1 + 1 + 2) - 3 x 2)
+const CATCHUP_ROUND := 4            # a version 1 save: crew points per won New York round (3 x 2 - 2)
+const CATCHUP_CITY_GAME := 1        # a version 1 save: per won game of the city being played (3 x 1 - 2)
+const VIAS := ["start", "recruit", "draft"]   # how a roster player joined (save "via")
+const RULE_MARK := "rule:per_starter"   # a "seen" entry in every version 2 trip; a 1.0.0 build keeps it when it saves
+                                        # (as version 1), so loading that save again gives no second catch-up
 const POINT_GAIN := 3               # one point = +3 on one stat
 const STAT_CAP := 90                # spending stops at 90 (starting ratings may be higher; they are not lowered)
 const GAMES_PER_CITY := 3
 const STARTERS := 3
-const TOURNAMENT_POINTS := true     # tournament wins also earn points (owner: "2 per win"); spendable on the bracket
 const SPEND_PHASES := ["points", "bracket"]   # where spend() is allowed (the points screen; between NY rounds)
 const PHASES := ["map", "points", "recruit", "bracket", "done"]
 const MAX_POINTS := 999             # sanity cap for a loaded save
@@ -59,8 +75,13 @@ static var level := DEFAULT_LEVEL
 static var city := ""               # the city being played (stays the beaten city during points / recruit)
 static var game := 1                # 1..3 in a city; in New York = bracket round + 1
 static var beaten: Array = []       # city ids, in route order
-static var points := 0              # unspent stat points
-static var roster_data: Array = []  # [{"id": String, "ratings": {speed, shooting, finishing, defense, stamina}}]
+static var points := 0              # every unspent point: crew_points + each player's "pts" (_sync_points; read-only)
+static var crew_points := 0         # points anyone may spend (a 1.0.0 pool + its catch-up; award_points())
+static var paid: Array = []         # game keys that have paid their points this trip ("hometown:1", "new_york:2")
+static var replay := {}             # {} or {"city", "game"}: a replay in progress (saved; P8-17 fills it)
+static var loaded_version := 0      # the save version from_dict() read (0 = a new trip); 1 = migrated from 1.0.0
+static var roster_data: Array = []  # [{"id", "ratings": {speed, shooting, finishing, defense, stamina}, "pts": int,
+                                    #   "via": "start" | "recruit" | "draft"}]
 static var starters: Array = []     # 3 roster ids; the human plays starters[0] (== human)
 static var human := ""
 static var bracket := {"round": 0}  # New York: rounds won so far (0..3)
@@ -78,6 +99,7 @@ static func new_trip(lv: String = DEFAULT_LEVEL) -> void:
 	_reset()
 	active = true
 	level = lv if LEVELS.has(lv) else DEFAULT_LEVEL
+	seen.append(RULE_MARK)
 	save()
 
 # Loads the save; true when a trip was loaded. A missing or broken save = false, and the state is left empty.
@@ -86,7 +108,10 @@ static func continue_trip() -> bool:
 	if d.is_empty():
 		active = false
 		return false
-	return from_dict(d)
+	var ok: bool = from_dict(d)
+	if ok and loaded_version < Save.VERSION:
+		save()   # a migrated version 1 save is written as version 2 at once
+	return ok
 
 # a valid save exists (the title shows CONTINUE)
 static func has_save() -> bool:
@@ -113,15 +138,22 @@ static func set_level(lv: String) -> void:
 	level = lv
 	save()
 
+# "points" is the total (crew + every player's), for a 1.0.0 build (its shared pool); version 2 reads "crew_points"
+# and each roster entry's "pts" instead.
 static func to_dict() -> Dictionary:
+	_sync_points()
 	return {
 		"level": level, "city": city, "game": game, "beaten": beaten.duplicate(), "points": points,
 		"roster": roster_data.duplicate(true), "starters": starters.duplicate(), "human": human,
 		"bracket": bracket.duplicate(), "seen": seen.duplicate(), "record": record.duplicate(), "phase": phase,
+		"crew_points": crew_points, "paid": paid.duplicate(), "replay": replay.duplicate(),
 	}
 
 # Loads a saved dictionary, checking every field (unknown ids dropped, numbers clamped, missing fields = the
 # defaults), so an old, newer or hand-edited save still gives a playable trip. False only when it isn't a trip at all.
+# Version 1 (1.0.0) migrates: crew points = its pool + CATCHUP_CITY per beaten city + CATCHUP_ROUND per won New York
+# round + CATCHUP_CITY_GAME per won game of the city being played; every game already won is paid; nobody has own
+# points yet; "via" from the data (the underdogs "start", everyone else "recruit").
 static func from_dict(d: Dictionary) -> bool:
 	var ver: int = int(d.get("version", 0))
 	if ver < 1:
@@ -130,6 +162,8 @@ static func from_dict(d: Dictionary) -> bool:
 		push_warning("Trip: save version %d is newer than %d; loading what fits" % [ver, Save.VERSION])
 	_reset()
 	active = true
+	loaded_version = ver
+	var v1: bool = ver < 2
 	var lv: String = str(d.get("level", DEFAULT_LEVEL))
 	level = lv if LEVELS.has(lv) else DEFAULT_LEVEL
 	# beaten cities, in route order
@@ -154,10 +188,17 @@ static func from_dict(d: Dictionary) -> bool:
 			for s in Ratings.STATS:
 				var v = got.get(s, base[s]) if got is Dictionary else base[s]
 				rt[s] = clampi(int(v) if (v is int or v is float) else int(base[s]), Ratings.MIN_RATING, Ratings.MAX_RATING)
-			roster_data.append({"id": id, "ratings": rt})
+			var ne: Dictionary = _new_entry(id)
+			ne["ratings"] = rt
+			if not v1:
+				ne["pts"] = _int_in((e as Dictionary).get("pts", 0), 0, MAX_POINTS)
+				var via: String = str((e as Dictionary).get("via", ""))
+				if VIAS.has(via) and (via == "start") == (_via_of(id) == "start"):
+					ne["via"] = via   # "recruit" or "draft" as saved; "start" only for the underdogs
+			roster_data.append(ne)
 	for id in Cities.START_CREW:
 		if not _on_roster(id):
-			roster_data.append({"id": id, "ratings": _start_ratings(id)})
+			roster_data.append(_new_entry(id))
 	# starters and the human
 	var st = d.get("starters", [])
 	var ids: Array = []
@@ -196,8 +237,6 @@ static func from_dict(d: Dictionary) -> bool:
 	game = clampi(int(gv) if (gv is int or gv is float) else 1, 1, GAMES_PER_CITY)
 	if is_tournament(city):
 		game = clampi(int(bracket["round"]) + 1, 1, maxi(1, _rounds(city).size()))
-	var pv = d.get("points", 0)
-	points = clampi(int(pv) if (pv is int or pv is float) else 0, 0, MAX_POINTS)
 	var sn = d.get("seen", [])
 	if sn is Array:
 		for e in sn:
@@ -206,6 +245,24 @@ static func from_dict(d: Dictionary) -> bool:
 	var rc = d.get("record", {})
 	if rc is Dictionary:
 		record = {"wins": maxi(0, int(rc.get("wins", 0))), "losses": maxi(0, int(rc.get("losses", 0)))}
+	# points: a version 1 pool becomes crew points (+ the catch-up); version 2 has crew_points and each "pts"
+	paid = _won_keys()
+	if v1:
+		var add: int = _catch_up() if not seen.has(RULE_MARK) else 0   # with the mark: a version 2 trip saved by 1.0.0
+		crew_points = clampi(_int_in(d.get("points", 0), 0, MAX_POINTS) + add, 0, MAX_POINTS)
+	else:
+		crew_points = _int_in(d.get("crew_points", 0), 0, MAX_POINTS)
+		var pd = d.get("paid", [])
+		if pd is Array:
+			for k in pd:
+				if Stars.is_key(str(k)) and not paid.has(str(k)):
+					paid.append(str(k))
+		var rp = d.get("replay", {})
+		if rp is Dictionary and paid.has(Stars.key(str(rp.get("city", "")), _int_in(rp.get("game", 0), 0, 99))):
+			replay = {"city": str(rp.get("city", "")), "game": _int_in(rp.get("game", 0), 0, 99)}
+	if not seen.has(RULE_MARK):
+		seen.append(RULE_MARK)
+	_sync_points()
 	return true
 
 static func _reset() -> void:
@@ -215,9 +272,13 @@ static func _reset() -> void:
 	game = 1
 	beaten = []
 	points = 0
+	crew_points = 0
+	paid = []
+	replay = {}
+	loaded_version = 0
 	roster_data = []
 	for id in Cities.START_CREW:
-		roster_data.append({"id": id, "ratings": _start_ratings(id)})
+		roster_data.append(_new_entry(id))
 	starters = Cities.START_CREW.duplicate()
 	human = str(starters[0])
 	bracket = {"round": 0}
@@ -226,6 +287,55 @@ static func _reset() -> void:
 	phase = "map"
 	last_outcome = {}
 	_spend_log = []
+
+# a new roster entry: his starting ratings, no points, "via" from the data
+static func _new_entry(id: String, via: String = "") -> Dictionary:
+	return {"id": id, "ratings": _start_ratings(id), "pts": 0, "via": via if VIAS.has(via) else _via_of(id)}
+
+# how a player joined when the save doesn't say (1.0.0 had no draft): the underdogs "start", a recruitable player
+# (a city's good players and boss) "recruit", anyone else "draft" (a version 2 draft that a 1.0.0 build saved again)
+static func _via_of(id: String) -> String:
+	var p: Dictionary = Cities.player(id)
+	if str(p.get("tier", "")) == "start":
+		return "start"
+	return "recruit" if bool(p.get("recruitable", false)) else "draft"
+
+# a saved number as an int in lo..hi (anything else = lo)
+static func _int_in(v, lo: int, hi: int) -> int:
+	return clampi(int(v) if (v is int or v is float) else lo, lo, hi)
+
+# the game keys this trip has won (so they have paid): every game of a beaten city, the city being played's games
+# before the current one, the New York rounds won
+static func _won_keys() -> Array:
+	var out: Array = []
+	for cid in Cities.ROUTE:
+		var n: int = 0
+		if is_tournament(cid):
+			if beaten.has(cid):
+				n = _rounds(cid).size()
+			elif cid == city:
+				n = bracket_round()
+		elif beaten.has(cid):
+			n = GAMES_PER_CITY
+		elif cid == city:
+			n = game - 1
+		for i in range(1, n + 1):
+			out.append(Stars.key(cid, i))
+	return out
+
+# a version 1 save's catch-up (the per-starter rule's extra over 1.0.0's 2 per win), from the loaded progress
+static func _catch_up() -> int:
+	var add := 0
+	for k in _won_keys():
+		var cid: String = str(k).get_slice(":", 0)
+		if is_tournament(cid):
+			add += CATCHUP_ROUND
+		elif not beaten.has(cid):
+			add += CATCHUP_CITY_GAME   # a beaten city's 3 games are CATCHUP_CITY below
+	for cid in beaten:
+		if not is_tournament(str(cid)):
+			add += CATCHUP_CITY
+	return add
 
 # ---------------- route ----------------
 
@@ -370,7 +480,7 @@ static func _roster_or_default() -> Array:
 		return roster_data
 	var out: Array = []
 	for id in Cities.START_CREW:
-		out.append({"id": id, "ratings": _start_ratings(id)})
+		out.append(_new_entry(id))
 	return out
 
 static func _entry(id: String) -> Dictionary:
@@ -484,6 +594,7 @@ static func music_for(city_id: String) -> String:
 #   - recruit (recruit.gd): the first candidate (the city's first good player);
 #   - lineup (lineup.gd): keeps the starters it opens with, so the 3 underdogs start every game;
 #   - New York: points won in earlier rounds stay unspent (the bracket's PLAY doesn't spend them).
+# Every win pays the 3 starters (P8-08), so the underdogs earn every point and the bench (the recruits) none.
 # False for an unknown or not-built city. The caller clears the state (_reset()) when done.
 static func expected_roster(city_id: String, n: int = 1) -> bool:
 	if not Cities.is_built(city_id):
@@ -511,8 +622,8 @@ static func expected_roster(city_id: String, n: int = 1) -> bool:
 			record_result({"won": true})   # the earlier rounds won: +2 points each, unspent
 		phase = "bracket"
 	else:
-		game = clampi(n, 1, GAMES_PER_CITY)
-		points = POINTS_PER_WIN * (game - 1)   # this city's earlier games, not spent yet
+		for i in clampi(n, 1, GAMES_PER_CITY) - 1:
+			record_result({"won": true})   # this city's earlier games won: each starter's points, not spent yet
 	saving = was
 	return true
 
@@ -552,15 +663,20 @@ static func _expected_match(city_id: String, n: int) -> Dictionary:
 	return m
 
 # Records a finished trip game (flow.gd's game_finished calls it with Flow.last_result) and saves. Returns and keeps
-# in last_outcome: {"won", "city", "game", "points_won", "city_done", "trip_done", "first_loss"}.
-# Lost: the same game again. Won: +2 points; the next game, or after game 3 the city is beaten -> points phase.
+# in last_outcome: {"won", "city", "game", "points_won", "points_each", "city_done", "trip_done", "first_loss"}.
+# Lost: the same game again. Won: each starter gets points_each (game_points(); 0 if the game has paid before),
+# points_won = all of them; the next game, or after game 3 the city is beaten -> points phase.
 # New York: a won round moves the bracket on (the final = trip done); a lost round is replayed.
 static func record_result(result: Dictionary) -> Dictionary:
 	if not active or phase == "done":
 		return {}
 	var won: bool = bool(result.get("won", false))
-	var out := {"won": won, "city": city, "game": game, "points_won": 0, "city_done": false, "trip_done": false,
-		"first_loss": false}
+	var out := {"won": won, "city": city, "game": game, "points_won": 0, "points_each": 0, "city_done": false,
+		"trip_done": false, "first_loss": false}
+	if won:
+		var n: int = bracket_round() + 1 if is_tournament(city) else game
+		out["points_each"] = _pay_starters(Stars.key(city, n), game_points(city, n))
+		out["points_won"] = int(out["points_each"]) * starters.size()
 	if won:
 		record["wins"] = int(record["wins"]) + 1
 	else:
@@ -569,8 +685,6 @@ static func record_result(result: Dictionary) -> Dictionary:
 	if is_tournament(city):
 		phase = "bracket"
 		if won:
-			if TOURNAMENT_POINTS:
-				out["points_won"] = award_points(POINTS_PER_WIN, false)
 			bracket["round"] = bracket_round() + 1
 			if bracket_round() >= _rounds(city).size():
 				beaten.append(city)
@@ -580,7 +694,6 @@ static func record_result(result: Dictionary) -> Dictionary:
 			else:
 				game = bracket_round() + 1
 	elif won:
-		out["points_won"] = award_points(POINTS_PER_WIN, false)
 		if game >= GAMES_PER_CITY:
 			beaten.append(city)
 			phase = "points"
@@ -704,29 +817,75 @@ static func _story_or(scene: String, then: String) -> Dictionary:
 
 # ---------------- stat points ----------------
 
-# adds stat points (2 per win); returns how many were added
+# what a win of game n pays each starter: POINTS_BOSS_GAME for a boss game (game 3) or a New York round, else
+# POINTS_CITY_GAME (the same on every level)
+static func game_points(city_id: String, n: int) -> int:
+	if is_tournament(city_id) or n >= GAMES_PER_CITY:
+		return POINTS_BOSS_GAME
+	return POINTS_CITY_GAME
+
+# the game key's points to each starter, once per trip (the key goes into paid); returns what each got (0 = paid
+# before). Not saved here (record_result saves).
+static func _pay_starters(k: String, each: int) -> int:
+	if paid.has(k) or each <= 0:
+		return 0
+	paid.append(k)
+	for id in starters:
+		var e: Dictionary = _entry(str(id))
+		if not e.is_empty():
+			e["pts"] = clampi(int(e.get("pts", 0)) + each, 0, MAX_POINTS)
+	_sync_points()
+	return each
+
+# true when this game key has paid its points this trip
+static func is_paid(k: String) -> bool:
+	return paid.has(k)
+
+# a roster player's own unspent points (0 if not on the roster)
+static func player_points(id: String) -> int:
+	return int(_entry(id).get("pts", 0))
+
+# points keeps the total of every unspent point (the screens show it; the save writes it for 1.0.0 builds)
+static func _sync_points() -> void:
+	var sum: int = crew_points
+	for e in roster_data:
+		sum += int((e as Dictionary).get("pts", 0))
+	points = clampi(sum, 0, MAX_POINTS)
+
+# adds crew points (anyone may spend them); returns how many were added
 static func award_points(n: int = POINTS_PER_WIN, do_save: bool = true) -> int:
-	points = clampi(points + n, 0, MAX_POINTS)
+	crew_points = clampi(crew_points + n, 0, MAX_POINTS)
+	_sync_points()
 	if do_save:
 		save()
 	return n
 
-# true when one point can go into this stat of this player (points left, below the cap, in a spending phase)
+# true when one point can go into this stat of this player (his own points or crew points left, below the cap, in a
+# spending phase)
 static func can_spend(id: String, stat: String) -> bool:
-	if not active or points <= 0 or not SPEND_PHASES.has(phase) or not Ratings.STATS.has(stat):
+	if not active or not SPEND_PHASES.has(phase) or not Ratings.STATS.has(stat):
 		return false
 	var e: Dictionary = _entry(id)
-	return not e.is_empty() and int(e["ratings"][stat]) < STAT_CAP
+	if e.is_empty() or int(e.get("pts", 0)) + crew_points <= 0:
+		return false
+	return int(e["ratings"][stat]) < STAT_CAP
 
-# one point: +3 on one stat of one roster player (to 90 at most). Saved. False when it can't.
+# one point: +3 on one stat of one roster player (to 90 at most), from his own points first, then crew points.
+# Saved. False when it can't.
 static func spend(id: String, stat: String) -> bool:
 	if not can_spend(id, stat):
 		return false
 	var e: Dictionary = _entry(id)
 	var old: int = int(e["ratings"][stat])
 	e["ratings"][stat] = mini(old + POINT_GAIN, STAT_CAP)
-	points -= 1
-	_spend_log.append([id, stat, old])
+	var from := "crew"
+	if int(e.get("pts", 0)) > 0:
+		from = "pts"
+		e["pts"] = int(e["pts"]) - 1
+	else:
+		crew_points -= 1
+	_sync_points()
+	_spend_log.append([id, stat, old, from])
 	save()
 	return true
 
@@ -739,7 +898,11 @@ static func undo_spend() -> bool:
 	if e.is_empty():
 		return false
 	e["ratings"][str(last[1])] = int(last[2])
-	points += 1
+	if last.size() > 3 and str(last[3]) == "pts":
+		e["pts"] = int(e.get("pts", 0)) + 1
+	else:
+		crew_points += 1
+	_sync_points()
 	save()
 	return true
 
@@ -770,7 +933,7 @@ static func recruit_candidates() -> Array:
 static func recruit(id: String) -> bool:
 	if not active or phase != "recruit" or _on_roster(id) or not Cities.recruits(city).has(id):
 		return false
-	roster_data.append({"id": id, "ratings": _start_ratings(id)})
+	roster_data.append(_new_entry(id, "recruit"))
 	_advance_city()
 	save()
 	return true
@@ -836,6 +999,7 @@ static func self_test(load_only: bool = false) -> bool:
 	ok = _check_city_data() and ok
 	ok = _check_expected_rosters() and ok
 	ok = _check_rules() and ok
+	ok = _check_v1_fixtures() and ok
 	ok = _check_save_files() and ok
 	# the round trip: the scripted trip saved for the --load process
 	_scripted_trip(true)
@@ -946,22 +1110,29 @@ static func _check_rules() -> bool:
 	ok = _check(game == 1 and points == 0 and bool(last_outcome.first_loss), "a loss retries game 1, no points") and ok
 	ok = _check(after_result().screen == "story" and after_result().screen == "lineup", "first loss story once") and ok
 	record_result({"won": true})
-	ok = _check(game == 2 and points == 2 and int(match_for().target) == 15, "a win: game 2 to 15, 2 points") and ok
+	ok = _check(game == 2 and points == 3 and int(last_outcome.points_each) == POINTS_CITY_GAME
+			and int(last_outcome.points_won) == 3 and player_points("ud_jojo") == 1 and crew_points == 0
+			and int(match_for().target) == 15, "a win: game 2 to 15, 1 point each starter") and ok
 	ok = _check(not spend("ud_deuce", "speed"), "no spending during the city") and ok
 	record_result({"won": true})
 	record_result({"won": true})
-	ok = _check(phase == "points" and beaten == ["hometown"] and points == 6 and bool(last_outcome.city_done),
-			"3 wins: Hometown beaten, 6 points") and ok
+	ok = _check(phase == "points" and beaten == ["hometown"] and points == 12 and player_points("ud_tank") == 4
+			and int(last_outcome.points_each) == POINTS_BOSS_GAME and bool(last_outcome.city_done)
+			and paid == ["hometown:1", "hometown:2", "hometown:3"], "3 wins: Hometown beaten, 4 each, paid") and ok
 	var ar: Dictionary = after_result()
 	ok = _check(ar.screen == "story" and ar.args.then == "points", "hometown_won story, then points") and ok
 	var before: int = int(_entry("ud_tank").ratings.finishing)
-	ok = _check(spend("ud_tank", "finishing") and int(_entry("ud_tank").ratings.finishing) == before + 3,
-			"a point = +3") and ok
-	ok = _check(undo_spend() and int(_entry("ud_tank").ratings.finishing) == before and points == 6, "undo") and ok
-	award_points(10, false)   # 16: enough to reach the cap
+	ok = _check(spend("ud_tank", "finishing") and int(_entry("ud_tank").ratings.finishing) == before + 3
+			and player_points("ud_tank") == 3 and points == 11, "a point = +3, from his own points") and ok
+	ok = _check(undo_spend() and int(_entry("ud_tank").ratings.finishing) == before and points == 12
+			and player_points("ud_tank") == 4, "undo gives his point back") and ok
+	award_points(10, false)   # crew points: Deuce's 4 + 6 of these reach the cap
 	while spend("ud_deuce", "shooting"):
 		pass
-	ok = _check(int(_entry("ud_deuce").ratings.shooting) == STAT_CAP and points == 6, "cap at 90 (62 -> 90 in 10)") and ok
+	ok = _check(int(_entry("ud_deuce").ratings.shooting) == STAT_CAP and player_points("ud_deuce") == 0
+			and crew_points == 4 and points == 12, "cap at 90 (62 -> 90 in 10): his 4, then 6 crew points") and ok
+	ok = _check(spend("ud_deuce", "speed") and crew_points == 3 and undo_spend() and crew_points == 4,
+			"no own points left: crew points, undo gives them back") and ok
 	finish_points()
 	ok = _check(phase == "recruit" and recruit_candidates().size() == 3, "recruit: 3 candidates") and ok
 	ok = _check(not recruit("ht_a1") and not recruit("chi_g1"), "only the city's good players or boss") and ok
@@ -970,6 +1141,8 @@ static func _check_rules() -> bool:
 	ok = _check(roster_player("ht_boss").sheet == "ht_boss_crew" and int(roster_player("ht_boss").ratings.speed) == 60,
 			"recruit wears your colors, keeps 40 + 20") and ok
 	ok = _check(not recruit("ht_g1"), "only one recruit per city") and ok
+	ok = _check(str(_entry("ht_boss").via) == "recruit" and str(_entry("ud_jojo").via) == "start"
+			and player_points("ht_boss") == 0, "via: start / recruit; a recruit joins with 0 points") and ok
 	ok = _check(not set_starters(["ud_deuce", "ud_deuce", "ud_tank"]) and set_starters(
 			["ud_deuce", "ht_boss", "ud_tank"], "ht_boss") and starters[0] == "ht_boss" and human == "ht_boss",
 			"starters: 3 different, the human first") and ok
@@ -977,8 +1150,17 @@ static func _check_rules() -> bool:
 			"the match uses the lineup") and ok
 	ok = _check(str(match_for().twist) == "wind" and str(match_for("hometown", 1).twist) == "none",
 			"the match carries the twist (Chicago wind)") and ok
-	for i in 3:
+	var jojo: int = player_points("ud_jojo")
+	record_result({"won": true})
+	ok = _check(player_points("ht_boss") == 1 and player_points("ud_jojo") == jojo, "the bench gets nothing") and ok
+	game = 1   # white box: the same game won again (a replay later) pays nothing
+	record_result({"won": true})
+	ok = _check(int(last_outcome.points_each) == 0 and player_points("ht_boss") == 1 and game == 2,
+			"each game pays once") and ok
+	for i in 2:
 		record_result({"won": true})
+	ok = _check(player_points("ht_boss") == 4 and spend("ht_boss", "speed") and player_points("ht_boss") == 3
+			and crew_points == 4, "his own points first, crew points kept") and ok
 	finish_points()
 	recruit("chi_g2")
 	ok = _check(city == "memphis" and phase == "map" and str(match_for().label) == "MEMPHIS - GAME 1 OF 3"
@@ -1002,10 +1184,68 @@ static func _check_rules() -> bool:
 	record_result({"won": true})
 	ok = _check(str(match_for().label) == "NEW YORK - FINAL" and str(match_for().teams[1].players[2].id) == "ny_boss",
 			"the final against ny_boss") and ok
+	ok = _check(int(last_outcome.points_each) == POINTS_BOSS_GAME and paid.has("new_york:2")
+			and not paid.has("new_york:3"), "a New York round pays 2 each") and ok
 	record_result({"won": true})
+	ok = _check(paid == Stars.all_keys(), "every game paid once: %d" % paid.size()) and ok
 	ok = _check(phase == "done" and is_done() and after_result().args.get("scene", "") == "ending"
 			and record_result({"won": true}).is_empty(), "final won: ending, trip done") and ok
 	saving = true
+	_reset()
+	return ok
+
+# The 1.0.0 saves (P8-01, docs/qa/fixtures/trip_v1_*.json) load and migrate (from_dict, in memory, nothing saved):
+# the level, where CONTINUE goes, crew points = pool + catch-up, the paid games, nobody's own points, "via", the
+# starters as saved (3 bosses stay: no one-boss rule), and a version 2 round trip of the migrated state. A missing
+# fixture (an exported build has no docs/) is skipped.
+const FIXTURE_DIR := "res://docs/qa/fixtures/"
+const V1_FIXTURES := {   # file: [level, resume screen, crew points, paid games]
+	"trip_v1_chicago.json": ["easy", "map", 5 + 6 + 1, 4],       # pool 5, Hometown, Chicago game 1 won
+	"trip_v1_points.json": ["normal", "points", 8 + 3 * 6, 9],   # pool 8, 3 cities
+	"trip_v1_bosses.json": ["hard", "map", 2 + 3 * 6 + 1, 10],   # pool 2, 3 cities, New Orleans game 1 won
+	"trip_v1_ny.json": ["normal", "bracket", 1 + 7 * 6 + 4, 22],   # pool 1, 7 cities, round 1 won
+	"trip_v1_done.json": ["normal", "title", 2 + 7 * 6 + 3 * 4, 24],   # pool 2, the whole trip
+}
+
+static func _check_v1_fixtures() -> bool:
+	var was: bool = saving
+	saving = false
+	var ok := true
+	for fname in V1_FIXTURES:
+		var path: String = FIXTURE_DIR + str(fname)
+		if not FileAccess.file_exists(path):
+			print("TRIPDATA fixture %s: not here, skipped" % path)
+			continue
+		var want: Array = V1_FIXTURES[fname]
+		var jd = JSON.parse_string(FileAccess.get_file_as_string(path))
+		var d: Dictionary = jd if jd is Dictionary else {}
+		var loaded: bool = from_dict(d)
+		var own := 0
+		var vias_ok := true
+		for e in roster_data:
+			own += int(e["pts"])
+			vias_ok = vias_ok and str(e["via"]) == _via_of(str(e["id"]))
+		var same_starters: bool = d.get("starters", []) == starters
+		var same_roster: bool = (d.get("roster", []) as Array).size() == roster_data.size()
+		var good: bool = loaded and loaded_version == 1 and level == str(want[0]) and resume_screen() == str(want[1]) \
+				and crew_points == int(want[2]) and points == crew_points and own == 0 and paid.size() == int(want[3]) \
+				and vias_ok and same_starters and same_roster
+		# the migrated trip saved as version 2 and loaded again is the same trip, no second catch-up
+		var digest: String = _digest()
+		var d2: Dictionary = to_dict()
+		d2["version"] = Save.VERSION
+		var again: bool = from_dict(JSON.parse_string(JSON.stringify(d2))) and _digest() == digest \
+				and loaded_version == Save.VERSION
+		ok = _check(good and again, "1.0.0 save %s: %s, crew %d, paid %d" % [str(fname).get_basename(), resume_screen(),
+				crew_points, paid.size()]) and ok
+		if not (good and again):
+			print("TRIPDATA   loaded: " + _digest())
+		# a version 2 trip that a 1.0.0 build saved again (version 1, the mark kept in seen): no second catch-up
+		var back: Dictionary = d.duplicate(true)
+		(back["seen"] as Array).append(RULE_MARK)
+		ok = _check(from_dict(back) and crew_points == _int_in(d.get("points", 0), 0, MAX_POINTS),
+				"  saved again by 1.0.0: no second catch-up (crew %d)" % crew_points) and ok
+	saving = was
 	_reset()
 	return ok
 
@@ -1032,9 +1272,9 @@ static func _check_save_files() -> bool:
 	var d: Dictionary = to_dict()
 	d["version"] = Save.VERSION
 	d["serial"] = 1000000
-	d["points"] = 4
+	d["crew_points"] = 4
 	_write_raw(p + Save.TMP_SUFFIX, JSON.stringify(d))
-	ok = _check(continue_trip() and points == 4, "newer temp file wins") and ok
+	ok = _check(continue_trip() and points == 4 and crew_points == 4, "newer temp file wins") and ok
 	_write_raw(p + Save.TMP_SUFFIX, "{broken")
 	new_trip("easy")
 	ok = _check(continue_trip() and points == 0 and level == "easy", "broken temp file ignored") and ok
