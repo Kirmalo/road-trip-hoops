@@ -190,8 +190,8 @@ const LAYUP_JUMP_PX := 20.0
 const DUNK_RELEASE := 0.55        # fraction of the jump when the ball leaves the hand
 const LAYUP_RELEASE := 0.5
 const RIM_GLIDE := 0.45           # fraction of top speed the jumper keeps drifting toward the rim
-const DUNK_OPEN_PCT := 0.82       # make chance of an open dunk (P1-09: 0.85 -> 0.92; P2-11: 0.82, scores ran high with better jumpers)
-const LAYUP_OPEN_PCT := 0.65      # make chance of an open layup (P1-09: 0.65 -> 0.75; P2-11: back to 0.65, scores ran high)
+const DUNK_OPEN_PCT := 0.92       # make chance of an open dunk (P1-09: 0.85 -> 0.92; P2-11: 0.82, scores ran high with better jumpers; P7-T1: 0.82 -> 0.92)
+const LAYUP_OPEN_PCT := 0.72      # make chance of an open layup (P1-09: 0.65 -> 0.75; P2-11: back to 0.65, scores ran high; P7-T1: 0.65 -> 0.72)
 const CONTEST_FT := 3.0           # nearest defender inside this contests the take-off (P2-11: was 4.0; only a defender in the play counts, see contests_me)
 # (rim block chances live in defense.gd: DUNK_BLOCK_CHANCE, LAYUP_BLOCK_CHANCE, RIM_CONTEST_FT)
 const CONTEST_MAKE_MULT := 1.0    # extra make-odds multiplier with a defender right on you (eases off with distance). P1-09: was 0.9; shot_probability() already applies the openness penalty, so 1.0 avoids counting it twice
@@ -244,7 +244,7 @@ const CPU_WINDUP_MAX := 0.45
 const CLOSEOUT_FT := 3.0          # mirrors the "right on you" distance in main.shot_probability
 const CLOSEOUT_GRACE := 0.35      # seconds a defender must have been that close during the shot for a full contest
 const CLOSEOUT_SOFT_MULT := 0.9 / 0.55  # jumper: turns main's x0.55 (right on you) into x0.9 (a hand late in the face)
-const RIM_SOFT_MULT := 0.7 / 0.55 # dunk/layup: x0.55 becomes x0.7
+const RIM_SOFT_MULT := 0.93 / 0.85  # dunk/layup: main's RIM_CONTEST_TIGHT_MULT x0.85 becomes x0.93 (P7-T1: was x0.55 -> x0.7)
 const CLOSEOUT_TRAIL_DOT := -0.3  # a defender further behind me than this (cosine to the hoop direction) is trailing
 # call for the ball (P2-10/P2-11): while the human's call is live, his CPU teammate with the ball waits for it
 const CPU_CALL_HOLD_CLOCK := 5.0  # ... unless the shot clock is under this (then he plays on)
@@ -254,7 +254,7 @@ const PUMP_COOLDOWN := 0.8        # seconds from one pump fake's start before an
 const ALLEY_JUMP_TIME := 0.6      # seconds in the air for an alley-oop dunk
 const ALLEY_JUMP_PX := 36.0       # its jump height (a normal dunk is DUNK_JUMP_PX)
 const ALLEY_CATCH_F := 0.4        # fraction of the jump when the lob reaches his hands (release is at DUNK_RELEASE)
-const ALLEY_MAKE_MULT := 1.3      # make-odds bonus: he catches it above the rim (a contested one is still ~65%)
+const ALLEY_MAKE_MULT := 1.3      # make-odds bonus: he catches it above the rim (P7-T1: a contested one now reaches main.SHOT_CAP 0.92; was ~65%)
 const ALLEY_REACH_FT := 7.0       # the receiver only goes up for the lob this close to the rim (else a floor catch)
 const ALLEY_SPOT_FT := 3.0        # a cutter heads for this spot, this far out from the rim
 const ALLEY_SPOT_SIDE_FT := 3.0   # ... and at most this far to the side of it
@@ -1086,9 +1086,10 @@ func release_rim_shot() -> void:
 		game.stat("rim_blocks")
 		return
 	# aim the open make chance at DUNK_OPEN_PCT / LAYUP_OPEN_PCT; shot_probability() then applies its own
-	# openness penalty (about x0.55 with a defender on you)
+	# rim contest (x RIM_CONTEST_TIGHT_MULT with a defender on you)
 	var d_ft: float = position.distance_to(game.attack_hoop(team)) / game.FT
-	var base := 0.66 if d_ft < 5.0 else maxf(0.02, 0.52 - (d_ft - 5.0) * 0.0075)  # mirrors main.shot_probability
+	var base: float = game.SHOT_CLOSE_BASE if d_ft < game.SHOT_CLOSE_FT \
+			else maxf(game.SHOT_MIN, game.SHOT_MID_BASE - (d_ft - game.SHOT_CLOSE_FT) * game.SHOT_MID_FALLOFF)  # mirrors main.shot_probability
 	var target: float = (DUNK_OPEN_PCT if rim_kind == "dunk" else LAYUP_OPEN_PCT) * Ratings.finish_mult(rating("finishing"))
 	var fire_mult := FIRE_SHOT_BONUS if on_fire else 1.0
 	var alley_mult := ALLEY_MAKE_MULT if alley_oop else 1.0

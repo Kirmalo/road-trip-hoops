@@ -43,6 +43,24 @@ const COURT_H := 50.0 * FT
 const SHOT_CLOCK_LENGTH := 24.0      # seconds; the shot clock stays with first to 21 (Q1). Format: rules.gd. A twist
                                      # may change it (Twists "shot_clock": Memphis 18): read shot_clock_length()
 const HUMAN_TEAM := 0
+# field-goal make odds (shot_probability(); P7-T1 tuning round: too many misses). A jumper's base by distance, then the
+# contest by the nearest defender's distance at the release. Dunks and layups aim at player.DUNK_OPEN_PCT /
+# LAYUP_OPEN_PCT and get the lighter RIM_ contest (player.release_rim_shot mirrors the close base).
+const SHOT_CLOSE_FT := 5.0           # inside this: the close base
+const SHOT_CLOSE_BASE := 0.66        # a jumper inside SHOT_CLOSE_FT (and the base the rim moves divide out)
+const SHOT_MID_BASE := 0.56          # inside the arc at SHOT_CLOSE_FT (P7-T1: 0.52 -> 0.56) ...
+const SHOT_MID_FALLOFF := 0.0075     # ... minus this per foot further out
+const SHOT_LONG_BASE := 0.42         # beyond the arc (P7-T1: 0.38 -> 0.42) ...
+const SHOT_LONG_FALLOFF := 0.025     # ... minus this per foot beyond 23.75 ft (deep shots fall off fast)
+const SHOT_MIN := 0.02               # odds never go under this (or over SHOT_CAP)
+const SHOT_CAP := 0.92
+const CONTEST_TIGHT_FT := 3.0        # nearest defender inside this: a full contest ...
+const CONTEST_NEAR_FT := 6.0         # ... inside this: a light one
+const CONTEST_TIGHT_MULT := 0.55     # jumper: odds x this with a full contest
+const CONTEST_NEAR_MULT := 0.8       # jumper: odds x this with a light one
+const RIM_CONTEST_TIGHT_MULT := 0.85 # dunk/layup with a full contest (P7-T1: was the jumper's 0.55; nearly every rim
+                                     # move has a defender within 3 ft, so this set most rim misses)
+const RIM_CONTEST_NEAR_MULT := 0.9   # dunk/layup with a light contest (P7-T1: was the jumper's 0.8)
 # Team names in the top bar and the messages. A var (rules.gd, menu.gd read game.TEAM_NAMES): a trip game puts the
 # crew names from Flow.match here (owner Q11 a); a Quick Game its picked crews' names (P6-T3); BLUE / RED only when
 # trip.gd can't build the crews.
@@ -1040,22 +1058,23 @@ func shot_probability(p, quality: float) -> float:
 	var hoop := attack_hoop(p.team)
 	var d: float = p.position.distance_to(hoop) / FT
 	var base: float
-	if d < 5.0:
-		base = 0.66
+	if d < SHOT_CLOSE_FT:
+		base = SHOT_CLOSE_BASE
 	elif not is_three(p.position, hoop):
-		base = 0.52 - (d - 5.0) * 0.0075
+		base = SHOT_MID_BASE - (d - SHOT_CLOSE_FT) * SHOT_MID_FALLOFF
 	else:
-		base = 0.38 - max(0.0, d - 23.75) * 0.025
+		base = SHOT_LONG_BASE - maxf(0.0, d - 23.75) * SHOT_LONG_FALLOFF
 		base *= Twists.value("long_shot_mult", 1.0)   # wind (gusting) and thin air; 1.0 without a twist
-	base = max(base, 0.02)
+	base = maxf(base, SHOT_MIN)
+	var rim: bool = p.rim_kind != ""
 	var cont := openness(p)
-	if cont < 3.0:
-		base *= 0.55
-	elif cont < 6.0:
-		base *= 0.8
+	if cont < CONTEST_TIGHT_FT:
+		base *= RIM_CONTEST_TIGHT_MULT if rim else CONTEST_TIGHT_MULT
+	elif cont < CONTEST_NEAR_FT:
+		base *= RIM_CONTEST_NEAR_MULT if rim else CONTEST_NEAR_MULT
 	# the shooting rating moves jump shots only (dunks and layups use finishing, in player.gd); 50 = x1.0
-	var rate: float = 1.0 if p.rim_kind != "" else Ratings.shot_mult(_shooting(p))
-	return clampf(base * quality * rate, 0.02, 0.92)
+	var rate: float = 1.0 if rim else Ratings.shot_mult(_shooting(p))
+	return clampf(base * quality * rate, SHOT_MIN, SHOT_CAP)
 
 # ---------------- ball events ----------------
 
@@ -1093,7 +1112,15 @@ func release_shot(p, quality: float) -> void:
 	stat("shot_d%d" % int(p.position.distance_to(hoop) / FT / 5) )
 	if Twists.base_value("long_shot_mult", 1.0) != 1.0 and p.rim_kind == "" and is_three(p.position, hoop):
 		stat(Twists.current + "_long_shots")   # a long shot the twist moved (wind_long_shots, thin_air_long_shots)
+	# P7-T1: shot quality bands (kind x openness at the release) with their rolled makes and summed odds (per mille),
+	# to see where misses come from: shotq_<dunk|layup|jumper|three>_<open|mid|cont>
+	var band: String = "cont" if openness(p) < CONTEST_TIGHT_FT else ("mid" if openness(p) < CONTEST_NEAR_FT else "open")
+	var kind: String = p.rim_kind if p.rim_kind != "" else ("three" if is_three(p.position, hoop) else "jumper")
+	var qk: String = "shotq_%s_%s" % [kind, band]
+	stat(qk)
+	stat_add(qk + "_odds", int(prob * 1000.0))
 	if made:
+		stat(qk + "_makes")
 		stat("makes")
 		stat("makes_t%d" % p.team)
 	if p.on_fire:
