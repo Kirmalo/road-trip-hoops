@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Synthesize the Phase 8 reward sounds (P8-04): original sounds made by script, no source recordings.
+"""Synthesize the Phase 8 reward sounds (P8-04) and the match countdown (P8-31): original sounds made by script, no
+source recordings.
 
-    python3 tools/make_ui_sfx.py NAME OUT        NAME = star | stat_up | unlock
-    python3 tools/make_ui_sfx.py all             writes all three into assets/sfx/
+    python3 tools/make_ui_sfx.py NAME OUT        NAME = star | stat_up | unlock | countdown | go
+    python3 tools/make_ui_sfx.py all             writes all of them into assets/sfx/
 
 - star:    a bright two-note bell chime (a fifth up) with a short sparkle on top: a star earned.
 - stat_up: three quick rising soft-square blips (a major arpeggio) with a tiny pitch slide: a stat point spent.
 - unlock:  a rising four-note arpeggio that lands on a ringing major chord with a shimmer: a reward unlocked.
+- countdown: one short bright beep (soft square A5 with a bell ping on top): each of "3", "2", "1".
+- go:        the same beep an octave up, longer, with a fifth under it and a short sparkle: "GO!".
 
 Levels are matched to the UI "tap" (the screens play `bounce` at -8 dB): each sound's loudest 100 ms window has the
 same RMS as bounce.ogg's loudest window minus 8 dB, so `audio.play("star")` at 0 dB sits at the tap's level. Peaks
@@ -117,7 +120,27 @@ def unlock(seed=29):
     return y
 
 
-SOUNDS = {"star": star, "stat_up": stat_up, "unlock": unlock}
+def countdown(seed=31):
+    rng = np.random.default_rng(seed)
+    d = 0.16
+    n = int(d * SR)
+    y = soft_square(note(81), d, rng) * env(n, 0.002, 0.05)          # A5
+    y += 0.35 * bell(note(93), d, 0.03, rng)                          # a ping an octave up for the attack
+    return y
+
+
+def go(seed=37):
+    rng = np.random.default_rng(seed)
+    d = 0.42
+    n = int(d * SR)
+    y = soft_square(note(93), d, rng, slide=30) * env(n, 0.003, 0.16)            # A6, a little pitch lift
+    y += 0.5 * soft_square(note(86), d, rng) * env(n, 0.003, 0.12)              # E6 under it
+    y += 0.4 * bell(note(105), d, 0.08, rng)
+    y += sparkle(n, rng, 0.04, 8, 5000, 9000, 0.15)
+    return y
+
+
+SOUNDS = {"star": star, "stat_up": stat_up, "unlock": unlock, "countdown": countdown, "go": go}
 
 
 def decode(path):

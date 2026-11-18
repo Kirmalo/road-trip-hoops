@@ -36,6 +36,7 @@ const Flow = preload("res://scripts/flow.gd")       # screens and the trip match
 const Ratings = preload("res://scripts/ratings.gd") # stat formulas: rating 50 = x1.0 (Quick Game unchanged)
 const Cities = preload("res://scripts/cities.gd")   # city data (names, targets) for the --city test flags
 const Twists = preload("res://scripts/twists.gd")   # Phase 6 city twists: every twist hook is Twists.value(key, today)
+const CountdownScript = preload("res://scripts/countdown.gd")   # P8-31: the 3-2-1-GO! at the start of every match
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
@@ -215,6 +216,11 @@ const TWIST_LINE_SIZE := 28          # the twist's banner line under the tip-off
 const TWIST_LINE_TIME := 3.5         # seconds it shows at tip-off (fades out over the last TWIST_LINE_FADE)
 const TWIST_LINE_FADE := 0.6
 const TWIST_LINE_COLOR := Color(1.0, 0.9, 0.55)
+# P8-31: the 3-2-1 countdown (countdown.gd has its timing and look). Every match, once, when the game appears (not
+# behind the Quick Game launch panel: the reloaded game counts down). Skipped with -- --no-countdown, and in the
+# capture modes that take pictures at fixed moments of the start (--howto-shots, --twistshots)
+const COUNTDOWN_SKIP_FLAGS := ["--no-countdown", "--howto-shots", "--twistshots"]
+const COUNTDOWN_MSG_FADE := 0.4      # the "FIRST TO N" / match label stays through 3-2-1 and fades out as GO! shows
 # Quick Game settings a trip game overrides (static, so they survive reload_current_scene): put back when a game
 # without a trip match starts, so a Quick Game after a trip game has the saved court and level again
 static var _quick_look := ""
@@ -246,6 +252,7 @@ const HT_AWAY_EVERY := 6.0           # on defense: every this many seconds, stee
 const HT_AWAY_TIME := 0.7            # ... for this long (the defensive assist must not hold him)
 const HT_GUARD_FT := 8.0             # stay-in-front metric: a CPU handler (frontcourt) this close to the human is "guarded"
 const HT_BEAT_MARGIN_FT := 1.0       # ... and he is past the human once he is this much closer to the rim (hysteresis)
+const HT_COUNTDOWN_PRESS_FRAME := 30 # during 3-2-1 (P8-31): the scripted thumb presses A and B on this frozen frame
 
 var hoops := [Vector2(5.25 * FT, COURT_H / 2), Vector2(COURT_W - 5.25 * FT, COURT_H / 2)]
 
@@ -320,6 +327,7 @@ var anim_test := false               # test only (-- --anim-test): the animation
 var howto_shots := false             # test only (-- --howto-shots DIR, P7-H1): the How to Play capture driver watches
 var twist_label: Label               # the twist's banner line under the tip-off message
 var _twist_line_t := 0.0
+var countdown                        # P8-31 countdown.gd (on the HUD); frozen() holds the game during 3-2-1
 
 func stat(k: String) -> void:
 	stats[k] = stats.get(k, 0) + 1
@@ -510,6 +518,7 @@ func _ready() -> void:
 	if not menu_wait:
 		_play_court_music()
 		_show_twist_banner()   # (behind the launch panel it would be hidden: the reloaded game shows it)
+		_start_countdown()     # P8-31: the banner slides in under the top bar, the countdown is in the middle
 
 # in play: the court's track, softly (owner Q5 a). The panels play the menu music (menu.gd)
 func _play_court_music() -> void:
@@ -974,6 +983,9 @@ func _build_hud() -> void:
 	twist_label.offset_bottom = -18
 	twist_label.modulate = TWIST_LINE_COLOR
 	twist_label.visible = false
+	countdown = CountdownScript.new()   # over the messages, under the touch controls and the pause button
+	countdown.game = self
+	root.add_child(countdown)
 
 	controls = ControlsScript.new()
 	root.add_child(controls)
@@ -1001,6 +1013,22 @@ func _make_label(parent: Control, size: int, preset: int, top: float) -> Label:
 
 func start_game() -> void:
 	rules.start_game()
+
+# P8-31: 3-2-1-GO! before the first ball is live. The start message ("FIRST TO N" or the trip label) stays up through
+# the numbers and fades as GO! shows
+func _start_countdown() -> void:
+	if countdown == null:
+		return
+	for f in COUNTDOWN_SKIP_FLAGS:
+		if OS.get_cmdline_user_args().has(f):
+			return
+	countdown.start()
+	if msg_timer > 0.0:
+		msg_timer = maxf(msg_timer, CountdownScript.frozen_time() + COUNTDOWN_MSG_FADE)
+
+# true while 3-2-1 holds the game (clocks, players, ball and the human's buttons wait)
+func countdown_frozen() -> bool:
+	return countdown != null and countdown.frozen()
 
 # line both teams up: `team` (which gets the ball) on its own half, the other just past half court. The rows are
 # mirrored by the attack direction (y times dir) so both halves of the court play the same (B1)
@@ -1396,19 +1424,19 @@ func _ft_blocks_buttons() -> bool:
 	return rules.ft_active and not game_over and not (human_player == rules.ft_shooter and human_player.has_ball())
 
 func _on_a_pressed() -> void:
-	if menu.showing:
+	if menu.showing or countdown_frozen():
 		return
 	if _ft_blocks_buttons():
 		return
 	input.a_pressed()
 
 func _on_a_released() -> void:
-	if menu.showing:
+	if menu.showing or countdown_frozen():
 		return
 	input.a_released()
 
 func _on_b_pressed() -> void:
-	if menu.showing:
+	if menu.showing or countdown_frozen():
 		return
 	if rules.ft_active and not game_over:
 		return
@@ -1560,6 +1588,16 @@ func _physics_process(delta: float) -> void:
 	_update_message(delta)
 	if game_over or menu_wait:
 		return
+	if countdown != null:
+		countdown.step(delta)   # here, so a pause (the tree paused) pauses the count too
+		if countdown.frozen():
+			# 3-2-1: nothing runs (no game time, so GAME LENGTH doesn't count it); the camera and the HUD stay live
+			stat("countdown_frames")
+			if humantest:
+				_humantest_countdown()
+			_update_camera()
+			_update_hud()
+			return
 	Twists.tick(delta)   # the wind's gusts (nothing for the other twists)
 
 	if not rules.update(delta):
@@ -1930,13 +1968,27 @@ func _ht_summary() -> String:
 		return "%d/%d" % [stats.get(a, 0), stats.get(b, 0)]
 	var gf: int = stats.get("humantest_guard_frames", 0)
 	var front_pct: float = 100.0 * float(stats.get("humantest_guard_front_frames", 0)) / float(maxi(gf, 1))
-	return "HUMANTEST steals timed %s random %s | blocks timed %s early %s | in front %.0f%% beaten %d in %d spells | assist %d frames, %d while pulling away, crossovers beat him %s | free throws good %s early %s" % [
+	return "HUMANTEST steals timed %s random %s | blocks timed %s early %s | in front %.0f%% beaten %d in %d spells | assist %d frames, %d while pulling away, crossovers beat him %s | free throws good %s early %s | countdown presses ignored %s" % [
 		f.call("humantest_timed_steals", "humantest_timed_pokes"), f.call("humantest_random_steals", "humantest_random_pokes"),
 		f.call("humantest_timed_blocks", "humantest_timed_jumps"), f.call("humantest_early_blocks", "humantest_early_jumps"),
 		front_pct, stats.get("humantest_guard_beaten", 0), stats.get("humantest_guard_spells", 0),
 		stats.get("human_assist_frames", 0), stats.get("humantest_away_assist_frames", 0),
 		f.call("human_cross_beaten", "human_cross_faced"),
-		f.call("humantest_ft_good_makes", "humantest_ft_good"), f.call("humantest_ft_early_makes", "humantest_ft_early")]
+		f.call("humantest_ft_good_makes", "humantest_ft_good"), f.call("humantest_ft_early_makes", "humantest_ft_early"),
+		f.call("humantest_countdown_presses_ignored", "humantest_countdown_presses")]
+
+# during 3-2-1 (P8-31): the scripted thumb presses A and B once on HT_COUNTDOWN_PRESS_FRAME; nothing may happen
+# (no shot, no pass, no switch). Counted as humantest_countdown_presses / _ignored
+func _humantest_countdown() -> void:
+	if int(stats.get("countdown_frames", 0)) != HT_COUNTDOWN_PRESS_FRAME or human_player == null:
+		return
+	var before: Array = [ball.state, ball.holder, human_player, human_player.shooting]
+	_on_a_pressed()
+	_on_a_released()
+	_on_b_pressed()
+	stat_add("humantest_countdown_presses", 3)
+	if [ball.state, ball.holder, human_player, human_player.shooting] == before:
+		stat_add("humantest_countdown_presses_ignored", 3)
 
 func _ht_hoop_ft() -> float:
 	return human_player.position.distance_to(attack_hoop(HUMAN_TEAM)) / FT
@@ -1964,6 +2016,8 @@ func _separate_players() -> void:
 # the game is won (rules.gd decides when): stop play, show the result and the level panel (P3-08), print the test lines
 func on_game_over(winner: int) -> void:
 	game_over = true
+	if countdown != null:
+		countdown.stop()   # a game decided during 3-2-1 (a test): no number left over the result
 	audio.play("whistle")
 	ball.make_dead()
 	# _physics_process stops updating after game over: put out the fire and the trail now
@@ -1993,6 +2047,8 @@ func on_game_over(winner: int) -> void:
 		var secs: int = int(rules.play_time)
 		print("FINAL BLUE %d - RED %d" % [score[0], score[1]])
 		print("GAME LENGTH %d:%02d" % [secs / 60, secs % 60])
+		print("COUNTDOWN %d (%.2f s frozen before tip-off, not in GAME LENGTH)" % [int(stats.get("countdowns", 0)),
+				float(stats.get("countdown_frames", 0)) / float(Engine.physics_ticks_per_second)])
 		var g := func(k: String) -> int:
 			return int(stats.get(k, 0))
 		print("FOULS BLUE %d RED %d (shooting %d, reach %d, and-ones %d) | FREE THROWS %d/%d (BLUE %d/%d, RED %d/%d), last missed %d, timeouts %d" % [
