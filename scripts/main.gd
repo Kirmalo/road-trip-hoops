@@ -174,6 +174,8 @@ const CALL_CUE_COLOR := Color(1.0, 0.92, 0.3)
 const MENUSHOT_FRAMES := 40          # test only (--menushot): frames the panel is up before its screenshot
 
 # Phase 5 hooks (P5-02): the trip match (Flow.match), the pause screen, the --city test flags
+const COSMETICS_PATH := "res://scripts/cosmetics.gd"   # P8-B7: jersey_clashes()
+const Sheets = preload("res://scripts/sheets.gd")       # P8-B7: strip_jersey()
 const TRIP_PATH := "res://scripts/trip.gd"      # P5-05: Trip.match_for(city, n) builds Flow.match (if it exists)
 const PAUSE_PATH := "res://scripts/pause.gd"    # P5-08: added to the HUD if the file exists
 # P7-10: the Android back gesture (NOTIFICATION_WM_GO_BACK_REQUEST; project.godot has quit_on_go_back = false)
@@ -426,6 +428,7 @@ func _ready() -> void:
 	add_child(rules)
 	_apply_match_rules()         # a trip game: its target and the crew names
 	_apply_quick_teams()         # a Quick Game: the picked crews (P6-T3), before the players
+	_fix_jersey_clash()          # P8-B7: no star jersey against a crew in the same colors
 
 	audio = AudioScript.new()
 	audio.game = self
@@ -559,6 +562,31 @@ func _quick_player(t: int, i: int) -> Dictionary:
 	if i >= ps.size() or not (ps[i] is Dictionary):
 		return {}
 	return ps[i]
+
+# P8-B7 (owner: auto-switch): a team wearing the picked star jersey (its sheets end in _j<N>) plays in its normal
+# look when the other crew's colors are too close to that jersey (Cosmetics.jersey_clashes(), e.g. AFTER HOURS black
+# and pink against the Bridge Runners' black and red). Changes only this game's player dicts, never the save.
+func _fix_jersey_clash() -> void:
+	var tms: Array = Flow.match.get("teams", []) if Flow.in_trip() else quick_teams
+	if tms.size() != 2 or not ResourceLoader.exists(COSMETICS_PATH):
+		return
+	var cos: GDScript = load(COSMETICS_PATH) as GDScript
+	if cos == null or not cos.has_method("jersey_clashes"):
+		return
+	for t in 2:
+		var other: Dictionary = tms[1 - t] if tms[1 - t] is Dictionary else {}
+		var colors = other.get("colors", [])
+		if not (colors is Array) or not bool(cos.call("jersey_clashes", colors)):
+			continue
+		var tm: Dictionary = tms[t] if tms[t] is Dictionary else {}
+		for pd in (tm.get("players", []) as Array):
+			if not (pd is Dictionary):
+				continue
+			var sheet: String = str((pd as Dictionary).get("sheet", ""))
+			var plain: String = Sheets.strip_jersey(sheet)
+			if plain != "":
+				pd["sheet"] = plain
+				print("JERSEY CLASH %s: %s -> %s" % [str(other.get("name", "")), sheet, plain])
 
 func _apply_quick_teams() -> void:
 	quick_teams = []

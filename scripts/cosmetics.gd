@@ -35,12 +35,14 @@ const TEST_FLAG := "--cosmetictest"
 const SELFTEST_PATH := "user://cosmetics_selftest.cfg"   # self_test() only; deleted afterwards
 
 # The items. name: shown on the LOCKER (placeholders until the art tasks name them); n: the number in the file names;
+# clash (jerseys, P8-B7, owner: auto-switch): crew color names (cities.gd "colors") too close to the jersey; against
+# such a crew your team plays in its normal jersey (jersey_clashes(), main.gd).
 # files: what must exist for the item to show (court looks: their row in court_looks.gd is the truth, its textures
 # already fall back to plain colors).
 const ITEMS := {
-	"jersey_1": {"kind": "jersey", "name": "HOME WHITES", "n": 1, "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j1.png"]},
-	"jersey_2": {"kind": "jersey", "name": "AFTER HOURS", "n": 2, "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j2.png"]},
-	"jersey_3": {"kind": "jersey", "name": "THROWBACK", "n": 3, "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j3.png"]},
+	"jersey_1": {"kind": "jersey", "name": "HOME WHITES", "n": 1, "clash": ["GREYW", "SILVER"], "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j1.png"]},
+	"jersey_2": {"kind": "jersey", "name": "AFTER HOURS", "n": 2, "clash": ["BLACK", "NAVY", "PLUM"], "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j2.png"]},
+	"jersey_3": {"kind": "jersey", "name": "THROWBACK", "n": 3, "clash": ["ORANGE"], "files": [PALETTE_DIR + JERSEY_PROBE_SHEET + "_j3.png"]},
 	"ball_1": {"kind": "ball", "name": "SKY", "n": 1, "files": ["res://assets/ball/ball_1.png"]},
 	"ball_2": {"kind": "ball", "name": "NIGHT GLOW", "n": 2, "files": ["res://assets/ball/ball_2.png"]},
 	"ball_3": {"kind": "ball", "name": "GOLD", "n": 3, "files": ["res://assets/ball/ball_3.png"]},
@@ -160,6 +162,17 @@ static func jersey_suffix() -> String:
 	return "_j%d" % int((ITEMS[id] as Dictionary)["n"]) if id != "" else ""
 
 # the court_looks.gd ids of the unlocked reward courts, for the Quick Game COURT button
+# P8-B7: true when the picked jersey looks too much like a crew with these colors (cities.gd "colors", e.g.
+# ["RED", "BLACK"]); main.gd then has your team wear its normal jersey for that game
+static func jersey_clashes(colors: Array) -> bool:
+	var id: String = picked("jersey")
+	if id == "" or not ITEMS.has(id):
+		return false
+	for c in (ITEMS[id] as Dictionary).get("clash", []):
+		if colors.has(c):
+			return true
+	return false
+
 static func open_court_looks() -> Array:
 	var out: Array = []
 	for id in ids_of("court"):

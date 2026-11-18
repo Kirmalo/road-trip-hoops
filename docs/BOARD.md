@@ -116,7 +116,7 @@ Everything in the waves below that is not in Doing, Review or Done. Carried over
 - **P8-B5** | FIXED (coordinator) | CREW: the record shows twice on the van line | gameplay C | `scripts/title.gd` | once
 - **P8-B6** | FIXED (coordinator) | LEGEND is purple in Quick Game but plain blue in the title picker and Settings (cosmetic) | gameplay C
   | `scripts/title.gd` | one look, or the owner accepts it
-- **P8-B7** | AFTER HOURS jersey (black/pink) is hard to tell from the Bridge Runners (black/red), worst on MIDNIGHT
+- **P8-B7** | FIXED (coordinator; owner: auto-switch, main.gd `_fix_jersey_clash()`) | AFTER HOURS jersey (black/pink) is hard to tell from the Bridge Runners (black/red), worst on MIDNIGHT
   | art + owner | `tools/art` palettes | the teams read apart at a glance
 - **P8-B8** | FIXED (coordinator) | STAT POINTS screen not centred on wide screens (1600x720) | gameplay B | `scripts/after_game.gd`
   | a centred 1280 frame like the lineup (fix with P8-B1)

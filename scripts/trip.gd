@@ -646,7 +646,8 @@ static func match_for(city_id: String = "", n: int = 0) -> Dictionary:
 		"city": city_id, "game": n, "stage": stage, "replay": is_replay,
 		"teams": [
 			{"name": Cities.CREW_NAME, "style": "", "players": mine},
-			{"name": str(crew.get("name", "")), "style": str(crew.get("style", "")), "players": theirs},
+			{"name": str(crew.get("name", "")), "style": str(crew.get("style", "")), "players": theirs,
+				"colors": crew.get("colors", [])},   # P8-B7: main.gd drops your jersey when these clash with it
 		],
 	}
 	Flow.match = m
@@ -1058,6 +1059,7 @@ static func quick_team(crew_id: String) -> Dictionary:
 	var cid: String = str(info.get("city", ""))
 	var ids: Array = QUICK_KINGS.duplicate()
 	var style := ""
+	var colors: Array = []
 	if cid != "":
 		ids = _star_first(crew_for_game(cid, int(info.get("game", GAMES_PER_CITY))))
 		var c: Dictionary = Cities.city(cid)
@@ -1066,13 +1068,14 @@ static func quick_team(crew_id: String) -> Dictionary:
 			var rs: Array = _rounds(cid)
 			crew = (rs[clampi(int(info.get("game", 1)) - 1, 0, rs.size() - 1)] as Dictionary).get("crew", {})
 		style = str(crew.get("style", ""))
+		colors = crew.get("colors", [])
 	var players: Array = []
 	for id in ids:
 		var pd: Dictionary = player_dict(str(id), quick_ratings(str(id)), false)
 		pd["own_colors"] = true
 		players.append(pd)
 	return {"id": crew_id, "name": str(info.get("name", "")), "style": style, "color": info.get("color", Color.GRAY),
-		"players": players}
+		"players": players, "colors": colors}
 
 # a player's ratings shifted so the five stats average QUICK_AVG (each rounded, clamped to 0..100)
 static func quick_ratings(id: String) -> Dictionary:
