@@ -181,6 +181,7 @@ const BACKTEST_FLAG := "--backtest"  # test only: sends the back request on ever
 const BACKTEST_ARM_FRAMES := 90      # frames on a screen before the request (every screen's tap guard has passed)
 const BACKTEST_LAND_FRAMES := 30     # frames after the request before the check (a Flow.go reload has happened)
 const BACKTEST_GAME_WAIT := 1200     # most frames to wait in a game for the pause to be allowed (tip-off)
+const BACKTEST_STARS := 12          # the star total --backtest plays with (P8-24: one roster slot open for DRAFT)
 static var _backtest_node: Node = null   # the --backtest driver (on the root, survives the reloads)
 const TOP_BAR_FONT_TRIP := 24       # top bar font in a trip game (crew names are longer than BLUE / RED; Quick Game 30)
 # --city <id> --cgame N without trip.gd: this hand-built match (your 3 underdogs vs a Hometown-like crew; ratings
@@ -2198,6 +2199,7 @@ class BackTest extends Node:
 	const SaveS = preload("res://scripts/save.gd")
 	const TripS = preload("res://scripts/trip.gd")
 	const MenuS = preload("res://scripts/menu.gd")
+	const StarsS = preload("res://scripts/stars.gd")
 	# go: the screen to open ("" = stay in this game); expect: the screen after back; did: what main.gd reports
 	const STEPS := [
 		{"go": "title", "expect": "title", "did": "quit"},
@@ -2212,8 +2214,19 @@ class BackTest extends Node:
 		{"go": "bracket", "trip": true, "expect": "title", "did": "escape"},
 		{"go": "points", "trip": true, "args": {"then": "map"}, "expect": "points", "did": "escape"},
 		{"go": "recruit", "trip": true, "expect": "recruit", "did": "escape"},
+		# P8-24: the Phase 8 screens. "beaten": the trip has beaten Hometown (and BACKTEST_STARS open a draft slot);
+		# "prep": what opens before the request ("draft_confirm", "picker"); "closed": that screen var is null after it
+		{"go": "locker", "args": {"back": "title"}, "expect": "title", "did": "escape"},
+		{"go": "draft", "trip": true, "beaten": true, "args": {"back": "lineup"}, "expect": "lineup", "did": "escape"},
+		{"go": "draft", "trip": true, "beaten": true, "args": {"back": "lineup"}, "prep": "draft_confirm",
+				"expect": "draft", "did": "escape", "closed": "_confirm"},
+		{"go": "", "expect": "lineup", "did": "escape"},
+		{"go": "map", "trip": true, "beaten": true, "prep": "picker", "expect": "map", "did": "escape",
+				"closed": "_picker"},
+		{"go": "", "expect": "title", "did": "escape"},
 		{"go": "game", "quick": true, "expect": "title", "did": "escape"},
-		{"go": "game", "trip": true, "expect": "game", "did": "pause", "paused": true},
+		# "countdown": the request goes out during the 3-2-1 (P8-31), and the pause holds the count
+		{"go": "game", "trip": true, "expect": "game", "did": "pause", "paused": true, "countdown": true},
 		{"go": "", "expect": "game", "did": "resume", "paused": false},
 		{"go": "", "expect": "game", "did": "pause", "paused": true},
 	]
@@ -2222,6 +2235,8 @@ class BackTest extends Node:
 	var _phase := 0          # 0 = open the next screen, 1 = wait, then send back, 2 = wait, then check
 	var _did := ""
 	var _errors := 0
+	var _prep_ok := true     # the step's "prep" opened what it should
+	var _count_t := -1.0     # the countdown's time when the request went out (-1 = not counting)
 
 	func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
@@ -2249,6 +2264,8 @@ class BackTest extends Node:
 						var node: Node = FlowS.current_screen()
 						if node != null and node.has_method("_show_panel"):
 							node.call("_show_panel", st["panel"])
+					_prep_ok = _prep(st)
+					_count_t = _countdown_t()
 					_did = ""
 					get_tree().root.propagate_notification(NOTIFICATION_WM_GO_BACK_REQUEST)
 					_t = 0
@@ -2267,6 +2284,8 @@ class BackTest extends Node:
 			return
 		if bool(st.get("trip", false)) and not TripS.active:
 			TripS.new_trip()
+		if bool(st.get("beaten", false)):
+			_beat_hometown()
 		if to == FlowS.GAME:
 			if bool(st.get("quick", false)):
 				MenuS.start_done = false   # the start panel (level, court) shows
@@ -2274,6 +2293,58 @@ class BackTest extends Node:
 			else:
 				FlowS.match = TripS.match_for()
 		FlowS.go(to, st.get("args", {}))
+
+	# P8-24: the trip wins Hometown's 3 games, spends no points and signs the first recruit (now in Chicago, County
+	# Line in the draft pool, Hometown replayable), with BACKTEST_STARS so a draft slot is open. Only once a run.
+	func _beat_hometown() -> void:
+		if StarsS.force_total < BACKTEST_STARS:
+			StarsS.force_total = BACKTEST_STARS
+		var guard: int = 0
+		while not TripS.beaten.has("hometown") and guard < 10:
+			guard += 1
+			if TripS.phase == "map":
+				TripS.record_result({"won": true})
+			if TripS.phase == "win_points":
+				TripS.finish_points()
+		if TripS.phase == "points":
+			TripS.finish_points()
+		if TripS.phase == "recruit":
+			var c: Array = TripS.recruit_candidates()
+			if c.size() > 0:
+				TripS.recruit(str((c[0] as Dictionary).get("id", "")))
+		print("BACKTEST trip: beaten %s, now %s game %d phase %s, open slots %d" % [str(TripS.beaten), TripS.city,
+				TripS.game, TripS.phase, TripS.open_slots()])
+
+	# opens what the step needs open before the back request; false if it didn't open
+	func _prep(st: Dictionary) -> bool:
+		var what: String = str(st.get("prep", ""))
+		if what == "":
+			return true
+		var node: Node = FlowS.current_screen()
+		if node == null:
+			return false
+		match what:
+			"draft_confirm":   # pick the first card, then the confirm panel SIGN opens
+				var cards = node.get("_cards")
+				if not (cards is Array) or (cards as Array).is_empty():
+					return false
+				var card: Object = (cards as Array)[0]
+				node.call("card_tapped", str((card.get("p") as Dictionary).get("id", "")))
+				node.call("_open_confirm")
+				return node.get("_confirm") != null
+			"picker":          # the replay picker of the beaten city
+				node.call("open_picker", "hometown")
+				return node.get("_picker") != null
+		return false
+
+	# the game's countdown time (-1 = no game, or not counting)
+	func _countdown_t() -> float:
+		if str(FlowS.screen) != FlowS.GAME or get_tree().current_scene == null:
+			return -1.0
+		var cd = get_tree().current_scene.get("countdown")
+		if cd == null or not bool(cd.call("frozen")):
+			return -1.0
+		return float(cd.get("_t"))
 
 	# a game: wait until the pause is allowed (after tip-off and the resume guard), or the start panel is up
 	func _ready_for(st: Dictionary) -> bool:
@@ -2295,7 +2366,7 @@ class BackTest extends Node:
 	func _check(st: Dictionary) -> void:
 		var scr: String = str(FlowS.screen)
 		var name_s: String = str(st.get("go", ""))
-		var what: String = "step %d (%s): did %s, now on %s" % [_i + 1, name_s if name_s != "" else "same game",
+		var what: String = "step %d (%s): did %s, now on %s" % [_i + 1, name_s if name_s != "" else "same screen",
 				_did, scr]
 		var ok: bool = scr == str(st["expect"]) and _did == str(st["did"])
 		if st.has("expect_panel"):
@@ -2303,6 +2374,18 @@ class BackTest extends Node:
 			var panel: String = str(node.get("_panel")) if node != null else ""
 			what += " panel " + panel
 			ok = ok and panel == str(st["expect_panel"])
+		if st.has("prep"):
+			what += " | %s opened %s" % [str(st["prep"]), str(_prep_ok)]
+			ok = ok and _prep_ok
+		if st.has("closed"):
+			var node: Node = FlowS.current_screen()
+			var still: bool = node == null or node.get(str(st["closed"])) != null
+			what += " | %s %s" % [str(st["closed"]), "still open" if still else "closed"]
+			ok = ok and not still
+		if bool(st.get("countdown", false)):
+			var now_t: float = _countdown_t()
+			what += " | countdown at the request %.2f s, now %.2f s" % [_count_t, now_t]
+			ok = ok and _count_t >= 0.0 and is_equal_approx(now_t, _count_t)   # counting then, held by the pause
 		if st.has("paused"):
 			var m: Node = get_tree().current_scene
 			var p = m.get("pause_node") if m != null else null
