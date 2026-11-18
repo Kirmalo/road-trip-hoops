@@ -1,5 +1,6 @@
 extends CanvasLayer
-# Trip map (P5-09, owner Q7 a: fixed route, tap GO, no replays). Flow screen "map", built in code with ui_kit.gd.
+# Trip map (P5-09, owner Q7 a: fixed route, tap GO; P8-20: replays from the pins). Flow screen "map", built in
+# code with ui_kit.gd.
 #   - the approved pixel USA map (assets/map/usa.png, 640 x 360 drawn 2x, centred; the bars above and below in
 #     map.json bar_bg), the 8 city pins: beaten = trophy (pin_done), the city you play next = gold (pin_current, it
 #     bobs), a built city still ahead = blue (pin), not built yet = grey (pin_locked) with "(soon)"
@@ -11,14 +12,27 @@ extends CanvasLayer
 #   - P6-16: the card's last line is the city's twist ("WIND: long shots and lobs drift"), none for Hometown
 #   - GO bottom-right: the city's arrival story the first time, then the lineup (New York: the bracket). When the trip
 #     is between steps (points / recruit / bracket after a CONTINUE) GO goes to that screen.
+#   - P8-20: every built pin shows its best stars ("7/9", Stars.city_total(); New York's 3 rounds out of 9). Tapping a
+#     pin with games won on this trip (Trip.can_replay) opens the replay picker: its 3 games (New York: the rounds)
+#     with their best stars and PLAY (Trip.start_replay(), then the lineup). Replays pay stars only, the opponents
+#     play at the trip's current stage. CLOSE, a tap outside the panel, Escape or the Android back close it.
+#   - P8-20: the van is the picked van paint (Cosmetics.van_path(), the same sheet layout as van.png)
+#   - P8-20: a finished trip opens in replay mode: no GO, the picker works, TITLE bottom-right (where GO stands)
+#   - P8-20: opening the map drops a replay marker left over (BACK out of a replay's lineup: Trip.cancel_replay())
 # Works without the art: a missing usa.png / pin / van / map.json is drawn with plain shapes (FALLBACK_CITIES).
-# Desktop testing: Enter / Space = GO, Escape = MENU. Trip test: auto_step() skips the drive, then taps GO.
+# Desktop testing: Enter / Space = GO, Escape = MENU (or closes the picker). Trip test: auto_step() skips the drive,
+# then taps GO (a finished trip: the title); it never starts a replay.
+# Test: -- --trip-test --trip-resume --mapshot DIR [--map-pick city]: on the first map, saves DIR/hoops_map*.png (the
+# map, the open picker), starts a replay and comes back to the map (the marker must be gone), then PLAYs it for real
+# (the trip test plays the replay game); prints MAPSHOT lines. Screenshots need xvfb.
 
 const UI = preload("res://scripts/ui_kit.gd")
 const Flow = preload("res://scripts/flow.gd")
 const Trip = preload("res://scripts/trip.gd")
 const Cities = preload("res://scripts/cities.gd")
 const MenuScript = preload("res://scripts/menu.gd")   # twist_line(): the twist's one line (P6-16)
+const Stars = preload("res://scripts/stars.gd")       # best(), city_total(), key() (P8-20)
+const Cosmetics = preload("res://scripts/cosmetics.gd")   # van_path(): the picked van paint (P8-20)
 
 const MAP_DIR := "res://assets/map/"
 const MAP_JSON := MAP_DIR + "map.json"
@@ -77,6 +91,36 @@ const MENU_SIZE := Vector2(200, 110)
 const MENU_MARGIN := Vector2(16, 8)            # from the top-right corner
 const PANEL_ARM := 0.3                         # s the screen ignores taps (a double tap from the last screen)
 
+# P8-20: the stars under every pin
+const PIN_STARS_FONT := 18                     # "7/9" under the city name
+const PIN_STARS_DY := 20.0                     # screen px from the name's baseline down to the stars line
+const PIN_STAR_R := 7.0                        # screen px: the little star in front of "7/9"
+const PIN_STARS_ABOVE := ["new_york"]         # these show their stars above the name (under it New York's line runs
+                                               # into Hometown's name, and the van parks under its pin at the end)
+const STAR_GOLD := Color("#ffd23f")
+const STAR_EMPTY := Color(0.42, 0.42, 0.5)     # no stars yet (and the empty stars in the picker)
+const STAR_EDGE := Color(0.08, 0.06, 0.12)
+
+# P8-20: the replay picker
+const PICK_SIZE := Vector2(1040, 0)            # width; the height fits the rows
+const PICK_TITLE_FONT := 34
+const PICK_INFO_FONT := 22
+const PICK_ROW_FONT := 26
+const PICK_ROW_W := 560.0                      # the game's text column
+const PICK_STARS := Vector2(150, 44)           # the 3 stars of a row
+const PICK_STAR_R := 19.0
+const PICK_PLAY := Vector2(220, 110)           # PLAY (the board minimum height)
+const PICK_CLOSE := Vector2(200, 110)
+const PICK_GAP := 10
+const PICK_INFO := "Replays pay stars only: no stat points, your record stays. The opponents play at your trip's" \
+		+ " current strength."
+const PICK_INFO_DONE := "Trip complete! Replays pay stars only, against opponents at full strength."
+const PICK_NOT_WON := "not won yet"
+const STARS_PER_GAME := 3
+const MAPSHOT_FLAG := "--mapshot"              # test: screenshots of the map and the picker, a replay (see the top)
+const MAPSHOT_PICK_FLAG := "--map-pick"        # test: the city whose picker --mapshot opens (default: the last won)
+const MAPSHOT_WAIT := 0.8                      # s before each --mapshot step (drawing settled)
+
 # map.json cities, used when the file is missing (source px)
 const FALLBACK_CITIES := {
 	"hometown": [408.5, 157.1], "chicago": [391.2, 140.2], "memphis": [376.9, 217.9],
@@ -103,6 +147,9 @@ var _card_title: Label
 var _card_lines: Label
 var _card_twist: Label
 var _shown := ""                               # the city on the card
+var _picker: Control                           # the open replay picker (null = closed)
+var _picker_city := ""
+var _play_btns := {}                           # game n -> its PLAY button in the open picker
 var _arm_t := PANEL_ARM
 var _busy := false
 var _t := 0.0
@@ -113,9 +160,16 @@ var _drive_t := -1.0                           # s into the drive; < 0 = parked
 var _park := Vector2.ZERO
 var _park_dir := 1.0                           # +1 faces right, -1 left
 
+static var _shot_stage := -1                   # --mapshot: -1 off, 0 first map, 1 back after a cancel, 2 played, 3 done
+var _shot_t := 0.0
+var _shot_step := 0
+
 func _ready() -> void:
 	if not Trip.active:
 		Trip.continue_trip()   # e.g. a reload straight onto the map: the save is the truth
+	var dropped: bool = Trip.replaying() and Trip.cancel_replay()   # BACK out of a replay's lineup: GO plays the trip
+	if dropped:
+		print("MAP replay marker dropped")
 	_load_art()
 	_root = UI.screen_root(self)
 	(_root.get_child(0) as ColorRect).color = BAR_BG
@@ -143,9 +197,12 @@ func _ready() -> void:
 	_show_city(Trip.city)
 	_refresh_buttons()
 	_stat("map_screen")
+	_mapshot_ready(dropped)
 
 func _process(delta: float) -> void:
 	_t += delta
+	if _shot_stage >= 0 and _shot_stage < 3:
+		_mapshot_tick(delta)
 	if _arm_t > 0.0:
 		_arm_t -= delta
 		if _arm_t <= 0.0:
@@ -161,8 +218,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if k == null or not k.pressed or k.echo:
 		return
 	if k.keycode == KEY_ESCAPE:
-		_tap(_on_menu)
+		if _picker != null:
+			close_picker()   # the Android back closes the picker too (main.gd sends it as Escape)
+		else:
+			_tap(_on_menu)
 	elif k.keycode == KEY_ENTER or k.keycode == KEY_SPACE:
+		if _picker != null:
+			return
 		if _drive_t >= 0.0:
 			_end_drive()
 		else:
@@ -191,6 +253,12 @@ func _load_art() -> void:
 			var t = load(p)
 			if t is Texture2D:
 				_tex[k] = t
+	# the picked van paint (same sheet layout as van.png); the default van when it is missing
+	var vp: String = Cosmetics.van_path()
+	if vp != "" and ResourceLoader.exists(vp):
+		var vt = load(vp)
+		if vt is Texture2D:
+			_tex["van"] = vt
 
 # a city's pin tip in source px
 func city_src(id: String) -> Vector2:
@@ -417,6 +485,7 @@ func _show_city(id: String) -> void:
 	var st: String = pin_state(id)
 	if Trip.is_done():
 		lines.append("Trip complete! Every trophy is in the van.")
+		lines.append("Tap a city to replay its games for stars.")
 	elif st == "locked":
 		lines.append("Coming soon: this city opens in a later update.")
 		lines.append("The Biscuit drives on by for now.")
@@ -424,7 +493,7 @@ func _show_city(id: String) -> void:
 		lines.append("Beaten! " + ("Spend your stat points." if Trip.phase == "points" else
 				"Pick a new player for the bench." if Trip.phase == "recruit" else "On to the next city."))
 	elif st == "done":
-		lines.append("Beaten! The trophy rides in the van.")
+		lines.append("Beaten! The trophy rides in the van." + (" Tap the pin to replay." if replayable(id) else ""))
 	elif Trip.is_tournament(id):
 		var rn: Array = Trip.round_names()
 		var r: int = clampi(Trip.bracket_round(), 0, maxi(rn.size() - 1, 0))
@@ -463,10 +532,16 @@ func _crew_line(id: String) -> String:
 	return ""
 
 func _refresh_buttons() -> void:
-	var can_go: bool = Trip.active and not Trip.is_done() and _drive_t < 0.0 and _arm_t <= 0.0 and not _busy
-	UI.set_enabled(_go_btn, can_go)
-	_go_btn.visible = Trip.active and not Trip.is_done()
-	UI.set_enabled(_menu_btn, _arm_t <= 0.0 and not _busy)
+	# a finished trip: GO's place holds TITLE (replay mode, P8-20)
+	var done: bool = Trip.is_done()
+	var label: String = "TITLE" if done else "GO"
+	if _go_btn.text != label:
+		_go_btn.text = label
+		UI.set_kind(_go_btn, UI.KIND_MAIN if done else UI.KIND_LIT)
+	var free: bool = _drive_t < 0.0 and _arm_t <= 0.0 and not _busy and _picker == null
+	UI.set_enabled(_go_btn, Trip.active and free)
+	_go_btn.visible = Trip.active
+	UI.set_enabled(_menu_btn, _arm_t <= 0.0 and not _busy and _picker == null)
 
 func _on_map_input(event: InputEvent) -> void:
 	var mb := event as InputEventMouseButton
@@ -482,11 +557,15 @@ func _on_map_input(event: InputEvent) -> void:
 			best_d = d
 			best = id
 	var id_now: String = best if best != "" else Trip.city
-	if id_now != _shown:
+	var pick: bool = best != "" and replayable(best)
+	if id_now != _shown or pick:
 		if audio != null:
 			audio.play(TAP_SOUND, -10.0)
+	if id_now != _shown:
 		_show_city(id_now)
 		_stat("map_pin_" + pin_state(id_now))
+	if pick:
+		open_picker(best)
 
 # ---------------- actions ----------------
 
@@ -524,7 +603,11 @@ static func go_target() -> Array:
 	return [then, {}]
 
 func _on_go() -> void:
-	if not Trip.active or Trip.is_done() or _drive_t >= 0.0:
+	if not Trip.active or _drive_t >= 0.0 or _picker != null:
+		return
+	if Trip.is_done():
+		_stat("map_title")   # replay mode: the button in GO's place is TITLE
+		_go("title")
 		return
 	var t: Array = go_target()
 	_stat("map_go")
@@ -534,6 +617,11 @@ func _on_go() -> void:
 func auto_step() -> bool:
 	if _busy:
 		return false
+	if _shot_stage >= 0 and _shot_stage < 3:
+		return true   # --mapshot is driving this map
+	if _picker != null:
+		close_picker()
+		return true
 	if _drive_t >= 0.0:
 		_end_drive()
 		return true
@@ -543,6 +631,259 @@ func auto_step() -> bool:
 	_arm_t = 0.0
 	_on_go()
 	return true
+
+# ---------------- the replay picker (P8-20) ----------------
+
+# how many games a city has: 3, New York its rounds
+static func games_of(id: String) -> int:
+	if Trip.is_tournament(id):
+		var rs = Cities.city(id).get("rounds", [])
+		return (rs as Array).size() if rs is Array else 0
+	return Trip.GAMES_PER_CITY
+
+# a game of this city can be replayed now (won on this trip, between games)
+static func replayable(id: String) -> bool:
+	for n in range(1, games_of(id) + 1):
+		if Trip.can_replay(id, n):
+			return true
+	return false
+
+# "GAME 2  -  to 11  -  vs County Line", "SEMIFINAL  -  to 21  -  vs ..."
+static func game_line(id: String, n: int) -> String:
+	var c: Dictionary = Cities.city(id)
+	var crew: String = str(c.get("crew", {}).get("name", "?"))
+	var what: String = "GAME %d" % n
+	if Trip.is_tournament(id):
+		var rs = c.get("rounds", [])
+		if rs is Array and n >= 1 and n <= (rs as Array).size():
+			var r: Dictionary = (rs as Array)[n - 1]
+			what = str(r.get("round", what))
+			crew = str(r.get("crew", {}).get("name", "?"))
+	elif n == Trip.GAMES_PER_CITY:
+		what += " (BOSS)"
+	return "%s  -  to %d  -  vs %s" % [what, Cities.game_target(id, n), crew]
+
+func open_picker(id: String) -> void:
+	close_picker()
+	_picker_city = id
+	_play_btns = {}
+	var dim := ColorRect.new()
+	dim.color = UI.DIM_COLOR
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.gui_input.connect(_on_picker_dim_input)
+	_root.add_child(dim)
+	_picker = dim
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dim.add_child(center)
+	var p := UI.panel(center, PICK_SIZE)
+	p.mouse_filter = Control.MOUSE_FILTER_STOP   # a tap on the panel itself does not close it
+	var sb := p.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+	sb.bg_color = Color(BAR_BG, 0.96)
+	sb.border_color = GOLD_LINE
+	sb.set_content_margin_all(20)
+	p.add_theme_stylebox_override("panel", sb)
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", PICK_GAP)
+	p.add_child(box)
+	var top := HBoxContainer.new()
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(top)
+	var c: Dictionary = Cities.city(id)
+	var head: String = str(c.get("tournament_name", c.get("name", id))) if Trip.is_tournament(id) else \
+			str(c.get("name", id))
+	var t := UI.label(top, "REPLAY  %s  -  %d/%d STARS" % [head.to_upper(), Stars.city_total(id),
+			games_of(id) * STARS_PER_GAME], PICK_TITLE_FONT, GOLD_TEXT)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	UI.button(top, "CLOSE", _on_picker_close, UI.KIND_OPT, PICK_CLOSE)
+	var info := UI.label(box, PICK_INFO_DONE if Trip.is_done() else PICK_INFO, PICK_INFO_FONT, TWIST_COLOR)
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.custom_minimum_size = Vector2(PICK_SIZE.x - 40.0, 0)
+	for n in range(1, games_of(id) + 1):
+		var row := HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_theme_constant_override("separation", 20)
+		box.add_child(row)
+		var can: bool = Trip.can_replay(id, n)
+		var l := UI.label(row, game_line(id, n), PICK_ROW_FONT, CITY_COLOR if can else LOCKED_COLOR)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		l.custom_minimum_size = Vector2(PICK_ROW_W, PICK_PLAY.y)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var st := StarIcons.new()
+		st.screen = self
+		st.got = Stars.best(Stars.key(id, n))
+		st.custom_minimum_size = PICK_STARS
+		st.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(st)
+		if can:
+			_play_btns[n] = UI.button(row, "PLAY", _tap.bind(_on_play.bind(n)), UI.KIND_LIT, PICK_PLAY)
+		else:
+			var nw := UI.label(row, PICK_NOT_WON, PICK_INFO_FONT, LOCKED_COLOR)
+			nw.custom_minimum_size = PICK_PLAY
+	_arm_t = PANEL_ARM   # the finger that opened it must not tap a row
+	_refresh_buttons()
+	_stat("map_picker")
+	if OS.get_cmdline_user_args().has("--trip-test"):
+		var games: Array = []
+		for n in range(1, games_of(id) + 1):
+			games.append("%d:%s%d*" % [n, "PLAY " if _play_btns.has(n) else "-", Stars.best(Stars.key(id, n))])
+		print("MAP PICKER %s | %s" % [id, " ".join(PackedStringArray(games))])
+
+func close_picker() -> void:
+	if _picker == null:
+		return
+	_picker.queue_free()
+	_picker = null
+	_play_btns = {}
+	_refresh_buttons()
+
+func _on_picker_close() -> void:
+	if _arm_t > 0.0 or _busy:
+		return
+	if audio != null:
+		audio.play(TAP_SOUND, -8.0)
+	close_picker()
+
+# a tap on the dim around the panel closes the picker
+func _on_picker_dim_input(event: InputEvent) -> void:
+	var mb := event as InputEventMouseButton
+	if mb == null or not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT or _arm_t > 0.0:
+		return
+	_picker.accept_event()
+	close_picker()
+
+func _on_play(n: int) -> void:
+	if _picker_city == "" or not Trip.start_replay(_picker_city, n):
+		return
+	_stat("map_replay")
+	_go("lineup")
+
+# ---------------- --mapshot (test) ----------------
+
+func _mapshot_ready(dropped: bool) -> void:
+	if not OS.get_cmdline_user_args().has(MAPSHOT_FLAG):
+		return
+	_shot_t = 0.0
+	_shot_step = 0
+	if _shot_stage < 0:
+		_shot_stage = 0
+		print("MAPSHOT start | done %s | replayable %d | stars %d" % [Trip.is_done(), Trip.replay_games().size(),
+				Stars.total()])
+	elif _shot_stage == 1:
+		var ok: bool = dropped and not Trip.replaying() and Flow.match.is_empty()
+		print("MAPSHOT cancel: %s" % ("ok, the replay marker is gone" if ok else "WRONG (marker %s)" % str(Trip.replay)))
+	elif _shot_stage == 2:
+		var o: Dictionary = Trip.last_outcome
+		print("MAPSHOT back from the replay | replay %s | won %s | stars %s -> %s | %s" % [
+				str(o.get("replay", false)), str(o.get("won", false)), str(o.get("stars_before", "-")),
+				str(o.get("stars_now", "-")), "marker gone" if not Trip.replaying() else "MARKER LEFT"])
+
+func _mapshot_tick(delta: float) -> void:
+	_shot_t += delta
+	if _shot_t < MAPSHOT_WAIT or _busy:
+		return
+	_shot_t = 0.0
+	_shot_step += 1
+	if _drive_t >= 0.0:
+		_end_drive()
+	_arm_t = 0.0
+	if _shot_stage == 0:
+		if _shot_step == 1:
+			_mapshot_save("done" if Trip.is_done() else "stars")
+			return
+		var city_id: String = _mapshot_city()
+		if city_id == "":
+			print("MAPSHOT nothing to replay (phase %s)" % Trip.phase)
+			_shot_stage = 3
+			return
+		if _shot_step == 2:
+			open_picker(city_id)
+			return
+		if _shot_step == 3:
+			_mapshot_save("picker")
+			return
+		var n: int = int(_play_btns.keys()[0]) if _play_btns.size() > 0 else 0
+		var ok: bool = Trip.start_replay(city_id, n)
+		print("MAPSHOT start_replay %s: %s, then back to the map as from the lineup" % [Stars.key(city_id, n),
+				"marked" if ok and Trip.replaying() else "REFUSED"])
+		_shot_stage = 1
+		_go("map")
+	elif _shot_stage == 1:
+		var city_id: String = _mapshot_city()
+		if _shot_step == 1:
+			open_picker(city_id)
+			return
+		_arm_t = 0.0
+		var n: int = int(_play_btns.keys()[0]) if _play_btns.size() > 0 else 0
+		print("MAPSHOT PLAY %s (a tap on the picker's button)" % Stars.key(city_id, n))
+		_shot_stage = 2
+		if _play_btns.has(n):
+			(_play_btns[n] as Button).pressed.emit()
+		if not _busy:
+			print("MAPSHOT PLAY did nothing")
+			_shot_stage = 3
+	elif _shot_stage == 2:
+		if _shot_step == 1:
+			_mapshot_save("after_replay")
+		else:
+			_shot_stage = 3   # a step later: the screenshot is written before the trip test moves on
+
+# --map-pick city, else the last city with a replayable game
+func _mapshot_city() -> String:
+	var cmd: PackedStringArray = OS.get_cmdline_user_args()
+	var i: int = cmd.find(MAPSHOT_PICK_FLAG)
+	if i >= 0 and i + 1 < cmd.size() and replayable(cmd[i + 1]):
+		return cmd[i + 1]
+	var rg: Array = Trip.replay_games()
+	return str((rg.back() as Dictionary).get("city", "")) if rg.size() > 0 else ""
+
+func _mapshot_save(tag: String) -> void:
+	var cmd: PackedStringArray = OS.get_cmdline_user_args()
+	var i: int = cmd.find(MAPSHOT_FLAG)
+	var dir: String = cmd[i + 1] if i >= 0 and i + 1 < cmd.size() and not cmd[i + 1].begins_with("--") else "/tmp"
+	var path: String = dir.path_join("hoops_map_%s.png" % tag)
+	await RenderingServer.frame_post_draw
+	if not is_inside_tree():
+		return
+	var img: Image = get_viewport().get_texture().get_image()
+	if img == null or img.is_empty():
+		print("MAPSHOT %s: no image (headless? run under xvfb)" % path)
+		return
+	img.save_png(path)
+	print("MAPSHOT saved %s" % path)
+
+# a 5-pointed star around c (outer radius r)
+static func star_poly(c: Vector2, r: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in range(10):
+		var a: float = -PI / 2.0 + i * PI / 5.0
+		var rr: float = r if i % 2 == 0 else r * 0.45
+		pts.append(c + Vector2(cos(a), sin(a)) * rr)
+	return pts
+
+static func draw_star(ci: CanvasItem, c: Vector2, r: float, full: bool) -> void:
+	var pts: PackedVector2Array = star_poly(c, r)
+	ci.draw_colored_polygon(pts, STAR_GOLD if full else STAR_EMPTY)
+	var edge: PackedVector2Array = pts.duplicate()
+	edge.append(pts[0])
+	ci.draw_polyline(edge, STAR_EDGE, maxf(1.5, r * 0.15))
+
+
+# A picker row's 3 stars (the best so far gold, the rest grey).
+class StarIcons extends Control:
+	var screen   # the trip_map.gd node
+	var got := 0
+
+	func _draw() -> void:
+		var r: float = screen.PICK_STAR_R
+		var step: float = size.x / float(screen.STARS_PER_GAME)
+		for i in range(screen.STARS_PER_GAME):
+			screen.draw_star(self, Vector2(step * (i + 0.5), size.y / 2.0), r, i < got)
 
 
 # The map, pins, labels, van and the header band, drawn from source px through the screen's to_screen().
@@ -604,6 +945,8 @@ class MapArt extends Control:
 			var col: Color = s.LOCKED_COLOR if st == "locked" else s.CITY_COLOR
 			draw_string_outline(font, pos, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, s.CITY_OUTLINE, s.OUTLINE_COLOR)
 			draw_string(font, pos, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+			if st != "locked":
+				_draw_pin_stars(font, id, pos, w, side)
 		# the header band and the gold edges
 		var hh: float = s.header_h()
 		draw_rect(Rect2(0, 0, size.x, hh), Color(s.BAR_BG, s.HEADER_ALPHA))
@@ -611,6 +954,29 @@ class MapArt extends Control:
 		var bottom: float = o.y + base.y
 		if bottom < size.y - 1.0:
 			draw_line(Vector2(0, bottom), Vector2(size.x, bottom), s.GOLD_LINE, s.LINE_W)
+
+	# "* 7/9" under the city name, on the name's side (P8-20)
+	func _draw_pin_stars(font: Font, id: String, name_pos: Vector2, name_w: float, side: String) -> void:
+		var s = screen
+		var got: int = s.Stars.city_total(id)
+		var txt: String = "%d/%d" % [got, s.games_of(id) * s.STARS_PER_GAME]
+		var fs: int = s.PIN_STARS_FONT
+		var r: float = s.PIN_STAR_R
+		var tw: float = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var full_w: float = r * 2.0 + 4.0 + tw
+		var x: float = name_pos.x
+		var y: float = name_pos.y + s.PIN_STARS_DY
+		if s.PIN_STARS_ABOVE.has(id):
+			y = name_pos.y - s.PIN_STARS_DY - 2.0
+		if side == "left":
+			x = name_pos.x + name_w - full_w
+		elif side == "below":
+			x = name_pos.x + (name_w - full_w) / 2.0
+		var base: Vector2 = Vector2(x, y)
+		s.draw_star(self, base + Vector2(r, -fs * 0.35), r, got > 0)
+		var tp: Vector2 = base + Vector2(r * 2.0 + 4.0, 0)
+		draw_string_outline(font, tp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, s.CITY_OUTLINE, s.OUTLINE_COLOR)
+		draw_string(font, tp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, s.STAR_GOLD if got > 0 else s.CITY_COLOR)
 
 	func _draw_van() -> void:
 		var s = screen
