@@ -361,8 +361,9 @@ func _on_retry() -> void:
 func _on_next() -> void:
 	_stat("result_next")
 	var o: Dictionary = _outcome
-	# a won tournament round (not the final): spend the round's points first, then the bracket
-	if bool(o.get("won", false)) and Trip.is_tournament(str(o.get("city", ""))) and not bool(o.get("trip_done", false)) \
+	# a won tournament round (not the final, not a replay: P8-17): spend the round's points first, then the bracket
+	if bool(o.get("won", false)) and not bool(o.get("replay", false)) and Trip.is_tournament(str(o.get("city", ""))) \
+			and not bool(o.get("trip_done", false)) \
 			and Trip.points > 0 and Trip.SPEND_PHASES.has(Trip.phase):
 		_go("points", {"then": "bracket", "per_win": true})
 		return

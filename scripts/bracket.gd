@@ -69,6 +69,8 @@ func _ready() -> void:
 	_frame.offset_bottom = FRAME_SIZE.y / 2.0
 	_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_frame)
+	if Trip.active and Trip.replaying():
+		Trip.cancel_replay()   # back out of a replay's lineup: PLAY must start the real round (P8-17)
 	if Trip.active and Trip.is_done():
 		_state = "done"
 	elif Trip.active and Trip.is_tournament(Trip.city):
