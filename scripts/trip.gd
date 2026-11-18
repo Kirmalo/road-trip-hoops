@@ -241,6 +241,17 @@ static func from_dict(d: Dictionary) -> bool:
 				if VIAS.has(via) and (via == "start") == (_via_of(id) == "start"):
 					ne["via"] = via   # "recruit" or "draft" as saved; "start" only for the underdogs
 			roster_data.append(ne)
+	if v1:
+		# P8-B2: a 1.0.0 save has one recruit per city; a second recruitable player from the same crew can only be
+		# a draft that a 1.0.0 build re-saved (it drops "via"), so he keeps using a roster slot
+		var recruited: Dictionary = {}
+		for ne in roster_data:
+			if str(ne.get("via", "")) != "recruit":
+				continue
+			var crew_key: String = str(ne.get("id", "")).get_slice("_", 0)
+			if recruited.has(crew_key):
+				ne["via"] = DRAFT_VIA
+			recruited[crew_key] = true
 	for id in Cities.START_CREW:
 		if not _on_roster(id):
 			roster_data.append(_new_entry(id))

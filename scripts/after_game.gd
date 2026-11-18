@@ -426,6 +426,8 @@ func _build_points() -> void:
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_left_label = UI.label(tcol, "", UI.SUB_FONT, POINTS_COLOR)
 	_left_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_left_label.clip_text = true   # P8-B1: a long line never pushes UNDO / DONE off the screen
+	_left_label.custom_minimum_size.x = 0
 	_undo_btn = _btn(head, "UNDO", _on_undo, UI.KIND_OPT, UI.SMALL_SIZE)
 	_undo_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_done_btn = _btn(head, "SKIP" if _per_win else "DONE", _on_done, UI.KIND_MAIN, Vector2(240, 110))
@@ -516,7 +518,7 @@ func _points_header() -> String:
 		return "No points left. Tap DONE."
 	var line: String = "%s: %s" % [nm, points_text(own)]
 	if crew > 0:
-		line += "   CREW POINTS: %d (anyone)" % crew
+		return line + "   CREW POINTS: %d (anyone)" % crew   # P8-B1: short enough to fit beside UNDO / DONE
 	return line + "   (+%d each, max %d)" % [Trip.POINT_GAIN, Trip.STAT_CAP]
 
 func _refresh_points() -> void:
