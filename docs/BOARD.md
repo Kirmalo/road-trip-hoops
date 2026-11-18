@@ -105,7 +105,21 @@ stage reached, stars only; hold the itch.io upload until Phase 8 is done; 1.0.0 
 ## Todo
 Everything in the waves below that is not in Doing, Review or Done. Carried over from Phase 7:
 - **P7-B1** | Web: the second tap on QUIT? / RESTART? sometimes ignored (`docs/board-phase7.md`, "Bugs from P7-40").
-  Check on the owner's tablet first. Must be closed or accepted before the public release.
+  Check on the owner's tablet first. Must be closed or accepted before the public release. P8-27: not reproduced
+  natively under xvfb (30/30 second taps quit, touch and mouse, fixed and real time).
+
+### Bugs from P8-27 (`docs/qa/phase8-screens.md`, contact sheet `docs/qa/phase8-screens.png`)
+- **P8-B3** | Lineup header cut off on a replay at 1280x720 ("REPLAY - CHICAGO - GAME 1 OF 3" runs off the right
+  edge) | gameplay B | `scripts/lineup.gd` (`_build_head`) | the replay header fits inside the opponent column
+- **P8-B4** | CREW: a long role ("fast-break guard") runs into "SPD" | gameplay C | `scripts/title.gd` | a gap on
+  every row
+- **P8-B5** | CREW: the record shows twice on the van line | gameplay C | `scripts/title.gd` | once
+- **P8-B6** | LEGEND is purple in Quick Game but plain blue in the title picker and Settings (cosmetic) | gameplay C
+  | `scripts/title.gd` | one look, or the owner accepts it
+- **P8-B7** | AFTER HOURS jersey (black/pink) is hard to tell from the Bridge Runners (black/red), worst on MIDNIGHT
+  | art + owner | `tools/art` palettes | the teams read apart at a glance
+- **P8-B8** | STAT POINTS screen not centred on wide screens (1600x720) | gameplay B | `scripts/after_game.gd`
+  | a centred 1280 frame like the lineup (fix with P8-B1)
 
 ## Doing
 - **P7-T1** | Higher shot make rates in every mode (`player.gd`, `main.gd`, `defense.gd`; another agent). P8-25 waits
