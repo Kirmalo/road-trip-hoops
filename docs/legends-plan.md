@@ -1,0 +1,274 @@
+# Legends plan: an era tour to unlock original legends (long-term, after Phase 8)
+
+Planning document (lead-producer, 2026-11-18). It follows the owner's VISION row "Legends (long-term)". Nothing here
+is decided beyond that row: the numbers, names and rules below are a **first draft** for the owner to change, and
+part 9 asks the questions that decide the rest. Timing: the owner decides after Phase 8. No game code has changed.
+
+## 1. The hard rule: every legend is our own character
+
+Legends are **original archetype characters**. They are built on classic *play styles* (the hook-shot center, the
+high flyer, the crossover artist), never on a real person. For every legend, court, card and story line:
+
+- **No real player's name or nickname**, not even a well-known nickname on its own (no "Air", "Magic", "Dream",
+  "Mailman", "Answer", "Admiral", "Glove", "Black Mamba", "Greek Freak", "Chef", no "King" as a nickname). A name
+  check against a list of real NBA and ABA players and their nicknames is part of the roster task, before any art.
+- **No real faces or likenesses.** Looks come from the generator's parts (body, skin, hair, outfit) mixed freely,
+  never tuned to resemble someone. Signature accessories that point at one real player (his goggles, his single arm
+  sleeve plus his number, his famous headband style) are out.
+- **No real numbers tied to a player, and no real team colors plus a number.** Legend jerseys use era colors we
+  invent; numbers are picked by script from a list the owner approves, never a famous player's number in his team's
+  colors.
+- **No signature trademarks or brand marks**: no logos, shoe brands, trademarked move names or slogans. Moves are
+  named in plain basketball words ("hook shot", "step-back", "chase-down block").
+- **No real teams, arenas or leagues.** Courts are made up, like the city courts.
+- **The owner's reference picture** (fan art of real players across generations) is **inspiration for the mood
+  only**: the idea of eras and of grandfathers, fathers and sons. It is never traced, copied, used as an asset or
+  shown to an art script. Art is made by the `tools/art` scripts in the approved style, as always.
+
+A review rejects any change that breaks this rule, the same way it rejects an asset without a license.
+
+## 2. The mode loop
+
+**Where:** a new LEGENDS button on the title opens the **era tour**: a timeline of four chapters (like the trip map,
+one pin per era). Each chapter has its own court, music, era rules and 6 legends.
+
+| Chapter | Feel | Court | Era rules (part 4) |
+|---|---|---|---|
+| 1. Grandfathers | Old school: short shorts, tall striped socks, headbands | Wood gym with banners | Rougher defense, slower pace, big men rule |
+| 2. Fathers | The 2000s: baggy shorts, arm sleeves, cornrows | Blacktop under lights | Isolation scorers, high flyers |
+| 3. Present | Modern | Arena | Spacing, step-backs, more long shots |
+| 4. New Generation | Bold and neon | Futuristic court | The fastest pace |
+
+**A chapter, step by step:**
+1. An intro story scene (portraits and text, like the trip's arrival scenes).
+2. **6 challenge games**, one per legend, in any order. Win one and that legend is **unlocked**: a short unlock
+   scene (he speaks, like a recruit's joining line), his card goes into the Hall of Legends.
+3. **The era finale**, opened once all 6 are beaten: your crew against the era's three best legends, to 21, under
+   the era rules. Winning it closes the chapter and opens the next one (if the tokens allow, part 5).
+
+**Challenge types** (each challenge is one row of data; a legend's challenge fits his skill):
+
+| Type | Goal | Example |
+|---|---|---|
+| Hold him | Win while the legend scores fewer than N points | Hold the hook-shot center under 6 |
+| Beat the fire | He starts on fire and cools down only on two misses in a row; win | The deep shooter |
+| One on one | 1-on-1 to 11, you against him | The crossover artist |
+| Stop the move | Block or steal his signature move N times and win | The high flyer: 3 blocks |
+| Race | Reach N before his team reaches M | The speedster: 11 before he gets 7 |
+| Comeback | Start down 0-6 in a game to 15 | The no-look passer's crew |
+
+Games are short: to 11 or 15 (finales to 21). With retries a chapter is about 7 games and 45-60 minutes, so **the
+whole tour is about 3-4 hours**, about as long as the Road Trip, and longer for a player who chases 3 tokens
+everywhere (part 5).
+
+## 3. First draft roster (4 eras x 6 legends; every name is a placeholder for the owner to rename)
+
+Rating shape = how his five stats sit around his level (speed, shooting, finishing, defense, stamina; the offsets
+add up to 0). The level itself depends on where he plays (part 5), so a shape never breaks the balance on its own.
+
+### Chapter 1: Grandfathers
+| Legend | Archetype | Look notes | Signature move | Shape (spd/sht/fin/def/sta) |
+|---|---|---|---|---|
+| Ezekiel "Steeple" Oakhurst | Hook-shot center | Very tall and wiry, mutton chops, headband | High hook over the defender (hard to block) | -15 / 0 / +20 / +5 / -10 |
+| Augustus "Gate" Fenwick | Shot-blocking wall | Broad big, flat-top, knee pads | Block that stays in play (he keeps it or tips it to a teammate) | -10 / -15 / +5 / +25 / -5 |
+| Harlan "Set Shot" Vickery | Deep shooter, old style | Lean, side part, tall socks | Two-hand set shot from deep | -5 / +25 / -10 / -5 / -5 |
+| Cornelius "Boxcar" Dunmore | Bruising power forward | Heavy, bald, wristbands | Power drop-step to a two-hand dunk | -10 / -10 / +20 / +10 / -10 |
+| Desmond "Velvet" Ashby | Smooth slasher | Long, afro with a headband | Soaring finger roll | +10 / -5 / +15 / -10 / -10 |
+| Otis "Quarterback" Brannigan | No-look floor general | Short, mustache, high socks | Full-court outlet pass for a lay-in | +5 / +5 / -10 / 0 / 0 |
+
+### Chapter 2: Fathers
+| Legend | Archetype | Look notes | Signature move | Shape |
+|---|---|---|---|---|
+| Dorian "Rooftop" Vance | High-flying shooting guard | Lanky, cornrows, arm sleeve, baggy shorts | Cradle dunk (ball rocked in the arm in the air) | +10 / 0 / +15 / -10 / -15 |
+| Tremaine "Ankles" Pettaway | Crossover artist | Small and quick, braids, headband | Double crossover (more ankle-breaker falls) | +15 / +5 / -5 / -5 / -10 |
+| Darnell "Midrange" Kingsley | Isolation scorer | Wiry wing, fade haircut, long shorts | Turnaround fadeaway | 0 / +20 / 0 / -10 / -10 |
+| Bartholomew "Freight" Thackeray | Low-post bulldozer center | Huge, goatee, headband | Shoulder-in power dunk | -15 / -15 / +25 / +10 / -5 |
+| Keon "Eyes Closed" Ridley | No-look passer | Slim, durag, wristbands | No-look and behind-the-back passes | +5 / 0 / -5 / -5 / +5 |
+| Shane "Lockbox" Hollister | Lockdown wing defender | Rangy, buzz cut, arm sleeve | Chase-down block from behind | +5 / -10 / -5 / +20 / -10 |
+
+### Chapter 3: Present
+| Legend | Archetype | Look notes | Signature move | Shape |
+|---|---|---|---|---|
+| Calloway "Deep End" Briggs | Step-back shooter | Slim guard, beard, tight shorts | Step-back from deep | +5 / +25 / -10 / -10 / -10 |
+| Theo "Swiss Knife" Lindqvist | Point-forward | Big and strong, man bun | Coast-to-coast drive and kick | +5 / 0 / +5 / 0 / -10 |
+| Ozren "Stretch" Halvorsen | Stretch big | Seven-footer, shaggy hair | Pick-and-pop long shot | -10 / +15 / 0 / +5 / -10 |
+| Idris "Switch" Achterberg | Two-way wing | Long arms, short twists | Steal straight into a breakaway | +5 / -5 / 0 / +15 / -15 |
+| Bodie "Skylight" Ferreira | Rim-running big | Athletic, high-top fade | Alley-oop slam from anywhere near the rim | 0 / -20 / +20 / +5 / -5 |
+| Santi "Zigzag" Moreau | Slasher | Slim, curly hair, headband | Euro-step layup | +10 / -5 / +10 / -10 / -5 |
+
+### Chapter 4: New Generation
+| Legend | Archetype | Look notes | Signature move | Shape |
+|---|---|---|---|---|
+| Kai "Hyperdrive" Starling | Speedster point guard | Small, neon dyed hair | Turbo burst past the defender | +25 / 0 / 0 / -10 / -15 |
+| Atlas "Long Shadow" Varga | Seven-foot guard | Very tall, locs tied up | Step-back over a smaller defender | 0 / +10 / +5 / +5 / -20 |
+| Juno "Glitch" Takeda | Trick handler | Slim, two-tone hair | Between-the-legs into behind-the-back combo | +15 / +5 / -5 / -5 / -10 |
+| Rocco "Pogo" Delacroix | Highest leaper | Wiry, mohawk | Putback tip-dunk off a miss | +5 / -15 / +20 / +5 / -15 |
+| Orion "Halfcourt" Mbeki | Unlimited range | Lean, plain headband, beard | Shots from far past the arc | 0 / +25 / -10 / -5 / -10 |
+| Dex "Firewall" Adeyemi | Guards everyone | Muscular, buzz cut, neon sleeves | Switch-and-swat block on a guard | +5 / -10 / 0 / +20 / -15 |
+
+The owner's eight archetypes are all in: hook-shot center, high-flying shooting guard, crossover artist,
+point-forward, deep shooter (three of them, one per style of era), shot-blocking wall, bruising power forward,
+no-look passer. Ages and story: grandfathers, fathers and sons only as a theme (a Grandfathers legend can call a New
+Generation legend "kid"); they are not related to real families.
+
+## 4. Era rules as twist values
+
+Each era is one twist in `scripts/twists.gd` (one twist per game, the same for both teams, twist "none" stays
+today's game). Keys that exist today are used as they are; new keys get a default in `DEFAULTS` that is exactly
+today's game, like every hook. Starting values, QA tunes them.
+
+| Era twist | Existing keys | New keys (default = today) |
+|---|---|---|
+| `era_grand` "OLD SCHOOL" | `speed_mult` 0.94, `long_shot_mult` 0.88 | `foul_mult` 0.6 (fewer fouls called: rougher defense), `inside_mult` 1.08 (layups, dunks and close shots go in more) |
+| `era_fathers` "ISO BALL" | `arc_mult` 1.05 | `cross_beat_mult` 1.2 (crossovers beat the defender more), `dunk_reach_mult` 1.1 (dunks from a little further out) |
+| `era_present` "SPACE THE FLOOR" | `long_shot_mult` 1.08 | `spacing_ft` 2.0 (off-ball players stand 2 ft wider), `stepback_mult` 1.1 (pull-ups after a move a little better) |
+| `era_next` "HYPERSPEED" | `speed_mult` 1.08, `turbo_mult` 1.45, `stamina_refill_mult` 1.2, `shot_clock` 18 | none |
+
+Every new key is one `Twists.value(key, default)` in the sim. None of them reads a team, so the era rules are fair.
+An open idea (part 9 is the place to ask, not this list): an old-school "every basket counts 1" rule.
+
+## 5. Unlocks, tokens, the Hall, mentors, the draft and era matchups
+
+**Opening the mode.** Trip stars are the first rung: stars open the chapters. Inside the mode, **legend tokens**
+work like stars: a challenge won on Easy gives 1, Normal 2, Hard 3 (LEGEND 3), best kept. 24 challenges and 4 finales
+give at most **84 tokens**. Draft gates (part 9 Q2): Chapter 1 at 24 trip stars (a finished Easy trip), Chapter 2 at
+36 stars or 12 tokens, Chapter 3 at 48 stars or 30 tokens, Chapter 4 at 72 stars or 48 tokens. Tokens also open a
+few Legends-only cosmetics (era jerseys, an era ball), on a ladder like `stars.gd`'s.
+
+**The Hall of Legends** (a new screen from the LEGENDS tour and from CREW & CREDITS): four era rows of six plaques.
+A locked legend is a silhouette in an era frame with "?" and his challenge line. An unlocked one shows his card (the
+sheet's idle card, in the era's frame), name, archetype, signature move, rating shape and his mentor perk; tapping
+REPLAY STORY plays his unlock scene again (portraits, like `story.gd`).
+
+**Mentors.** An unlocked legend can train one of your players: a small permanent perk tied to his skill. Draft list:
+
+| Legend | Perk (on one of your players) |
+|---|---|
+| Steeple (hook shot) | +4% on close shots and layups |
+| Gate (blocks) | block timing window 10% wider |
+| Set Shot (deep shooter) | +3% on shots beyond the arc |
+| Ankles (crossover) | crossovers beat the defender a little more often |
+| Lockbox (defense) | steal timing window 10% wider |
+| Hyperdrive (speed) | turbo drains 10% slower |
+| Eyes Closed (passer) | passes a little faster (fewer interceptions) |
+| Boxcar (power) | dunks from a little further out |
+
+Balance limits: **one perk per player**, never stacked; one legend trains at most one player at a time (he can
+switch, part 9); a perk is worth about 2 stat points at most and never lifts a stat above the 90 cap; perks change
+nothing for the CPU and never apply in a challenge's "hold him" goal numbers. QA's `--best-roster` bound includes the
+best perk, so the trip ramp still holds.
+
+**Drafting a legend into the Road Trip.** An unlocked legend joins the draft pool of the star roster slots (the same
+DRAFT screen). **At most one legend among the 3 starters**, enforced in `Trip.set_starters()` like the one-boss rule.
+Recommended: a legend also counts as the boss (so the three starters hold one boss *or* one legend), and he joins at
+the stage reached with a boss's level shaped by his rating shape (capped at `BOSS_CAP`), so the trip ramp is not
+broken. Whether legends belong in the Road Trip at all is part 9 Q5.
+
+**Era matchups in Quick Game.** Once three legends of an era are unlocked, an era team ("GRANDFATHERS", ...) joins the
+YOUR TEAM / OPPONENT buttons (its 3 best unlocked legends; stats averaged to 50 like the Quick Game crews, so it is a
+fair game), and the era's court joins the COURT button with its era rules. Single legends also play in Quick Game: a
+legend replaces one player of a team. Grandfathers vs New Generation on any court is the headline matchup.
+
+## 6. Save data
+
+- **A new file `user://legends.json`** (temp file + rename, like `trip.json`; tests use `user://legends_test.json`):
+  tokens per challenge, unlocked legends, seen scenes, the chapter reached, mentor pairs (legend -> player). Kept for
+  good: a NEW TRIP never touches it.
+- **`settings.cfg`** keeps what it keeps today (stars, cosmetics, unlocks). The Legends cosmetic picks go in its
+  `cosmetics` section, so the LOCKER stays one place.
+- **`trip.json` version 3**: a drafted legend is a normal roster entry (`via: "draft"`, a `lg_` id). A perk lives in
+  `legends.json`, not the trip, so it survives a NEW TRIP.
+- **Migration.** A 1.x save has no `legends.json`: the mode starts fresh, and stars already earned count at once
+  toward the chapter gates. A 1.x build opening a version 3 trip drops the unknown legend id (it already drops
+  unknown ids) and keeps the rest; it never reads `legends.json`. QA commits fixtures of 1.0.0 and 1.1 saves.
+
+## 7. The art and animation cost, honestly
+
+What one legend needs today, in the approved pipeline (`tools/art/make_players_v2.py` with the approved sample
+`make_anim_sample.py`, the layout in `assets/players2/format.json`):
+- **A full player sheet**: 29 animations, 237 frames x 5 directions, 8 indexed pages, about **0.4 MB** each. 24
+  legends add about **10 MB** to the download (today about 31 MB). Plus a card and a portrait set (about 3 portraits
+  each, `make_portraits_v2.py`).
+- **Era outfits** are new generator parts: short shorts, tall striped socks, headbands, baggy shorts, arm sleeves,
+  neon trims, plus a few new hair styles (some exist: afro, cornrows, hightop, mohawk, locs). They are drawn once and
+  reused by every legend of the era. Medium work in `make_players.py`'s parts and `crews.json`.
+- **Signature moves are the expensive part.** Every animation in `format.json` is in every sheet today, so a new
+  animation makes all 47 sheets wider. A legend-only move needs an "extra pages" rule in `sheets.gd` (a sheet may
+  carry animations the others lack). And a move like the hook shot or the step-back is also new gameplay (a sim
+  change), not just drawing. One-on-one is new gameplay too (the game is built for 3 a side).
+- **4 era courts** (`make_courts.py`; a floor and a backdrop each, as for a city), 4 era card frames, the Hall and
+  tour screens, 4 music tracks (CC0 or CC-BY, chiptune, a listening list first).
+
+Ways to cut it:
+1. **Shared bodies**: the 10 existing bodies cover most legends; the hand and ball points are body-keyed, so they
+   come free.
+2. **Palettes**: era colors and every "your colors" version are palettes only (no new pages).
+3. **Reuse animations**: most signatures are an existing move with a twist: the cradle dunk is a dunk style, the
+   finger roll a layup, the chase-down a block, the no-look a pass. Only a few need truly new frames.
+4. **One signature move per legend**, and at first only in his challenge and when he plays (not on every player).
+5. **Fewer legends per era** (4 instead of 6, part 9 Q1) cuts sheets, portraits and scenes by a third.
+6. Ship era by era: each phase adds one or two eras.
+
+## 8. Phased roadmap (a draft; timing after Phase 8)
+
+**Phase 9: the Hall, the first era, the challenge system.**
+| Task | Size | Files |
+|---|---|---|
+| Legends data: roster, challenges, chapters, gates (const data) | M | `scripts/legends.gd` (new) |
+| Name check against real players (doc and a data check) | S | `scripts/legends.gd`, `docs/legends-plan.md` |
+| Legends save and test file | M | `scripts/legends_save.gd` (new) |
+| Era twist for the first era plus its new keys | M | `scripts/twists.gd`, the sim hook spots (`main.gd`, `player.gd`, `defense.gd`, `rules.gd`) |
+| Challenge goals (hold him, beat the fire, stop the move, race, comeback) | L | `scripts/main.gd`, `scripts/rules.gd` |
+| Era tour and Hall screens | M + M | `scripts/legends_tour.gd`, `scripts/hall.gd` (new), `scripts/flow.gd`, `scripts/title.gd` |
+| Era outfits and the first era's 6 sheets | L | `tools/art/make_players.py`, `make_players_v2.py`, `crews.json`, `assets/players2/` |
+| Era court, card frames, portraits, scenes | M + M | `tools/art/make_courts.py`, `make_portraits_v2.py`, `scripts/court_looks.gd`, `scripts/story_text.gd` |
+| Legend-only animation pages (if one signature needs new frames) | M | `scripts/sheets.gd`, `assets/players2/format.json` |
+| QA: challenge win shares per level, era rules stats, saves | M | `docs/qa/` |
+
+**Phase 10: the remaining eras, mentors, matchups, the draft.**
+| Task | Size | Files |
+|---|---|---|
+| Eras 2-4: sheets, courts, portraits, scenes, music | L (x3) | as in Phase 9 |
+| Era twists 2-4 | M | `scripts/twists.gd`, hook spots |
+| One-on-one challenge (if kept) | L | `scripts/main.gd`, `scripts/player.gd`, `scripts/defense.gd`, `scripts/rules.gd` |
+| Mentor perks and their screen | M | `scripts/legends.gd`, `scripts/ratings.gd`, a mentor panel in `scripts/hall.gd` |
+| Legends in the draft, one-legend rule, version 3 save | M | `scripts/trip.gd`, `scripts/draft.gd`, `scripts/lineup.gd`, `scripts/save.gd` |
+| Era teams and legends in Quick Game | M | `scripts/menu.gd`, `scripts/difficulty.gd`, `scripts/trip.gd` (`quick_team`) |
+| Ramp and balance QA with legends and perks | M | `docs/qa/` |
+
+## 9. Questions for the owner (answer with the letter)
+
+**Q1. How many legends per era?**
+- a) 6 per era, 24 in all (the full plan) **(recommended)**
+- b) 4 per era, 16 in all (a third less art and story; ships sooner)
+- c) 8 per era, 32 in all (the longest mode, the most art)
+
+**Q2. When does the Legends mode open?**
+- a) Chapter 1 with a finished trip on any level (24 stars); later chapters at 36 / 48 / 72 stars or with legend
+  tokens **(recommended)**
+- b) Only at 72 stars (every trip game on Hard), as the game's true endgame
+- c) From the start, beside the Road Trip
+
+**Q3. Which era comes first (Phase 9)?**
+- a) Grandfathers: the tour starts at the beginning of the timeline, and its slower, big-man game is the most
+  different from today's **(recommended)**
+- b) New Generation: the flashiest, the fastest pace
+- c) Fathers: the closest to today's streetball look, so the least new art
+
+**Q4. What style of challenge games?**
+- a) A mix, chosen per legend (hold him, beat the fire, stop the move, race, comeback), plus one-on-one later
+  **(recommended)**
+- b) A mix without one-on-one (saves the biggest new game mode)
+- c) Always a normal game to 15 or 21 against his crew, no special goals
+
+**Q5. Do legends appear in the Road Trip?**
+- a) Yes, through the star roster slots, one legend among the starters, and he counts as the boss (one boss or one
+  legend) **(recommended)**
+- b) Yes, one legend and one boss may both start
+- c) No: legends stay in the Legends mode and Quick Game
+
+**Q6. How strong are the mentor perks?**
+- a) Small: about 2 stat points' worth, one per player, a legend trains one player at a time and may switch
+  **(recommended)**
+- b) Tiny: about 1 stat point's worth, a flavor reward
+- c) None: the Hall and the playable legends are reward enough
