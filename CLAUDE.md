@@ -189,6 +189,14 @@ godot --headless --path . --fixed-fps 60 --quit-after 20000 -- --titletest
 - `--trip-resume` (with `--trip-test`, a new process): loads the test save and plays on from there.
 - `--screens` (with `--trip-test`, xvfb): screenshots of every screen to `/tmp/hoops_screen_NN_<screen>.png`; each trip
   game is then decided at once.
+- Phase 8 checks in `--trip-test` (P8-23; any broken one is a TRIP ERROR): after every game its stars (best kept, the
+  level's 1/2/3 on a win) and its points (each game paid once; losses and replays pay nothing), at TRIP END all 24
+  games paid and every game at the level's stars, and the level is `--difficulty`'s. The first title of a run visits
+  the LOCKER (back to the title); the first lineup with an open star slot drafts one player through the OPEN SLOT card
+  and the DRAFT screen (`--stars 12` or more; also when the test settings file's own stars open a slot); the first map
+  after Memphis plays one replay from its picker and checks the trip did not move (city, game, phase, record, points,
+  paid, starters; the driver keeps the starters in replays). Run it on every level, e.g. `--difficulty easy`,
+  `normal`, `hard` and `--difficulty legend --stars 72`. Stars a run wins stay in `user://settings_test.cfg`.
 - `--city <id> --cgame N` (N = 1..3, default 1): play that city game's matchup (crews, ratings, target, court, music,
   twist) CPU vs CPU, or with `--humantest` / a screenshot mode. Ids are the `cities.gd` keys (`hometown`, `chicago`,
   `memphis`, `new_orleans`, `denver`, `seattle`, `los_angeles`, `new_york`).
