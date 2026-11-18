@@ -18,9 +18,9 @@ WHERE TO PLAY
 - In the Godot editor: see PART 2.
 
 HOW TO PLAY (THE SHORT VERSION)
-The title screen has a HOW TO PLAY button: nine pages with a picture each (controls, turbo, shooting, dunks and
-alley-oops, crossover, calling for the ball, defense, on fire, the Road Trip). Swipe left or right, or tap the big
-< > arrows, to turn the page; BACK goes back to the title.
+The title screen has a HOW TO PLAY button: ten pages with a picture each (controls, turbo, shooting, dunks and
+alley-oops, crossover, calling for the ball, defense, on fire, the Road Trip, stars). Swipe left or right, or tap
+the big < > arrows, to turn the page; BACK goes back to the title.
 
 You are BLUE: the player with the arrow over his head. The arrow next to BLUE in the top bar shows which hoop you
 attack (it flips when the teams switch sides).
@@ -42,26 +42,31 @@ buttons to the bottom left. It starts with the next game and the game remembers 
 THE TITLE SCREEN
 The game opens on the title screen:
 - ROAD TRIP: the campaign (see THE ROAD TRIP below). It shows CONTINUE (your saved trip, lit gold) and NEW TRIP.
-  NEW TRIP then asks for the level: EASY, NORMAL or HARD. If you already have a saved trip, NEW TRIP first asks
-  START OVER (your old trip is gone) or KEEP MY TRIP.
-- QUICK GAME: one game to 21 against the CPU. Its panel has the level (EASY / NORMAL / HARD; tap one to play), the
-  teams, the COURT and the MUSIC (see QUICK GAME below). After the game the panel comes back; its TITLE button goes
-  back to the title.
+  NEW TRIP then asks for the level: EASY, NORMAL or HARD (and LEGEND once you have all 72 stars). If you already
+  have a saved trip, NEW TRIP first asks START OVER (your old trip is gone; your stars stay) or KEEP MY TRIP. The
+  ROAD TRIP button carries your stars ("STARS n/72").
+- QUICK GAME: one game to 21 against the CPU. Its panel has the level (EASY / NORMAL / HARD, LEGEND once open; tap
+  one to play), the teams, the COURT and the MUSIC (see QUICK GAME below). After the game the panel comes back; its
+  TITLE button goes back to the title.
+- LOCKER: your star rewards (see STARS AND THE LOCKER below).
 - SETTINGS (all remembered):
   - MUSIC: ON / OFF, and the MUSIC volume slider next to it;
   - SOUND: the volume of the sound effects;
-  - LEVEL: EASY / NORMAL / HARD for Quick Game and new trips (with a saved trip it also changes that trip's level);
+  - LEVEL: EASY / NORMAL / HARD (LEGEND once open) for Quick Game and new trips (with a saved trip it also changes
+    that trip's level);
   - FULL SCREEN: ON / OFF. In the browser it fills the whole screen (the browser's back gesture or Esc leaves it;
     if it is ON, your next tap in the game puts it back). The Android app is always full screen;
   - LEFT-HANDED: ON / OFF (see above).
 - HOW TO PLAY: the picture pages (see above).
-- CREW & CREDITS: the version, your crew and their stats (from your saved trip, if any), the art, music and sound
+- CREW & CREDITS: the version, your crew and their stats, unspent points and DRAFTED tags (from your saved trip,
+  if any), the art, music and sound
   credits, and the Godot Engine license. Drag the list to scroll.
 BACK on each screen goes back to the title (on Android the back gesture does the same; on the title it closes the
 app).
 
 QUICK GAME
-- EASY / NORMAL / HARD: big buttons on the panel, before the game and again after every game, under the final score.
+- EASY / NORMAL / HARD (and LEGEND once you have all 72 stars): big buttons on the panel, before the game and again
+  after every game, under the final score.
   Tap one to play. The game remembers your choice (the lit button). The first time it starts on NORMAL.
 - YOUR TEAM / OPPONENT: tap to pick the next team for each side. The Cornfield Kings (your crew) and the Bridge
   Runners are always there; every crew you beat on a Road Trip joins the list for good (a city's crew when you beat
@@ -69,8 +74,9 @@ QUICK GAME
   so any matchup is fair; each crew keeps its own colors. The same crew can't be on both sides.
 - COURT: GYM, COURT: BLACKTOP, ... Tap it to pick the next court (an indoor gym with bleachers, an outdoor
   blacktop, and every city court you have unlocked). A city's court unlocks when you beat that city's boss on a Road
-  Trip, and stays unlocked (a new trip doesn't lock it again). A city court brings its city's twist, shown in a line
-  under the buttons; the gym and the blacktop have none.
+  Trip, and stays unlocked (a new trip doesn't lock it again). Two more courts open with stars: MIDNIGHT (30
+  stars) and GOLD HALL (60). A city court brings its city's twist, shown in a line under the buttons; the gym, the
+  blacktop and the star courts have none.
 - MUSIC: ON / MUSIC: OFF switches the music at once.
 The panel comes back with the new teams or court behind it; then tap a level to play. The game remembers all of it.
 
@@ -151,6 +157,8 @@ DIFFICULTY
   panel.
 - Only the CPU team (RED) changes; it is never slower. On NORMAL and EASY the CPU shoots worse, reacts later to
   crossovers and shots, times its steals and blocks worse, bites on pump fakes more and helps less on defense.
+- LEGEND (open once you have all 72 stars): the CPU plays like HARD and every opponent gets +12 on every stat (95 at
+  most). A LEGEND win gives 3 stars, like HARD.
 
 PLAYER RATINGS
 Every player has five stats from 0 to 100 (50 = average): SPEED (how fast he runs), SHOOTING (jump shots and free
@@ -170,32 +178,56 @@ You are the Cornfield Kings, three underdogs from a small town in Indiana: Deuce
 tournament in New York.
 - The route: Hometown (Indiana), Chicago, Memphis, New Orleans, Denver, Seattle, Los Angeles, then the tournament in
   New York. Every city has its own court, music, crew, story scenes and twist (see THE CITIES AND THEIR TWISTS).
-- The map: the USA with a pin for every city. Gold = where you play next, a trophy = beaten.
-  The card at the bottom left shows the city, the game (1, 2 or 3), the points to win, the crew you face and the
-  city's twist. Tap a pin to look at that city; tap the map to go back to yours. GO plays on. MENU (top right) goes
-  to the title.
+- The map: the USA with a pin for every city. Gold = where you play next, a trophy = beaten. Each pin shows its
+  best stars ("7/9"). The card at the bottom left shows the city, the game (1, 2 or 3), the points to win, the crew
+  you face and the city's twist. Tap a pin to look at that city; tap the map to go back to yours. GO plays on. MENU
+  (top right) goes to the title.
+- Replays: tap a pin where you have won games on this trip to open its picker (its 3 games, or New York's rounds,
+  with their best stars), then PLAY. The opponents play at the stage you have reached. A replay only earns stars:
+  no stat points, no story, no recruit, and your trip stays where it was. CLOSE (or a tap outside) closes the
+  picker. After the whole trip the map stays open for replays.
 - Each city has one local crew, and you play them 3 times, each time stronger:
   game 1 to 11 points (1 good player and 2 average ones), game 2 to 15 (2 good, 1 average), game 3 to 21 against
   2 good players and the crew's BOSS. Win all 3 to move on. A city's first visit starts with a short story scene.
 - Lose a game? No penalty: tap RETRY and play that same game again.
 - Story scenes: big portraits and a text box. Tap to see the whole line, tap again for the next one. SKIP (top
   right) skips the rest of the scene.
-- After each game a result screen shows the score, WIN or LOSS and a few stats for both crews. NEXT plays on.
-- Stat points: every win earns 2 stat points. After a city you spend them on the points screen: pick a player, then
-  tap +3 next to one of his stats (Speed, Shooting, Finishing, Defense, Stamina). Each point adds 3; no stat goes
-  above 90. UNDO takes back the last point. DONE moves on (points you don't spend are kept for later).
+- After each game a result screen shows the score, WIN or LOSS, the points your starters won, the game's stars
+  (NEW STAR / NEW BEST) and a few stats for both crews. NEXT plays on.
+- Stat points: every win gives each of your 3 starters his own points: 1 for city games 1 and 2, 2 for the boss
+  game and each New York round (the same on every level; a game you win again pays nothing). The STAT POINTS
+  screen comes up after every win: tap +3 next to one of a starter's stats (Speed, Shooting, Finishing, Defense,
+  Stamina). Each point adds 3; no stat goes above 90. UNDO takes back the last point. SKIP keeps the points for
+  later (a gold badge on his card in the lineup opens the screen again); DONE moves on. After a city the screen
+  shows the whole crew. A trip from the first version (1.0.0) keeps its points as CREW POINTS, which anyone can
+  use.
 - Recruit: after a city you pick ONE of its 3 best players (its 2 good players or the boss) to join your bench.
   Tap his card, then tap SIGN (his name) to confirm. He says a line as he joins (tap to go on). He keeps his
   ratings and wears your blue and gold.
 - Lineup: before every game you pick your 3 starters from the whole crew. Tap a card to put him in; the FIRST one
-  you pick is you (he gets the YOU badge), the next two are your teammates. Tap a starter again to bench him. The
-  game remembers your lineup for the next game. PLAY starts the game.
+  you pick is you (he gets the YOU badge), the next two are your teammates. Tap a starter again to bench him. Only
+  one BOSS may start (however he joined). The game remembers your lineup for the next game. PLAY starts the game.
+- Draft: stars open extra roster slots (at 12, 24, 36 and 48 stars). An OPEN SLOT card in the lineup opens the
+  DRAFT screen: any player from a crew you have beaten on this trip, bosses too. Tap a card, then SIGN and YES,
+  SIGN. A draft is final for the trip; he joins with his city's ratings and a DRAFTED tag.
 - New York: the tournament, a bracket of 3 rounds (quarterfinal, semifinal, final), all to 21, in a fenced cage.
   You meet the Bridge Runners, the Bodega Bandits and, in the final, the champions, the Concrete Crowns, with their
-  boss, King. A loss just replays that round. Wins still earn stat points; when you have
-  some, the bracket shows a POINTS button to spend them between rounds. Win the final for the ending.
+  boss, King. A loss just replays that round. Each won round gives every starter 2 points, spent right after the
+  round; the bracket also shows a POINTS button for any left. Win the final for the ending.
 - Saving: the trip saves by itself after every game and every choice. One trip at a time. Close the game whenever
   you like; ROAD TRIP > CONTINUE on the title brings you back to where you were.
+
+STARS AND THE LOCKER
+- Every city game and every New York round gives stars for a win: 1 on EASY, 2 on NORMAL, 3 on HARD or LEGEND.
+  Only your best result for each game counts: 24 games x 3 = 72 stars. Stars are kept for good (a new trip keeps
+  them).
+- What they open: an alternate jersey (6 stars), roster slots (12, 24, 36, 48), special balls (18, 42, 60), van
+  paint jobs (24, 48, 66), more jerseys (36, 54), Quick Game courts MIDNIGHT (30) and GOLD HALL (60), and the
+  LEGEND level (72).
+- LOCKER (on the title): the list of rewards on the left (what you have, what is next) and, on the right, JERSEY,
+  BALL and VAN: tap an open tile to wear it (CLASSIC is the normal look). The jersey is your crew's on the trip and
+  the Kings' in Quick Game, the ball is in every game, the van drives on the trip map. Against a crew whose colors
+  are too close to your jersey, your team wears its normal jersey for that game.
 
 THE CITIES AND THEIR TWISTS
 Each city's twist works the same for both teams. A banner shows it at the tip-off and again after the switch.
@@ -252,8 +284,9 @@ and on the CREW & CREDITS screen.
 No sound in the browser? Make sure the tablet's media volume is up (not just the ringer), then tap the screen once.
 
 SAVES
-The game saves by itself: the trip after every game and every choice (user://trip.json), and your settings and the
-unlocked courts and teams (user://settings.cfg). Where that is:
+The game saves by itself: the trip after every game and every choice (user://trip.json), and your settings, the
+unlocked courts and teams, your stars and what you wear (user://settings.cfg). A trip saved by the first version
+(1.0.0) loads and plays on. Where that is:
 - in the browser: in the browser's storage for that site (clearing the site's data or a private window loses it;
   the itch.io page and the GitHub Pages build have separate saves);
 - in the Android app: in the app's own storage (an update keeps it; uninstalling the app deletes it);
@@ -289,7 +322,8 @@ The files are made on a computer with Godot 4.3 and its export templates (setup 
 EASY THINGS TO CHANGE (at the top of each file)
 The Road Trip:
 scripts/cities.gd (the cities, crews and players, all plain data):
-- STAGE_AVG: the rating of an average player at each stop of the trip (1 = Hometown 40 ... 8 = New York 70)
+- STAGE_AVG: the rating of an average player at each stop of the trip (40, 46, 52, 58, 63, 68, 73, 78: 1 =
+  Hometown 40 ... 8 = New York 78)
 - TIER: what good players and bosses add on top: "good" +4 on everything and +12 on their two specialties ("spec"),
   "boss" +20 on everything
 - CITY_TARGETS: points to win games 1, 2 and 3 in a city ([11, 15, 21]); TOURNAMENT_TARGET: New York rounds (21)
@@ -301,10 +335,12 @@ scripts/cities.gd (the cities, crews and players, all plain data):
   stamina; 0-100, 50 = a Quick Game player).
 - CREW_NAME / VAN_NAME: "CORNFIELD KINGS" and "THE BISCUIT"
 scripts/trip.gd (the trip rules):
-- POINTS_PER_WIN: stat points for each win (2)
+- POINTS_CITY_GAME: stat points for each starter after a win in city game 1 or 2 (1)
+- POINTS_BOSS_GAME: the same after a boss game or a New York round (2)
 - POINT_GAIN: how much one point adds to a stat (3)
 - STAT_CAP: no stat goes above this by spending points (90)
-- TOURNAMENT_POINTS: true = New York wins earn points too
+- BOSS_CAP: no opponent stat goes above this (95)
+- BOSS_LIMIT: how many bosses may start (1)
 - DEFAULT_LEVEL: the level of a trip when none is picked ("normal")
 scripts/story_text.gd (the story):
 - SCENES: every scene as a list of lines. Each line has "who" (a player id from cities.gd, or "narrator"), "side"
@@ -318,6 +354,8 @@ scripts/twists.gd (the city twists):
   slower), "shot_clock": 18.0 (Memphis), "stamina_refill_mult": 0.7 (humid: 30% slower). The "banner" text is what
   the banner, the map card and the pause screen show.
 scripts/trip_map.gd: DRIVE_TIME: seconds the van drives to the next city (3.0)
+scripts/stars.gd: REWARDS: the reward list (at how many stars each one opens)
+scripts/difficulty.gd: LEGEND_BONUS: what LEGEND adds to every opponent stat (12)
 scripts/story.gd: TYPE_CPS: how fast the story text types out (48 letters per second)
 
 The game:
@@ -415,9 +453,9 @@ Shooting odds are in shot_probability() in main.gd. CPU behavior is in scripts/p
 FILES
 - main.gd: game loop, shot clock, HUD, input routing, steals, on fire, the test modes
 - rules.gd: first to 21, scoring, switching sides, dead balls and inbounds, fouls and free throws, out of bounds
-- difficulty.gd: EASY / NORMAL / HARD values for the CPU, and the saved settings (level, unlocked courts and
-  teams, LEFT-HANDED, FULL SCREEN)
-- menu.gd: the Quick Game panel (EASY / NORMAL / HARD, YOUR TEAM / OPPONENT, COURT and MUSIC)
+- difficulty.gd: EASY / NORMAL / HARD / LEGEND values for the CPU, and the saved settings (level, unlocked courts
+  and teams, LEFT-HANDED, FULL SCREEN)
+- menu.gd: the Quick Game panel (EASY / NORMAL / HARD / LEGEND, YOUR TEAM / OPPONENT, COURT and MUSIC)
 - human_input.gd: your controls (crossover flicks, pump fake taps, CALL, STEAL/BLOCK button)
 - player.gd: movement, turbo, crossovers, pump fakes, dunks, layups, alley-oops, ratings, CPU offense
 - defense.gd: CPU defense (man-to-man, pokes, block jumps) and block rules
@@ -425,7 +463,8 @@ FILES
 - court.gd: draws the court, rims and nets (through view.gd)
 - view.gd: the angled view: turns positions on the court into spots on the screen (the game itself still plays on a
   flat top-down court), and the stick into a direction on the court
-- court_looks.gd: the court looks (gym, blacktop and the 8 city courts): colors, pictures and music of each court
+- court_looks.gd: the court looks (gym, blacktop, the 8 city courts and the 2 star courts): colors, pictures and
+  music of each court
 - twists.gd: the city twists (wind, crowd, humid, thin air, wet, sand, cage) and their numbers
 - twist_fx.gd: what you see and hear of a twist (banner, rain, wind streaks, sand puffs, background sound)
 - sheets.gd: reads the player pictures (assets/players2) and where the hands and the ball are in each frame;
@@ -434,16 +473,23 @@ FILES
 - audio.gd: plays the sound effects (files in assets/sfx) and the music (files in assets/music), at the
   SETTINGS volumes
 - fx.gd: popups, screen shake, fire trail
+- countdown.gd: the 3-2-1-GO! at the start of every game
 The Road Trip:
-- flow.gd: moves between the screens (title, map, story, lineup, game, result, points, recruit, bracket)
-- trip.gd: the trip's rules and progress (games, retries, stat points, recruits, starters, New York, CONTINUE)
+- flow.gd: moves between the screens (title, map, story, lineup, game, result, points, recruit, bracket, draft,
+  locker)
+- trip.gd: the trip's rules and progress (games, retries, stat points, recruits, drafts, starters, replays, New
+  York, CONTINUE)
+- stars.gd: the stars and the list of rewards they open (REWARDS at the top)
+- cosmetics.gd: the jerseys, balls, van paints and star courts, and which ones you wear
 - save.gd: writes and reads the trip save (user://trip.json) safely
 - cities.gd: the cities, crews and players (data)
 - ratings.gd: what the five stats do in a game
 - ui_kit.gd: the shared look of the buttons and panels on the screens
 - title.gd: the title screen, SETTINGS and CREW & CREDITS (the credits list is CREDITS_LIST at the top)
 - howto.gd: the How to Play screen (the page text is in PAGES at the top; the pictures are in assets/howto)
-- trip_map.gd: the trip map with the van
+- trip_map.gd: the trip map with the van and the replay picker
+- locker.gd: the LOCKER screen
+- draft.gd: the DRAFT screen
 - story.gd: the story scenes (the lines are in story_text.gd)
 - lineup.gd: picking your 3 starters
 - after_game.gd: the result screen and the stat points screen
@@ -472,7 +518,9 @@ The pictures are drawn by scripts, not by hand, so they can be changed and made 
 - python3 tools/art/make_courts.py    makes the court floors and backdrops in assets/courts (gym, blacktop and the
   8 city courts) and the ball in assets/ball.
 - python3 tools/art/make_portraits_v2.py   makes the story portraits in assets/portraits (comic style).
-- python3 tools/art/make_map.py       makes the trip map, pins and van in assets/map.
+- python3 tools/art/make_map.py       makes the trip map, pins, van and van paints in assets/map.
+- python3 tools/art/make_cosmetics_preview.py   puts every star reward (jerseys, balls, vans, courts) on one
+  picture, docs/art/cosmetics_preview.png.
 - python3 tools/art/make_icon.py      makes the app icons in assets/icon and the itch.io cover
   docs/release/cover.png.
 - python3 tools/art/make_howto.py     makes the How to Play pictures in assets/howto from the game screenshots
