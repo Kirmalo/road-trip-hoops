@@ -19,6 +19,8 @@ const CREW_NAME := "CORNFIELD KINGS"
 const VAN_NAME := "THE BISCUIT"
 const CREW_COLORS := ["BLUE", "GOLD"]   # your crew always wears blue and gold (palette names in tools/art/crews.json)
 const START_CREW := ["ud_deuce", "ud_jojo", "ud_tank"]   # starter 0 is the one you control by default
+const COSMETICS_PATH := "res://scripts/cosmetics.gd"     # P8-10: the picked jersey (crew_sheet(); loaded at run time)
+static var _cosmetics: GDScript = null
 
 # the fixed route (owner Q7); a city with "built": false would be skipped (map pin marked "coming soon")
 const ROUTE := ["hometown", "chicago", "memphis", "new_orleans", "denver", "seattle", "los_angeles", "new_york"]
@@ -489,12 +491,28 @@ static func game_target(city_id: String, n: int) -> int:
 # the sheet id a player wears: <sheet>_crew in your colors when a recruit plays for you (Q11 a)
 # his sheet; for_your_crew: anyone but your 3 starting underdogs (a recruit or a drafted player, P8-05) wears
 # <sheet>_crew, your blue and gold (Sheets falls back to the plain sheet if that recolor is missing)
+# P8-10: your crew also wears the picked jersey (a star reward, Cosmetics.jersey_suffix(): "" = none, else "_j<N>"):
+# <sheet>_j<N> on an underdog, <sheet>_crew_j<N> on anyone else (Sheets falls back to the plain look when that
+# palette is missing). The underdogs (tier "start") always wear it, so in Quick Game the Kings wear it on either side
+# (progression plan part 5: "your crew on the trip, the Kings in Quick Game"); no other crew ever does.
 static func crew_sheet(id: String, for_your_crew: bool) -> String:
 	var p: Dictionary = player(id)
 	var s: String = p.get("sheet", id)
-	if for_your_crew and str(p.get("tier", "")) != "start" and not p.is_empty():
-		return s + "_crew"
+	var underdog: bool = str(p.get("tier", "")) == "start" and not p.is_empty()
+	if for_your_crew and not underdog and not p.is_empty():
+		return s + "_crew" + jersey_suffix()
+	if underdog:
+		return s + jersey_suffix()
 	return s
+
+# the picked jersey's suffix ("" = none). cosmetics.gd is loaded at run time (it preloads difficulty.gd, which
+# preloads this file); a missing cosmetics.gd = no jersey.
+static func jersey_suffix() -> String:
+	if _cosmetics == null:
+		_cosmetics = load(COSMETICS_PATH) as GDScript if ResourceLoader.exists(COSMETICS_PATH) else null
+		if _cosmetics == null:
+			return ""
+	return str(_cosmetics.call("jersey_suffix")) if _cosmetics.has_method("jersey_suffix") else ""
 
 # the 3 recruit candidates of a city (its 2 good players and the boss)
 static func recruits(city_id: String) -> Array:
