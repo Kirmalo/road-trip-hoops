@@ -107,6 +107,20 @@
     "NYF": {"BLACK": "BLUE", "_fields": {"trim_pal": "GOLD", "shorts_trim": "GOLD"}},
     "NY": {"BLACK": "BLUE", "SILVER": "GOLD", "_fields": {"trim_pal": "GOLD", "shorts_trim": "GOLD"}}
   },
+  "jerseys": {
+    "_help": ["P8-09: the 3 alternate jerseys (star rewards jersey_1..3, Cosmetics.ITEMS). Palette only: every sheet that",
+              "wears your colors (the underdogs and every <id>_crew recolor) gets palettes/<id>_j<N>.png, its own palette with",
+              "your three kit ramps (BLUE, NAVY, GOLD: the 4 tones, the inner line and the outline the renderer derives",
+              "from the deep tone) swapped for these (a palette name or 4 hex tones). Same pages, nothing re-rendered:",
+              "tools/art/make_players_v2.py --jerseys (also run after every full render)."],
+    "j1": {"name": "HOME WHITES", "swap": {"BLUE": ["#ffffff", "#f0f2f6", "#b6bed4", "#727a9a"], "NAVY": "BLUE", "GOLD": "NAVY"}},
+    "j2": {"name": "AFTER HOURS", "swap": {"BLUE": ["#5a5a6c", "#30303c", "#1e1d28", "#110f18"],
+                                          "NAVY": ["#7c7c90", "#525262", "#34343f", "#1c1a24"],
+                                          "GOLD": ["#ff9ad6", "#e83a92", "#a82068", "#5e1040"]}},
+    "j3": {"name": "THROWBACK", "swap": {"BLUE": ["#f49a62", "#c8562a", "#8c3420", "#521c16"],
+                                        "NAVY": ["#8a6450", "#5c3c2c", "#3c261e", "#221410"],
+                                        "GOLD": ["#fff0a0", "#eec54a", "#b48a2a", "#6c5018"]}}
+  },
   "players": [
     {
       "id": "blue_1", "crew": "A", "number": 7, "role": "lanky wing", "desc": "tank, arm sleeve, long shorts",
