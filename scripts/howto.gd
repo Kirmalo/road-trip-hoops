@@ -20,7 +20,8 @@ const Difficulty = preload("res://scripts/difficulty.gd")
 const PICTURE_DIR := "res://assets/howto/"
 const DIR_FLAG := "--howto-dir"
 
-# The pages, in the board's order: id (the picture's file name), title, and the lines (at most 4, short and plain).
+# The pages, in the board's order: id, title, and the lines (at most 4, short and plain). The picture is <id>.png, or
+# <pic>.png when a page has "pic" (P8-22: the STARS page reuses the trip picture, so the captures stay 9).
 const PAGES := [
 	{"id": "controls", "title": "CONTROLS", "lines": [
 		"Touch and drag on the left side to move.",
@@ -65,10 +66,16 @@ const PAGES := [
 		"Two misses put the fire out.",
 	]},
 	{"id": "trip", "title": "THE ROAD TRIP", "lines": [
-		"Each city: beat its crew 3 times to drive on. Lost? Just retry.",
-		"Every win gives stat points to make your players better.",
-		"After each city, sign one of its players for your crew.",
+		"Beat each city's crew 3 times, then sign one of its players.",
 		"Before a game, pick your 3 starters. The first one is you.",
+		"Every win gives each starter 1 stat point (2 for a boss or New York).",
+		"Spend them after the game, or later from the lineup.",
+	]},
+	{"id": "stars", "pic": "trip", "title": "STARS", "lines": [
+		"Each win earns stars: Easy 1, Normal 2, Hard 3. Best kept, 72 in all.",
+		"Stars open roster slots: draft any player from a crew you've beaten.",
+		"And jerseys, balls, van paints, courts and LEGEND. See the LOCKER.",
+		"Lost? Just retry. Won? Replay it from the map for more stars.",
 	]},
 ]
 
@@ -309,7 +316,7 @@ func _show_page() -> void:
 	var p: Dictionary = PAGES[page]
 	var title: String = str(p["title"])
 	_title.text = title
-	var tex: Texture2D = _texture(str(p["id"]))
+	var tex: Texture2D = _texture(str(p.get("pic", p["id"])))
 	_pic_rect.texture = tex
 	_pic_rect.visible = tex != null
 	_placeholder.visible = tex == null
