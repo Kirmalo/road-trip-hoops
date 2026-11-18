@@ -19,16 +19,23 @@ extends CanvasLayer
 # the scene reloads back to this panel with the new crews on the court. The same crew can't be on both sides: the
 # other side moves on to the next team. main.gd reads quick_team_ids(). Desktop: Y = YOUR TEAM, O = OPPONENT.
 # Test runs (autoplay, humantest, screenshots) play the Kings vs the Bridge Runners unless --quick-teams <blue>,<red>.
+# P8-19: a 4th level button, LEGEND, once the stars open it (Difficulty.offered_levels(); --stars 72 in a test run),
+# and the COURT button also cycles the star reward courts (Cosmetics.open_court_looks(): MIDNIGHT, GOLD HALL; no twist).
 
 const Difficulty = preload("res://scripts/difficulty.gd")
 const Looks = preload("res://scripts/court_looks.gd")
 const Flow = preload("res://scripts/flow.gd")
 const Cities = preload("res://scripts/cities.gd")     # which city owns a court look, and its twist (P6-17)
 const Twists = preload("res://scripts/twists.gd")     # the twist's line under the buttons
+const Cosmetics = preload("res://scripts/cosmetics.gd")   # open_court_looks(): the star reward courts (P8-19)
 
 const BUTTON_SIZE := Vector2(300, 140)   # px at the 1280x720 base: finger-sized on a tablet (board: at least 200x110)
 const BUTTON_GAP := 40                   # px between the buttons
 const BUTTON_FONT := 46
+const BUTTON_SIZE_4 := Vector2(270, 140)  # P8-19: with LEGEND, four level buttons (4 x 270 + 3 x 24 fits 1280 px)
+const BUTTON_GAP_4 := 24
+const LEGEND_OFF_COLOR := Color(0.45, 0.16, 0.42)   # the LEGEND button when not lit (purple, apart from the others)
+const LEGEND_OFF_BORDER := Color(1.0, 0.7, 0.95, 0.8)
 const OPT_SIZE := Vector2(380, 110)      # COURT and MUSIC buttons: wide enough for "COURT: BLACKTOP", a bit lower than a
                                          # level button (board min 200x110)
 const OPT_FONT := 34
@@ -78,6 +85,7 @@ var _root: Control
 var _title: Label
 var _sub: Label
 var _buttons: Array = []
+var _levels: Array = []                  # the level of each button in _buttons (P8-19: LEGEND when open)
 var _court_btn: Button
 var _music_btn: Button
 var _title_btn: Button
@@ -117,13 +125,15 @@ static func set_music(on: bool) -> void:
 
 # ---------------- Quick Game courts and twists (P6-17) ----------------
 
-# The courts the COURT button offers, in Looks.names() order: gym, blacktop, and every unlocked city's court
+# The courts the COURT button offers, in Looks.names() order: gym, blacktop, every unlocked city's court, then the
+# star reward courts that are open (P8-19, Cosmetics.open_court_looks())
 static func quick_courts() -> Array:
 	var open_cities: Array = Difficulty.unlocked_cities(Cities.ROUTE)
+	var rewards: Array = Cosmetics.open_court_looks()
 	var out: Array = []
 	for n in Looks.names():
 		var c: String = city_of_look(str(n))
-		if Looks.always_open(str(n)) or (c != "" and open_cities.has(c)):
+		if Looks.always_open(str(n)) or (c != "" and open_cities.has(c)) or rewards.has(str(n)):
 			out.append(str(n))
 	return out
 
@@ -241,15 +251,17 @@ func _ready() -> void:
 	_root.add_child(box)
 	_title = _label(box, TITLE_FONT)
 	_sub = _label(box, SUB_FONT)
+	_levels = Difficulty.offered_levels()
+	var four: bool = _levels.size() > 3
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", BUTTON_GAP)
+	row.add_theme_constant_override("separation", BUTTON_GAP_4 if four else BUTTON_GAP)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(row)
-	for lv in [Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD]:
+	for lv in _levels:
 		var b := Button.new()
 		b.text = String(Difficulty.NAMES[lv]).to_upper()
-		b.custom_minimum_size = BUTTON_SIZE
+		b.custom_minimum_size = BUTTON_SIZE_4 if four else BUTTON_SIZE
 		b.focus_mode = Control.FOCUS_NONE   # the light is ours (_lit), not the focus box
 		b.add_theme_font_size_override("font_size", BUTTON_FONT)
 		b.pressed.connect(_pick.bind(lv))
@@ -330,7 +342,9 @@ func show_game_over(score: Array, winner: int, color: Color) -> void:
 func _open(arm: float) -> void:
 	showing = true
 	_arm_t = arm
-	_lit = Difficulty.level
+	_lit = _levels.find(Difficulty.level)   # the button of the remembered level
+	if _lit < 0:                            # LEGEND remembered but not offered (closed): light HARD
+		_lit = _levels.find(Difficulty.HARD)
 	_root.visible = true
 	_refresh()
 	if game != null:
@@ -353,8 +367,9 @@ func _refresh() -> void:
 	for i in _buttons.size():
 		var b: Button = _buttons[i]
 		var lit: bool = i == _lit
-		var col: Color = LIT_COLOR if lit else OFF_COLOR
-		var sb := _style(col, LIT_BORDER if lit else OFF_BORDER, 8 if lit else 3)
+		var legend: bool = int(_levels[i]) == Difficulty.LEGEND
+		var col: Color = LIT_COLOR if lit else (LEGEND_OFF_COLOR if legend else OFF_COLOR)
+		var sb := _style(col, LIT_BORDER if lit else (LEGEND_OFF_BORDER if legend else OFF_BORDER), 8 if lit else 3)
 		b.add_theme_stylebox_override("normal", sb)
 		b.add_theme_stylebox_override("hover", sb)
 		b.add_theme_stylebox_override("pressed", _style(col.darkened(0.25), LIT_BORDER, 8))
@@ -405,13 +420,13 @@ func key(event: InputEventKey) -> void:
 		return
 	match event.keycode:
 		KEY_A, KEY_LEFT:
-			_lit = maxi(_lit - 1, Difficulty.EASY)
+			_lit = maxi(_lit - 1, 0)
 			_refresh()
 		KEY_D, KEY_RIGHT, KEY_K:
-			_lit = (_lit + 1) % _buttons.size() if event.keycode == KEY_K else mini(_lit + 1, Difficulty.HARD)
+			_lit = (_lit + 1) % _buttons.size() if event.keycode == KEY_K else mini(_lit + 1, _buttons.size() - 1)
 			_refresh()
 		KEY_J, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER:
-			_pick(_lit)
+			_pick(int(_levels[_lit]))
 		KEY_C:
 			_pick_court()
 		KEY_M:

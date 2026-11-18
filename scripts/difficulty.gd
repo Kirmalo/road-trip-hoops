@@ -5,16 +5,22 @@ extends RefCounted
 # Every CPU skill knob is read through value() at its point of use. Hard (today's CPU) returns the script's own
 # constant untouched, and so does the human's team (team 0) on every level: only the other team gets weaker.
 # The choice is saved in user://settings.cfg; --difficulty easy|normal|hard (or --difficulty=normal) overrides it.
+# P8-19: a 4th level, LEGEND (open at 72 stars): the Hard values, plus rating_bonus() on the opponents' ratings.
 
 const Flow = preload("res://scripts/flow.gd")         # Flow.match: the trip game's level and team styles (P5-03)
 const Ratings = preload("res://scripts/ratings.gd")   # Ratings.style_mult(): play style multipliers
 const Cities = preload("res://scripts/cities.gd")     # the crews Quick Game can field (P6-T3)
 const Save = preload("res://scripts/save.gd")         # Save.path(): a trip test run keeps its unlocks in a test file
+const Stars = preload("res://scripts/stars.gd")       # legend_open(): LEGEND is offered at 72 stars (P8-19; stars.gd
+                                                      # loads this script only at call time, so no preload cycle)
 
 const EASY := 0
 const NORMAL := 1
 const HARD := 2
-const NAMES := ["easy", "normal", "hard"]
+const LEGEND := 3                     # P8-19: the Hard CPU values plus LEGEND_BONUS on the opponents' ratings
+const NAMES := ["easy", "normal", "hard", "legend"]
+const LEGEND_BONUS := 6               # added to every stat of the opponents on LEGEND (progression plan; P8-25 tunes it)
+const LEGEND_CAP := 95                # no stat goes over this with the bonus (Quick Game; trip.gd has its own BOSS_CAP)
 
 const CPU_TEAM := 1                   # the only team the level changes (team 0 is the human's, on every level)
 const SAVE_PATH := "user://settings.cfg"
@@ -122,7 +128,7 @@ static func value(team: int, key: String, hard_value: float) -> float:
 	return v
 
 static func _level_value(lv: int, key: String, hard_value: float) -> float:
-	if lv == HARD:
+	if lv == HARD or lv == LEGEND:   # LEGEND plays the Hard values; its edge is rating_bonus()
 		return hard_value
 	var table: Dictionary = LEVELS.get(lv, {})
 	if not table.has(key):
@@ -157,20 +163,58 @@ static func team_style(team: int) -> String:
 static func level_name(lv: int = -1) -> String:
 	if lv < 0:
 		lv = level
-	return String(NAMES[clampi(lv, EASY, HARD)])
+	return String(NAMES[clampi(lv, EASY, LEGEND)])
 
-# "easy" / "normal" / "hard" -> the level, or -1
+# "easy" / "normal" / "hard" / "legend" -> the level, or -1
 static func parse(s: String) -> int:
 	return NAMES.find(s.strip_edges().to_lower())
 
-# Reads the saved level (keeps the current one if nothing is saved yet).
+# P8-19: the rating bonus the opponents get on a level (a level int or name): LEGEND_BONUS on LEGEND, else 0.
+# trip.gd's city_ratings() adds it (capped at its BOSS_CAP); bonus_ratings() below does the same for Quick Game.
+static func rating_bonus(lv) -> int:
+	var i: int = -1
+	if lv is int:
+		i = lv
+	else:
+		i = parse(str(lv))
+	return LEGEND_BONUS if i == LEGEND else 0
+
+# a copy of a ratings dict with rating_bonus(lv) added to every number, each capped at `cap` (never lowered by the cap)
+static func bonus_ratings(ratings: Dictionary, lv, cap: int = LEGEND_CAP) -> Dictionary:
+	var out: Dictionary = ratings.duplicate()
+	var b: int = rating_bonus(lv)
+	if b == 0:
+		return out
+	for k in out.keys():
+		var v = out[k]
+		if v is int or v is float:
+			var n: int = int(v)
+			out[k] = maxi(n, mini(n + b, cap))
+	return out
+
+# LEGEND only once the stars open it (Stars.legend_open()); a closed LEGEND plays Hard
+static func open_level(lv: int) -> int:
+	if lv == LEGEND and not Stars.legend_open():
+		return HARD
+	return lv
+
+# the levels a picker offers: Easy, Normal, Hard, and LEGEND once the stars open it
+static func offered_levels() -> Array:
+	var out: Array = [EASY, NORMAL, HARD]
+	if Stars.legend_open():
+		out.append(LEGEND)
+	return out
+
+# Reads the saved level (keeps the current one if nothing is saved yet). An unknown name loads as Normal; a saved
+# "legend" while LEGEND isn't open (e.g. the stars were reset) loads as Hard.
 static func load_saved() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(SAVE_PATH) != OK:
 		return
-	var lv: int = parse(str(cfg.get_value(SAVE_SECTION, SAVE_KEY, level_name())))
-	if lv >= 0:
-		level = lv
+	if not cfg.has_section_key(SAVE_SECTION, SAVE_KEY):
+		return
+	var lv: int = parse(str(cfg.get_value(SAVE_SECTION, SAVE_KEY, "")))
+	level = open_level(lv) if lv >= 0 else NORMAL
 
 static func save() -> void:
 	var cfg := ConfigFile.new()
@@ -178,7 +222,7 @@ static func save() -> void:
 	cfg.set_value(SAVE_SECTION, SAVE_KEY, level_name())
 	cfg.save(SAVE_PATH)
 
-# Test override: --difficulty easy|normal|hard or --difficulty=easy. Without it, --autoplay and --humantest play Hard
+# Test override: --difficulty easy|normal|hard|legend (legend needs the stars: --stars 72) or --difficulty=easy. Without it, --autoplay and --humantest play Hard
 # (so numbers compare with Phase 2). Returns true if the command line set the level.
 static func from_cmdline() -> bool:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
@@ -190,7 +234,9 @@ static func from_cmdline() -> bool:
 		elif a == "--difficulty" and i + 1 < args.size():
 			lv = parse(args[i + 1])
 		if lv >= 0:
-			level = lv
+			level = open_level(lv)
+			if level != lv:
+				print("--difficulty legend: LEGEND isn't open (72 stars; try --stars 72), playing hard")
 			return true
 	if args.has("--autoplay") or args.has("--humantest"):
 		level = HARD
