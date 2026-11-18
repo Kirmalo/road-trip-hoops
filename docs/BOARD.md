@@ -20,7 +20,7 @@ answers":
    trip; no boss limit for now, owner: skip that rule), cosmetics (3 jerseys, 3 balls, 3 van paints, 2 Quick Game court looks, all made by
    `tools/art`), and the LEGEND level at 72.
 4. **Replays from the map**: any beaten city game (and New York round), opponents at the stage reached, stars only.
-5. **The ramp retune** for the bigger point totals and the one-boss rule (after P7-T1).
+5. **The ramp retune** for the bigger point totals and drafting (after P7-T1, merged).
 6. **Saves**: `trip.json` version 2; every 1.0.0 save loads.
 
 ## Rules for every task in this phase
@@ -74,8 +74,8 @@ answers":
 - `last_outcome` gains `"points_each"` (points per starter), `"stars_before"`, `"stars_now"`, `"new_best"`,
   `"replay"`.
 - Draft: `roster_limit() -> int`, `open_slots() -> int`, `draft_pool() -> Array` (player dicts), `draft(id) -> bool`,
-  `is_boss(id) -> bool`, `starters_ok(ids) -> String` ("" = legal, else the reason). `set_starters()` refuses two
-  bosses.
+  `is_boss(id) -> bool`, `starters_ok(ids) -> String` ("" = legal, else the reason). No boss rule (owner).
+  Also `draft_pool_by_crew()`, `draft_refusal(id)`, `can_draft(id)`, `slot_count()`, `drafted_ids()`, `beaten_crews()` (P8-14).
 - Replay: `can_replay(city_id, n) -> bool`, `start_replay(city_id, n) -> bool` (sets the marker and `Flow.match`),
   `replaying() -> bool`, `stage_reached() -> int`.
 - Test flag `--best-roster` (with `--city`): BLUE is the strongest legal three a trip could field there.
