@@ -74,6 +74,8 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
   - `scripts/pause.gd`: the pause button (top-right) and panel in every human game (with the twist line).
   - `scripts/trip_test.gd`: the `--trip-test` driver (plays a whole trip headless through each screen's
     `auto_step()`).
+- `scripts/countdown.gd`: the 3-2-1-GO! countdown at the start of every match (main.gd freezes play and input until GO!;
+  timing, sizes and sounds are constants at its top).
 - `scripts/howto_shots.gd`: the `--howto-shots DIR` capture driver (test only; main.gd adds it to a seeded
   `--humantest` game; it only watches and saves `DIR/howto_<id>.png`, prints `HOWTO SHOTS <n>/9`).
 - `assets/`: original art made by `tools/art/`: `players2/` (v2.1 player sheets: 64 x 96 frames drawn 2x, indexed
@@ -150,6 +152,7 @@ Test flags (after `--`, combine with the modes above):
   setting; never saved). Without either, test runs play the right-handed layout.
 - `--music-volume X` (or `--music-volume=X`, X in 0..1): the music volume for this run, never saved.
 - `--fps`: prints the frame rate every few seconds.
+- `--no-countdown`: skip the 3-2-1 countdown at the start (also skipped in `--howto-shots` and `--twistshots`).
 
 Phase 6 checks:
 ```
