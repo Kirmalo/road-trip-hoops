@@ -17,7 +17,7 @@ answers":
 2. **Stars** per city game and New York round: Easy 1, Normal 2, Hard 3 (LEGEND 3), best kept, 72 in all, kept for
    good in `settings.cfg`. On the map pins, the result screen and the title.
 3. **Star rewards** (a ladder in `stars.gd`): extra roster slots (draft any player from a crew beaten on this
-   trip; no boss limit for now, owner: skip that rule), cosmetics (3 jerseys, 3 balls, 3 van paints, 2 Quick Game court looks, all made by
+   trip; at most one boss among the 3 starters, owner, P8-14b), cosmetics (3 jerseys, 3 balls, 3 van paints, 2 Quick Game court looks, all made by
    `tools/art`), and the LEGEND level at 72.
 4. **Replays from the map**: any beaten city game (and New York round), opponents at the stage reached, stars only.
 5. **The ramp retune** for the bigger point totals and drafting (after P7-T1, merged).
@@ -74,7 +74,8 @@ answers":
 - `last_outcome` gains `"points_each"` (points per starter), `"stars_before"`, `"stars_now"`, `"new_best"`,
   `"replay"`.
 - Draft: `roster_limit() -> int`, `open_slots() -> int`, `draft_pool() -> Array` (player dicts), `draft(id) -> bool`,
-  `is_boss(id) -> bool`, `starters_ok(ids) -> String` ("" = legal, else the reason). No boss rule (owner).
+  `is_boss(id) -> bool`, `starters_ok(ids) -> String` ("" = legal, else the reason). One boss rule (owner, P8-14b): at most one boss
+  among the starters, however he joined; `set_starters()` refuses more (reason `BOSS_RULE`, "ONLY ONE BOSS CAN START").
   Also `draft_pool_by_crew()`, `draft_refusal(id)`, `can_draft(id)`, `slot_count()`, `drafted_ids()`, `beaten_crews()` (P8-14).
 - Replay: `can_replay(city_id, n) -> bool`, `start_replay(city_id, n) -> bool` (sets the marker and `Flow.match`),
   `replaying() -> bool`, `stage_reached() -> int`.
@@ -91,13 +92,14 @@ answers":
   `"paid": ["hometown:1", ...]`, `"replay": {}` or `{"city", "game"}`, level may be `"legend"`.
 - A version 1 save: pool -> `crew_points` + catch-up (+6 per beaten city, +4 per won New York round), every beaten
   game counts as paid, `via` from the data (start / recruit), stars credited at the save's level once
-  (`stars` section key `migrated_v1`). Boss starters stay as they are (no boss rule).
+  (`stars` section key `migrated_v1`). 2 or 3 boss starters (any save version) are repaired on load: the first boss
+  stays, the others go to the bench for the strongest non-bosses (`Trip.boss_repair`, the lineup's note; P8-14b).
 
 ## Owner answers
 From `docs/VISION.md` "Progression plan answers" (Q1-Q6 of the plan): points per starter after every win (1, 1, 2
 per city; 2 per New York round), the same on every level; stars per game (1/2/3, best kept, 72); stars unlock
 LEGEND, cosmetics (jerseys, balls, van paints, Quick Game court looks) and roster slots that draft from beaten crews
-(no bonus stat points; the one-boss rule was dropped by the owner for now); replay beaten city games from the map, opponents at the
+(no bonus stat points; one boss at most among the starters, brought back by the owner: P8-14b); replay beaten city games from the map, opponents at the
 stage reached, stars only; hold the itch.io upload until Phase 8 is done; 1.0.0 saves carry over.
 
 ## Todo
