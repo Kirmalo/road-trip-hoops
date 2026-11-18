@@ -107,6 +107,14 @@ Everything in the waves below that is not in Doing, Review or Done. Carried over
 - **P7-B1** | Web: the second tap on QUIT? / RESTART? sometimes ignored (`docs/board-phase7.md`, "Bugs from P7-40").
   Check on the owner's tablet first. Must be closed or accepted before the public release.
 
+### Bugs from P8-26 (`docs/qa/phase8-saves.md`)
+- **P8-B1** | Points screen: with crew points the header line (`after_game.gd` `_left_label`, no wrap) pushes DONE / SKIP
+  off the right edge at 1280x720 (every migrated 1.0.0 save with points lands there) | gameplay-programmer |
+  `scripts/after_game.gd` | DONE fully on screen with a 3-digit crew total and the longest name
+- **P8-B2** | A drafted recruitable player (e.g. `ht_g2`) comes back as `via recruit` after a 1.0.0 round trip, so one
+  star slot frees up (`trip.gd` `_via_of` on version 1 loads); low | gameplay-programmer A | `scripts/trip.gd` | one
+  recruit per beaten city on a version 1 load, any further recruitable player from that city is `draft`
+
 ## Doing
 - **P7-T1** | Higher shot make rates in every mode (`player.gd`, `main.gd`, `defense.gd`; another agent). P8-25 waits
   for it; no Phase 8 task touches those three files until it is merged (P8-02 and P8-24 add lines to `main.gd`
