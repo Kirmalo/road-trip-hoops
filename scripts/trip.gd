@@ -24,13 +24,18 @@ extends RefCounted
 #     beaten on this trip; final for the trip; see draft()); 3 starters picked before each game (remembered); starter
 #     0 = you
 #   - level (easy / normal / hard, legend once the stars open it) picked at trip start, changeable (set_level)
-#   - fixed route (cities.gd ROUTE), cities with "built": false are skipped, no replays
+#   - fixed route (cities.gd ROUTE), cities with "built": false are skipped
+#   - Phase 8 (P8-17): replays (start_replay): any game won on this trip (a city game, a New York round), from the map
+#     between games or after the trip; the opponents at the stage reached (stage_reached()), stars only (no points,
+#     story, recruit, unlocks or record); the trip's city, game, bracket and phase never move; the "replay" marker
+#     (saved) makes CONTINUE open that replay's lineup; after the result, the map. A finished trip resumes on the map.
+#   - opponents' ratings: city_ratings() at the stage, + Difficulty.rating_bonus(level) (LEGEND), each stat <= BOSS_CAP
 #   - New York tournament: 3 rounds, all to 21; a loss replays that round
 # Phases (where CONTINUE resumes): "map" (next game from the map), "win_points" (the STAT POINTS screen after a won
 # city game 1 or 2; CONTINUE opens "points", DONE goes on to the next game), "points" (spend after a city),
-# "recruit", "bracket" (New York), "done" (trip complete).
+# "recruit", "bracket" (New York), "done" (trip complete; CONTINUE opens the map, for replays).
 # The flow after a win (after_result): city game 1-2 -> points -> lineup; a boss game -> the city's "won" story ->
-# points -> recruit; a New York round -> points -> bracket; the final -> story "ending" -> title.
+# points -> recruit; a New York round -> points -> bracket; the final -> story "ending" -> title; a replay -> map.
 # Test: godot --headless --path . -- --triptest-data           prints every city game's lineups + save checks,
 #       godot --headless --path . -- --triptest-data --load    (a second process) loads that save and compares.
 # Both use user://trip_test.json (save.gd), never the owner's save.
@@ -55,6 +60,7 @@ const StoryText = preload("res://scripts/story_text.gd")   # the data check: eve
 const DIFFICULTY_PATH := "res://scripts/difficulty.gd"     # loaded at call time: unlock_court() (P6-17) if it exists
 const MUSIC_DIR := "res://assets/music/"                   # <music>.ogg (audio.gd); missing = the city's fallback
 const EXPECTED_ROSTER_FLAG := "--expected-roster"          # test flag (with --city): the crew a trip would have there
+const REPLAY_LABEL := "REPLAY - "   # P8-17: in front of a replay's match label ("REPLAY - CHICAGO - GAME 2 OF 3")
 
 const LEVELS := ["easy", "normal", "hard", "legend"]   # difficulty.gd NAMES + legend (P8: opened by 72 stars)
 const DEFAULT_LEVEL := "normal"     # a trip with no level given; also the --city test matches
@@ -70,10 +76,15 @@ const RULE_MARK := "rule:per_starter"   # a "seen" entry in every version 2 trip
                                         # (as version 1), so loading that save again gives no second catch-up
 const POINT_GAIN := 3               # one point = +3 on one stat
 const STAT_CAP := 90                # spending stops at 90 (starting ratings may be higher; they are not lowered)
+const BOSS_CAP := 95                # P8-17: no city / New York player stat above this (stage + tier + LEGEND bonus);
+                                    # P8-25 tunes it with the ramp
 const GAMES_PER_CITY := 3
 const STARTERS := 3
-const SPEND_PHASES := ["points", "win_points", "map", "bracket"]   # where spend() is allowed: after any win, from the
-                                    # lineup / map between games (P8-18's badge), between New York rounds
+const SPEND_PHASES := ["points", "win_points", "map", "bracket", "done"]   # where spend() is allowed: after any win,
+                                    # from the lineup / map between games (P8-18's badge), between New York rounds, and
+                                    # after the trip (the final's points, for replays)
+const REPLAY_PHASES := ["map", "bracket", "done"]   # P8-17: where a replay may start (between games, after the trip;
+                                    # never with a points / recruit step pending)
 const PHASES := ["map", "win_points", "points", "recruit", "bracket", "done"]
 const POINTS_AFTER_EVERY_WIN := true   # P8-11: the STAT POINTS screen after every win (false = 1.0.0: only after a
                                        # city, a won city game 1-2 goes straight to the lineup)
@@ -92,7 +103,8 @@ static var beaten: Array = []       # city ids, in route order
 static var points := 0              # every unspent point: crew_points + each player's "pts" (_sync_points; read-only)
 static var crew_points := 0         # points anyone may spend (a 1.0.0 pool + its catch-up; award_points())
 static var paid: Array = []         # game keys that have paid their points this trip ("hometown:1", "new_york:2")
-static var replay := {}             # {} or {"city", "game"}: a replay in progress (saved; P8-17 fills it)
+static var replay := {}             # {} or {"city", "game"}: a replay in progress (saved; start_replay() sets it,
+                                    # record_result() / cancel_replay() clear it)
 static var loaded_version := 0      # the save version from_dict() read (0 = a new trip); 1 = migrated from 1.0.0
 static var roster_data: Array = []  # [{"id", "ratings": {speed, shooting, finishing, defense, stamina}, "pts": int,
                                     #   "via": "start" | "recruit" | "draft"}]
@@ -134,11 +146,16 @@ static func continue_trip() -> bool:
 static func has_save() -> bool:
 	return Save.exists()
 
-# the screen CONTINUE goes to: "map", "points" (also after a won city game: "win_points"), "recruit", "bracket", or
-# "title" when the trip is done
+# the screen CONTINUE goes to: "map", "points" (also after a won city game: "win_points"), "recruit", "bracket";
+# "lineup" while a replay is marked (its match: match_for()); "map" when the trip is done (replays, P8-17); "title"
+# without a trip
 static func resume_screen() -> String:
-	if not active or phase == "done":
+	if not active:
 		return "title"
+	if replaying():
+		return "lineup"
+	if phase == "done":
+		return "map"
 	if phase == "win_points":
 		return "points"
 	return phase
@@ -280,8 +297,11 @@ static func from_dict(d: Dictionary) -> bool:
 				if Stars.is_key(str(k)) and not paid.has(str(k)):
 					paid.append(str(k))
 		var rp = d.get("replay", {})
-		if rp is Dictionary and paid.has(Stars.key(str(rp.get("city", "")), _int_in(rp.get("game", 0), 0, 99))):
-			replay = {"city": str(rp.get("city", "")), "game": _int_in(rp.get("game", 0), 0, 99)}
+		if rp is Dictionary:
+			var rp_city: String = str(rp.get("city", ""))
+			var rp_game: int = _int_in(rp.get("game", 0), 0, 99)
+			if can_replay(rp_city, rp_game):   # a game won on this trip, between games: else the marker is dropped
+				replay = {"city": rp_city, "game": rp_game}
 	if not seen.has(RULE_MARK):
 		seen.append(RULE_MARK)
 	_sync_points()
@@ -427,18 +447,31 @@ static func crew_for_game(city_id: String, n: int) -> Array:
 			return [good[0], good[1], avg[0]]
 	return [good[0], good[1], boss]
 
-# a city player's ratings at a trip stage: STAGE_AVG + TIER.all on every stat, + TIER.spec on his specialties
-static func city_ratings(id: String, stage: int) -> Dictionary:
+# a city player's ratings at a trip stage: STAGE_AVG + TIER.all on every stat, + TIER.spec on his specialties, + the
+# level's rating bonus when a level is given (an opponent: Difficulty.rating_bonus, LEGEND_BONUS on LEGEND, else 0;
+# "" = none, a recruit or a drafted player), every stat capped at BOSS_CAP
+static func city_ratings(id: String, stage: int, lv: String = "") -> Dictionary:
 	var p: Dictionary = Cities.player(id)
 	var tier: Dictionary = Cities.TIER.get(str(p.get("tier", "avg")), Cities.TIER["avg"])
 	var spec: Array = p.get("spec", [])
+	var bonus: int = rating_bonus(lv) if lv != "" else 0
 	var out: Dictionary = {}
 	for s in Ratings.STATS:
-		var v: int = Cities.stage_avg(stage) + int(tier.get("all", 0))
+		var v: int = Cities.stage_avg(stage) + int(tier.get("all", 0)) + bonus
 		if spec.has(s):
 			v += int(tier.get("spec", 0))
-		out[s] = clampi(v, Ratings.MIN_RATING, Ratings.MAX_RATING)
+		out[s] = clampi(v, Ratings.MIN_RATING, mini(BOSS_CAP, Ratings.MAX_RATING))
 	return out
+
+# the opponents' rating bonus on a level (difficulty.gd's rating_bonus(): LEGEND_BONUS on legend, else 0; 0 when
+# difficulty.gd doesn't have it)
+static func rating_bonus(lv: String) -> int:
+	if not ResourceLoader.exists(DIFFICULTY_PATH):
+		return 0
+	var d: GDScript = load(DIFFICULTY_PATH) as GDScript
+	if d == null or not d.has_method("rating_bonus"):
+		return 0
+	return int(d.call("rating_bonus", lv))
 
 # the ratings a player starts with on your roster: the underdogs' own, a recruit's at his city's stage
 static func _start_ratings(id: String) -> Dictionary:
@@ -541,10 +574,16 @@ static func set_starters(ids: Array, who: String = "", do_save: bool = true) -> 
 
 # ---------------- the match ----------------
 
-# Builds the match config (board "Match config") for game n of a city ("" / 0 = the trip's current city and game),
-# sets Flow.match to it and returns it. {} for an unknown or not-built city. Without a loaded trip (the --city tests)
-# your side is the 3 underdogs at their starting ratings, level DEFAULT_LEVEL.
+# Builds the match config (board "Match config") for game n of a city ("" / 0 = the trip's current city and game, or
+# the marked replay while replaying()), sets Flow.match to it and returns it. {} for an unknown or not-built city.
+# The replay's match (P8-17) has "replay": true, a "REPLAY - " label and the opponents at stage_reached() (never
+# below the city's own stage). The opponents get the level's rating bonus (LEGEND), capped at BOSS_CAP. Without a
+# loaded trip (the --city tests) your side is the 3 underdogs at their starting ratings, level DEFAULT_LEVEL (or
+# --difficulty's, so --city QA runs on LEGEND get the bonus too).
 static func match_for(city_id: String = "", n: int = 0) -> Dictionary:
+	if city_id == "" and replaying():
+		city_id = str(replay["city"])
+		n = int(replay["game"])
 	if city_id == "":
 		city_id = city
 	if n <= 0:
@@ -555,6 +594,10 @@ static func match_for(city_id: String = "", n: int = 0) -> Dictionary:
 	if not active and OS.get_cmdline_user_args().has(EXPECTED_ROSTER_FLAG):
 		return _expected_match(city_id, n)
 	var stage: int = int(c.get("stage", 1))
+	var is_replay: bool = _is_replay_of(city_id, n)
+	if is_replay:
+		stage = maxi(stage, stage_reached())
+	var lv: String = level if active else _test_level()
 	var label: String = "%s - GAME %d OF %d" % [str(c.get("name", city_id)).to_upper(), n, GAMES_PER_CITY]
 	var crew: Dictionary = c.get("crew", {})
 	if c.get("tournament", false):
@@ -565,20 +608,22 @@ static func match_for(city_id: String = "", n: int = 0) -> Dictionary:
 		var rd: Dictionary = rs[n - 1]
 		crew = rd.get("crew", {})
 		label = "%s - %s" % [str(c.get("name", city_id)).to_upper(), str(rd.get("round", "ROUND %d" % n))]
+	if is_replay:
+		label = REPLAY_LABEL + label
 	var mine: Array = []
 	var lineup: Array = starters if active and starters.size() == STARTERS else Cities.START_CREW
 	for id in lineup:
 		mine.append(roster_player(str(id)))
 	var theirs: Array = []
 	for id in crew_for_game(city_id, n):
-		theirs.append(player_dict(str(id), city_ratings(str(id), stage), false))
+		theirs.append(player_dict(str(id), city_ratings(str(id), stage, lv), false))
 	var m := {
 		"mode": "trip",
 		"label": label,
 		"target": Cities.game_target(city_id, n),
 		"look": look_for(city_id), "music": music_for(city_id), "twist": Cities.twist(city_id),
-		"level": level if active else DEFAULT_LEVEL,
-		"city": city_id, "game": n, "stage": stage,
+		"level": lv,
+		"city": city_id, "game": n, "stage": stage, "replay": is_replay,
 		"teams": [
 			{"name": Cities.CREW_NAME, "style": "", "players": mine},
 			{"name": str(crew.get("name", "")), "style": str(crew.get("style", "")), "players": theirs},
@@ -586,6 +631,20 @@ static func match_for(city_id: String = "", n: int = 0) -> Dictionary:
 	}
 	Flow.match = m
 	return m
+
+# the level of a --city test match (no trip loaded): --difficulty's (or --difficulty=), else DEFAULT_LEVEL
+static func _test_level() -> String:
+	var cmd: PackedStringArray = OS.get_cmdline_user_args()
+	for i in cmd.size():
+		var v := ""
+		if cmd[i] == "--difficulty" and i + 1 < cmd.size():
+			v = cmd[i + 1]
+		elif cmd[i].begins_with("--difficulty="):
+			v = cmd[i].get_slice("=", 1)
+		v = v.strip_edges().to_lower()
+		if LEVELS.has(v):
+			return v
+	return DEFAULT_LEVEL
 
 # The city's court look: its own once court_looks.gd has it (P6-12), else the city's "fallback" look.
 static func look_for(city_id: String) -> String:
@@ -673,6 +732,7 @@ static func _expected_match(city_id: String, n: int) -> Dictionary:
 	if not expected_roster(city_id, n):
 		_reset()
 		return {}
+	level = _test_level()   # --difficulty legend: the opponents get the LEGEND bonus
 	var m: Dictionary = match_for(city_id, n)
 	var lines: Array = []
 	for e in roster_data:
@@ -693,8 +753,13 @@ static func _expected_match(city_id: String, n: int) -> Dictionary:
 # stars_now = Stars.total() around it, for Stars.rewards_between()); the next game ("win_points": the points screen
 # first), or after game 3 the city is beaten -> points phase.
 # New York: a won round moves the bracket on (the final = trip done); a lost round is replayed.
+# A replay (replaying()): see _record_replay() (stars only, the marker cleared, nothing else moves).
 static func record_result(result: Dictionary) -> Dictionary:
-	if not active or phase == "done":
+	if not active:
+		return {}
+	if replaying():
+		return _record_replay(result)
+	if phase == "done":
 		return {}
 	var won: bool = bool(result.get("won", false))
 	var n: int = bracket_round() + 1 if is_tournament(city) else game
@@ -745,6 +810,32 @@ static func record_result(result: Dictionary) -> Dictionary:
 		_unlock_court(str(out["city"]))
 	if won and (bool(out["city_done"]) or is_tournament(str(out["city"]))):
 		_unlock_team(str(out["city"]), int(out["game"]))
+	return out
+
+# A replay's result (P8-17): a win records the game's stars at the trip's level (best kept); no points (points_each
+# 0), no record, no story (first_loss false), no unlocks; city, game, bracket, phase, paid and seen stay as they are.
+# The marker is cleared (win or loss) and the trip saved. Same keys as record_result(), "replay": true; "city" and
+# "game" are the replayed game's.
+static func _record_replay(result: Dictionary) -> Dictionary:
+	var won: bool = bool(result.get("won", false))
+	var rc: String = str(replay.get("city", ""))
+	var rn: int = int(replay.get("game", 1))
+	var k: String = Stars.key(rc, rn)
+	var total_before: int = Stars.total()
+	var out := {"won": won, "city": rc, "game": rn, "points_won": 0, "points_each": 0, "city_done": false,
+		"trip_done": false, "first_loss": false, "star_key": k, "stars_before": total_before,
+		"stars_now": total_before, "new_best": false, "stars_gained": 0, "stars_game": Stars.best(k), "replay": true}
+	if won:
+		var gained: int = _record_star(k)
+		out["stars_gained"] = gained
+		out["new_best"] = gained > 0
+		out["stars_game"] = Stars.best(k)
+		out["stars_now"] = Stars.total()
+	replay = {}
+	last_outcome = out
+	save()
+	print("TRIP REPLAY %s %s | stars %d (+%d) | trip stays at %s game %d phase %s" % [k, "won" if won else "lost",
+			int(out["stars_game"]), int(out["stars_gained"]), city if city != "" else "-", game, phase])
 	return out
 
 # the stars of a won game (Stars.record at the trip's level); never in the in-memory test trips (saving off), except
@@ -859,9 +950,10 @@ static func _star_first(ids: Array) -> Array:
 # city's "won" story, then points (then recruit). Tournament: a won round -> the points screen ({"then": "bracket"})
 # when there are points to spend, then the bracket; a lost round -> the bracket; the final won -> story "ending", then
 # the title. With POINTS_AFTER_EVERY_WIN off: 1.0.0 (a won game 1-2 -> lineup, a won round -> bracket).
+# A replay (won or lost): the map, always (no points, story or recruit screen; P8-17).
 static func after_result() -> Dictionary:
 	var o: Dictionary = last_outcome
-	if o.is_empty():
+	if o.is_empty() or bool(o.get("replay", false)):
 		return {"screen": "map", "args": {}}
 	var next := "lineup"
 	var won: bool = bool(o.get("won", false))
@@ -1163,6 +1255,84 @@ static func starters_ok(ids: Array) -> String:
 		return "pick %d starters" % STARTERS
 	return ""
 
+# ---------------- replays (P8-17) ----------------
+# Owner answers (VISION "Progression plan answers", docs/progression-plan.md part 5): any game won on this trip (city
+# games of beaten cities and the city being played, New York rounds once won) can be played again from the map,
+# between games (REPLAY_PHASES: "map", "bracket", "done"; not with a points / recruit step pending). The opponents
+# are the game's own crew, target, court, twist and music, at the stage reached (stage_reached(), never below the
+# city's own), at the trip's level (LEGEND bonus too). Stars only. The flow: the map's picker calls
+# start_replay(city, n) (marker + Flow.match), then the lineup (its match_for() builds the replay), the game, the
+# result (record_result: _record_replay), after_result() = the map. CONTINUE with the marker set opens the lineup
+# (resume_screen); backing out of the replay = cancel_replay() (the map does it when it opens).
+
+# the trip stage the opponents of a replay are raised to: the stage of the city being played (New York in the
+# bracket), the last stage (New York's, 8) once the trip is done; 1 without a trip
+static func stage_reached() -> int:
+	if not active:
+		return 1
+	if phase == "done" or city == "":
+		return _last_stage()
+	return int(Cities.city(city).get("stage", 1))
+
+static func _last_stage() -> int:
+	var top: int = 1
+	for cid in Cities.built_route():
+		top = maxi(top, int(Cities.city(str(cid)).get("stage", 1)))
+	return top
+
+# true while a replay is marked (start_replay() until its result or cancel_replay())
+static func replaying() -> bool:
+	return active and not replay.is_empty()
+
+# true when game n of city_id can be replayed now: a trip is loaded, between games (REPLAY_PHASES), and that game
+# (a city game 1..3, a New York round 1..3) was won on this trip
+static func can_replay(city_id: String, n: int) -> bool:
+	if not active or not REPLAY_PHASES.has(phase) or not Cities.is_built(city_id):
+		return false
+	var games: int = _rounds(city_id).size() if is_tournament(city_id) else GAMES_PER_CITY
+	if n < 1 or n > games:
+		return false
+	return _won_keys().has(Stars.key(city_id, n))
+
+# the games that can be replayed now, in route order: [{"city", "game", "key", "stars" (best so far)}]
+static func replay_games() -> Array:
+	var out: Array = []
+	if not active or not REPLAY_PHASES.has(phase):
+		return out
+	for k in _won_keys():
+		var cid: String = str(k).get_slice(":", 0)
+		var n: int = int(str(k).get_slice(":", 1))
+		if can_replay(cid, n):
+			out.append({"city": cid, "game": n, "key": str(k), "stars": Stars.best(str(k))})
+	return out
+
+# Marks game n of city_id as the replay (saved) and builds its match (Flow.match, match_for()); then go to the
+# lineup. False (nothing changed) when can_replay() says no. A second call replaces the marker.
+static func start_replay(city_id: String, n: int) -> bool:
+	if not can_replay(city_id, n):
+		print("TRIP REPLAY %s refused (phase %s)" % [Stars.key(city_id, n), phase])
+		return false
+	replay = {"city": city_id, "game": n}
+	save()
+	match_for()
+	print("TRIP REPLAY %s start | stage %d | level %s" % [Stars.key(city_id, n), stage_reached(), level])
+	return true
+
+# drops the replay marker (BACK out of a replay's lineup; the map calls it when it opens). Saved if it was set. True
+# when there was one.
+static func cancel_replay() -> bool:
+	if replay.is_empty():
+		return false
+	replay = {}
+	if active:
+		Flow.match = {}
+		save()
+	return true
+
+# the replay's own match: a trip is replaying exactly this game
+static func _is_replay_of(city_id: String, n: int) -> bool:
+	return replaying() and str(replay["city"]) == city_id and int(replay["game"]) == n
+
 # ---------------- story ----------------
 
 static func has_seen(scene: String) -> bool:
@@ -1220,6 +1390,7 @@ static func self_test(load_only: bool = false) -> bool:
 	ok = _check_rules() and ok
 	ok = _check_stars() and ok
 	ok = _check_draft() and ok
+	ok = _check_replays() and ok
 	ok = _check_v1_fixtures() and ok
 	ok = _check_save_files() and ok
 	# the round trip: the scripted trip saved for the --load process
@@ -1585,6 +1756,175 @@ static func _check_draft() -> bool:
 	_reset()
 	return ok
 
+# P8-17: the replay rules, in memory (saving off; stars in their own scratch file like _check_stars): only won games,
+# only between games; the stage reached; LEGEND bonus and BOSS_CAP; stars only (no points, record, story, paid,
+# seen); the trip never moves; the marker survives a save round trip and is dropped when it doesn't fit; New York
+# rounds once won; a finished trip resumes on the map and replays every game.
+static func _check_replays() -> bool:
+	var was: bool = saving
+	saving = false
+	_star_test = true
+	var old_force: int = Stars.force_total
+	Stars.force_total = -1
+	Stars._path_override = STARS_TEST_PATH
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(STARS_TEST_PATH))
+	var ok := true
+	new_trip("normal")
+	ok = _check(not can_replay("hometown", 1) and not start_replay("hometown", 1) and not replaying()
+			and stage_reached() == 1 and replay_games().is_empty(), "replay: nothing won, nothing to replay") and ok
+	record_result({"won": true})
+	ok = _check(phase == "win_points" and not can_replay("hometown", 1), "replay: not with the points screen pending") \
+			and ok
+	finish_points()
+	ok = _check(can_replay("hometown", 1) and not can_replay("hometown", 2) and not can_replay("hometown", 0)
+			and not can_replay("hometown", 4) and not can_replay("chicago", 1) and not can_replay("nowhere", 1)
+			and replay_games().size() == 1, "replay: a won game of the city being played, only that one") and ok
+	for i in 2:
+		record_result({"won": true})
+	ok = _check(phase == "points" and not can_replay("hometown", 1), "replay: not on the after-city points step") and ok
+	finish_points()
+	ok = _check(phase == "recruit" and not can_replay("hometown", 2), "replay: not on the recruit step") and ok
+	recruit("ht_g1")
+	ok = _check(city == "chicago" and stage_reached() == 2 and replay_games().size() == 3,
+			"replay: in Chicago, stage 2 reached, Hometown's 3 games") and ok
+	# a lost replay: nothing moves, no first_loss story, back to the map
+	var before: String = _digest()
+	var pts: int = points
+	ok = _check(start_replay("hometown", 1) and replaying() and resume_screen() == "lineup"
+			and str(Flow.match.get("city", "")) == "hometown" and bool(Flow.match.get("replay", false)),
+			"replay: start sets the marker and Flow.match, CONTINUE = lineup") and ok
+	var m: Dictionary = match_for()
+	var raised := true
+	var ids: Array = crew_for_game("hometown", 1)
+	for i in ids.size():
+		raised = raised and str(m.teams[1].players[i].id) == str(ids[i]) \
+				and _same_stats(m.teams[1].players[i].ratings, city_ratings(str(ids[i]), 2))
+	ok = _check(raised and int(m.stage) == 2 and int(m.game) == 1 and int(m.target) == 11 and str(m.twist) == "none"
+			and str(m.label) == REPLAY_LABEL + "HOMETOWN - GAME 1 OF 3" and str(m.look) == look_for("hometown")
+			and str(m.teams[0].players[0].id) == human, "replay: Hometown game 1's crew and court at stage 2") and ok
+	var own: Dictionary = match_for("hometown", 2)
+	ok = _check(int(own.stage) == 1 and not bool(own.replay) and int(match_for("chicago", 1).stage) == 2
+			and not bool(match_for("chicago", 1).replay), "replay: other matches keep their own stage") and ok
+	# the marker survives a save round trip; a marker that doesn't fit is dropped
+	var d: Dictionary = JSON.parse_string(JSON.stringify(to_dict()))
+	d["version"] = Save.VERSION
+	ok = _check(from_dict(d) and replaying() and str(replay.city) == "hometown" and int(replay.game) == 1
+			and resume_screen() == "lineup", "replay: the marker is saved, CONTINUE resumes it") and ok
+	for bad in [{"city": "chicago", "game": 1}, {"city": "hometown", "game": 7}, {"city": "nowhere", "game": 1}, 5]:
+		var bd: Dictionary = d.duplicate(true)
+		bd["replay"] = bad
+		ok = _check(from_dict(bd) and not replaying() and resume_screen() == "map",
+				"replay: marker %s dropped on load" % JSON.stringify(bad)) and ok
+	from_dict(d)
+	record_result({"won": false})
+	var o: Dictionary = last_outcome
+	ok = _check(not replaying() and bool(o.replay) and not bool(o.first_loss) and int(o.points_each) == 0
+			and str(o.city) == "hometown" and int(o.game) == 1 and after_result().screen == "map"
+			and (after_result().args as Dictionary).is_empty() and _digest() == before and not seen.has("first_loss"),
+			"replay: a loss costs nothing, no story, back to the map") and ok
+	# a won replay on Hard: stars only
+	level = "hard"
+	before = _digest()
+	start_replay("hometown", 3)
+	m = match_for()
+	ok = _check(str(m.level) == "hard" and str(m.teams[1].players[2].id) == "ht_boss"
+			and int(m.teams[1].players[2].ratings.speed) == Cities.stage_avg(2) + 20,
+			"replay: the boss game at stage 2 (stage avg + 20)") and ok
+	record_result({"won": true})
+	o = last_outcome
+	ok = _check(bool(o.won) and bool(o.replay) and int(o.points_each) == 0 and int(o.points_won) == 0
+			and int(o.stars_gained) == 1 and int(o.stars_game) == 3 and bool(o.new_best) and points == pts
+			and not bool(o.city_done) and after_result().screen == "map" and _digest() == before and not replaying(),
+			"replay: a win on Hard = +1 star (2 -> 3), no points, record, paid or city change") and ok
+	ok = _check(int(record.wins) == 3 and int(record.losses) == 0 and city == "chicago" and game == 1 and phase == "map"
+			and paid.size() == 3, "replay: record 3-0, Chicago game 1, 3 games paid") and ok
+	# cancel: back out of a replay's lineup
+	start_replay("hometown", 2)
+	ok = _check(cancel_replay() and not replaying() and not cancel_replay() and str(match_for().label) ==
+			"CHICAGO - GAME 1 OF 3" and not bool(match_for().replay) and resume_screen() == "map",
+			"replay: cancel drops the marker, the trip's own game again") and ok
+	# LEGEND: the opponents' bonus, capped at BOSS_CAP; no bonus for recruits / drafts or on other levels
+	var bonus: int = rating_bonus("legend")
+	level = "legend"
+	m = match_for("chicago", 1)
+	var with_bonus := true
+	for pd in m.teams[1].players:
+		var base: Dictionary = city_ratings(str(pd.id), 2)
+		for st in Ratings.STATS:
+			with_bonus = with_bonus and int(pd.ratings[st]) == mini(int(base[st]) + bonus, BOSS_CAP)
+	var boss8: Dictionary = city_ratings("ny_boss", 8, "legend")
+	var plain8: Dictionary = city_ratings("ny_boss", 8)
+	var capped := true
+	for st in Ratings.STATS:
+		capped = capped and int(boss8[st]) == mini(int(plain8[st]) + bonus, BOSS_CAP) and int(boss8[st]) <= BOSS_CAP
+	ok = _check(bonus > 0 and with_bonus and capped and int(plain8.speed) + bonus > BOSS_CAP
+			and int(boss8.speed) == BOSS_CAP and _same_stats(city_ratings("ht_boss", 1, "hard"), city_ratings("ht_boss", 1))
+			and rating_bonus("normal") == 0 and rating_bonus("easy") == 0 and rating_bonus("hard") == 0,
+			"LEGEND: +%d on the opponents, capped at %d (ny_boss %d)" % [bonus, BOSS_CAP, int(boss8.speed)]) and ok
+	Stars.force_total = 12
+	for i in GAMES_PER_CITY:
+		record_result({"won": true})
+	finish_points()
+	recruit("chi_g1")
+	draft("chi_a1")
+	ok = _check(_same_stats(_entry("chi_g1").ratings, city_ratings("chi_g1", 2))
+			and _same_stats(_entry("chi_a1").ratings, city_ratings("chi_a1", 2)) and drafted_ids() == ["chi_a1"],
+			"LEGEND: recruits and drafts join without the bonus") and ok
+	Stars.force_total = -1
+	level = "normal"
+	# New York: a round is replayable once won; the bracket never moves
+	var guard := 10
+	while city != "new_york" and city != "" and guard > 0:
+		guard -= 1
+		for i in GAMES_PER_CITY:
+			record_result({"won": true})
+		finish_points()
+		recruit(str((recruit_candidates()[0] as Dictionary).id))
+	ok = _check(city == "new_york" and stage_reached() == 8 and not can_replay("new_york", 1)
+			and can_replay("memphis", 2) and replay_games().size() == 21, "replay: in New York, 21 city games") and ok
+	record_result({"won": true})
+	ok = _check(phase == "bracket" and can_replay("new_york", 1) and not can_replay("new_york", 2),
+			"replay: a New York round once won") and ok
+	before = _digest()
+	start_replay("new_york", 1)
+	m = match_for()
+	ok = _check(str(m.label) == REPLAY_LABEL + "NEW YORK - QUARTERFINAL" and int(m.stage) == 8,
+			"replay: the quarterfinal") and ok
+	record_result({"won": true})
+	ok = _check(bracket_round() == 1 and game == 2 and phase == "bracket" and _digest() == before
+			and after_result().screen == "map" and resume_screen() == "bracket", "replay: the bracket stays") and ok
+	start_replay("hometown", 1)
+	record_result({"won": false})
+	ok = _check(bracket_round() == 1 and _digest() == before and after_result().screen == "map",
+			"replay: a lost replay in New York, the bracket stays") and ok
+	# the trip done: CONTINUE = the map, every game replayable at the last stage
+	record_result({"won": true})
+	record_result({"won": true})
+	ok = _check(is_done() and resume_screen() == "map" and stage_reached() == 8 and replay_games().size() == 24
+			and can_replay("hometown", 1) and can_replay("new_york", 3) and record_result({"won": true}).is_empty(),
+			"replay: trip done, CONTINUE = map, all 24 games") and ok
+	before = _digest()
+	ok = _check(start_replay("hometown", 2) and int(match_for().stage) == 8 and resume_screen() == "lineup",
+			"replay: after the trip, Hometown at stage 8") and ok
+	var w: int = int(record.wins)
+	record_result({"won": true})
+	ok = _check(is_done() and _digest() == before and int(record.wins) == w and not replaying()
+			and after_result().screen == "map", "replay: the trip stays done") and ok
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(STARS_TEST_PATH))
+	Stars._path_override = ""
+	Stars.force_total = old_force
+	_star_test = false
+	saving = was
+	_reset()
+	return ok
+
+# the 5 stats of two ratings dicts are the same
+static func _same_stats(a: Dictionary, b: Dictionary) -> bool:
+	for st in Ratings.STATS:
+		if int(a.get(st, -1)) != int(b.get(st, -2)):
+			return false
+	return true
+
 static func _pool_ids() -> Array:
 	var out: Array = []
 	for p in draft_pool():
@@ -1601,7 +1941,7 @@ const V1_FIXTURES := {   # file: [level, resume screen, crew points, paid games]
 	"trip_v1_points.json": ["normal", "points", 8 + 3 * 6, 9],   # pool 8, 3 cities
 	"trip_v1_bosses.json": ["hard", "map", 2 + 3 * 6 + 1, 10],   # pool 2, 3 cities, New Orleans game 1 won
 	"trip_v1_ny.json": ["normal", "bracket", 1 + 7 * 6 + 4, 22],   # pool 1, 7 cities, round 1 won
-	"trip_v1_done.json": ["normal", "title", 2 + 7 * 6 + 3 * 4, 24],   # pool 2, the whole trip
+	"trip_v1_done.json": ["normal", "map", 2 + 7 * 6 + 3 * 4, 24],   # pool 2, the whole trip (CONTINUE: the map, P8-17)
 }
 
 static func _check_v1_fixtures() -> bool:
