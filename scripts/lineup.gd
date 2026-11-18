@@ -5,6 +5,7 @@ extends CanvasLayer
 #   is the one you control (badge YOU), the others get 2 and 3. Tap a starter again to bench him (the ones after him
 #   move up). With 3 picked, a tap on a bench player says to bench one first.
 #   Right: the crew you face (their 3 for this game, from Trip.match_for()) and PLAY.
+#   A replay (P8-17, Trip.replaying()): the label reads "REPLAY - ..." plus STARS ONLY; BACK cancels it (the map).
 #   PLAY: Trip.set_starters(picks, picks[0]) (saved, so the lineup is remembered for the next game), then
 #   Trip.match_for() builds Flow.match and the game starts. BACK: the map (New York: the bracket).
 # Phase 8 (P8-18):
@@ -96,6 +97,7 @@ const SLOT_PLUS_R := 34.0                  # the "+" circle on an OPEN SLOT card
 const STAR_COLOR := Color(1.0, 0.82, 0.25)
 const STAR_R := 22.0                       # the star drawn on the locked slot card
 const POINTS_NAMES_MAX := 4                # names listed on the STAT POINTS card (then "+n more")
+const REPLAY_NOTE := "  STARS ONLY"     # P8-17: after FIRST TO n on a replay (its label starts "REPLAY - ")
 const PICKS_ARG := "picks"                 # args back from the points screen (see the top)
 const STARTERS_ARG := "starters"
 const HUMAN_ARG := "human"
@@ -191,6 +193,8 @@ func _build_head() -> void:
 	var sub: String = str(_match.get("label", ""))
 	if _match.has("target"):
 		sub += "\nFIRST TO %d" % int(_match.get("target", 0))
+	if bool(_match.get("replay", false)):
+		sub += REPLAY_NOTE
 	var lbl := UI.subtitle(_frame, sub, UI.LIT_COLOR)
 	lbl.position = SIDE_POS - Vector2(0, SIDE_POS.y - HEAD_Y)
 	lbl.size = Vector2(SIDE_SIZE.x, SIDE_POS.y - HEAD_Y - 6.0)
@@ -469,6 +473,10 @@ func _on_play() -> void:
 
 func _on_back() -> void:
 	if _busy or _arm_t > 0.0:
+		return
+	if Trip.replaying():
+		Trip.cancel_replay()   # P8-17: a replay goes back to the map (the marker dropped), also in New York
+		_go("map")
 		return
 	_go("bracket" if Trip.is_tournament(Trip.city) else "map")
 
