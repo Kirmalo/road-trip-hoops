@@ -7,16 +7,28 @@ extends CanvasLayer
 #   Right: the crew you face (their 3 for this game, from Trip.match_for()) and PLAY.
 #   PLAY: Trip.set_starters(picks, picks[0]) (saved, so the lineup is remembered for the next game), then
 #   Trip.match_for() builds Flow.match and the game starts. BACK: the map (New York: the bracket).
+# Phase 8 (P8-18):
+#   - Stat points: a gold badge ("2 PTS") bottom-left on every card with points of his own, and a gold STAT POINTS
+#     card first in the list when anyone has points or there are crew points (it names who has some and the crew
+#     points). Tapping the badge (or that card) opens the points screen in its per-win mode, which lists the 3
+#     Trip.starters: so the lineup makes the tapped player and the others with points the starters for that visit
+#     (not saved unless a point is spent), and the points screen's then_args bring back the real starters and the
+#     picks here (args "starters", "human", "picks").
+#   - Roster slots: one OPEN SLOT card per Trip.open_slots() after the roster (tap = the draft, back to here), then
+#     one locked card for the next star slot ("OPENS AT 24 STARS"); drafted players carry a DRAFTED tag.
+#   Leaving for the draft keeps a full lineup (Trip.set_starters, like PLAY).
 # Drag the list (or its wide scroll bar) to scroll; a drag never counts as a tap. Taps are ignored for ARM_T s when the
 # screen opens and once PLAY is on its way, so nothing leaks into the next screen or the game.
 # Desktop testing: Enter = PLAY, Escape = BACK. Trip test: auto_step() keeps the lineup and taps PLAY;
-# tap_player(id) is the card tap (the trip test's pick check uses it).
+# tap_player(id) is the card tap (the trip test's pick check uses it); tap_badge(id), tap_points_card() and
+# tap_open_slot() are the new taps for test drivers.
 
 const UI = preload("res://scripts/ui_kit.gd")
 const Flow = preload("res://scripts/flow.gd")
 const Trip = preload("res://scripts/trip.gd")
 const Cities = preload("res://scripts/cities.gd")
 const Sheets = preload("res://scripts/sheets.gd")   # cards: v2 card / v2 sheet / v1 sheet (P6-06)
+const Stars = preload("res://scripts/stars.gd")     # P8-18: the star count of the next roster slot
 
 const ARM_T := 0.4                       # s the screen ignores taps after it opens (a tap from the last screen)
 const FRAME_SIZE := Vector2(1280, 720)   # the layout box, centred on wider / taller screens
@@ -67,6 +79,26 @@ const THEIR_RING := Color(0.85, 0.16, 0.23)   # the opponents' ring is always re
 const STAT_NAMES := [["speed", "SPD"], ["shooting", "SHT"], ["finishing", "FIN"], ["defense", "DEF"],
 		["stamina", "STA"]]
 const TIER_TEXT := {"start": "", "avg": "", "good": "GOOD", "boss": "BOSS"}
+# P8-18: points badge, STAT POINTS card, slot cards, DRAFTED tag
+const PTS_BADGE := Rect2(8, 128, 96, 44)   # px in a card: the gold "2 PTS" badge, bottom-left over the sprite's feet
+const PTS_ZONE := Rect2(0, 108, 128, 76)   # px in a card: a tap here (badge shown) opens the points screen
+const PTS_FONT := 22
+const PTS_COLOR := Color(1.0, 0.82, 0.25)   # gold (UI.LIT_COLOR)
+const DRAFTED_TAG := Rect2(8, 6, 96, 24)  # px in a card: the DRAFTED tag, top-left over the sprite's head
+const DRAFTED_FONT := 16
+const DRAFTED_COLOR := Color(0.55, 0.85, 1.0)
+const POINTS_CARD_FILL := Color(0.26, 0.21, 0.07, 0.97)
+const SLOT_FILL := Color(0.08, 0.14, 0.26, 0.95)       # an OPEN SLOT card
+const LOCKED_FILL := Color(0.08, 0.09, 0.12, 0.9)      # the next locked slot
+const LOCKED_TEXT := Color(0.55, 0.57, 0.63)
+const SLOT_TITLE_FONT := 34
+const SLOT_PLUS_R := 34.0                  # the "+" circle on an OPEN SLOT card
+const STAR_COLOR := Color(1.0, 0.82, 0.25)
+const STAR_R := 22.0                       # the star drawn on the locked slot card
+const POINTS_NAMES_MAX := 4                # names listed on the STAT POINTS card (then "+n more")
+const PICKS_ARG := "picks"                 # args back from the points screen (see the top)
+const STARTERS_ARG := "starters"
+const HUMAN_ARG := "human"
 
 var main                     # main.gd (set by Flow.build_screen)
 var audio                    # this screen's audio.gd
@@ -86,16 +118,26 @@ var _arm_t := ARM_T
 var _busy := false
 var _match := {}
 var _tex := {}               # "sheet/team" -> Sheets.card_info() ({} = a silhouette) (cache)
+var _drafted: Array = []     # Trip.drafted_ids() (the DRAFTED tag)
+var _points_card: Control = null   # the STAT POINTS card (null = nobody has points)
+var _pool_any := false       # someone can be drafted (the OPEN SLOT card's line)
 
 func _ready() -> void:
 	if not Trip.active:
 		Trip.continue_trip()   # a reload straight onto the lineup: the save is the truth
+	var a: Dictionary = Flow.args if str(Flow.screen) == "lineup" else {}
+	var back_starters = a.get(STARTERS_ARG, null)
+	if Trip.active and back_starters is Array:
+		Trip.set_starters(back_starters, str(a.get(HUMAN_ARG, "")))   # back from the points screen: the real lineup
 	_roster = Trip.roster()
 	_match = Trip.match_for() if Trip.active else {}
 	var ids: Array = Trip.roster_ids()
-	for id in Trip.starters:
+	var back_picks = a.get(PICKS_ARG, null)
+	var want: Array = back_picks if back_picks is Array else Trip.starters
+	for id in want:
 		if ids.has(str(id)) and not _picks.has(str(id)) and _picks.size() < Trip.STARTERS:
 			_picks.append(str(id))
+	_drafted = Trip.drafted_ids() if Trip.active else []
 	_root = UI.screen_root(self)
 	_frame = Control.new()
 	_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -108,6 +150,9 @@ func _ready() -> void:
 	_build_side()
 	_refresh()
 	_stat("lineup_screen")
+	print("LINEUP screen | roster %d, picks %s | points %d (crew %d) | slots %d, open %d, drafted %s" % [
+			_roster.size(), str(_picks), Trip.points, Trip.crew_points, Trip.slot_count(), Trip.open_slots(),
+			str(_drafted)])
 
 func _center() -> void:
 	_frame.position = ((_root.size - FRAME_SIZE) / 2.0).floor()
@@ -186,15 +231,28 @@ func _build_list() -> void:
 	grid.add_theme_constant_override("v_separation", CARD_GAP)
 	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_scroll.add_child(grid)
+	if can_spend_now():
+		_points_card = _add_card(grid, "points", {})
 	for p in _roster:
-		var c := Card.new()
-		c.screen = self
-		c.p = p
-		c.tex = _sheet(str(p.get("sheet", "")), 0)
-		c.custom_minimum_size = CARD_SIZE
-		c.mouse_filter = Control.MOUSE_FILTER_STOP
-		grid.add_child(c)
-		_cards.append(c)
+		var c: Control = _add_card(grid, "player", p)
+		c.set("tex", _sheet(str(p.get("sheet", "")), 0))
+	if Trip.active:
+		_pool_any = Trip.open_slots() > 0 and Trip.draft_pool().size() > 0
+		for i in Trip.open_slots():
+			_add_card(grid, "open", {})
+		if next_slot_at() > 0:
+			_add_card(grid, "locked", {})
+
+func _add_card(grid: Control, kind: String, p: Dictionary) -> Control:
+	var c := Card.new()
+	c.screen = self
+	c.kind = kind
+	c.p = p
+	c.custom_minimum_size = CARD_SIZE
+	c.mouse_filter = Control.MOUSE_FILTER_STOP
+	grid.add_child(c)
+	_cards.append(c)
+	return c
 
 func _build_side() -> void:
 	var side := Side.new()
@@ -277,6 +335,124 @@ func _card_tapped(id: String) -> void:
 		return
 	tap_player(id)
 
+# a tap on a card of any kind (Card._gui_input); at = the press point in the card
+func _on_card_tap(c: Control, at: Vector2) -> void:
+	if _arm_t > 0.0 or _busy:
+		return
+	var kind: String = str(c.get("kind"))
+	var id: String = str((c.get("p") as Dictionary).get("id", ""))
+	match kind:
+		"points":
+			tap_points_card()
+		"open":
+			tap_open_slot()
+		"locked":
+			_flash("This slot opens at %d stars (you have %d). Win games on a higher level for more stars." % [
+					next_slot_at(), Stars.total()])
+		_:
+			if has_badge(id) and PTS_ZONE.has_point(at):
+				tap_badge(id)
+			else:
+				tap_player(id)
+
+func _flash(text: String) -> void:
+	_hint.text = text
+	_hint_t = HINT_FLASH
+	_refresh()
+
+# ---------------- stat points (P8-18) ----------------
+
+# true when points can be spent from here (a trip in a spending phase with any point left)
+static func can_spend_now() -> bool:
+	return Trip.active and Trip.SPEND_PHASES.has(Trip.phase) and Trip.points > 0
+
+# the gold badge: his own points, while they can be spent
+func has_badge(id: String) -> bool:
+	return Trip.player_points(id) > 0 and can_spend_now()
+
+# the players on the STAT POINTS card: [[name, points], ...] in roster order
+func points_list() -> Array:
+	var out: Array = []
+	for p in _roster:
+		var n: int = Trip.player_points(str(p.get("id", "")))
+		if n > 0:
+			out.append([str(p.get("name", "")), n])
+	return out
+
+# the 3 the points screen lists: `focus` first, then everyone else with points of his own, then the picks here, then
+# the saved starters, then the roster
+func spend_group(focus: String) -> Array:
+	var out: Array = []
+	var order: Array = [focus]
+	for p in _roster:
+		if Trip.player_points(str(p.get("id", ""))) > 0:
+			order.append(str(p.get("id", "")))
+	order.append_array(_picks)
+	order.append_array(Trip.starters)
+	order.append_array(Trip.roster_ids())
+	var ids: Array = Trip.roster_ids()
+	for e in order:
+		var id: String = str(e)
+		if id != "" and ids.has(id) and not out.has(id) and out.size() < Trip.STARTERS:
+			out.append(id)
+	return out
+
+# the badge tap: the points screen (per-win mode) on this player, then back here with the same picks. False when
+# it can't open.
+func tap_badge(id: String) -> bool:
+	if _busy or not can_spend_now():
+		return false
+	var group: Array = spend_group(id)
+	var back := {PICKS_ARG: _picks.duplicate(), STARTERS_ARG: Trip.starters.duplicate(), HUMAN_ARG: Trip.human}
+	if not Trip.set_starters(group, group[0] if group.size() > 0 else "", false):
+		return false
+	if audio != null:
+		audio.play("bounce", -4.0)
+	_stat("lineup_points")
+	_go("points", {"then": "lineup", "then_args": back, "per_win": true})
+	return true
+
+# the STAT POINTS card: the first player with points of his own (else you), see tap_badge()
+func tap_points_card() -> bool:
+	var focus: String = str(_picks[0]) if _picks.size() > 0 else Trip.human
+	for p in _roster:
+		if Trip.player_points(str(p.get("id", ""))) > 0:
+			focus = str(p.get("id", ""))
+			break
+	return tap_badge(focus)
+
+# ---------------- roster slots (P8-18) ----------------
+
+# the stars the next star slot opens at (0 = every slot is open)
+static func next_slot_at() -> int:
+	var t: int = Stars.total()
+	for r in Stars.REWARDS:
+		if str(r["kind"]) == "slot" and int(r["at"]) > t:
+			return int(r["at"])
+	return 0
+
+# the star counts of the slots still locked after the next one ("36, 48")
+static func later_slots_text() -> String:
+	var t: int = Stars.total()
+	var ats: Array = []
+	for r in Stars.REWARDS:
+		if str(r["kind"]) == "slot" and int(r["at"]) > t:
+			ats.append(str(r["at"]))
+	ats.pop_front()
+	return ", ".join(PackedStringArray(ats))
+
+# an OPEN SLOT card's tap: the draft (it comes back here). A full lineup is kept (saved, like PLAY).
+func tap_open_slot() -> bool:
+	if _busy or Trip.open_slots() <= 0:
+		return false
+	if _picks.size() == Trip.STARTERS:
+		Trip.set_starters(_picks, str(_picks[0]))
+	if audio != null:
+		audio.play("bounce", -4.0)
+	_stat("lineup_draft")
+	_go("draft", {"back": "lineup"})
+	return true
+
 func _on_play() -> void:
 	if _busy or _arm_t > 0.0 or _picks.size() != Trip.STARTERS:
 		return
@@ -296,10 +472,10 @@ func _on_back() -> void:
 		return
 	_go("bracket" if Trip.is_tournament(Trip.city) else "map")
 
-func _go(to: String) -> void:
+func _go(to: String, to_args := {}) -> void:
 	_busy = true
 	_refresh()
-	Flow.go(to)
+	Flow.go(to, to_args)
 
 # trip test: keep the lineup (fill it from the roster if it isn't 3) and PLAY
 func auto_step() -> bool:
@@ -340,14 +516,17 @@ static func draw_ring(c: CanvasItem, feet: Vector2, w: float, col: Color) -> voi
 	c.draw_polyline(pts, col, 3.0)
 
 
-# One roster card: tap = pick / bench; a drag scrolls the list instead.
+# One card in the list: tap = pick / bench (a player; his points badge opens the points screen), the points screen
+# (the STAT POINTS card), the draft (OPEN SLOT) or a hint (the locked slot); a drag scrolls the list instead.
 class Card extends Control:
 	var screen               # lineup.gd
+	var kind := "player"     # "player", "points", "open", "locked"
 	var p := {}
 	var tex: Dictionary = {}   # Sheets.card_info()
 	var _down := false
 	var _drag := false
 	var _press := Vector2.ZERO   # where the finger went down (screen px; the card moves while the list scrolls)
+	var _press_local := Vector2.ZERO   # the same in the card (the badge zone)
 	var _last := Vector2.ZERO
 
 	# Distances are measured from the press point on the screen, not summed from motion events: the web build can
@@ -359,11 +538,12 @@ class Card extends Control:
 				_down = true
 				_drag = false
 				_press = mb.global_position
+				_press_local = mb.position
 				_last = _press
 			elif _down:
 				_down = false
 				if not _drag and mb.global_position.distance_to(_press) <= screen.TAP_SLOP:
-					screen._card_tapped(str(p.get("id", "")))
+					screen._on_card_tap(self, _press_local)
 			accept_event()
 			return
 		if mb != null and (mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN):
@@ -375,6 +555,7 @@ class Card extends Control:
 			_last = g
 			if step.length() > screen.JUMP_PX:
 				_press = g   # a jump, not a finger moving: start measuring again from here
+				_press_local = mm.position
 			elif g.distance_to(_press) > screen.TAP_SLOP:
 				_drag = true
 			if _drag and step.length() <= screen.JUMP_PX:
@@ -382,6 +563,12 @@ class Card extends Control:
 			accept_event()
 
 	func _draw() -> void:
+		if kind == "points":
+			_draw_points()
+			return
+		if kind == "open" or kind == "locked":
+			_draw_slot()
+			return
 		var s = screen
 		var id: String = str(p.get("id", ""))
 		var slot: int = s.slot_of(id)
@@ -430,6 +617,100 @@ class Card extends Control:
 			var fs: int = 24
 			draw_string(font, Vector2(br.position.x, br.get_center().y + fs * 0.36), txt, HORIZONTAL_ALIGNMENT_CENTER,
 					bw, fs, s.UI.LIT_TEXT)
+		# P8-18: DRAFTED tag (top-left) and the points badge (bottom-left)
+		if s._drafted.has(id):
+			var tr: Rect2 = s.DRAFTED_TAG
+			draw_style_box(s.UI.style_box(s.SLOT_FILL, s.DRAFTED_COLOR, 2), tr)
+			_centered(tr, "DRAFTED", s.DRAFTED_FONT, s.DRAFTED_COLOR, false)
+		if s.has_badge(id):
+			var pr: Rect2 = s.PTS_BADGE
+			draw_style_box(s.UI.style_box(s.PTS_COLOR, s.UI.LIT_BORDER, 3), pr)
+			var n: int = Trip.player_points(id)
+			_centered(pr, "%d PT%s" % [n, "" if n == 1 else "S"], s.PTS_FONT, s.UI.LIT_TEXT, false)
+
+	# one line of text centred in r (outlined or plain)
+	func _centered(r: Rect2, txt: String, fs: int, col: Color, outline: bool) -> void:
+		var font: Font = ThemeDB.fallback_font
+		var at := Vector2(r.position.x, r.get_center().y + fs * 0.36)
+		if outline:
+			screen.draw_text(self, at, txt, fs, col, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		else:
+			draw_string(font, at, txt, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, fs, col)
+
+	# the STAT POINTS card: who has points, the crew points, TAP TO SPEND
+	func _draw_points() -> void:
+		var s = screen
+		var r := Rect2(Vector2.ZERO, size)
+		draw_style_box(s.UI.style_box(s.POINTS_CARD_FILL, s.PTS_COLOR, s.PICKED_BORDER_W), r)
+		var pad: float = s.CARD_PAD
+		var w: float = size.x - 2.0 * pad
+		s.draw_text(self, Vector2(pad, pad + 32.0), "STAT POINTS", s.SLOT_TITLE_FONT, s.PTS_COLOR,
+				HORIZONTAL_ALIGNMENT_CENTER, w)
+		var names: Array = []
+		var lst: Array = s.points_list()
+		for i in mini(lst.size(), s.POINTS_NAMES_MAX):
+			names.append("%s %d" % [str(lst[i][0]), int(lst[i][1])])
+		var line: String = ", ".join(PackedStringArray(names))
+		if lst.size() > s.POINTS_NAMES_MAX:
+			line += "  +%d more" % (lst.size() - s.POINTS_NAMES_MAX)
+		var y: float = pad + 72.0
+		if line != "":
+			s.draw_text(self, Vector2(pad, y), line, s.SMALL_FONT, s.UI.TEXT_COLOR, HORIZONTAL_ALIGNMENT_CENTER, w)
+			y += 30.0
+		if Trip.crew_points > 0:
+			s.draw_text(self, Vector2(pad, y), "CREW POINTS: %d (anyone)" % Trip.crew_points, s.SMALL_FONT,
+					s.PTS_COLOR, HORIZONTAL_ALIGNMENT_CENTER, w)
+		var br := Rect2(pad + 60.0, size.y - pad - 48.0, w - 120.0, 48.0)
+		draw_style_box(s.UI.style_box(s.PTS_COLOR, s.UI.LIT_BORDER, 3), br)
+		_centered(br, "TAP TO SPEND", 24, s.UI.LIT_TEXT, false)
+
+	# OPEN SLOT (tap = the draft) or the next locked slot (its star count)
+	func _draw_slot() -> void:
+		var s = screen
+		var r := Rect2(Vector2.ZERO, size)
+		var open: bool = kind == "open"
+		draw_style_box(s.UI.style_box(s.SLOT_FILL if open else s.LOCKED_FILL,
+				s.UI.OFF_BORDER if open else s.UI.OPT_BORDER.darkened(0.35), s.CARD_BORDER_W), r)
+		var pad: float = s.CARD_PAD
+		var c := Vector2(pad + 48.0, size.y / 2.0)
+		var x: float = c.x + 64.0
+		var w: float = size.x - x - pad
+		if open:
+			draw_circle(c, s.SLOT_PLUS_R, s.UI.OFF_COLOR)
+			draw_arc(c, s.SLOT_PLUS_R, 0.0, TAU, 32, s.UI.OFF_BORDER, 3.0)
+			draw_rect(Rect2(c - Vector2(18, 4), Vector2(36, 8)), s.UI.TEXT_COLOR)
+			draw_rect(Rect2(c - Vector2(4, 18), Vector2(8, 36)), s.UI.TEXT_COLOR)
+			s.draw_text(self, Vector2(x, pad + 56.0), "OPEN SLOT", s.SLOT_TITLE_FONT, s.UI.TEXT_COLOR)
+			var lines: Array = ["Tap to draft a player", "from a crew you beat."]
+			if not s._pool_any:
+				lines = ["Beat a crew, then draft", "one of its players."]
+			s.draw_text(self, Vector2(x, pad + 92.0), str(lines[0]), s.SMALL_FONT, s.DIM_TEXT,
+					HORIZONTAL_ALIGNMENT_LEFT, w)
+			s.draw_text(self, Vector2(x, pad + 118.0), str(lines[1]), s.SMALL_FONT, s.DIM_TEXT,
+					HORIZONTAL_ALIGNMENT_LEFT, w)
+		else:
+			_star(c, s.STAR_R * 1.4, s.STAR_COLOR.darkened(0.45))
+			var at: int = s.next_slot_at()
+			s.draw_text(self, Vector2(x, pad + 48.0), "SLOT LOCKED", s.SLOT_TITLE_FONT, s.LOCKED_TEXT)
+			s.draw_text(self, Vector2(x, pad + 84.0), "OPENS AT %d STARS" % at, s.SMALL_FONT + 2, s.STAR_COLOR,
+					HORIZONTAL_ALIGNMENT_LEFT, w)
+			s.draw_text(self, Vector2(x, pad + 112.0), "You have %d of %d." % [Stars.total(), Stars.MAX],
+					s.SMALL_FONT, s.DIM_TEXT, HORIZONTAL_ALIGNMENT_LEFT, w)
+			var later: String = s.later_slots_text()
+			if later != "":
+				s.draw_text(self, Vector2(x, pad + 138.0), "More slots at %s." % later, s.SMALL_FONT, s.DIM_TEXT,
+						HORIZONTAL_ALIGNMENT_LEFT, w)
+
+	# a five-point star centred on c
+	func _star(c: Vector2, r: float, col: Color) -> void:
+		var pts := PackedVector2Array()
+		for i in 10:
+			var a: float = -PI / 2.0 + PI * i / 5.0
+			var rr: float = r if i % 2 == 0 else r * 0.45
+			pts.append(c + Vector2(cos(a), sin(a)) * rr)
+		draw_colored_polygon(pts, col)
+		pts.append(pts[0])
+		draw_polyline(pts, screen.UI.OUTLINE_COLOR, 2.0)
 
 
 # The crew you face: their name and the 3 players for this game (red ring, owner Q11 a).
