@@ -17,6 +17,9 @@ extends CanvasLayer
 #   - Roster slots: one OPEN SLOT card per Trip.open_slots() after the roster (tap = the draft, back to here), then
 #     one locked card for the next star slot ("OPENS AT 24 STARS"); drafted players carry a DRAFTED tag.
 #   Leaving for the draft keeps a full lineup (Trip.set_starters, like PLAY).
+# One boss in the starting three (P8-14b, owner): boss cards carry a BOSS tag; tapping a second boss flashes
+# Trip.BOSS_RULE and doesn't pick him; PLAY stays off until Trip.starters_ok() is happy. After a load that benched
+# boss starters (Trip.boss_repair), the hint line shows Trip.boss_repair_note() until the first tap.
 # Drag the list (or its wide scroll bar) to scroll; a drag never counts as a tap. Taps are ignored for ARM_T s when the
 # screen opens and once PLAY is on its way, so nothing leaks into the next screen or the game.
 # Desktop testing: Enter = PLAY, Escape = BACK. Trip test: auto_step() keeps the lineup and taps PLAY;
@@ -87,6 +90,11 @@ const PTS_COLOR := Color(1.0, 0.82, 0.25)   # gold (UI.LIT_COLOR)
 const DRAFTED_TAG := Rect2(8, 6, 96, 24)  # px in a card: the DRAFTED tag, top-left over the sprite's head
 const DRAFTED_FONT := 16
 const DRAFTED_COLOR := Color(0.55, 0.85, 1.0)
+const BOSS_TAG := Rect2(8, 6, 72, 24)     # px in a card: the BOSS tag, top-left (a drafted boss: DRAFTED goes below it)
+const BOSS_TAG_FILL := Color(0.42, 0.08, 0.1, 0.97)
+const BOSS_TAG_COLOR := Color(1.0, 0.82, 0.25)
+const TAG_GAP := 4.0                       # px between the BOSS and DRAFTED tags
+const NOTE_MIN_FONT := 16                  # the repair note shrinks down to this to fit its one line
 const POINTS_CARD_FILL := Color(0.26, 0.21, 0.07, 0.97)
 const SLOT_FILL := Color(0.08, 0.14, 0.26, 0.95)       # an OPEN SLOT card
 const LOCKED_FILL := Color(0.08, 0.09, 0.12, 0.9)      # the next locked slot
@@ -122,6 +130,7 @@ var _tex := {}               # "sheet/team" -> Sheets.card_info() ({} = a silhou
 var _drafted: Array = []     # Trip.drafted_ids() (the DRAFTED tag)
 var _points_card: Control = null   # the STAT POINTS card (null = nobody has points)
 var _pool_any := false       # someone can be drafted (the OPEN SLOT card's line)
+var _note := ""              # P8-14b: the boss repair note (shown on the hint line until the first tap)
 
 func _ready() -> void:
 	if not Trip.active:
@@ -139,6 +148,8 @@ func _ready() -> void:
 		if ids.has(str(id)) and not _picks.has(str(id)) and _picks.size() < Trip.STARTERS:
 			_picks.append(str(id))
 	_drafted = Trip.drafted_ids() if Trip.active else []
+	_note = Trip.boss_repair_note() if Trip.active else ""
+	Trip.boss_repair = []   # shown once
 	_root = UI.screen_root(self)
 	_frame = Control.new()
 	_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -151,9 +162,9 @@ func _ready() -> void:
 	_build_side()
 	_refresh()
 	_stat("lineup_screen")
-	print("LINEUP screen | roster %d, picks %s | points %d (crew %d) | slots %d, open %d, drafted %s" % [
+	print("LINEUP screen | roster %d, picks %s | points %d (crew %d) | slots %d, open %d, drafted %s%s" % [
 			_roster.size(), str(_picks), Trip.points, Trip.crew_points, Trip.slot_count(), Trip.open_slots(),
-			str(_drafted)])
+			str(_drafted), (" | note: " + _note) if _note != "" else ""])
 
 func _center() -> void:
 	_frame.position = ((_root.size - FRAME_SIZE) / 2.0).floor()
@@ -288,10 +299,15 @@ func _sheet(sheet: String, team: int) -> Dictionary:
 
 func _refresh() -> void:
 	var full: bool = _picks.size() == Trip.STARTERS
-	UI.set_enabled(_play, full and _arm_t <= 0.0 and not _busy)
+	UI.set_enabled(_play, full and lineup_ok() and _arm_t <= 0.0 and not _busy)
 	UI.set_enabled(_back, _arm_t <= 0.0 and not _busy)
+	_hint.label_settings.font_size = SMALL_FONT + 4
 	if _hint_t > 0.0:
 		_hint.label_settings.font_color = WARN_COLOR
+	elif _note != "":
+		_hint.label_settings.font_color = WARN_COLOR
+		_hint.text = _note
+		_fit_line(_hint, _hint.size.x)
 	else:
 		_hint.label_settings.font_color = HINT_COLOR
 		if _picks.is_empty():
@@ -309,17 +325,49 @@ func _name_of(id: String) -> String:
 			return str(p.get("name", id))
 	return id
 
+# shrinks a one-line label's font (down to NOTE_MIN_FONT) until its text fits max_w
+static func _fit_line(lbl: Label, max_w: float) -> void:
+	var ls: LabelSettings = lbl.label_settings
+	var font: Font = ls.font if ls.font != null else lbl.get_theme_font("font")
+	if font == null:
+		return
+	while ls.font_size > NOTE_MIN_FONT:
+		var w: float = font.get_string_size(lbl.text, HORIZONTAL_ALIGNMENT_LEFT, -1, ls.font_size).x
+		if w + 2.0 * ls.outline_size <= max_w:
+			return
+		ls.font_size -= 1
+
 # the badge of a roster player: 0 = bench, 1 = YOU, 2, 3
 func slot_of(id: String) -> int:
 	return _picks.find(id) + 1
+
+# the picks are a legal lineup (3 different roster players, one boss at most: Trip.starters_ok)
+func lineup_ok() -> bool:
+	return Trip.starters_ok(_picks) == ""
+
+# the boss already picked when `id` is a second one ("" = he may be picked)
+func boss_in_the_way(id: String) -> String:
+	if not Trip.is_boss(id):
+		return ""
+	for e in _picks:
+		if str(e) != id and Trip.is_boss(str(e)):
+			return str(e)
+	return ""
 
 # a tap on a roster card (also the trip test's tap)
 func tap_player(id: String) -> void:
 	if _busy:
 		return
+	_note = ""
+	var other: String = boss_in_the_way(id) if not _picks.has(id) else ""
 	if _picks.has(id):
 		_picks.erase(id)
 		_stat("lineup_bench")
+	elif other != "":
+		_stat("lineup_boss_refused")
+		_flash("%s. Bench %s first." % [Trip.BOSS_RULE, _name_of(other)])
+		print("LINEUP %s refused: %s (%s already starts)" % [id, Trip.BOSS_RULE, other])
+		return
 	elif _picks.size() < Trip.STARTERS:
 		_picks.append(id)
 		_stat("lineup_pick")
@@ -448,7 +496,7 @@ static func later_slots_text() -> String:
 func tap_open_slot() -> bool:
 	if _busy or Trip.open_slots() <= 0:
 		return false
-	if _picks.size() == Trip.STARTERS:
+	if _picks.size() == Trip.STARTERS and lineup_ok():
 		Trip.set_starters(_picks, str(_picks[0]))
 	if audio != null:
 		audio.play("bounce", -4.0)
@@ -459,10 +507,12 @@ func tap_open_slot() -> bool:
 func _on_play() -> void:
 	if _busy or _arm_t > 0.0 or _picks.size() != Trip.STARTERS:
 		return
+	var why: String = Trip.starters_ok(_picks)
+	if why == Trip.BOSS_RULE:
+		_flash(Trip.BOSS_RULE + ".")
+		return
 	if not Trip.set_starters(_picks, str(_picks[0])):
-		_hint.text = "That lineup doesn't work: pick 3 different players."
-		_hint_t = HINT_FLASH
-		_refresh()
+		_flash("That lineup doesn't work: pick 3 different players.")
 		return
 	if audio != null:
 		audio.play("bounce", -4.0)
@@ -484,14 +534,15 @@ func _go(to: String, to_args := {}) -> void:
 	_refresh()
 	Flow.go(to, to_args)
 
-# trip test: keep the lineup (fill it from the roster if it isn't 3) and PLAY
+# trip test: keep the lineup (fill it from the roster if it isn't 3, never with a second boss: the BOSS_RULE) and
+# PLAY
 func auto_step() -> bool:
 	if _busy:
 		return false
 	for id in Trip.roster_ids():
 		if _picks.size() >= Trip.STARTERS:
 			break
-		if not _picks.has(str(id)):
+		if not _picks.has(str(id)) and boss_in_the_way(str(id)) == "":
 			_picks.append(str(id))
 	_arm_t = 0.0
 	_on_play()
@@ -597,7 +648,7 @@ class Card extends Control:
 		s.draw_text(self, Vector2(x, pad + 26.0), str(p.get("name", id)), s.NAME_FONT, s.UI.TEXT_COLOR)
 		var role: String = str(p.get("role", ""))
 		var num: int = int(p.get("number", 0))
-		var tier: String = str(s.TIER_TEXT.get(str(p.get("tier", "")), ""))
+		var tier: String = str(s.TIER_TEXT.get(str(p.get("tier", "")), "")) if not Trip.is_boss(id) else ""   # the tag
 		var sub: String = ("#%d  " % num if num > 0 else "") + role + (("  " + tier) if tier != "" else "")
 		s.draw_text(self, Vector2(x, pad + 50.0), sub, s.SMALL_FONT, s.DIM_TEXT, HORIZONTAL_ALIGNMENT_LEFT, tw)
 		# the 5 stats
@@ -625,8 +676,15 @@ class Card extends Control:
 			draw_string(font, Vector2(br.position.x, br.get_center().y + fs * 0.36), txt, HORIZONTAL_ALIGNMENT_CENTER,
 					bw, fs, s.UI.LIT_TEXT)
 		# P8-18: DRAFTED tag (top-left) and the points badge (bottom-left)
+		var boss: bool = Trip.is_boss(id)
+		if boss:
+			var bt: Rect2 = s.BOSS_TAG
+			draw_style_box(s.UI.style_box(s.BOSS_TAG_FILL, s.BOSS_TAG_COLOR, 2), bt)
+			_centered(bt, "BOSS", s.DRAFTED_FONT + 2, s.BOSS_TAG_COLOR, false)
 		if s._drafted.has(id):
 			var tr: Rect2 = s.DRAFTED_TAG
+			if boss:
+				tr.position.y += s.BOSS_TAG.size.y + s.TAG_GAP
 			draw_style_box(s.UI.style_box(s.SLOT_FILL, s.DRAFTED_COLOR, 2), tr)
 			_centered(tr, "DRAFTED", s.DRAFTED_FONT, s.DRAFTED_COLOR, false)
 		if s.has_badge(id):

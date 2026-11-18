@@ -85,7 +85,11 @@ Hard trip opens everything. The ladder is one data table at the top of `scripts/
 - **His stats.** He joins like a recruit: his ratings at his own city's stage, in your colors (every city and New
   York player gets a blue-and-gold recolor, made by the art script), with 0 points. From then on he earns points
   like anyone who starts.
-- **No boss limit (for now).** The owner chose to skip a one-boss rule: any players can start, as today.
+- **One boss in the starting three** (owner brought it back, VISION "Phase 8 boss limit"; P8-14b). Applies to every
+  boss on the roster, recruited or drafted. Boss cards carry a BOSS tag; picking a second boss shows "ONLY ONE BOSS CAN
+  START" and doesn't add him; PLAY stays off until the three are legal. `Trip.set_starters()` refuses two bosses. A save
+  with 2 or 3 boss starters is repaired on load (the first boss stays, the others are swapped for the strongest non-boss
+  bench players) and the lineup shows a one-line note.
 
 ### Cosmetics
 

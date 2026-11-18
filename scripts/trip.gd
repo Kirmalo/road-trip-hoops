@@ -48,7 +48,12 @@ extends RefCounted
 # draft); the trip has "crew_points", "paid" (game keys, Stars.key) and "replay" ({} or {"city", "game"}); "points"
 # is still written (the total of all unspent points) so a 1.0.0 build reads it as its shared pool. A version 1 save
 # migrates on load (from_dict): its pool + the catch-up become crew points, every game already won is paid, "via"
-# comes from the player data; boss starters stay as they are (owner: no one-boss rule for now).
+# comes from the player data.
+# One boss in the starting three (P8-14b, owner: VISION "Phase 8 boss limit"): at most BOSS_LIMIT boss (tier "boss",
+# is_boss()) among the 3 starters, however he joined (recruited or drafted). set_starters() refuses more
+# (starters_ok() says why), so no screen or test gets around it. A save of any version with more boss starters is
+# repaired on load (_repair_bosses): the first boss stays, the others are swapped for the strongest non-boss bench
+# players (rating sum), boss_repair lists who went to the bench (the lineup's one-line note) and CONTINUE saves at once.
 
 const Flow = preload("res://scripts/flow.gd")
 const Cities = preload("res://scripts/cities.gd")
@@ -93,6 +98,8 @@ const STARS_TEST_PATH := "user://trip_stars_selftest.cfg"   # --triptest-data's 
 const MAX_POINTS := 999             # sanity cap for a loaded save
 const QUICK_KINGS := ["ud_jojo", "ud_tank", "ud_deuce"]   # P6-T3: the Kings in Quick Game (today's BLUE slots; Jojo = you)
 const QUICK_AVG := 50               # P6-T3: a Quick Game player's five stats average this (50 = today's Quick Game)
+const BOSS_LIMIT := 1               # P8-14b (owner): at most this many bosses among the starters
+const BOSS_RULE := "ONLY ONE BOSS CAN START"   # starters_ok()'s reason for too many bosses (the lineup shows it)
 
 # --- the trip (static: survives scene reloads) ---
 static var active := false          # a trip is loaded (new_trip / continue_trip)
@@ -118,6 +125,7 @@ static var last_outcome := {}       # record_result()'s answer, for the result s
 static var _spend_log: Array = []   # [[id, stat, old], ...] this points session, for undo_spend()
 static var saving := true           # false = state changes are not written (tests)
 static var _star_test := false      # --triptest-data: stars recorded (in STARS_TEST_PATH) while saving is off
+static var boss_repair: Array = []  # P8-14b: boss starters the last load benched (ids; [] = none); the lineup's note
 
 # ---------------- starting, continuing, saving ----------------
 
@@ -138,8 +146,8 @@ static func continue_trip() -> bool:
 	var ok: bool = from_dict(d)
 	if ok and loaded_version == 1:
 		_credit_v1_stars()
-	if ok and loaded_version < Save.VERSION:
-		save()   # a migrated version 1 save is written as version 2 at once
+	if ok and (loaded_version < Save.VERSION or not boss_repair.is_empty()):
+		save()   # a migrated version 1 save is written as version 2 at once; a repaired lineup too
 	return ok
 
 # a valid save exists (the title shows CONTINUE)
@@ -242,6 +250,7 @@ static func from_dict(d: Dictionary) -> bool:
 	if st is Array:
 		for e in st:
 			ids.append(str(e))
+	ids = _repair_bosses(ids)
 	if not set_starters(ids, str(d.get("human", "")), false):
 		set_starters(Cities.START_CREW, "", false)
 	# where we are
@@ -330,6 +339,7 @@ static func _reset() -> void:
 	last_outcome = {}
 	_spend_log = []
 	_slots_override = -1
+	boss_repair = []
 
 # a new roster entry: his starting ratings, no points, "via" from the data
 static func _new_entry(id: String, via: String = "") -> Dictionary:
@@ -551,18 +561,14 @@ static func _on_roster(id: String) -> bool:
 			return true
 	return false
 
-# Picks the 3 starters (roster ids, all different); the human plays `who` (one of them; "" = the first). Saved.
-# False (nothing changed) when the ids aren't 3 different roster players.
+# Picks the 3 starters (roster ids, all different, at most BOSS_LIMIT boss); the human plays `who` (one of them;
+# "" = the first). Saved. False (nothing changed) when starters_ok() gives a reason.
 static func set_starters(ids: Array, who: String = "", do_save: bool = true) -> bool:
-	var roster_list: Array = roster_ids()
+	if starters_ok(ids) != "":
+		return false
 	var picked: Array = []
 	for e in ids:
-		var id: String = str(e)
-		if not roster_list.has(id) or picked.has(id):
-			return false
-		picked.append(id)
-	if picked.size() != STARTERS:
-		return false
+		picked.append(str(e))
 	if who == "" or not picked.has(who):
 		who = str(picked[0])
 	picked.erase(who)
@@ -684,11 +690,13 @@ static func music_for(city_id: String) -> String:
 # Upper bound, best_roster(): the strongest three a trip could legally field there:
 #   - BEST_ROSTER_SLOTS star slots open from the start (a trip after earlier trips earned 48+ stars; stars are kept
 #     across trips, so this is legal);
-#   - before every game the 3 strongest roster players start (rating sum, the strongest is you);
-#   - recruit: the strongest candidate (the boss);
-#   - drafts: held until just before game n, then the slots take the strongest players of every crew beaten by then
-#     (a player drafted early would earn a few points, but a later crew's player joins at a higher stage; holding
-#     the slots also keeps every crew in the pool);
+#   - before every game the strongest legal three start (P8-14b: at most BOSS_LIMIT boss, so the best boss and the 2
+#     best non-bosses, or the 3 best non-bosses; rating sum, the strongest is you): _best_three();
+#   - recruit: the candidate who raises that three the most (the boss while the roster has none, then a good player
+#     unless the city's boss beats every boss on the roster; on a tie the strongest);
+#   - drafts: held until just before game n, then each slot takes the pool player who raises the legal three the most
+#     (none left who would = the slot stays open; a player drafted early would earn a few points, but a later crew's
+#     player joins at a higher stage; holding the slots also keeps every crew in the pool);
 #   - points: the starters' own points, each on his lowest stat (the same rule as above).
 # Each returns false for an unknown or not-built city. The caller clears the state (_reset()) when done.
 
@@ -728,9 +736,7 @@ static func _sim_roster(city_id: String, n: int, best: bool) -> bool:
 			if cands.size() > 0:
 				var pick: Dictionary = cands[0]
 				if best:
-					for c in cands:
-						if _sum_of((c as Dictionary).get("ratings", {})) > _sum_of(pick.get("ratings", {})):
-							pick = c
+					pick = _best_addition(cands)
 				recruit(str(pick.get("id", "")))
 	if city != city_id:
 		saving = was
@@ -769,35 +775,75 @@ static func _sum_of(r: Dictionary) -> int:
 		t += int(r.get(s, 0))
 	return t
 
-# the 3 strongest roster players start (rating sum; roster order on a tie), the strongest first (you)
+# the strongest legal three start (_best_three of the roster), the strongest first (you)
 static func _start_strongest() -> void:
-	var ids: Array = roster_ids()
-	var top: Array = []
-	for i in STARTERS:
-		var pick := ""
-		var hi: int = -1
-		for id in ids:
-			var v: int = _sum_of(_entry(str(id)).get("ratings", {}))
-			if not top.has(str(id)) and v > hi:
-				hi = v
-				pick = str(id)
-		if pick != "":
-			top.append(pick)
+	var top: Array = _best_three(_rated(roster_ids()))
 	if starters_ok(top) == "":
 		set_starters(top, str(top[0]), false)
 
-# every open slot takes the strongest player left in the draft pool (quietly; draft() would print each one)
+# [[id, rating sum, boss], ...] for these roster ids
+static func _rated(ids: Array) -> Array:
+	var out: Array = []
+	for id in ids:
+		out.append([str(id), _sum_of(_entry(str(id)).get("ratings", {})), is_boss(str(id))])
+	return out
+
+# The strongest legal three of [[id, sum, boss], ...]: the strongest first, a boss skipped once BOSS_LIMIT are in
+# (greedy; with one limit on one kind this is the best sum). Order of the list on a tie.
+static func _best_three(rated: Array) -> Array:
+	var top: Array = []
+	var bosses := 0
+	while top.size() < STARTERS:
+		var pick: Array = []
+		for r in rated:
+			if top.has(str(r[0])) or (bool(r[2]) and bosses >= BOSS_LIMIT):
+				continue
+			if pick.is_empty() or int(r[1]) > int(pick[1]):
+				pick = r
+		if pick.is_empty():
+			break
+		top.append(str(pick[0]))
+		if bool(pick[2]):
+			bosses += 1
+	return top
+
+# the rating sum of a list's strongest legal three
+static func _three_sum(rated: Array) -> int:
+	var t := 0
+	var top: Array = _best_three(rated)
+	for r in rated:
+		if top.has(str(r[0])):
+			t += int(r[1])
+	return t
+
+# of these candidate player dicts, the one who raises the roster's strongest legal three the most (the strongest
+# candidate on a tie); {} for none
+static func _best_addition(cands: Array) -> Dictionary:
+	var base: Array = _rated(roster_ids())
+	var pick: Dictionary = {}
+	var gain: int = -1
+	for c in cands:
+		var id: String = str((c as Dictionary).get("id", ""))
+		var plus: Array = base.duplicate()
+		plus.append([id, _sum_of((c as Dictionary).get("ratings", {})), is_boss(id)])
+		var g: int = _three_sum(plus) - _three_sum(base)
+		if g > gain or (g == gain and _sum_of((c as Dictionary).get("ratings", {})) > _sum_of(pick.get("ratings", {}))):
+			gain = g
+			pick = c
+	return pick
+
+# each open slot takes the pool player who raises the strongest legal three the most (quietly; draft() would print
+# each one); a slot stays open when nobody would
 static func _draft_strongest() -> void:
 	while open_slots() > 0:
 		var pool: Array = draft_pool()
 		if pool.is_empty():
 			return
-		var pick: Dictionary = pool[0]
-		for p in pool:
-			if _sum_of((p as Dictionary).get("ratings", {})) > _sum_of(pick.get("ratings", {})):
-				pick = p
+		var pick: Dictionary = _best_addition(pool)
 		var id: String = str(pick.get("id", ""))
-		if not can_draft(id):
+		var plus: Array = _rated(roster_ids())
+		plus.append([id, _sum_of(pick.get("ratings", {})), is_boss(id)])
+		if _three_sum(plus) <= _three_sum(_rated(roster_ids())) or not can_draft(id):
 			return
 		roster_data.append(_new_entry(id, DRAFT_VIA))
 
@@ -1213,7 +1259,7 @@ static func _advance_city() -> void:
 # good); each holds one player drafted from a crew beaten ON THIS TRIP (bosses and average players too; a New York
 # crew once its round is won), minus anyone on the roster. A draft is final for the trip (no release); a NEW TRIP
 # starts with empty slots. He joins like a recruit: his own city's stage ratings, 0 points, via "draft", your colors
-# (Cities.crew_sheet). No one-boss rule. While the recruit screen is up ("recruit" phase), the city's recruit
+# (Cities.crew_sheet). Any number of bosses may be on the roster; at most BOSS_LIMIT start (starters_ok). While the recruit screen is up ("recruit" phase), the city's recruit
 # candidates are that screen's pick, not the draft's.
 
 # the players drafted on this trip (via "draft"), in the order they joined
@@ -1338,8 +1384,8 @@ static func draft(id: String) -> bool:
 	save()
 	return true
 
-# "" when `ids` are 3 different roster players (set_starters() would take them), else the reason. No boss rule
-# (owner: skipped for now), so any 3 roster players are legal.
+# "" when `ids` are 3 different roster players with at most BOSS_LIMIT boss (set_starters() would take them), else
+# the reason (BOSS_RULE for too many bosses; P8-14b, owner).
 static func starters_ok(ids: Array) -> String:
 	var roster_list: Array = roster_ids()
 	var picked: Array = []
@@ -1352,7 +1398,55 @@ static func starters_ok(ids: Array) -> String:
 		picked.append(id)
 	if picked.size() != STARTERS:
 		return "pick %d starters" % STARTERS
+	if boss_count(picked) > BOSS_LIMIT:
+		return BOSS_RULE
 	return ""
+
+# how many of these ids are bosses
+static func boss_count(ids: Array) -> int:
+	var n := 0
+	for id in ids:
+		if is_boss(str(id)):
+			n += 1
+	return n
+
+# A loaded lineup with more than BOSS_LIMIT bosses (a 1.0.0 save, or any older one): the first bosses stay, every
+# later one is swapped in place for the strongest non-boss roster player not starting (rating sum; roster order on a
+# tie). boss_repair gets the benched ids. Other lineups come back unchanged (set_starters() checks the rest).
+static func _repair_bosses(ids: Array) -> Array:
+	if boss_count(ids) <= BOSS_LIMIT:
+		return ids
+	var out: Array = ids.duplicate()
+	var kept := 0
+	for i in out.size():
+		var id: String = str(out[i])
+		if not is_boss(id):
+			continue
+		if kept < BOSS_LIMIT:
+			kept += 1
+			continue
+		var pick := ""
+		var hi: int = -1
+		for rid in roster_ids():
+			var v: int = _sum_of(_entry(str(rid)).get("ratings", {}))
+			if not is_boss(str(rid)) and not out.has(str(rid)) and v > hi:
+				hi = v
+				pick = str(rid)
+		if pick == "":
+			return ids   # no one to swap in (can't happen: the 3 underdogs are always on the roster)
+		out[i] = pick
+		boss_repair.append(id)
+	print("TRIP lineup repaired on load (%s): %s -> %s" % [BOSS_RULE.to_lower(), str(ids), str(out)])
+	return out
+
+# the lineup note after a repair ("" = none): who went to the bench, by name
+static func boss_repair_note() -> String:
+	if boss_repair.is_empty():
+		return ""
+	var names: Array = []
+	for id in boss_repair:
+		names.append(str(Cities.player(str(id)).get("name", id)))
+	return "%s: %s moved to the bench." % [BOSS_RULE, " and ".join(PackedStringArray(names))]
 
 # ---------------- replays (P8-17) ----------------
 # Owner answers (VISION "Progression plan answers", docs/progression-plan.md part 5): any game won on this trip (city
@@ -1490,6 +1584,7 @@ static func self_test(load_only: bool = false) -> bool:
 	ok = _check_rules() and ok
 	ok = _check_stars() and ok
 	ok = _check_draft() and ok
+	ok = _check_boss_rule() and ok
 	ok = _check_replays() and ok
 	ok = _check_v1_fixtures() and ok
 	ok = _check_save_files() and ok
@@ -1575,7 +1670,8 @@ static func _check_expected_rosters() -> bool:
 		_reset()
 	return ok
 
-# --best-roster (P8-21): at every city's game 1 and every New York round, the strongest three are legal starters,
+# --best-roster (P8-21): at every city's game 1 and every New York round, the strongest three are legal starters
+# (P8-14b: at most BOSS_LIMIT boss),
 # at most BEST_ROSTER_SLOTS drafted, never weaker than the expected three; printed for QA
 static func _starters_sum() -> int:
 	var t := 0
@@ -1596,7 +1692,8 @@ static func _check_best_rosters() -> bool:
 			var lines: Array = []
 			for id in starters:
 				lines.append("%s %s" % [str(id), _stat_line(_entry(str(id)).get("ratings", {}))])
-			ok = _check(good and starters_ok(starters) == "" and drafted_ids().size() <= BEST_ROSTER_SLOTS
+			ok = _check(good and starters_ok(starters) == "" and boss_count(starters) <= BOSS_LIMIT
+					and drafted_ids().size() <= BEST_ROSTER_SLOTS
 					and high >= low, "best roster at %s %d: %s (sum %d >= %d)" % [cid, n,
 					", ".join(PackedStringArray(lines)), high, low]) and ok
 			_reset()
@@ -1836,7 +1933,7 @@ static func _check_draft() -> bool:
 			"draft: the slot is filled, no second draft") and ok
 	ok = _check(set_starters(["ht_boss", "ud_jojo", "ud_deuce"]) and starters_ok(["ht_boss", "ht_g1", "ud_tank"]) == ""
 			and starters_ok(["ht_boss", "ht_boss", "ud_tank"]) != "" and starters_ok(["ht_a1", "ud_jojo", "ud_tank"]) != "",
-			"draft: a drafted player starts (no boss rule)") and ok
+			"draft: a drafted player starts") and ok
 	record_result({"won": true})
 	ok = _check(player_points("ht_boss") == POINTS_CITY_GAME, "draft: a drafted starter earns points") and ok
 	Stars.force_total = 48
@@ -2045,6 +2142,62 @@ static func _check_replays() -> bool:
 	_reset()
 	return ok
 
+# P8-14b: the one-boss rule. starters_ok() / set_starters() refuse a second boss however he joined (recruited or
+# drafted), any order; one boss is fine; the best roster is legal (also in _check_best_rosters); a version 2 save with
+# 2 boss starters is repaired on load (the first stays, the strongest non-boss bench player comes in, the note), and
+# a legal one is not touched. In memory, nothing saved.
+static func _check_boss_rule() -> bool:
+	var was: bool = saving
+	saving = false
+	var old_force: int = Stars.force_total
+	var ok := true
+	Stars.force_total = 12
+	new_trip("normal")
+	for i in GAMES_PER_CITY:
+		record_result({"won": true})
+	finish_points()
+	recruit("ht_boss")
+	for i in GAMES_PER_CITY:
+		record_result({"won": true})
+	finish_points()
+	recruit("chi_g1")
+	ok = _check(draft("chi_boss") and is_boss("chi_boss") and is_boss("ht_boss") and not is_boss("chi_g1")
+			and not is_boss("ud_jojo"), "boss rule: a recruited and a drafted boss on the roster") and ok
+	var before: Array = starters.duplicate()
+	ok = _check(starters_ok(["ht_boss", "chi_boss", "ud_jojo"]) == BOSS_RULE
+			and starters_ok(["ud_jojo", "chi_boss", "ht_boss"]) == BOSS_RULE
+			and not set_starters(["chi_boss", "ud_tank", "ht_boss"], "ud_tank") and starters == before,
+			"boss rule: two bosses refused, the lineup stays") and ok
+	ok = _check(starters_ok(["chi_boss", "chi_g1", "ud_jojo"]) == "" and set_starters(["ud_jojo", "ht_boss", "chi_g1"])
+			and set_starters(["chi_boss", "ud_tank", "ud_deuce"], "ud_tank") and human == "ud_tank",
+			"boss rule: one boss starts (recruited or drafted)") and ok
+	_start_strongest()
+	ok = _check(starters_ok(starters) == "" and boss_count(starters) == 1 and starters.has("chi_boss")
+			and str(starters[0]) == "chi_boss", "boss rule: the strongest legal three %s" % str(starters)) and ok
+	# a version 2 save with 2 boss starters (a hand edit, an older build): repaired on load
+	var d: Dictionary = JSON.parse_string(JSON.stringify(to_dict()))
+	d["version"] = Save.VERSION
+	d["starters"] = ["ud_deuce", "ht_boss", "chi_boss"]
+	d["human"] = "ud_deuce"
+	var strongest := ""
+	var hi: int = -1
+	for id in ["ud_jojo", "ud_tank", "chi_g1"]:
+		if _sum_of(_entry(id).ratings) > hi:
+			hi = _sum_of(_entry(id).ratings)
+			strongest = id
+	ok = _check(from_dict(d) and starters == ["ud_deuce", "ht_boss", strongest] and boss_repair == ["chi_boss"]
+			and human == "ud_deuce" and boss_repair_note().contains("BIG LOU"),
+			"boss rule: a version 2 save with 2 bosses repaired (%s)" % boss_repair_note()) and ok
+	d["starters"] = ["ht_boss", "ud_jojo", "chi_g1"]
+	ok = _check(from_dict(d) and starters == ["ht_boss", "ud_jojo", "chi_g1"] and boss_repair.is_empty()
+			and boss_repair_note() == "", "boss rule: a legal save is not touched") and ok
+	new_trip("normal")
+	ok = _check(boss_repair.is_empty(), "boss rule: a new trip has no repair note") and ok
+	Stars.force_total = old_force
+	saving = was
+	_reset()
+	return ok
+
 # the 5 stats of two ratings dicts are the same
 static func _same_stats(a: Dictionary, b: Dictionary) -> bool:
 	for st in Ratings.STATS:
@@ -2060,8 +2213,8 @@ static func _pool_ids() -> Array:
 
 # The 1.0.0 saves (P8-01, docs/qa/fixtures/trip_v1_*.json) load and migrate (from_dict, in memory, nothing saved):
 # the level, where CONTINUE goes, crew points = pool + catch-up, the paid games, nobody's own points, "via", the
-# starters as saved (3 bosses stay: no one-boss rule), and a version 2 round trip of the migrated state. A missing
-# fixture (an exported build has no docs/) is skipped.
+# starters as saved (trip_v1_bosses.json's 3 boss starters repaired to 1: V1_BOSS_REPAIR), and a version 2 round trip
+# of the migrated state. A missing fixture (an exported build has no docs/) is skipped.
 const FIXTURE_DIR := "res://docs/qa/fixtures/"
 const V1_FIXTURES := {   # file: [level, resume screen, crew points, paid games]
 	"trip_v1_chicago.json": ["easy", "map", 5 + 6 + 1, 4],       # pool 5, Hometown, Chicago game 1 won
@@ -2070,6 +2223,9 @@ const V1_FIXTURES := {   # file: [level, resume screen, crew points, paid games]
 	"trip_v1_ny.json": ["normal", "bracket", 1 + 7 * 6 + 4, 22],   # pool 1, 7 cities, round 1 won
 	"trip_v1_done.json": ["normal", "map", 2 + 7 * 6 + 3 * 4, 24],   # pool 2, the whole trip (CONTINUE: the map, P8-17)
 }
+# P8-14b: trip_v1_bosses.json starts chi_boss (you), ht_boss, mem_boss: Big Lou stays, the strongest non-bosses on the
+# bench (Jojo 280, Deuce 278) take the other two places
+const V1_BOSS_REPAIR := {"trip_v1_bosses.json": [["chi_boss", "ud_jojo", "ud_deuce"], ["ht_boss", "mem_boss"]]}
 
 static func _check_v1_fixtures() -> bool:
 	var was: bool = saving
@@ -2089,7 +2245,13 @@ static func _check_v1_fixtures() -> bool:
 		for e in roster_data:
 			own += int(e["pts"])
 			vias_ok = vias_ok and str(e["via"]) == _via_of(str(e["id"]))
-		var same_starters: bool = d.get("starters", []) == starters
+		var same_starters: bool = d.get("starters", []) == starters and boss_repair.is_empty()
+		if V1_BOSS_REPAIR.has(fname):
+			var rp: Array = V1_BOSS_REPAIR[fname]
+			same_starters = starters == rp[0] and boss_repair == rp[1] and human == str(rp[0][0]) \
+					and boss_count(d.get("starters", [])) == 3 and boss_repair_note() != ""
+			print("TRIPDATA   %s: starters %s -> %s, note: %s" % [fname, str(d.get("starters", [])), str(starters),
+					boss_repair_note()])
 		var same_roster: bool = (d.get("roster", []) as Array).size() == roster_data.size()
 		var good: bool = loaded and loaded_version == 1 and level == str(want[0]) and resume_screen() == str(want[1]) \
 				and crew_points == int(want[2]) and points == crew_points and own == 0 and paid.size() == int(want[3]) \
@@ -2099,7 +2261,7 @@ static func _check_v1_fixtures() -> bool:
 		var d2: Dictionary = to_dict()
 		d2["version"] = Save.VERSION
 		var again: bool = from_dict(JSON.parse_string(JSON.stringify(d2))) and _digest() == digest \
-				and loaded_version == Save.VERSION
+				and loaded_version == Save.VERSION and boss_repair.is_empty()
 		ok = _check(good and again, "1.0.0 save %s: %s, crew %d, paid %d" % [str(fname).get_basename(), resume_screen(),
 				crew_points, paid.size()]) and ok
 		if not (good and again):
