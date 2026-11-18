@@ -19,7 +19,7 @@ const NORMAL := 1
 const HARD := 2
 const LEGEND := 3                     # P8-19: the Hard CPU values plus LEGEND_BONUS on the opponents' ratings
 const NAMES := ["easy", "normal", "hard", "legend"]
-const LEGEND_BONUS := 6               # added to every stat of the opponents on LEGEND (progression plan; P8-25 tunes it)
+const LEGEND_BONUS := 12              # added to every stat of the opponents on LEGEND (P8-25: 6 -> 12; +6 played like Hard)
 const LEGEND_CAP := 95                # no stat goes over this with the bonus (Quick Game; trip.gd has its own BOSS_CAP)
 
 const CPU_TEAM := 1                   # the only team the level changes (team 0 is the human's, on every level)
