@@ -20,7 +20,9 @@ extends RefCounted
 #   - Phase 8 (P8-11): every win records the game's stars (Stars.record(key, level): best kept, in the settings file);
 #     a 1.0.0 save gets its won games' stars at its level once (stars section key V1_STAR_MARK)
 #   - after a city: recruit ONE of its 2 good players or the boss (he keeps his ratings, wears your colors)
-#   - roster = the 3 underdogs + recruits; 3 starters picked before each game (remembered); starter 0 = you
+#   - roster = the 3 underdogs + recruits + drafted players (P8-14: one per star slot, Stars.slots(), from any crew
+#     beaten on this trip; final for the trip; see draft()); 3 starters picked before each game (remembered); starter
+#     0 = you
 #   - level (easy / normal / hard, legend once the stars open it) picked at trip start, changeable (set_level)
 #   - fixed route (cities.gd ROUTE), cities with "built": false are skipped, no replays
 #   - New York tournament: 3 rounds, all to 21; a loss replays that round
@@ -63,6 +65,7 @@ const CATCHUP_CITY := 6             # a version 1 save: crew points per beaten c
 const CATCHUP_ROUND := 4            # a version 1 save: crew points per won New York round (3 x 2 - 2)
 const CATCHUP_CITY_GAME := 1        # a version 1 save: per won game of the city being played (3 x 1 - 2)
 const VIAS := ["start", "recruit", "draft"]   # how a roster player joined (save "via")
+const DRAFT_VIA := "draft"          # P8-14: a player drafted into a star slot (drafted_ids(), open_slots())
 const RULE_MARK := "rule:per_starter"   # a "seen" entry in every version 2 trip; a 1.0.0 build keeps it when it saves
                                         # (as version 1), so loading that save again gives no second catch-up
 const POINT_GAIN := 3               # one point = +3 on one stat
@@ -1016,6 +1019,150 @@ static func _advance_city() -> void:
 	bracket = {"round": 0}
 	phase = "map" if city != "" else "done"
 
+# ---------------- roster slots and the draft (P8-14) ----------------
+# Owner answers (VISION "Phase 8 plan answers"): Stars.slots() extra roster slots (12 / 24 / 36 / 48 stars, kept for
+# good); each holds one player drafted from a crew beaten ON THIS TRIP (bosses and average players too; a New York
+# crew once its round is won), minus anyone on the roster. A draft is final for the trip (no release); a NEW TRIP
+# starts with empty slots. He joins like a recruit: his own city's stage ratings, 0 points, via "draft", your colors
+# (Cities.crew_sheet). No one-boss rule. While the recruit screen is up ("recruit" phase), the city's recruit
+# candidates are that screen's pick, not the draft's.
+
+# the players drafted on this trip (via "draft"), in the order they joined
+static func drafted_ids() -> Array:
+	var out: Array = []
+	for e in roster_data:
+		if str((e as Dictionary).get("via", "")) == DRAFT_VIA:
+			out.append(str(e["id"]))
+	return out
+
+# the star slots open for good (Stars.slots(), 0..4), filled or not
+static func slot_count() -> int:
+	return Stars.slots()
+
+# slots still free on this trip: the star slots minus the players drafted (0 without a trip; never below 0, also if a
+# --stars test run drafted more than this run's slots)
+static func open_slots() -> int:
+	if not active:
+		return 0
+	return maxi(0, slot_count() - drafted_ids().size())
+
+# the roster's size limit now: the underdogs and recruits on it plus one per star slot (never below the roster size)
+static func roster_limit() -> int:
+	var size: int = roster_ids().size()
+	return maxi(size, size - drafted_ids().size() + slot_count())
+
+static func is_boss(id: String) -> bool:
+	return str(Cities.player(id).get("tier", "")) == "boss"
+
+# the crews beaten on this trip, in route order: [{"city", "round" (0 = a city crew, 1..3 = a New York round), "name",
+# "style", "color" (ui_color), "ids": [player ids, boss first, then good, then average]}]
+static func beaten_crews() -> Array:
+	var out: Array = []
+	if not active:
+		return out
+	for cid in Cities.ROUTE:
+		var c: Dictionary = Cities.city(cid)
+		if is_tournament(cid):
+			var won: int = 0
+			if beaten.has(cid):
+				won = _rounds(cid).size()
+			elif cid == city:
+				won = bracket_round()
+			for i in won:
+				var rd: Dictionary = _rounds(cid)[i]
+				var rc: Dictionary = rd.get("crew", {})
+				out.append({"city": cid, "round": i + 1, "name": str(rc.get("name", "")),
+					"style": str(rc.get("style", "")), "color": rc.get("ui_color", Color.GRAY),
+					"ids": _star_first(rd.get("players", []))})
+		elif beaten.has(cid):
+			var crew: Dictionary = c.get("crew", {})
+			out.append({"city": cid, "round": 0, "name": str(crew.get("name", "")), "style": str(crew.get("style", "")),
+				"color": crew.get("ui_color", Color.GRAY), "ids": _star_first(Cities.city_players(cid))})
+	return out
+
+# The draft pool grouped by crew (the DRAFT screen): beaten_crews() rows with "players" (player dicts at the ratings
+# they would join with, in your colors, plus "city", "crew", "boss": bool); crews with nobody left are dropped.
+static func draft_pool_by_crew() -> Array:
+	var out: Array = []
+	for row in beaten_crews():
+		var players: Array = []
+		for id in row["ids"]:
+			if _draftable(str(id)):
+				var pd: Dictionary = player_dict(str(id), _start_ratings(str(id)), true)
+				pd["city"] = str(row["city"])
+				pd["crew"] = str(row["name"])
+				pd["boss"] = is_boss(str(id))
+				players.append(pd)
+		if players.size() > 0:
+			var r: Dictionary = (row as Dictionary).duplicate()
+			r.erase("ids")
+			r["players"] = players
+			out.append(r)
+	return out
+
+# the draft pool as one list (player dicts, crews in route order); the same with no open slot (the screen shows it)
+static func draft_pool() -> Array:
+	var out: Array = []
+	for row in draft_pool_by_crew():
+		out.append_array(row["players"])
+	return out
+
+# in the pool: from a crew beaten on this trip, not on the roster, not the recruit screen's pick right now
+static func _draftable(id: String) -> bool:
+	if _on_roster(id):
+		return false
+	if phase == "recruit" and Cities.recruits(city).has(id):
+		return false
+	for row in beaten_crews():
+		if (row["ids"] as Array).has(id):
+			return true
+	return false
+
+# why `id` can't be drafted now ("" = he can): no trip, unknown, on the roster, not from a beaten crew, no open slot
+static func draft_refusal(id: String) -> String:
+	if not active:
+		return "no trip"
+	if Cities.player(id).is_empty():
+		return "unknown player"
+	if _on_roster(id):
+		return "already on the roster"
+	if not _draftable(id):
+		return "not from a crew beaten on this trip"
+	if open_slots() <= 0:
+		return "no open slot"
+	return ""
+
+static func can_draft(id: String) -> bool:
+	return draft_refusal(id) == ""
+
+# Drafts `id` into an open slot: he joins the bench at his city's stage ratings, 0 points, via "draft". Final for the
+# trip. Saved. False (nothing changed) when draft_refusal() says why not.
+static func draft(id: String) -> bool:
+	var why: String = draft_refusal(id)
+	if why != "":
+		print("TRIP DRAFT %s refused: %s" % [id, why])
+		return false
+	roster_data.append(_new_entry(id, DRAFT_VIA))
+	print("TRIP DRAFT %s (%d open slots left)" % [id, open_slots()])
+	save()
+	return true
+
+# "" when `ids` are 3 different roster players (set_starters() would take them), else the reason. No boss rule
+# (owner: skipped for now), so any 3 roster players are legal.
+static func starters_ok(ids: Array) -> String:
+	var roster_list: Array = roster_ids()
+	var picked: Array = []
+	for e in ids:
+		var id: String = str(e)
+		if not roster_list.has(id):
+			return "%s is not on the roster" % id
+		if picked.has(id):
+			return "%s picked twice" % id
+		picked.append(id)
+	if picked.size() != STARTERS:
+		return "pick %d starters" % STARTERS
+	return ""
+
 # ---------------- story ----------------
 
 static func has_seen(scene: String) -> bool:
@@ -1072,6 +1219,7 @@ static func self_test(load_only: bool = false) -> bool:
 	ok = _check_expected_rosters() and ok
 	ok = _check_rules() and ok
 	ok = _check_stars() and ok
+	ok = _check_draft() and ok
 	ok = _check_v1_fixtures() and ok
 	ok = _check_save_files() and ok
 	# the round trip: the scripted trip saved for the --load process
@@ -1350,6 +1498,99 @@ static func _check_stars() -> bool:
 	_reset()
 	return ok
 
+# P8-14: slots by star count (Stars.force_total, like --stars N), the pool after Hometown / Chicago / a New York
+# round, a draft fills a slot (his city's ratings, 0 points, via draft, your colors), is final, survives a save round
+# trip, and every refusal (not beaten, on the roster, no slot, the recruit screen's pick). In memory, nothing saved.
+static func _check_draft() -> bool:
+	var was: bool = saving
+	saving = false
+	var old_force: int = Stars.force_total
+	var ok := true
+	Stars.force_total = 0
+	new_trip("normal")
+	ok = _check(slot_count() == 0 and open_slots() == 0 and roster_limit() == 3 and draft_pool().is_empty(),
+			"draft: 0 stars, no slot, empty pool") and ok
+	for t in [[11, 0], [12, 1], [24, 2], [35, 2], [36, 3], [48, 4], [72, 4]]:
+		Stars.force_total = int(t[0])
+		ok = _check(open_slots() == int(t[1]) and roster_limit() == 3 + int(t[1]),
+				"draft: %d stars = %d slots" % [int(t[0]), int(t[1])]) and ok
+	Stars.force_total = 12
+	ok = _check(not draft("ht_a1") and draft_refusal("ht_a1") == "not from a crew beaten on this trip"
+			and draft_refusal("ud_jojo") == "already on the roster" and draft_refusal("ghost") == "unknown player",
+			"draft: refuses an unbeaten crew, the roster, an unknown id") and ok
+	for i in GAMES_PER_CITY:
+		record_result({"won": true})
+	finish_points()
+	ok = _check(phase == "recruit" and _pool_ids() == ["ht_a1", "ht_a2"] and not can_draft("ht_boss"),
+			"draft: on the recruit screen the pool is County Line's average players") and ok
+	recruit("ht_g1")
+	var rows: Array = draft_pool_by_crew()
+	ok = _check(city == "chicago" and _pool_ids() == ["ht_boss", "ht_g2", "ht_a1", "ht_a2"] and rows.size() == 1
+			and str(rows[0].name) == "COUNTY LINE" and str(rows[0].city) == "hometown" and int(rows[0].round) == 0
+			and bool(rows[0].players[0].boss) and not bool(rows[0].players[1].boss),
+			"draft: after Hometown, County Line minus the recruit") and ok
+	ok = _check(not draft("chi_g1") and draft("ht_boss") and str(_entry("ht_boss").via) == DRAFT_VIA
+			and player_points("ht_boss") == 0 and _entry("ht_boss").ratings == city_ratings("ht_boss", 1)
+			and str(roster_player("ht_boss").sheet).begins_with("ht_boss_crew") and drafted_ids() == ["ht_boss"],
+			"draft: the boss joins at 40 + 20, 0 points, via draft, your colors") and ok
+	ok = _check(open_slots() == 0 and roster_limit() == 5 and roster_ids().size() == 5 and not draft("ht_a1")
+			and draft_refusal("ht_a1") == "no open slot" and draft_refusal("ht_boss") == "already on the roster",
+			"draft: the slot is filled, no second draft") and ok
+	ok = _check(set_starters(["ht_boss", "ud_jojo", "ud_deuce"]) and starters_ok(["ht_boss", "ht_g1", "ud_tank"]) == ""
+			and starters_ok(["ht_boss", "ht_boss", "ud_tank"]) != "" and starters_ok(["ht_a1", "ud_jojo", "ud_tank"]) != "",
+			"draft: a drafted player starts (no boss rule)") and ok
+	record_result({"won": true})
+	ok = _check(player_points("ht_boss") == POINTS_CITY_GAME, "draft: a drafted starter earns points") and ok
+	Stars.force_total = 48
+	for i in GAMES_PER_CITY - 1:
+		record_result({"won": true})
+	finish_points()
+	recruit("chi_g1")
+	rows = draft_pool_by_crew()
+	ok = _check(open_slots() == 3 and rows.size() == 2 and str(rows[1].city) == "chicago"
+			and (rows[0].players as Array).size() == 3 and (rows[1].players as Array).size() == 4,
+			"draft: after Chicago, 2 crews (3 + 4), 3 slots open at 48 stars") and ok
+	ok = _check(draft("chi_a1") and draft("ht_a2") and drafted_ids() == ["ht_boss", "chi_a1", "ht_a2"]
+			and open_slots() == 1, "draft: average players from both crews") and ok
+	# a save round trip keeps the drafts; fewer slots later (no --stars) keeps them too, with no slot open
+	var dg: String = _digest()
+	var d: Dictionary = JSON.parse_string(JSON.stringify(to_dict()))
+	d["version"] = Save.VERSION
+	Stars.force_total = 0
+	ok = _check(from_dict(d) and _digest() == dg and drafted_ids().size() == 3 and open_slots() == 0
+			and roster_ids().size() == 8, "draft: final, kept by the save (also with fewer slots)") and ok
+	# New York: a round's crew is draftable once that round is won
+	Stars.force_total = 72
+	var guard := 10
+	while city != "new_york" and city != "" and guard > 0:
+		guard -= 1
+		for i in GAMES_PER_CITY:
+			record_result({"won": true})
+		finish_points()
+		var cands: Array = recruit_candidates()
+		recruit(str((cands[0] as Dictionary).id))
+	var before_ny: int = beaten_crews().size()
+	record_result({"won": true})
+	rows = draft_pool_by_crew()
+	var last: Dictionary = rows[rows.size() - 1]
+	ok = _check(city == "new_york" and before_ny == 7 and beaten_crews().size() == 8 and int(last.round) == 1
+			and str(last.name) == "BRIDGE RUNNERS" and (last.players as Array).size() == 3 and can_draft("ny_q1")
+			and draft("ny_q1") and _entry("ny_q1").ratings == city_ratings("ny_q1", 8) and open_slots() == 0,
+			"draft: a won New York round's crew (stage 8)") and ok
+	new_trip("normal")
+	ok = _check(drafted_ids().is_empty() and open_slots() == 4 and draft_pool().is_empty(),
+			"draft: a new trip starts with empty slots") and ok
+	Stars.force_total = old_force
+	saving = was
+	_reset()
+	return ok
+
+static func _pool_ids() -> Array:
+	var out: Array = []
+	for p in draft_pool():
+		out.append(str(p.id))
+	return out
+
 # The 1.0.0 saves (P8-01, docs/qa/fixtures/trip_v1_*.json) load and migrate (from_dict, in memory, nothing saved):
 # the level, where CONTINUE goes, crew points = pool + catch-up, the paid games, nobody's own points, "via", the
 # starters as saved (3 bosses stay: no one-boss rule), and a version 2 round trip of the migrated state. A missing
@@ -1460,7 +1701,11 @@ static func _scripted_trip(quiet: bool) -> void:
 	spend("ud_deuce", "stamina")
 	finish_points()
 	recruit("ht_boss")
-	set_starters(["ud_jojo", "ht_boss", "ud_deuce"], "ud_jojo")
+	var force: int = Stars.force_total
+	Stars.force_total = Stars.MAX   # P8-14: a draft too (the same in both processes, whatever --stars says)
+	draft("ht_a2")
+	Stars.force_total = force
+	set_starters(["ud_jojo", "ht_boss", "ht_a2"], "ud_jojo")
 	record_result({"won": true})
 	saving = was
 	if not quiet:
