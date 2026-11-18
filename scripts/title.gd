@@ -163,7 +163,7 @@ const CREDITS_LIST := [
 	["Block", "10 Impact/Shield Blocks", "StarNinjas", "CC0",
 		"https://opengameart.org/content/10-impactshield-blocks", ""],
 	["On fire", "Catching fire", "themightyglider", "CC0", "https://opengameart.org/content/catching-fire", ""],
-	["Swish, bounce, whistle, rain, wind, fence, splash, sand, star, stat-up, unlock, countdown",
+	["Swish, bounce, whistle, rain, wind, fence, splash, sand, star, stat-up, unlock, countdown, GO!",
 		"Synthesized sounds made for this project", "Road Trip Hoops project", "Original",
 		"tools/make_swish.py, tools/make_bounce.py, tools/make_whistle.py, tools/make_twist_sfx.py, tools/make_ui_sfx.py",
 		""],

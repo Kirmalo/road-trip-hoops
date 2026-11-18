@@ -1,6 +1,6 @@
 extends CanvasLayer
 # DRAFT screen (P8-16, Flow screen "draft", args {"back": "lineup"}): fill an open roster slot (stars.gd: 12 / 24 /
-# 36 / 48 stars) with any player of a crew beaten on this trip, bosses too (owner Q2 a, no boss limit). Built in code
+# 36 / 48 stars) with any player of a crew beaten on this trip, bosses too (owner Q2 a; at most one boss starts, trip.gd BOSS_LIMIT, P8-14b). Built in code
 # with ui_kit.gd.
 #   Header: BACK (top-left, to args.back), DRAFT, a hint / reason line, and top-right the open slots ("2 OPEN SLOTS")
 #   with one pip per star slot (drafted = gold, open = blue ring, locked = grey with the stars it needs).
