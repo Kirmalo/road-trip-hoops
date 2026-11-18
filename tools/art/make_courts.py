@@ -15,6 +15,10 @@ Outputs (all opaque except the ball):
                                                    bayou (New Orleans, cypress, string lights), mountain (Denver,
                                                    peaks), rain_park (Seattle, wet sheen, rain), beach (Los Angeles,
                                                    sand, boardwalk), cage (New York, city blocks behind a tall fence)
+  assets/courts/midnight_*.png,       P8-06 star rewards: 2 Quick Game court looks (court_1 MIDNIGHT, court_2 GOLD
+  assets/courts/gold_hall_*.png         HALL), same sizes as the city looks; see "Phase 8 star rewards" below
+  assets/ball/ball_1..3.png            P8-06 special balls (SKY, NIGHT GLOW, GOLD), the same 4 frames as ball.png
+  docs/art/rewards_preview.png         the reward looks and balls for the owner (needs --rewards-preview DIR)
   docs/art/courts_preview_v2.png      the city looks for the owner: the game's own 1280 x 720 screenshot of each, its
                                        whole backdrop and its floor tile 3 x 3 (needs --shots DIR, below)
   docs/art/courts_preview_v1.png      preview: both looks composed in the 3/4 view as the game frames it, plus the
@@ -37,6 +41,9 @@ Usage:  python3 tools/art/make_courts.py                  all textures, the v1 p
         python3 tools/art/make_courts.py --shots DIR      also courts_preview_v2.png from DIR/<look>.png, the game's
                                                           screenshots: for each look,  -- --court <look> --shots
                                                           (xvfb, see CLAUDE.md), then copy /tmp/hoops_1800.png
+        python3 tools/art/make_courts.py --rewards        only the P8-06 reward looks and balls
+        python3 tools/art/make_courts.py --rewards-preview DIR   the same, plus docs/art/rewards_preview.png from
+                                                          DIR/<look>.png (-- --court midnight / gold_hall --shots)
         python3 tools/art/make_courts.py --print-looks    prints the city looks' court_looks.gd entries (colours for
                                                           the lines, paint, hoop; CITY_LOOKS below) as GDScript
 Needs:  Pillow, numpy
@@ -58,6 +65,7 @@ BALLS = os.path.join(ROOT, "assets", "ball")
 PREVIEW = os.path.join(ROOT, "docs", "art", "courts_preview_v1.png")
 PREVIEW_V2 = os.path.join(ROOT, "docs", "art", "courts_preview_v2.png")
 TILES_TEST = os.path.join(ROOT, "docs", "art", "courts_tiles_4x4.png")
+REWARDS_PREVIEW = os.path.join(ROOT, "docs", "art", "rewards_preview.png")
 
 TEXEL_PX = 2              # canvas px per texel (same as PLAYER_SCALE)
 TILE = 64
@@ -260,10 +268,11 @@ TIER_H = 9                 # texels per bleacher tier (seat + riser)
 BLEACHER_TOP = BD_H - 8 - TIERS * TIER_H   # first (highest) tier's top row
 
 
-def person(px, x, y, rnd, tier, standing=False, arms_up=False):
-    """One spectator from the bleachers: x = left of the 5-wide body, y = top of the head (3/4 view, seated)."""
+def person(px, x, y, rnd, tier, standing=False, arms_up=False, shirts=None):
+    """One spectator from the bleachers: x = left of the 5-wide body, y = top of the head (3/4 view, seated).
+    shirts: the shirt palettes to pick from (default SHIRTS)."""
     sk = rnd.choice(SKIN)
-    sh = rnd.choice(SHIRTS)
+    sh = rnd.choice(SHIRTS if shirts is None else shirts)
     hair = rnd.choice(HAIR)
     hair_kind = rnd.choice(("short", "short", "bald", "cap", "puff"))
     # body (shirt): 5 wide, 4 tall, light from the upper left
@@ -1889,10 +1898,13 @@ def looks_gdscript():
     """The CITY_LOOKS entries as GDScript dictionary text (same keys and order as gym / blacktop)."""
     order = ["name", "music", "floor_texture", "floor_scale", "floor", "floor_stripe", "stripe_ft", "speckle", "line",
              "paint", "logo", "apron", "backdrop", "backdrop_texture", "backdrop_scale", "wall", "wall_dark",
-             "ambience", "backboard", "board_square", "pole", "rim", "net", "front_fence", "floor_overlay"]
+             "ambience", "backboard", "board_square", "pole", "rim", "net", "front_fence", "floor_overlay", "reward", "twist"]
     out = []
-    for lid, d in CITY_LOOKS.items():
+    for lid, d in list(CITY_LOOKS.items()) + list(REWARD_LOOKS.items()):
         d = dict(d)
+        if lid in REWARD_IDS:
+            d["reward"] = REWARD_IDS[lid]
+            d["twist"] = "none"
         d["floor_texture"] = "res://assets/courts/%s_floor.png" % lid
         d["backdrop_texture"] = "res://assets/courts/%s_backdrop.png" % lid
         d["floor_scale"] = 2.0
@@ -1903,7 +1915,7 @@ def looks_gdscript():
                 continue
             v = d[k]
             if k in ("name", "music", "floor_texture", "backdrop_texture", "backdrop", "ambience", "backboard",
-                     "floor_overlay"):
+                     "floor_overlay", "reward", "twist"):
                 s = '"%s"' % v
             elif k == "front_fence":
                 s = "true" if v else "false"
@@ -1918,6 +1930,359 @@ def looks_gdscript():
     return "\n".join(out)
 
 
+# ============================================================================= Phase 8 star rewards (P8-06)
+# Two Quick Game court looks unlocked by stars (court_looks.gd rows with "reward": "court_1" / "court_2", twist
+# none; they join the COURT button once open, wired by a later task) and three special balls (ball_1..3, below the
+# ball). Same conventions as the city looks: 64 x 64 seamless floor tiles, 384 x 100 backdrops repeating in x, the
+# landmark shapes in rows ~50-95 (what the game shows). Generic: no real arenas, teams, logos, brands or text.
+#   court_1  midnight   MIDNIGHT    a night blacktop under street lamps: dark blue asphalt, a skyline of lit
+#                                   windows and stars, neon-lit shop fronts across the street behind a fence
+#   court_2  gold_hall  GOLD HALL   a championship hall: polished honey maple, a packed arena in tiers, a glowing
+#                                   gold ribbon board and a courtside LED board (abstract chevrons only)
+
+# --- court_1: MIDNIGHT
+NIGHT_ASP = pal("#30334c", "#2b2d45", "#26283e", "#212337")  # blue-violet night asphalt (lamp-lit from the court)
+NIGHT_GLINT = pal("#5c6694", "#46507a")
+NSKY = pal("#0c0e26", "#121634", "#191e42", "#222850", "#2c315e")
+NTOWER = [pal("#262a4a", "#20243f", "#1a1e36", "#15182c"), pal("#2c2846", "#25223d", "#1e1c34", "#18162b")]
+NWIN = pal("#ffe08a", "#f0b860", "#9adcff", "#6aa8e0")       # warm and cool lit windows
+NEON = [pal("#ff6ad0", "#c83a9e", "#7a2462"), pal("#6af0ff", "#2ab4d0", "#1a6a86"),
+        pal("#ffd060", "#d89a2a", "#7a5418")]
+NROW = pal("#3a3452", "#302b46", "#28243c", "#1e1b2e")     # near row houses (night brick)
+NWALK = pal("#4a4c66", "#3e4058", "#34364c", "#2a2c3e")
+NROAD = pal("#24263a", "#202234", "#1c1e2e", "#181a28")
+NFENCE = pal("#a8b4d8", "#7a86aa", "#56608a", "#3a4266")
+LAMP = pal("#fff8d8", "#ffe090", "#c8a050")
+
+
+def midnight_floor(seed=41):
+    """Night blacktop: dark blue-violet asphalt in soft blotches, a few cool glints of aggregate catching the lamps,
+    faint hairline cracks. Low contrast, so the bright court lines carry the court."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, NIGHT_ASP[1], wrap_y=True)
+    noise_tones(px, NIGHT_ASP, rnd, cuts=(0.80, 0.50, 0.22))
+    for _ in range(90):                                          # aggregate: light and dark specks
+        px.put(rnd.randrange(TILE), rnd.randrange(TILE), NIGHT_ASP[rnd.choice((0, 3, 3))])
+    for _ in range(14):                                          # glints (cool, lamp light)
+        x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+        px.put(x, y, NIGHT_GLINT[rnd.choice((0, 1, 1))])
+    for _ in range(3):
+        crack(px, rnd.randrange(TILE), rnd.randrange(TILE), rnd.randint(8, 15), rnd, mix(NIGHT_ASP[3], (10, 10, 20),
+                                                                                           0.4))
+    return px.image()
+
+
+def glow(px, cx, cy, r, c, strength):
+    """A soft round light: blend toward c, strongest at the centre (lamp halos, neon spill)."""
+    for y in range(int(cy - r), int(cy + r) + 1):
+        for x in range(int(cx - r), int(cx + r) + 1):
+            d = math.hypot(x - cx, (y - cy) * 1.2) / r
+            if d < 1:
+                px.blend(x, y, c, strength * (1 - d) ** 2)
+
+
+def midnight_backdrop(seed=42):
+    rnd = random.Random(seed)
+    px = bd_canvas(NSKY[0])
+    sky(px, 0, 56, NSKY)
+    for _ in range(70):                                          # stars (a few brighter ones with a cross)
+        x, y = rnd.randrange(BD_W), rnd.randint(1, 34)
+        px.put(x, y, H("#c8d0ff") if rnd.random() < 0.7 else H("#ffffff"))
+    for x, y in ((40, 8), (170, 5), (322, 11)):
+        px.put(x, y, H("#ffffff"))
+        for d in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            px.put(x + d[0], y + d[1], H("#8890c8"))
+    mx, my, mr = 262, 12, 6                                      # the moon, lit from the upper left
+    for y in range(my - mr, my + mr + 1):
+        for x in range(mx - mr, mx + mr + 1):
+            dx, dy = (x + 0.5 - mx) / mr, (y + 0.5 - my) / mr
+            if dx * dx + dy * dy < 1:
+                v = -dx * 0.6 - dy * 0.5 + 0.4
+                px.put(x, y, H("#fffbe8") if v > 0.55 else (H("#e8e4d0") if v > 0.0 else H("#b8b8b0")))
+    for cx, cy in ((260, 10), (265, 15), (258, 15)):
+        px.put(cx, cy, H("#c8c4b4"))
+    glow(px, mx, my, 16, H("#4a5290"), 0.35)
+    # far towers: tall silhouettes with a grid of lit windows (tops rows 14-40)
+    x = 0
+    k = 0
+    while x < BD_W:
+        w = rnd.choice((14, 18, 22, 26, 30))
+        if BD_W - (x + w) < 14:
+            w = BD_W - x
+        top = rnd.randint(14, 40)
+        c = NTOWER[k % 2]
+        for xx in range(x, x + w):
+            for y in range(top, 62):
+                px.put(xx, y, c[0] if xx == x else (c[2] if xx >= x + w - 2 else c[1]))
+        if rnd.random() < 0.4:                                   # an antenna with a red light
+            ax = x + w // 2
+            px.rect(ax, top - 6, ax, top - 1, c[2])
+            px.put(ax, top - 7, H("#ff4a4a"))
+        for wy in range(top + 3, 60, 3):
+            for wx in range(x + 2, x + w - 2, 3):
+                if rnd.random() < 0.30:
+                    px.put(wx, wy, NWIN[rnd.choice((0, 0, 1, 2, 3))])
+        x += w
+        k += 1
+    # near row houses with neon-lit shop fronts (rows 46-70)
+    x = 0
+    k = 0
+    while x < BD_W:
+        w = rnd.choice((32, 40, 48))
+        if BD_W - (x + w) < 32:
+            w = BD_W - x
+        top = rnd.randint(44, 52)
+        for xx in range(x, x + w):
+            for y in range(top, 70):
+                kk = 1 if (y - top) % 3 != 2 else 2
+                if xx == x:
+                    kk = 0
+                if xx >= x + w - 2:
+                    kk = 3
+                px.put(xx, y, NROW[kk])
+        px.rect(x - 1, top, x + w, top, NROW[0])
+        for wx in range(x + 4, x + w - 5, 8):                    # upper windows (a few lit, curtains warm)
+            lit = rnd.random() < 0.45
+            px.rect(wx, top + 3, wx + 3, top + 6, NWIN[1] if lit else NTOWER[0][3])
+            if lit:
+                px.rect(wx, top + 3, wx + 1, top + 3, NWIN[0])
+        # shop front: a dark window, glowing inside, with a neon tube shape over it (shapes only, no letters)
+        nc = NEON[k % len(NEON)]
+        sx0, sx1 = x + 4, x + w - 6
+        px.rect(sx0, 62, sx1, 69, H("#3a2a3a"))
+        px.rect(sx0 + 1, 63, sx1 - 1, 68, mix(nc[2], H("#ffe8c0"), 0.25))
+        for xx in range(sx0 + 1, sx1, 4):
+            px.rect(xx, 63, xx, 68, mix(nc[2], H("#1a1626"), 0.4))
+        kind = k % 3
+        cx = (sx0 + sx1) // 2
+        if kind == 0:                                            # a wavy tube
+            for xx in range(sx0 + 2, sx1 - 1):
+                px.put(xx, 59 + (1 if (xx // 3) % 2 else 0), nc[0])
+        elif kind == 1:                                          # a star
+            for dy, row in enumerate(("..X..", "XXXXX", ".XXX.", ".X.X.")):
+                for dx, ch in enumerate(row):
+                    if ch == "X":
+                        px.put(cx - 2 + dx, 56 + dy, nc[0])
+            for xx in range(sx0 + 2, sx1 - 1):
+                px.put(xx, 60, nc[1] if xx % 2 else nc[0])
+        else:                                                    # a ball-shaped circle with a seam
+            for a in range(28):
+                t = 2 * math.pi * a / 28
+                px.put(int(round(cx + 3.5 * math.cos(t))), int(round(57.5 + 2.5 * math.sin(t))), nc[0])
+            px.rect(cx - 3, 57, cx + 3, 57, nc[1])
+        glow(px, cx, 61, 14, nc[1], 0.45)
+        x += w
+        k += 1
+    # sidewalk, street with neon reflections, near curb, dark ground
+    px.rect(0, 70, BD_W - 1, 74, NWALK[1])
+    px.rect(0, 70, BD_W - 1, 70, NWALK[0])
+    px.rect(0, 75, BD_W - 1, 75, NWALK[3])
+    px.rect(0, 76, BD_W - 1, 87, NROAD[1])
+    for _ in range(220):
+        px.put(rnd.randrange(BD_W), rnd.randint(76, 87), NROAD[rnd.choice((0, 2, 3))])
+    for x in range(0, BD_W, 24):
+        px.rect(x, 81, x + 11, 81, H("#8a7a3a"))
+    for x in range(BD_W):                                        # the shop lights reflected on the street
+        above = px.get(x, 66)
+        if sum(above) > 300:
+            for y in range(77, 86, 2):
+                px.blend(x, y, above, 0.22)
+    for cx, ci, f in ((70, 1, 1), (214, 0, -1), (330, 2, 1)):   # parked cars, in the dark
+        car(px, cx, 85, [mix(cc, NROAD[3], 0.55) for cc in CARS[ci]], f)
+    px.rect(0, 88, BD_W - 1, 88, NWALK[0])
+    px.rect(0, 89, BD_W - 1, BD_H - 1, NWALK[2])
+    # street lamps: dark posts, a bright head and a halo; pools of light on the sidewalk
+    for lx in (34, 162, 290):
+        px.rect(lx, 38, lx, 72, H("#14162a"))
+        px.rect(lx, 38, lx + 6, 38, H("#14162a"))
+        px.rect(lx + 4, 39, lx + 7, 40, LAMP[0])
+        glow(px, lx + 5, 41, 18, LAMP[1], 0.45)
+        glow(px, lx + 5, 73, 14, LAMP[1], 0.25)
+    img = haze_rows(px.image(), H("#14162e"), 0.10, 0.04)
+    px = from_img(img)
+    # the court fence: chain-link lit from the court (cool), posts every 64, tension wire, dark grass at the foot
+    ft = 30
+    for y in range(ft + 2, BD_H - 2):
+        for x in range(BD_W):
+            u, v = (x + y) % 6, (x - y) % 6
+            if u == 0 or v == 0:
+                lit = u == 0
+                px.blend(x, y, NFENCE[1] if lit else NFENCE[2], 0.36 if lit else 0.30)
+    for x in range(BD_W):
+        px.put(x, ft, NFENCE[0])
+        px.put(x, ft + 1, NFENCE[2])
+        px.put(x, BD_H - 3, NFENCE[2])
+    for x in range(0, BD_W, 64):
+        px.rect(x, ft - 2, x + 2, BD_H - 2, NFENCE[1])
+        px.rect(x, ft - 2, x, BD_H - 2, NFENCE[0])
+        px.rect(x + 2, ft - 1, x + 2, BD_H - 2, NFENCE[3])
+        px.rect(x - 1, ft - 3, x + 3, ft - 2, NFENCE[2])
+    px.rect(0, BD_H - 2, BD_W - 1, BD_H - 1, H("#1e2a26"))
+    return px.image()
+
+
+# --- court_2: GOLD HALL
+HONEY = pal("#f2cf8e", "#ebc47e", "#e2b870", "#d8ab62")      # polished honey maple (lighter and warmer than the gym)
+HONEY_SEAM = H("#b8803e")
+HONEY_GRAIN = H("#cf9c56")
+HONEY_GLOSS = H("#fff2d0")
+ARENA = pal("#2a2848", "#22203c", "#1a1830", "#131226")     # arena shadows (deep navy)
+GOLD = pal("#fff0a0", "#f0c840", "#c8962a", "#8a6018")
+SEAT = pal("#3a3466", "#2e2a54", "#242044", "#1a1834")
+FAN_SHIRTS = [pal("#ffe890", "#f0c040", "#b8861c", "#7a5410"), pal("#7a8ae0", "#3a4ab0", "#26307e", "#181e52"),
+              pal("#ffffff", "#d8dce8", "#a8aec0", "#6a7088"), pal("#ff7a6a", "#d8283a", "#951833", "#5a0e2a")]
+
+
+def gold_hall_floor(seed=43):
+    """Polished championship maple: 3-texel boards + a fine seam, long boards, pale honey tones, a bright glossy top
+    edge on every board and sparse gloss specks (the arena lights in the varnish)."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, HONEY[1], wrap_y=True)
+    for r in range(TILE // 4):
+        y = r * 4
+        while True:
+            n = rnd.choice((1, 2, 2))
+            js = sorted(rnd.randrange(TILE) for _ in range(n))
+            gaps = [(js[(k + 1) % n] - js[k]) % TILE or TILE for k in range(n)]
+            if min(gaps) >= 20:
+                break
+        for k in range(n):
+            x0, L = js[k], gaps[k]
+            base = HONEY[rnd.choice((0, 1, 1, 2, 2, 3))]
+            for dx in range(L):
+                x = x0 + dx
+                for dy in range(3):
+                    c = base
+                    if dy == 0:
+                        c = mix(base, HONEY_GLOSS, 0.22)
+                    if dx == L - 1:
+                        c = mix(base, HONEY_SEAM, 0.45)
+                    px.put(x, y + dy, c)
+            for _ in range(max(1, L // 14)):                     # faint grain
+                gx = x0 + rnd.randint(1, max(1, L - 8))
+                gy = y + rnd.randint(1, 2)
+                for q in range(rnd.randint(3, 7)):
+                    if (gx + q - x0) % TILE < L - 1:
+                        px.put(gx + q, gy, mix(base, HONEY_GRAIN, 0.40))
+        for x in range(TILE):
+            px.put(x, y + 3, mix(HONEY[3], HONEY_SEAM, 0.6))
+    for _ in range(10):                                          # gloss specks (2 texels, along the boards)
+        x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+        if y % 4 != 3:
+            px.blend(x, y, HONEY_GLOSS, 0.7)
+            px.blend(x + 1, y, HONEY_GLOSS, 0.4)
+    return px.image()
+
+
+def chevrons(px, y0, y1, x_step, fg, bg, phase=0):
+    """An LED board strip: bg with rows of fg chevrons pointing right (abstract, no letters), 1 texel thick."""
+    px.rect(0, y0, BD_W - 1, y1, bg)
+    mid = (y0 + y1) / 2.0
+    half = (y1 - y0) // 2 - 1
+    for x0 in range(phase, BD_W + x_step, x_step):
+        for dy in range(-half, half + 1):
+            for t in range(2):
+                px.put(x0 - abs(dy) + t, int(round(mid + dy)), fg)
+
+
+def gold_hall_backdrop(seed=44):
+    rnd = random.Random(seed)
+    px = bd_canvas(ARENA[3])
+    # upper deck: dark tiers of tiny fans (dots), camera flashes; championship banners hanging from the roof
+    for y in range(0, 40):
+        for x in range(BD_W):
+            px.put(x, y, ARENA[3] if y < 6 else (ARENA[2] if (y - 6) % 4 else ARENA[3]))
+    for y in range(8, 38, 4):
+        for x in range(rnd.randint(0, 2), BD_W, 2):
+            if rnd.random() < 0.75:
+                c = rnd.choice(FAN_SHIRTS)[rnd.choice((1, 2))]
+                px.put(x, y, mix(c, ARENA[2], 0.55))
+                px.put(x, y + 1, mix(rnd.choice(SKIN)[1], ARENA[2], 0.6))
+    for _ in range(26):
+        px.put(rnd.randrange(BD_W), rnd.randint(8, 38), H("#ffffff"))
+    for k, bx in enumerate((20, 116, 212, 308)):                 # gold banners: a star and a year (generic)
+        top, w, hgt = 0, 20, 22
+        for y in range(top, top + hgt):
+            for x in range(bx, bx + w):
+                px.put(x, y, GOLD[0] if x == bx else (GOLD[2] if x == bx + w - 1 else GOLD[1]))
+        for d in range(5):
+            for x in range(bx + d, bx + w - d):
+                px.put(x, top + hgt + d, GOLD[1] if x < bx + w - 1 - d else GOLD[2])
+        cx, cy = bx + w // 2, top + 6
+        for dy, row in enumerate(("..X..", "XXXXX", ".XXX.", ".X.X.", "X...X")):
+            for dx, ch in enumerate(row):
+                if ch == "X":
+                    px.put(cx - 2 + dx, cy - 3 + dy, ARENA[3])
+        number(px, ("1998", "2004", "2013", "2021")[k], bx + 2, top + 12, ARENA[2])
+    # the gold ribbon board between the decks
+    chevrons(px, 40, 44, 12, GOLD[0], GOLD[2])
+    px.rect(0, 39, BD_W - 1, 39, GOLD[3])
+    px.rect(0, 45, BD_W - 1, 45, ARENA[3])
+    # lower bowl: four tiers of fans on navy seats (rows 46-81), aisles every 128
+    tiers, th = 4, 9
+    for t in range(tiers):
+        y0 = 46 + t * th
+        px.rect(0, y0, BD_W - 1, y0 + th - 4, SEAT[2 if t < 2 else 1])
+        px.rect(0, y0, BD_W - 1, y0, SEAT[3])
+        px.rect(0, y0 + th - 3, BD_W - 1, y0 + th - 3, SEAT[0])
+        px.rect(0, y0 + th - 2, BD_W - 1, y0 + th - 2, SEAT[1])
+        px.rect(0, y0 + th - 1, BD_W - 1, y0 + th - 1, SEAT[3])
+        for ax in (60, 188, 316):
+            px.rect(ax, y0, ax + 6, y0 + th - 1, ARENA[1])
+            px.rect(ax, y0 + th - 3, ax + 6, y0 + th - 3, GOLD[2])
+        x = rnd.randint(0, 4)
+        while x < BD_W:
+            if any(ax - 5 <= x % BD_W <= ax + 7 for ax in (60, 188, 316)):
+                x += 2
+                continue
+            if rnd.random() < 0.95:
+                standing = rnd.random() < 0.12
+                person(px, x, y0 + th - 10 - (2 if standing else 0), rnd, t, standing,
+                       arms_up=rnd.random() < 0.22, shirts=FAN_SHIRTS)
+            x += rnd.choice((5, 6, 6, 6, 7))
+    img = haze_rows(px.image(), H("#1a1830"), 0.38, 0.08)
+    px = from_img(img)
+    # spotlight beams from the roof (soft, blended), so the hall reads bright and grand
+    for bx in (40, 168, 296):
+        for y in range(0, 82):
+            half = 3 + y * 0.12
+            cx = bx + y * 0.35
+            for x in range(int(cx - half), int(cx + half) + 1):
+                px.blend(x, y, H("#fff4d0"), 0.10 * (1 - abs(x - cx) / (half + 1)))
+    # courtside: the LED board (bright gold chevrons on black), a gold trim, the dark padded front
+    px.rect(0, 82, BD_W - 1, 82, GOLD[3])
+    chevrons(px, 83, 90, 16, GOLD[1], H("#0e0c18"), phase=4)
+    for x in range(0, BD_W, 16):                                 # a lit second row of the LED (dots)
+        px.put(x + 10, 86, GOLD[0])
+    for x in range(0, BD_W, 96):                                 # board panel joints
+        px.rect(x, 83, x, 90, H("#2a2838"))
+    px.rect(0, 91, BD_W - 1, 91, GOLD[0])
+    px.rect(0, 92, BD_W - 1, BD_H - 1, ARENA[2])
+    px.rect(0, 92, BD_W - 1, 92, ARENA[0])
+    px.rect(0, BD_H - 2, BD_W - 1, BD_H - 1, ARENA[3])
+    for x in range(0, BD_W, 48):
+        px.rect(x, 93, x, BD_H - 3, ARENA[3])
+        px.put(x + 1, 93, ARENA[0])
+    return px.image()
+
+
+# The reward looks' court_looks.gd data (like CITY_LOOKS; --print-looks prints them too). Music: an existing track.
+REWARD_LOOKS = {
+    "midnight": {"name": "MIDNIGHT", "music": "blacktop", "floor": "#2b2d45", "floor_stripe": "#2b2d45",
+                 "stripe_ft": 0, "speckle": 0, "line": ("#d8f6ff", 0.92), "paint": ("#c03a9e", 0.70),
+                 "logo": ("#2ab4d0", 0.70), "apron": "#212337", "backdrop": "fence", "wall": "#191e42",
+                 "wall_dark": "#0c0e26", "backboard": "glass", "board_square": "#6af0ff", "pole": "#14162a",
+                 "rim": "#f06a1e", "net": ("#e8ecff", 0.85)},
+    "gold_hall": {"name": "GOLD HALL", "music": "gym", "floor": "#ebc47e", "floor_stripe": "#e2b870",
+                  "stripe_ft": 3.0, "speckle": 0, "line": ("#ffffff", 0.95), "paint": ("#26307e", 0.88),
+                  "logo": ("#c8962a", 0.85), "apron": "#1a1830", "backdrop": "bleachers", "wall": "#22203c",
+                  "wall_dark": "#131226", "backboard": "glass", "board_square": "#f0c840", "pole": "#1a1830",
+                  "rim": "#f06a1e", "net": ("#ffffff", 0.85)},
+}
+REWARD_IDS = {"midnight": "court_1", "gold_hall": "court_2"}
+REWARD_MAKERS = {"midnight": (midnight_floor, midnight_backdrop), "gold_hall": (gold_hall_floor, gold_hall_backdrop)}
+
+
 # ----------------------------------------------------------------------------- ball
 
 BALL = pal("#ffb070", "#f0761e", "#b84a16", "#702a12")
@@ -1928,8 +2293,32 @@ BALL_R = 5.5             # 11 texels across
 FRAMES = 4
 
 
-def ball_frames():
-    """4 frames of a ball spinning forward (about the screen-depth axis tilted a little), 90 degrees per cycle."""
+# The special balls (P8-06, star rewards ball_1..3): the same 4 spin frames of 16 x 16, ball 11 texels across, the
+# same light and seams; only the colours change. "panels": a second palette on two opposite quarters (two-tone).
+# "sparkle": a 4-point glint at the upper right on frames 0 and 2 (it twinkles as the ball spins).
+#   ball_1  SKY         two-tone sky blue and white, navy seams
+#   ball_2  NIGHT GLOW  deep indigo with glowing mint seams
+#   ball_3  GOLD        polished gold, dark seams, a twinkling glint
+BALL_STYLES = {
+    "ball_1": {"name": "SKY", "body": pal("#d8f0ff", "#7ac0f0", "#3a86c8", "#1e4e86"),
+               "panels": pal("#ffffff", "#e6ecf6", "#aebacc", "#6a7890"), "seam": pal("#1c3a6a", "#0c1a36"),
+               "out": H("#0c1630"), "hi": H("#ffffff")},
+    "ball_2": {"name": "NIGHT GLOW", "body": pal("#6a6ab8", "#3c3c86", "#26265e", "#16163a"),
+               "seam": pal("#8affd0", "#3ad8a0"), "out": H("#08081a"), "hi": H("#d0d0ff")},
+    "ball_3": {"name": "GOLD", "body": pal("#fff4b8", "#f2c84a", "#c08a22", "#6e4a10"),
+               "seam": pal("#6a440e", "#3a2406"), "out": H("#2a1a06"), "hi": H("#ffffff"), "sparkle": True},
+}
+
+
+def ball_frames(style=None):
+    """4 frames of a ball spinning forward (about the screen-depth axis tilted a little), 90 degrees per cycle.
+    style: a BALL_STYLES entry (None = the game's orange ball, ball.png)."""
+    st = style or {}
+    body = st.get("body", BALL)
+    panels = st.get("panels")
+    seam_c = st.get("seam", BALL_SEAM)
+    out_c = st.get("out", BALL_OUT)
+    hi_c = st.get("hi", BALL_HI)
     out = Image.new("RGBA", (16 * FRAMES, 16), (0, 0, 0, 0))
     L = P.LIGHT
     cx = cy = 8.0
@@ -1952,7 +2341,12 @@ def ball_frames():
                 k = 0 if inten > 0.80 else (1 if inten > 0.12 else (2 if inten > -0.35 else 3))
                 if d2 > 0.80 and k < 2 and dx > -0.2:
                     k += 1                                         # rim darkening on the lit side keeps it round
-                c = BALL[k]
+                tones = body
+                if panels is not None:
+                    bn = R.T @ n
+                    if (bn[0] > 0) != (bn[1] > 0):
+                        tones = panels                             # two-tone: opposite quarters
+                c = tones[k]
                 # seams: two great circles (period 90 degrees of spin), 4 x 4 supersampled so they stay 1 px thin
                 hits = 0
                 for su in range(4):
@@ -1966,20 +2360,36 @@ def ball_frames():
                         if abs(bl[0]) < 0.075 or abs(bl[1]) < 0.075:
                             hits += 1
                 if hits >= 4:
-                    c = BALL_SEAM[0] if k < 2 else BALL_SEAM[1]
+                    c = seam_c[0] if k < 2 else seam_c[1]
                 pxl[i, j] = c + (255,)
         # highlight: fixed at the upper left
         for (i, j) in ((5, 4), (6, 4), (5, 5)):
             if inside[j, i]:
-                pxl[i, j] = BALL_HI + (255,) if (i, j) != (5, 5) else BALL[0] + (255,)
+                pxl[i, j] = hi_c + (255,) if (i, j) != (5, 5) else body[0] + (255,)
         # outline
         for j in range(16):
             for i in range(16):
                 if inside[j, i]:
                     continue
                 if any(0 <= a < 16 and 0 <= b < 16 and inside[b, a] for a, b in ((i - 1, j), (i + 1, j), (i, j - 1), (i, j + 1))):
-                    pxl[i, j] = BALL_OUT + (255,)
+                    pxl[i, j] = out_c + (255,)
+        if st.get("sparkle") and f % 2 == 0:                       # a glint off the upper right edge
+            gx, gy = 12, 3
+            pxl[gx, gy] = (255, 255, 255, 255)
+            for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                pxl[gx + a, gy + b] = body[0] + (255,)
         out.paste(img, (16 * f, 0))
+    return out
+
+
+def reward_outputs():
+    """P8-06: {path: image} for the 2 reward court looks (floor + backdrop) and the 3 special balls."""
+    out = {}
+    for lid, (fl, bd) in REWARD_MAKERS.items():
+        out[os.path.join(COURTS, lid + "_floor.png")] = fl()
+        out[os.path.join(COURTS, lid + "_backdrop.png")] = bd()
+    for bid, st in BALL_STYLES.items():
+        out[os.path.join(BALLS, bid + ".png")] = ball_frames(st)
     return out
 
 
@@ -2171,10 +2581,72 @@ def preview_v2(city, shots_dir):
     print("wrote", os.path.relpath(PREVIEW_V2, ROOT), pv.size, os.path.getsize(PREVIEW_V2), "bytes")
 
 
+def rewards_preview(rew, shots_dir):
+    """docs/art/rewards_preview.png (P8-06): per reward look, the game's own 1280 x 720 screenshot (shots_dir/<look>.png,
+    from  -- --court <look> --shots) with its backdrop strip and floor tile 3 x 3; then the 3 special balls next to
+    the game's ball, each frame at 8x and the ball at its in-game size (2x)."""
+    looks = list(REWARD_MAKERS.keys())
+    strip_h = BD_H * 2
+    tile_h = TILE * 3 * 2
+    row_h = 720 + 8 + max(strip_h, tile_h) + 16
+    balls = ["ball"] + list(BALL_STYLES.keys())
+    ball_row = 16 * 8 + 40
+    pv = Image.new("RGB", (1280, row_h * len(looks) + 60 + ball_row * len(balls)), (20, 18, 28))
+    for n, lid in enumerate(looks):
+        y0 = n * row_h
+        shot = os.path.join(shots_dir, lid + ".png") if shots_dir else ""
+        if shot and os.path.exists(shot):
+            pv.paste(Image.open(shot).convert("RGB").resize((1280, 720), Image.NEAREST), (0, y0))
+        else:
+            label(pv, "no screenshot: --rewards-preview DIR (DIR/%s.png)" % lid, 16, y0 + 340, scale=3)
+        bd = rew[os.path.join(COURTS, lid + "_backdrop.png")]
+        fl = rew[os.path.join(COURTS, lid + "_floor.png")]
+        pv.paste(bd.resize((BD_W * 2, strip_h), Image.NEAREST), (8, y0 + 728))
+        t3 = tile_test(fl, n=3, zoom=2)
+        pv.paste(t3, (1280 - t3.size[0] - 8, y0 + 728))
+        text = "%s  (%s, look %s)" % (REWARD_LOOKS[lid]["name"], REWARD_IDS[lid], lid)
+        label(pv, text, 16, y0 + 728 + strip_h + 8, scale=3, fg=(255, 236, 160), bg=(20, 18, 28))
+    y = row_h * len(looks) + 16
+    label(pv, "BALLS: 4 spin frames of 16 x 16 at 8x, then the ball at 2x (in-game size)", 16, y, scale=2,
+          fg=(255, 236, 160), bg=(20, 18, 28))
+    y += 44
+    for bid in balls:
+        img = ball_frames() if bid == "ball" else rew[os.path.join(BALLS, bid + ".png")]
+        big = Image.new("RGBA", img.size, H("#3a3650") + (255,))
+        big.alpha_composite(img)
+        pv.paste(big.convert("RGB").resize((16 * FRAMES * 8, 16 * 8), Image.NEAREST), (16, y))
+        for f in range(FRAMES):                                   # in-game size on two floors
+            for k, bgc in enumerate((H("#e2b870"), H("#2b2d45"))):
+                cell = Image.new("RGBA", (16, 16), bgc + (255,))
+                cell.alpha_composite(img.crop((16 * f, 0, 16 * f + 16, 16)))
+                pv.paste(cell.convert("RGB").resize((32, 32), Image.NEAREST), (560 + f * 40, y + 10 + k * 48))
+        name = "ORANGE (ball.png, default)" if bid == "ball" else "%s  (%s)" % (BALL_STYLES[bid]["name"], bid)
+        label(pv, name, 740, y + 40, scale=3, fg=(255, 255, 255), bg=(20, 18, 28))
+        y += ball_row
+    pv.save(REWARDS_PREVIEW, optimize=True)
+    print("wrote", os.path.relpath(REWARDS_PREVIEW, ROOT), pv.size, os.path.getsize(REWARDS_PREVIEW), "bytes")
+
+
+def write_rewards(args):
+    """The P8-06 outputs (2 court looks, 3 balls); --rewards-preview DIR also composes docs/art/rewards_preview.png."""
+    os.makedirs(COURTS, exist_ok=True)
+    os.makedirs(BALLS, exist_ok=True)
+    rew = reward_outputs()
+    for path, img in rew.items():
+        img.save(path, optimize=True)
+        print("wrote %s %s %d bytes" % (os.path.relpath(path, ROOT), img.size, os.path.getsize(path)))
+    if "--rewards-preview" in args:
+        i = args.index("--rewards-preview")
+        rewards_preview(rew, args[i + 1] if i + 1 < len(args) else None)
+
+
 def main():
     args = sys.argv[1:]
     if "--print-looks" in args:
         print(looks_gdscript())
+        return
+    if "--rewards" in args or "--rewards-preview" in args:
+        write_rewards(args)                       # only the P8-06 files (the other textures are left as they are)
         return
     shots_dir = None
     if "--shots" in args:
@@ -2190,6 +2662,7 @@ def main():
     else:
         print("courts_preview_v2.png not rebuilt (needs game screenshots: --shots DIR, see the top of this file)")
     v1_main()
+    write_rewards(args)
 
 
 def v1_main():

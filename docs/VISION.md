@@ -96,6 +96,8 @@ tablet with a joystick and two buttons.
 | Phase 7 plan answers | App name "Road Trip Hoops", Android package id io.github.kirmalo.roadtriphoops, version 1.0.0 (code 1), itch tagline "Drive your underdog crew across America and win the 3v3 streetball tournament in New York." LEFT-HANDED switch and MUSIC volume slider in Settings only (pause panel unchanged). The itch page doesn't link the source; GitHub Pages stays as the owner's test build. The owner makes the release signing key (exact steps from the team, two backups, never in the repo) |
 | Phase 7 signing key | The release key needs keytool on a computer (not possible on the tablet). Owner: decide later; ship the web version on itch.io first, the Android app when ready. The team still finishes the Android build (debug APK, release script, ANDROID.md) so it is ready |
 | Phase 7 check-in | Icon and cover (van under the ball sunset): keep. Store screenshots: all 5 in order (Memphis dunk, rainy Seattle, trip map, story, New York cage). P7-B1 (second QUIT? tap): not tried on the tablet yet, stays open. Next: a small tuning round before the itch.io upload (owner to say what) |
+| Progression plan answers (docs/progression-plan.md) | Shots should go in more often in every mode (P7-T1). Stat points per player after every Road Trip win: each starter gets 1 point for city games 1-2, 2 for the boss game and each New York round (4 per starter per city); the same on every level. Stars per city game and New York round: Easy 1, Normal 2, Hard 3, best kept (72 in all). Stars unlock: a LEGEND level (every game 3 stars), cosmetics (alternate jerseys, special balls, van paint jobs, Quick Game court looks), and extra roster slots at star milestones; a slot drafts any player from a crew you have beaten, bosses included, but only one boss may be in the 3 starters. Replay any beaten city game from the map, opponents raised to the stage reached, stars only (no points). Hold the itch.io upload until this progression phase (Phase 8) is done; 1.0.0 saves must carry over |
+| Phase 8 plan answers | 4 extra roster slots at 12, 24, 36 and 48 stars (roster up to 14). A slot drafts any player from a crew beaten on this trip; the pick is final for the trip. Jersey, ball and van paint are picked on a new LOCKER screen from the title (the star ladder too); the new court looks join the Quick Game COURT button. Skip the one-boss-among-starters rule for now (this replaces that part of the row above). Version number for the release: still to ask |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
@@ -149,6 +151,11 @@ city, recruiting, bench and starter choice, stat points, save and load (`user://
 **Phase 7: release.** Settings (volume, difficulty, left-handed layout), a How to Play screen, an itch.io HTML5
 export and an Android export, store page text and screenshots.
 
+**Phase 8: progression** (before the first itch.io upload). Stat points for each starter after every win, stars per
+city game and New York round, star rewards (extra roster slots that draft from beaten crews, cosmetics, a LEGEND
+level), replays of beaten city games from the map, the ramp retuned, 1.0.0 saves carried over. Plan:
+`docs/progression-plan.md`.
+
 ## Open questions
 - Are full-court games to 21 too long? Answer from data in Phase 3.
 - Can this environment download from the asset sites (OpenGameArt, itch.io, Kenney)? Check at the start of Phase 1.
@@ -164,3 +171,7 @@ export and an Android export, store page text and screenshots.
 - Out of bounds is very rare on its own (about 0.15 per game). Phase 3 added rare hard bounces off the back or side
   of the rim (about 2 per game go out, almost all over the baseline, so the defense gets the ball). Keep them,
   make them rarer, or remove them? (`ball.RIM_LONG_CHANCE`, `ball.RIM_WIDE_CHANCE`.)
+- Phase 8 (progression), before work starts: `docs/progression-plan.md` part 9 Q1-Q4: roster slot milestones and the
+  maximum roster size, which players a slot can draft (this trip's beaten crews or any ever beaten; releasing),
+  where jerseys, balls and van paints are picked (a LOCKER screen, Settings, or where each is used), and the version
+  number of the first public release (1.1.0, 1.0.0 or 2.0.0).

@@ -5,6 +5,7 @@ extends Node2D
 const View = preload("res://scripts/view.gd")   # projection (Phase 4)
 const Sheets = preload("res://scripts/sheets.gd")   # v2 player sheets: hand and ball points (drawing only)
 const Twists = preload("res://scripts/twists.gd")   # Phase 6 city twists: wind drift, thin air, the cage's fence
+const Cosmetics = preload("res://scripts/cosmetics.gd")   # P8-10: the picked ball (ball_sheet(); the default without a pick)
 
 enum { HELD, PASS, SHOT, LOOSE, DEAD }
 
@@ -534,6 +535,8 @@ func _draw() -> void:
 # a rim rebound or a block falls from where it was drawn, a make drops through the net. Every change of state blends from the drawn spot.
 
 const BALL_SHEET := "res://assets/ball/ball.png"   # P4-08: 4 spin frames of 16 x 16 (Kenney ball.png if missing)
+# P8-10: the picked ball (a star reward, Cosmetics.ball_sheet(), every game) is drawn instead; a missing file or one
+# of the wrong size falls back to BALL_SHEET, then the Kenney ball
 const BALL_FRAMES := 4
 const BALL_VIEW_SCALE := 2.0      # the sheet is drawn at 2x (like the players)
 const BALL_FALLBACK_SCALE := 1.1  # the Kenney ball, as in FLAT
@@ -606,12 +609,14 @@ func _build_view() -> void:
 	_v_node = Node2D.new()
 	_v_node.name = "BallView"
 	_v_spr = Sprite2D.new()
-	if ResourceLoader.exists(BALL_SHEET):
-		_v_spr.texture = load(BALL_SHEET)
-	if _v_spr.texture != null and _v_spr.texture.get_width() == _v_spr.texture.get_height() * BALL_FRAMES:
-		_v_sheet = true
-		_v_spr.hframes = BALL_FRAMES
-	else:
+	for path in [Cosmetics.ball_sheet(), BALL_SHEET]:
+		var tex: Texture2D = load(str(path)) as Texture2D if ResourceLoader.exists(str(path)) else null
+		if tex != null and tex.get_width() == tex.get_height() * BALL_FRAMES:
+			_v_spr.texture = tex
+			_v_sheet = true
+			_v_spr.hframes = BALL_FRAMES
+			break
+	if not _v_sheet:
 		_v_spr.texture = sprite.texture
 	_v_node.add_child(_v_spr)
 	game.world.add_child(_v_node)

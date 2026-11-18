@@ -14,7 +14,10 @@ extends RefCounted
 # Test runs (--trip-test, --triptest-data, or use_test_file = true) use user://trip_test.json, never the owner's save.
 # Settings stay in user://settings.cfg (menu.gd / difficulty.gd), not here.
 
-const VERSION := 1                          # bump when the format changes; trip.gd from_dict() reads older versions
+# Versions: 1 = 1.0.0 (one shared points pool). 2 = Phase 8 (P8-08): per-player "pts" and "via" in each roster
+# entry, "crew_points", "paid", "replay"; "points" stays (the total) so a 1.0.0 build, which ignores unknown fields
+# and reads any version >= 1, still loads a version 2 save. trip.gd from_dict() migrates a version 1 save.
+const VERSION := 2                          # bump when the format changes; trip.gd from_dict() reads older versions
 const PATH := "user://trip.json"
 const TEST_PATH := "user://trip_test.json"
 const TMP_SUFFIX := ".tmp"

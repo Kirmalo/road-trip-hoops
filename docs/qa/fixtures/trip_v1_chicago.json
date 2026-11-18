@@ -1,0 +1,74 @@
+{
+	"beaten": [
+		"hometown"
+	],
+	"bracket": {
+		"round": 0
+	},
+	"city": "chicago",
+	"game": 2,
+	"human": "ud_deuce",
+	"level": "easy",
+	"phase": "map",
+	"points": 5,
+	"record": {
+		"losses": 1,
+		"wins": 4
+	},
+	"roster": [
+		{
+			"id": "ud_deuce",
+			"ratings": {
+				"defense": 48,
+				"finishing": 51,
+				"shooting": 62,
+				"speed": 52,
+				"stamina": 50
+			}
+		},
+		{
+			"id": "ud_jojo",
+			"ratings": {
+				"defense": 50,
+				"finishing": 49,
+				"shooting": 50,
+				"speed": 62,
+				"stamina": 54
+			}
+		},
+		{
+			"id": "ud_tank",
+			"ratings": {
+				"defense": 58,
+				"finishing": 62,
+				"shooting": 41,
+				"speed": 42,
+				"stamina": 48
+			}
+		},
+		{
+			"id": "ht_g1",
+			"ratings": {
+				"defense": 44,
+				"finishing": 44,
+				"shooting": 56,
+				"speed": 56,
+				"stamina": 44
+			}
+		}
+	],
+	"seen": [
+		"trip_start",
+		"hometown_arrive",
+		"first_loss",
+		"hometown_won",
+		"chicago_arrive"
+	],
+	"serial": 17,
+	"starters": [
+		"ud_deuce",
+		"ht_g1",
+		"ud_jojo"
+	],
+	"version": 1
+}

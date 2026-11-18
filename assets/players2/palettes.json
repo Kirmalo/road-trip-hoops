@@ -1,10 +1,34 @@
 {
- "_help": "v2.1 (indexed): palettes.<id>.pages = the sheet whose index pages <id> draws with its own palette palettes/<id>.png (256 x 1 RGBA; index 0 = transparent). A _crew recolor has no pages of its own.",
+ "_help": "v2.1 (indexed): palettes.<id>.pages = the sheet whose index pages <id> draws with its own palette palettes/<id>.png (256 x 1 RGBA; index 0 = transparent). A recolor (_crew, the _j<N> jerseys of P8-09) has no pages of its own; recolors = the same map for those ids only.",
  "palettes": {
   "chi_a1": {
    "pages": "chi_a1"
   },
+  "chi_a1_crew": {
+   "pages": "chi_a1"
+  },
+  "chi_a1_crew_j1": {
+   "pages": "chi_a1"
+  },
+  "chi_a1_crew_j2": {
+   "pages": "chi_a1"
+  },
+  "chi_a1_crew_j3": {
+   "pages": "chi_a1"
+  },
   "chi_a2": {
+   "pages": "chi_a2"
+  },
+  "chi_a2_crew": {
+   "pages": "chi_a2"
+  },
+  "chi_a2_crew_j1": {
+   "pages": "chi_a2"
+  },
+  "chi_a2_crew_j2": {
+   "pages": "chi_a2"
+  },
+  "chi_a2_crew_j3": {
    "pages": "chi_a2"
   },
   "chi_boss": {
@@ -13,10 +37,28 @@
   "chi_boss_crew": {
    "pages": "chi_boss"
   },
+  "chi_boss_crew_j1": {
+   "pages": "chi_boss"
+  },
+  "chi_boss_crew_j2": {
+   "pages": "chi_boss"
+  },
+  "chi_boss_crew_j3": {
+   "pages": "chi_boss"
+  },
   "chi_g1": {
    "pages": "chi_g1"
   },
   "chi_g1_crew": {
+   "pages": "chi_g1"
+  },
+  "chi_g1_crew_j1": {
+   "pages": "chi_g1"
+  },
+  "chi_g1_crew_j2": {
+   "pages": "chi_g1"
+  },
+  "chi_g1_crew_j3": {
    "pages": "chi_g1"
   },
   "chi_g2": {
@@ -25,10 +67,43 @@
   "chi_g2_crew": {
    "pages": "chi_g2"
   },
+  "chi_g2_crew_j1": {
+   "pages": "chi_g2"
+  },
+  "chi_g2_crew_j2": {
+   "pages": "chi_g2"
+  },
+  "chi_g2_crew_j3": {
+   "pages": "chi_g2"
+  },
   "den_a1": {
    "pages": "den_a1"
   },
+  "den_a1_crew": {
+   "pages": "den_a1"
+  },
+  "den_a1_crew_j1": {
+   "pages": "den_a1"
+  },
+  "den_a1_crew_j2": {
+   "pages": "den_a1"
+  },
+  "den_a1_crew_j3": {
+   "pages": "den_a1"
+  },
   "den_a2": {
+   "pages": "den_a2"
+  },
+  "den_a2_crew": {
+   "pages": "den_a2"
+  },
+  "den_a2_crew_j1": {
+   "pages": "den_a2"
+  },
+  "den_a2_crew_j2": {
+   "pages": "den_a2"
+  },
+  "den_a2_crew_j3": {
    "pages": "den_a2"
   },
   "den_boss": {
@@ -37,10 +112,28 @@
   "den_boss_crew": {
    "pages": "den_boss"
   },
+  "den_boss_crew_j1": {
+   "pages": "den_boss"
+  },
+  "den_boss_crew_j2": {
+   "pages": "den_boss"
+  },
+  "den_boss_crew_j3": {
+   "pages": "den_boss"
+  },
   "den_g1": {
    "pages": "den_g1"
   },
   "den_g1_crew": {
+   "pages": "den_g1"
+  },
+  "den_g1_crew_j1": {
+   "pages": "den_g1"
+  },
+  "den_g1_crew_j2": {
+   "pages": "den_g1"
+  },
+  "den_g1_crew_j3": {
    "pages": "den_g1"
   },
   "den_g2": {
@@ -49,10 +142,43 @@
   "den_g2_crew": {
    "pages": "den_g2"
   },
+  "den_g2_crew_j1": {
+   "pages": "den_g2"
+  },
+  "den_g2_crew_j2": {
+   "pages": "den_g2"
+  },
+  "den_g2_crew_j3": {
+   "pages": "den_g2"
+  },
   "ht_a1": {
    "pages": "ht_a1"
   },
+  "ht_a1_crew": {
+   "pages": "ht_a1"
+  },
+  "ht_a1_crew_j1": {
+   "pages": "ht_a1"
+  },
+  "ht_a1_crew_j2": {
+   "pages": "ht_a1"
+  },
+  "ht_a1_crew_j3": {
+   "pages": "ht_a1"
+  },
   "ht_a2": {
+   "pages": "ht_a2"
+  },
+  "ht_a2_crew": {
+   "pages": "ht_a2"
+  },
+  "ht_a2_crew_j1": {
+   "pages": "ht_a2"
+  },
+  "ht_a2_crew_j2": {
+   "pages": "ht_a2"
+  },
+  "ht_a2_crew_j3": {
    "pages": "ht_a2"
   },
   "ht_boss": {
@@ -61,10 +187,28 @@
   "ht_boss_crew": {
    "pages": "ht_boss"
   },
+  "ht_boss_crew_j1": {
+   "pages": "ht_boss"
+  },
+  "ht_boss_crew_j2": {
+   "pages": "ht_boss"
+  },
+  "ht_boss_crew_j3": {
+   "pages": "ht_boss"
+  },
   "ht_g1": {
    "pages": "ht_g1"
   },
   "ht_g1_crew": {
+   "pages": "ht_g1"
+  },
+  "ht_g1_crew_j1": {
+   "pages": "ht_g1"
+  },
+  "ht_g1_crew_j2": {
+   "pages": "ht_g1"
+  },
+  "ht_g1_crew_j3": {
    "pages": "ht_g1"
   },
   "ht_g2": {
@@ -73,10 +217,43 @@
   "ht_g2_crew": {
    "pages": "ht_g2"
   },
+  "ht_g2_crew_j1": {
+   "pages": "ht_g2"
+  },
+  "ht_g2_crew_j2": {
+   "pages": "ht_g2"
+  },
+  "ht_g2_crew_j3": {
+   "pages": "ht_g2"
+  },
   "la_a1": {
    "pages": "la_a1"
   },
+  "la_a1_crew": {
+   "pages": "la_a1"
+  },
+  "la_a1_crew_j1": {
+   "pages": "la_a1"
+  },
+  "la_a1_crew_j2": {
+   "pages": "la_a1"
+  },
+  "la_a1_crew_j3": {
+   "pages": "la_a1"
+  },
   "la_a2": {
+   "pages": "la_a2"
+  },
+  "la_a2_crew": {
+   "pages": "la_a2"
+  },
+  "la_a2_crew_j1": {
+   "pages": "la_a2"
+  },
+  "la_a2_crew_j2": {
+   "pages": "la_a2"
+  },
+  "la_a2_crew_j3": {
    "pages": "la_a2"
   },
   "la_boss": {
@@ -85,10 +262,28 @@
   "la_boss_crew": {
    "pages": "la_boss"
   },
+  "la_boss_crew_j1": {
+   "pages": "la_boss"
+  },
+  "la_boss_crew_j2": {
+   "pages": "la_boss"
+  },
+  "la_boss_crew_j3": {
+   "pages": "la_boss"
+  },
   "la_g1": {
    "pages": "la_g1"
   },
   "la_g1_crew": {
+   "pages": "la_g1"
+  },
+  "la_g1_crew_j1": {
+   "pages": "la_g1"
+  },
+  "la_g1_crew_j2": {
+   "pages": "la_g1"
+  },
+  "la_g1_crew_j3": {
    "pages": "la_g1"
   },
   "la_g2": {
@@ -97,10 +292,43 @@
   "la_g2_crew": {
    "pages": "la_g2"
   },
+  "la_g2_crew_j1": {
+   "pages": "la_g2"
+  },
+  "la_g2_crew_j2": {
+   "pages": "la_g2"
+  },
+  "la_g2_crew_j3": {
+   "pages": "la_g2"
+  },
   "mem_a1": {
    "pages": "mem_a1"
   },
+  "mem_a1_crew": {
+   "pages": "mem_a1"
+  },
+  "mem_a1_crew_j1": {
+   "pages": "mem_a1"
+  },
+  "mem_a1_crew_j2": {
+   "pages": "mem_a1"
+  },
+  "mem_a1_crew_j3": {
+   "pages": "mem_a1"
+  },
   "mem_a2": {
+   "pages": "mem_a2"
+  },
+  "mem_a2_crew": {
+   "pages": "mem_a2"
+  },
+  "mem_a2_crew_j1": {
+   "pages": "mem_a2"
+  },
+  "mem_a2_crew_j2": {
+   "pages": "mem_a2"
+  },
+  "mem_a2_crew_j3": {
    "pages": "mem_a2"
   },
   "mem_boss": {
@@ -109,10 +337,28 @@
   "mem_boss_crew": {
    "pages": "mem_boss"
   },
+  "mem_boss_crew_j1": {
+   "pages": "mem_boss"
+  },
+  "mem_boss_crew_j2": {
+   "pages": "mem_boss"
+  },
+  "mem_boss_crew_j3": {
+   "pages": "mem_boss"
+  },
   "mem_g1": {
    "pages": "mem_g1"
   },
   "mem_g1_crew": {
+   "pages": "mem_g1"
+  },
+  "mem_g1_crew_j1": {
+   "pages": "mem_g1"
+  },
+  "mem_g1_crew_j2": {
+   "pages": "mem_g1"
+  },
+  "mem_g1_crew_j3": {
    "pages": "mem_g1"
   },
   "mem_g2": {
@@ -121,10 +367,43 @@
   "mem_g2_crew": {
    "pages": "mem_g2"
   },
+  "mem_g2_crew_j1": {
+   "pages": "mem_g2"
+  },
+  "mem_g2_crew_j2": {
+   "pages": "mem_g2"
+  },
+  "mem_g2_crew_j3": {
+   "pages": "mem_g2"
+  },
   "nol_a1": {
    "pages": "nol_a1"
   },
+  "nol_a1_crew": {
+   "pages": "nol_a1"
+  },
+  "nol_a1_crew_j1": {
+   "pages": "nol_a1"
+  },
+  "nol_a1_crew_j2": {
+   "pages": "nol_a1"
+  },
+  "nol_a1_crew_j3": {
+   "pages": "nol_a1"
+  },
   "nol_a2": {
+   "pages": "nol_a2"
+  },
+  "nol_a2_crew": {
+   "pages": "nol_a2"
+  },
+  "nol_a2_crew_j1": {
+   "pages": "nol_a2"
+  },
+  "nol_a2_crew_j2": {
+   "pages": "nol_a2"
+  },
+  "nol_a2_crew_j3": {
    "pages": "nol_a2"
   },
   "nol_boss": {
@@ -133,10 +412,28 @@
   "nol_boss_crew": {
    "pages": "nol_boss"
   },
+  "nol_boss_crew_j1": {
+   "pages": "nol_boss"
+  },
+  "nol_boss_crew_j2": {
+   "pages": "nol_boss"
+  },
+  "nol_boss_crew_j3": {
+   "pages": "nol_boss"
+  },
   "nol_g1": {
    "pages": "nol_g1"
   },
   "nol_g1_crew": {
+   "pages": "nol_g1"
+  },
+  "nol_g1_crew_j1": {
+   "pages": "nol_g1"
+  },
+  "nol_g1_crew_j2": {
+   "pages": "nol_g1"
+  },
+  "nol_g1_crew_j3": {
    "pages": "nol_g1"
   },
   "nol_g2": {
@@ -145,37 +442,178 @@
   "nol_g2_crew": {
    "pages": "nol_g2"
   },
+  "nol_g2_crew_j1": {
+   "pages": "nol_g2"
+  },
+  "nol_g2_crew_j2": {
+   "pages": "nol_g2"
+  },
+  "nol_g2_crew_j3": {
+   "pages": "nol_g2"
+  },
   "ny_boss": {
+   "pages": "ny_boss"
+  },
+  "ny_boss_crew": {
+   "pages": "ny_boss"
+  },
+  "ny_boss_crew_j1": {
+   "pages": "ny_boss"
+  },
+  "ny_boss_crew_j2": {
+   "pages": "ny_boss"
+  },
+  "ny_boss_crew_j3": {
    "pages": "ny_boss"
   },
   "ny_f1": {
    "pages": "ny_f1"
   },
+  "ny_f1_crew": {
+   "pages": "ny_f1"
+  },
+  "ny_f1_crew_j1": {
+   "pages": "ny_f1"
+  },
+  "ny_f1_crew_j2": {
+   "pages": "ny_f1"
+  },
+  "ny_f1_crew_j3": {
+   "pages": "ny_f1"
+  },
   "ny_f2": {
+   "pages": "ny_f2"
+  },
+  "ny_f2_crew": {
+   "pages": "ny_f2"
+  },
+  "ny_f2_crew_j1": {
+   "pages": "ny_f2"
+  },
+  "ny_f2_crew_j2": {
+   "pages": "ny_f2"
+  },
+  "ny_f2_crew_j3": {
    "pages": "ny_f2"
   },
   "ny_q1": {
    "pages": "ny_q1"
   },
+  "ny_q1_crew": {
+   "pages": "ny_q1"
+  },
+  "ny_q1_crew_j1": {
+   "pages": "ny_q1"
+  },
+  "ny_q1_crew_j2": {
+   "pages": "ny_q1"
+  },
+  "ny_q1_crew_j3": {
+   "pages": "ny_q1"
+  },
   "ny_q2": {
+   "pages": "ny_q2"
+  },
+  "ny_q2_crew": {
+   "pages": "ny_q2"
+  },
+  "ny_q2_crew_j1": {
+   "pages": "ny_q2"
+  },
+  "ny_q2_crew_j2": {
+   "pages": "ny_q2"
+  },
+  "ny_q2_crew_j3": {
    "pages": "ny_q2"
   },
   "ny_q3": {
    "pages": "ny_q3"
   },
+  "ny_q3_crew": {
+   "pages": "ny_q3"
+  },
+  "ny_q3_crew_j1": {
+   "pages": "ny_q3"
+  },
+  "ny_q3_crew_j2": {
+   "pages": "ny_q3"
+  },
+  "ny_q3_crew_j3": {
+   "pages": "ny_q3"
+  },
   "ny_s1": {
+   "pages": "ny_s1"
+  },
+  "ny_s1_crew": {
+   "pages": "ny_s1"
+  },
+  "ny_s1_crew_j1": {
+   "pages": "ny_s1"
+  },
+  "ny_s1_crew_j2": {
+   "pages": "ny_s1"
+  },
+  "ny_s1_crew_j3": {
    "pages": "ny_s1"
   },
   "ny_s2": {
    "pages": "ny_s2"
   },
+  "ny_s2_crew": {
+   "pages": "ny_s2"
+  },
+  "ny_s2_crew_j1": {
+   "pages": "ny_s2"
+  },
+  "ny_s2_crew_j2": {
+   "pages": "ny_s2"
+  },
+  "ny_s2_crew_j3": {
+   "pages": "ny_s2"
+  },
   "ny_s3": {
+   "pages": "ny_s3"
+  },
+  "ny_s3_crew": {
+   "pages": "ny_s3"
+  },
+  "ny_s3_crew_j1": {
+   "pages": "ny_s3"
+  },
+  "ny_s3_crew_j2": {
+   "pages": "ny_s3"
+  },
+  "ny_s3_crew_j3": {
    "pages": "ny_s3"
   },
   "sea_a1": {
    "pages": "sea_a1"
   },
+  "sea_a1_crew": {
+   "pages": "sea_a1"
+  },
+  "sea_a1_crew_j1": {
+   "pages": "sea_a1"
+  },
+  "sea_a1_crew_j2": {
+   "pages": "sea_a1"
+  },
+  "sea_a1_crew_j3": {
+   "pages": "sea_a1"
+  },
   "sea_a2": {
+   "pages": "sea_a2"
+  },
+  "sea_a2_crew": {
+   "pages": "sea_a2"
+  },
+  "sea_a2_crew_j1": {
+   "pages": "sea_a2"
+  },
+  "sea_a2_crew_j2": {
+   "pages": "sea_a2"
+  },
+  "sea_a2_crew_j3": {
    "pages": "sea_a2"
   },
   "sea_boss": {
@@ -184,10 +622,28 @@
   "sea_boss_crew": {
    "pages": "sea_boss"
   },
+  "sea_boss_crew_j1": {
+   "pages": "sea_boss"
+  },
+  "sea_boss_crew_j2": {
+   "pages": "sea_boss"
+  },
+  "sea_boss_crew_j3": {
+   "pages": "sea_boss"
+  },
   "sea_g1": {
    "pages": "sea_g1"
   },
   "sea_g1_crew": {
+   "pages": "sea_g1"
+  },
+  "sea_g1_crew_j1": {
+   "pages": "sea_g1"
+  },
+  "sea_g1_crew_j2": {
+   "pages": "sea_g1"
+  },
+  "sea_g1_crew_j3": {
    "pages": "sea_g1"
   },
   "sea_g2": {
@@ -196,14 +652,237 @@
   "sea_g2_crew": {
    "pages": "sea_g2"
   },
+  "sea_g2_crew_j1": {
+   "pages": "sea_g2"
+  },
+  "sea_g2_crew_j2": {
+   "pages": "sea_g2"
+  },
+  "sea_g2_crew_j3": {
+   "pages": "sea_g2"
+  },
   "ud_deuce": {
+   "pages": "ud_deuce"
+  },
+  "ud_deuce_j1": {
+   "pages": "ud_deuce"
+  },
+  "ud_deuce_j2": {
+   "pages": "ud_deuce"
+  },
+  "ud_deuce_j3": {
    "pages": "ud_deuce"
   },
   "ud_jojo": {
    "pages": "ud_jojo"
   },
+  "ud_jojo_j1": {
+   "pages": "ud_jojo"
+  },
+  "ud_jojo_j2": {
+   "pages": "ud_jojo"
+  },
+  "ud_jojo_j3": {
+   "pages": "ud_jojo"
+  },
   "ud_tank": {
    "pages": "ud_tank"
+  },
+  "ud_tank_j1": {
+   "pages": "ud_tank"
+  },
+  "ud_tank_j2": {
+   "pages": "ud_tank"
+  },
+  "ud_tank_j3": {
+   "pages": "ud_tank"
   }
+ },
+ "recolors": {
+  "chi_a1_crew": "chi_a1",
+  "chi_a1_crew_j1": "chi_a1",
+  "chi_a1_crew_j2": "chi_a1",
+  "chi_a1_crew_j3": "chi_a1",
+  "chi_a2_crew": "chi_a2",
+  "chi_a2_crew_j1": "chi_a2",
+  "chi_a2_crew_j2": "chi_a2",
+  "chi_a2_crew_j3": "chi_a2",
+  "chi_boss_crew": "chi_boss",
+  "chi_boss_crew_j1": "chi_boss",
+  "chi_boss_crew_j2": "chi_boss",
+  "chi_boss_crew_j3": "chi_boss",
+  "chi_g1_crew": "chi_g1",
+  "chi_g1_crew_j1": "chi_g1",
+  "chi_g1_crew_j2": "chi_g1",
+  "chi_g1_crew_j3": "chi_g1",
+  "chi_g2_crew": "chi_g2",
+  "chi_g2_crew_j1": "chi_g2",
+  "chi_g2_crew_j2": "chi_g2",
+  "chi_g2_crew_j3": "chi_g2",
+  "den_a1_crew": "den_a1",
+  "den_a1_crew_j1": "den_a1",
+  "den_a1_crew_j2": "den_a1",
+  "den_a1_crew_j3": "den_a1",
+  "den_a2_crew": "den_a2",
+  "den_a2_crew_j1": "den_a2",
+  "den_a2_crew_j2": "den_a2",
+  "den_a2_crew_j3": "den_a2",
+  "den_boss_crew": "den_boss",
+  "den_boss_crew_j1": "den_boss",
+  "den_boss_crew_j2": "den_boss",
+  "den_boss_crew_j3": "den_boss",
+  "den_g1_crew": "den_g1",
+  "den_g1_crew_j1": "den_g1",
+  "den_g1_crew_j2": "den_g1",
+  "den_g1_crew_j3": "den_g1",
+  "den_g2_crew": "den_g2",
+  "den_g2_crew_j1": "den_g2",
+  "den_g2_crew_j2": "den_g2",
+  "den_g2_crew_j3": "den_g2",
+  "ht_a1_crew": "ht_a1",
+  "ht_a1_crew_j1": "ht_a1",
+  "ht_a1_crew_j2": "ht_a1",
+  "ht_a1_crew_j3": "ht_a1",
+  "ht_a2_crew": "ht_a2",
+  "ht_a2_crew_j1": "ht_a2",
+  "ht_a2_crew_j2": "ht_a2",
+  "ht_a2_crew_j3": "ht_a2",
+  "ht_boss_crew": "ht_boss",
+  "ht_boss_crew_j1": "ht_boss",
+  "ht_boss_crew_j2": "ht_boss",
+  "ht_boss_crew_j3": "ht_boss",
+  "ht_g1_crew": "ht_g1",
+  "ht_g1_crew_j1": "ht_g1",
+  "ht_g1_crew_j2": "ht_g1",
+  "ht_g1_crew_j3": "ht_g1",
+  "ht_g2_crew": "ht_g2",
+  "ht_g2_crew_j1": "ht_g2",
+  "ht_g2_crew_j2": "ht_g2",
+  "ht_g2_crew_j3": "ht_g2",
+  "la_a1_crew": "la_a1",
+  "la_a1_crew_j1": "la_a1",
+  "la_a1_crew_j2": "la_a1",
+  "la_a1_crew_j3": "la_a1",
+  "la_a2_crew": "la_a2",
+  "la_a2_crew_j1": "la_a2",
+  "la_a2_crew_j2": "la_a2",
+  "la_a2_crew_j3": "la_a2",
+  "la_boss_crew": "la_boss",
+  "la_boss_crew_j1": "la_boss",
+  "la_boss_crew_j2": "la_boss",
+  "la_boss_crew_j3": "la_boss",
+  "la_g1_crew": "la_g1",
+  "la_g1_crew_j1": "la_g1",
+  "la_g1_crew_j2": "la_g1",
+  "la_g1_crew_j3": "la_g1",
+  "la_g2_crew": "la_g2",
+  "la_g2_crew_j1": "la_g2",
+  "la_g2_crew_j2": "la_g2",
+  "la_g2_crew_j3": "la_g2",
+  "mem_a1_crew": "mem_a1",
+  "mem_a1_crew_j1": "mem_a1",
+  "mem_a1_crew_j2": "mem_a1",
+  "mem_a1_crew_j3": "mem_a1",
+  "mem_a2_crew": "mem_a2",
+  "mem_a2_crew_j1": "mem_a2",
+  "mem_a2_crew_j2": "mem_a2",
+  "mem_a2_crew_j3": "mem_a2",
+  "mem_boss_crew": "mem_boss",
+  "mem_boss_crew_j1": "mem_boss",
+  "mem_boss_crew_j2": "mem_boss",
+  "mem_boss_crew_j3": "mem_boss",
+  "mem_g1_crew": "mem_g1",
+  "mem_g1_crew_j1": "mem_g1",
+  "mem_g1_crew_j2": "mem_g1",
+  "mem_g1_crew_j3": "mem_g1",
+  "mem_g2_crew": "mem_g2",
+  "mem_g2_crew_j1": "mem_g2",
+  "mem_g2_crew_j2": "mem_g2",
+  "mem_g2_crew_j3": "mem_g2",
+  "nol_a1_crew": "nol_a1",
+  "nol_a1_crew_j1": "nol_a1",
+  "nol_a1_crew_j2": "nol_a1",
+  "nol_a1_crew_j3": "nol_a1",
+  "nol_a2_crew": "nol_a2",
+  "nol_a2_crew_j1": "nol_a2",
+  "nol_a2_crew_j2": "nol_a2",
+  "nol_a2_crew_j3": "nol_a2",
+  "nol_boss_crew": "nol_boss",
+  "nol_boss_crew_j1": "nol_boss",
+  "nol_boss_crew_j2": "nol_boss",
+  "nol_boss_crew_j3": "nol_boss",
+  "nol_g1_crew": "nol_g1",
+  "nol_g1_crew_j1": "nol_g1",
+  "nol_g1_crew_j2": "nol_g1",
+  "nol_g1_crew_j3": "nol_g1",
+  "nol_g2_crew": "nol_g2",
+  "nol_g2_crew_j1": "nol_g2",
+  "nol_g2_crew_j2": "nol_g2",
+  "nol_g2_crew_j3": "nol_g2",
+  "ny_boss_crew": "ny_boss",
+  "ny_boss_crew_j1": "ny_boss",
+  "ny_boss_crew_j2": "ny_boss",
+  "ny_boss_crew_j3": "ny_boss",
+  "ny_f1_crew": "ny_f1",
+  "ny_f1_crew_j1": "ny_f1",
+  "ny_f1_crew_j2": "ny_f1",
+  "ny_f1_crew_j3": "ny_f1",
+  "ny_f2_crew": "ny_f2",
+  "ny_f2_crew_j1": "ny_f2",
+  "ny_f2_crew_j2": "ny_f2",
+  "ny_f2_crew_j3": "ny_f2",
+  "ny_q1_crew": "ny_q1",
+  "ny_q1_crew_j1": "ny_q1",
+  "ny_q1_crew_j2": "ny_q1",
+  "ny_q1_crew_j3": "ny_q1",
+  "ny_q2_crew": "ny_q2",
+  "ny_q2_crew_j1": "ny_q2",
+  "ny_q2_crew_j2": "ny_q2",
+  "ny_q2_crew_j3": "ny_q2",
+  "ny_q3_crew": "ny_q3",
+  "ny_q3_crew_j1": "ny_q3",
+  "ny_q3_crew_j2": "ny_q3",
+  "ny_q3_crew_j3": "ny_q3",
+  "ny_s1_crew": "ny_s1",
+  "ny_s1_crew_j1": "ny_s1",
+  "ny_s1_crew_j2": "ny_s1",
+  "ny_s1_crew_j3": "ny_s1",
+  "ny_s2_crew": "ny_s2",
+  "ny_s2_crew_j1": "ny_s2",
+  "ny_s2_crew_j2": "ny_s2",
+  "ny_s2_crew_j3": "ny_s2",
+  "ny_s3_crew": "ny_s3",
+  "ny_s3_crew_j1": "ny_s3",
+  "ny_s3_crew_j2": "ny_s3",
+  "ny_s3_crew_j3": "ny_s3",
+  "sea_a1_crew": "sea_a1",
+  "sea_a1_crew_j1": "sea_a1",
+  "sea_a1_crew_j2": "sea_a1",
+  "sea_a1_crew_j3": "sea_a1",
+  "sea_a2_crew": "sea_a2",
+  "sea_a2_crew_j1": "sea_a2",
+  "sea_a2_crew_j2": "sea_a2",
+  "sea_a2_crew_j3": "sea_a2",
+  "sea_boss_crew": "sea_boss",
+  "sea_boss_crew_j1": "sea_boss",
+  "sea_boss_crew_j2": "sea_boss",
+  "sea_boss_crew_j3": "sea_boss",
+  "sea_g1_crew": "sea_g1",
+  "sea_g1_crew_j1": "sea_g1",
+  "sea_g1_crew_j2": "sea_g1",
+  "sea_g1_crew_j3": "sea_g1",
+  "sea_g2_crew": "sea_g2",
+  "sea_g2_crew_j1": "sea_g2",
+  "sea_g2_crew_j2": "sea_g2",
+  "sea_g2_crew_j3": "sea_g2",
+  "ud_deuce_j1": "ud_deuce",
+  "ud_deuce_j2": "ud_deuce",
+  "ud_deuce_j3": "ud_deuce",
+  "ud_jojo_j1": "ud_jojo",
+  "ud_jojo_j2": "ud_jojo",
+  "ud_jojo_j3": "ud_jojo",
+  "ud_tank_j1": "ud_tank",
+  "ud_tank_j2": "ud_tank",
+  "ud_tank_j3": "ud_tank"
  }
 }

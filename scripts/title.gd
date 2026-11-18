@@ -1,13 +1,18 @@
 extends CanvasLayer
 # Title screen (P5-06): one script for three Flow screens ("title", "settings", "crew"), built in code with ui_kit.gd.
-#   title     the game name, the Cornfield Kings and their van The Biscuit on the road, and four buttons:
+#   title     the game name, the Cornfield Kings and their van The Biscuit on the road, and six buttons:
 #             ROAD TRIP -> CONTINUE / NEW TRIP (NEW TRIP over a saved trip asks to confirm) -> EASY / NORMAL / HARD
 #             QUICK GAME -> today's game (its start panel picks the level and court, as before)
+#             LOCKER (P8-13, owner Q3 a: Flow screen "locker", args {"back": "title"}; the star ladder and the
+#             jersey / ball / van picks, P8-15), with a "STARS n/72" tab on the ROAD TRIP button (Stars.total())
 #             SETTINGS, CREW & CREDITS (their own Flow screens), HOW TO PLAY (Flow screen "howto", P7-H3)
 #             and the version ("v1.0.0", from project.godot application/config/version) bottom-right (P7-04)
+#             The level pickers (new trip, Settings) add LEGEND once Stars.legend_open() and difficulty.gd knows the
+#             level (its NAMES has "legend", P8-19); until then they show EASY / NORMAL / HARD as before.
 #   settings  MUSIC on/off and the MUSIC volume (P7-04), SOUND volume, the default LEVEL (Quick Game and new trips),
 #             FULL SCREEN on/off (P6-T2) and LEFT-HANDED on/off (P7-04: Difficulty.set_left_handed, from the next game)
-#   crew      the version, your crew (from the trip save if there is one), the art and music credits (every CC-BY item
+#   crew      the version, your crew (from the trip save if there is one: each player's unspent stat points, a
+#             DRAFTED tag, the crew points; P8-13), the art and music credits (every CC-BY item
 #             with title, author, license, source and changes) and the Godot license notice, in a scrolling list
 # The Road Trip sub-panels swap in place (no reload); every other move is Flow.go(). Each panel ignores taps for
 # PANEL_ARM s, so a quick double tap can't fall through onto the next panel's button in the same spot.
@@ -16,7 +21,8 @@ extends CanvasLayer
 # FULL SCREEN (P6-T2): Difficulty.set_fullscreen() inside the tap (a browser needs the gesture); the label follows the
 # real window mode every frame (the browser's Esc / back gesture). The first tap of a run puts a saved ON back
 # (Difficulty.restore_fullscreen(), from _input here and in pause.gd).
-# Desktop testing: Escape = BACK. Test: -- --titletest walks every screen and button (screenshots with xvfb), puts every
+# Desktop testing: Escape = BACK. Test: -- --titletest walks every screen and button (LOCKER and back too; checks the
+# STARS tab and the level pickers; add --stars 72 for LEGEND; screenshots with xvfb), puts every
 # setting back and restores settings.cfg byte for byte at the end.
 
 const UI = preload("res://scripts/ui_kit.gd")
@@ -24,6 +30,7 @@ const Flow = preload("res://scripts/flow.gd")
 const MenuScript = preload("res://scripts/menu.gd")
 const Difficulty = preload("res://scripts/difficulty.gd")
 const Cities = preload("res://scripts/cities.gd")
+const Stars = preload("res://scripts/stars.gd")     # total(), MAX, legend_open() (P8-02)
 
 const TRIP_PATH := "res://scripts/trip.gd"     # P5-05: new_trip(level), continue_trip(), set_level(level) optional
 const SAVE_PATH := "res://scripts/save.gd"     # P5-05: exists()
@@ -40,9 +47,19 @@ const NAME_FONT := 96                          # "ROAD TRIP HOOPS"
 const NAME_COLOR := Color(1.0, 0.82, 0.25)     # gold, like the lit button
 const CREW_FONT := 36                          # "THE CORNFIELD KINGS"
 const VAN_FONT := 24                           # "on the road in The Biscuit"
-const MAIN_BTN := Vector2(400, 130)            # ROAD TRIP / QUICK GAME
+const MAIN_BTN := Vector2(400, 130)            # CONTINUE / NEW TRIP, START OVER / KEEP MY TRIP
+const TOP_BTN := Vector2(360, 130)             # ROAD TRIP / QUICK GAME / LOCKER (P8-13: over the three side buttons)
+const STAR_FONT := 24                          # "STARS 41/72" on the ROAD TRIP button's tab
+const STAR_TAB_RISE := 24.0                    # px the stars tab sits above the ROAD TRIP button's top edge
+const STAR_TAB_PAD := Vector2(14, 2)           # px inside the stars tab
+const STAR_TAB_FILL := Color(0.10, 0.12, 0.30)   # the night sky's blue, gold border and text
+const LOCKER_SCREEN := "locker"                # Flow screen (scripts/locker.gd, P8-15; "not built yet" until then)
+const LEGEND_NAME := "legend"                  # the 4th level's name in Difficulty.NAMES (P8-19)
+const TRIP_LEVEL_BTN4 := Vector2(260, 140)     # the new-trip level buttons when LEGEND makes four
 const SIDE_BTN := Vector2(360, 110)            # SETTINGS / HOW TO PLAY / CREW & CREDITS (three fit 1280 px)
 const LEVEL_BTN := Vector2(240, 110)           # EASY / NORMAL / HARD in Settings
+const LEVEL_BTN4 := Vector2(200, 110)          # ... and LEGEND: four fit next to the row label (1180 px)
+const LEVEL_FONT4 := 34                        # their text then (NORMAL / LEGEND fit 200 px)
 const BACK_POS := Vector2(24, 20)              # BACK, top-left on Settings and Crew
 const ROW_LABEL_W := 220                       # left column of the Settings rows
 const SETTINGS_GAP := 18                       # px between the Settings rows (6 rows fit 720 px high)
@@ -59,7 +76,14 @@ const SCROLL_BAR_W := 36                       # wide enough to drag with a thum
 const SECTION_FONT := 40
 const ENTRY_FONT := 28
 const DETAIL_FONT := 22
-const STAT_W := 130                            # px per rating column in the crew list
+const STAT_W := 120                            # px per rating column in the crew list
+const NAME_W := 340                            # px: the crew list's name column
+const ROLE_W := 175                            # px: the crew list's role column
+const TAG_W := 110                             # px: the crew list's last column (his points, DRAFTED)
+const TAG_FONT := 20
+const NAME_MIN_FONT := 20                      # a long nicknamed name shrinks down to this to fit NAME_W
+const PTS_COLOR := Color(1.0, 0.82, 0.25)      # gold: points to spend
+const DRAFT_COLOR := Color(0.55, 0.85, 1.0)    # the DRAFTED tag
 const STAT_NAMES := [["speed", "SPD"], ["shooting", "SHT"], ["finishing", "FIN"], ["defense", "DEF"],
 		["stamina", "STA"]]
 
@@ -94,7 +118,8 @@ const SIGN_POS := Vector2(1080, 518)   # below the three-button row (P7-04 made 
 #   [what, title, author, license, source, changes]   (changes: "" = none; every CC-BY item says what was changed)
 # --titletest checks that every CC-BY row of CREDITS.md has an entry here with its source URL and license.
 const CREDITS_LIST := [
-	["Players, courts, ball, portraits, trip map, icon, How to Play pictures", "Original pixel art made for this project",
+	["Players, jerseys, courts, balls, portraits, trip map, van paints, icon, How to Play pictures",
+		"Original pixel art made for this project",
 		"Road Trip Hoops project", "Original",
 		"tools/art (make_players_v2.py, make_courts.py, make_portraits_v2.py, make_map.py, make_icon.py, make_howto.py)", ""],
 	["Fallback sprites", "Sports Pack", "Kenney", "CC0 1.0", "https://www.kenney.nl", ""],
@@ -136,9 +161,10 @@ const CREDITS_LIST := [
 	["Block", "10 Impact/Shield Blocks", "StarNinjas", "CC0",
 		"https://opengameart.org/content/10-impactshield-blocks", ""],
 	["On fire", "Catching fire", "themightyglider", "CC0", "https://opengameart.org/content/catching-fire", ""],
-	["Swish, bounce, whistle, rain, wind, fence, splash, sand", "Synthesized sounds made for this project",
-		"Road Trip Hoops project", "Original",
-		"tools/make_swish.py, tools/make_bounce.py, tools/make_whistle.py, tools/make_twist_sfx.py", ""],
+	["Swish, bounce, whistle, rain, wind, fence, splash, sand, star, stat-up, unlock",
+		"Synthesized sounds made for this project", "Road Trip Hoops project", "Original",
+		"tools/make_swish.py, tools/make_bounce.py, tools/make_whistle.py, tools/make_twist_sfx.py, tools/make_ui_sfx.py",
+		""],
 	["Game engine", "Godot Engine", "Juan Linietsky, Ariel Manzur and contributors", "MIT",
 		"https://godotengine.org", ""],
 ]
@@ -289,19 +315,59 @@ func _show_panel(which: String) -> void:
 		"level":
 			UI.subtitle(box, "Pick your level for this trip (change it any time in Settings)")
 			var row3 := UI.hbox(box)
-			for lv in [Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD]:
+			var levels: Array = level_choices()
+			for lv in levels:
 				_btn(row3, String(Difficulty.NAMES[lv]).to_upper(), _on_trip_level.bind(lv),
-						UI.KIND_LIT if lv == Difficulty.level else UI.KIND_MAIN)
+						UI.KIND_LIT if lv == Difficulty.level else UI.KIND_MAIN,
+						TRIP_LEVEL_BTN4 if levels.size() > 3 else Vector2.ZERO)
 			_btn(UI.hbox(box), "BACK", _show_panel.bind("trip"), UI.KIND_OPT, UI.SMALL_SIZE)
 		_:
 			var r1 := UI.hbox(box)
-			_btn(r1, "ROAD TRIP", _show_panel.bind("trip"), UI.KIND_LIT, MAIN_BTN)
-			_btn(r1, "QUICK GAME", _on_quick_game, UI.KIND_MAIN, MAIN_BTN)
+			var road: Button = _btn(r1, "ROAD TRIP", _show_panel.bind("trip"), UI.KIND_LIT, TOP_BTN)
+			_star_tab(road)
+			_btn(r1, "QUICK GAME", _on_quick_game, UI.KIND_MAIN, TOP_BTN)
+			_btn(r1, "LOCKER", _on_locker, UI.KIND_MAIN, TOP_BTN)
 			var r2 := UI.hbox(box)
 			_btn(r2, "SETTINGS", _go.bind("settings"), UI.KIND_OPT, SIDE_BTN)
 			_btn(r2, "HOW TO PLAY", _on_how_to_play, UI.KIND_OPT, SIDE_BTN)
 			_btn(r2, "CREW & CREDITS", _go.bind("crew"), UI.KIND_OPT, SIDE_BTN)
 	_arm(PANEL_ARM)
+
+# "STARS 41/72": a small tab on the top edge of the ROAD TRIP button (the stars come from trip games); taps go through
+func _star_tab(b: Button) -> void:
+	var tab := PanelContainer.new()
+	var sb := UI.style_box(STAR_TAB_FILL, NAME_COLOR, UI.BORDER)
+	sb.content_margin_left = STAR_TAB_PAD.x
+	sb.content_margin_right = STAR_TAB_PAD.x
+	sb.content_margin_top = STAR_TAB_PAD.y
+	sb.content_margin_bottom = STAR_TAB_PAD.y
+	tab.add_theme_stylebox_override("panel", sb)
+	tab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tab.name = "StarTab"
+	UI.label(tab, stars_text(), STAR_FONT, NAME_COLOR)
+	b.add_child(tab)
+	tab.anchor_left = 0.5
+	tab.anchor_right = 0.5
+	tab.anchor_top = 0.0
+	tab.anchor_bottom = 0.0
+	tab.offset_left = 0.0
+	tab.offset_right = 0.0
+	tab.offset_top = -STAR_TAB_RISE
+	tab.offset_bottom = -STAR_TAB_RISE
+	tab.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	tab.grow_vertical = Control.GROW_DIRECTION_END
+
+static func stars_text() -> String:
+	return "STARS %d/%d" % [Stars.total(), Stars.MAX]
+
+# the levels a picker offers: EASY / NORMAL / HARD, and LEGEND once 72 stars open it and difficulty.gd has the level
+# (Difficulty.NAMES gets "legend" in P8-19; before that a picked 3 would save as "hard", so it stays out)
+static func level_choices() -> Array:
+	var out: Array = [Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD]
+	var lg: int = Difficulty.NAMES.find(LEGEND_NAME)
+	if lg > Difficulty.HARD and Stars.legend_open():
+		out.append(lg)
+	return out
 
 # a button that waits out the panel's arm time and ignores taps once a screen change is on its way
 func _btn(parent: Control, text: String, on_tap: Callable, kind: String, size := Vector2.ZERO) -> Button:
@@ -330,6 +396,10 @@ func _go(to: String, to_args := {}) -> void:
 func _on_quick_game() -> void:
 	_stat("title_quick_game")
 	_go(Flow.GAME)
+
+func _on_locker() -> void:
+	_stat("title_locker")
+	_go(LOCKER_SCREEN, {"back": "title"})
 
 func _on_how_to_play() -> void:
 	_stat("title_how_to_play")
@@ -387,9 +457,12 @@ func _build_settings() -> void:
 	r2.add_child(gap)
 	_sfx_slider = UI.slider(r2, _saved_sfx(), _on_sfx)
 	var r3 := _row(box, "LEVEL")
-	for lv in [Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD]:
+	var levels: Array = level_choices()
+	for lv in levels:
 		var b: Button = UI.button(r3, String(Difficulty.NAMES[lv]).to_upper(), _tap.bind(_pick_level.bind(lv)),
-				UI.KIND_MAIN, LEVEL_BTN)
+				UI.KIND_MAIN, LEVEL_BTN4 if levels.size() > 3 else LEVEL_BTN)
+		if levels.size() > 3:
+			b.add_theme_font_size_override("font_size", LEVEL_FONT4)
 		_level_btns.append(b)
 		_buttons.append(b)
 	UI.label(box, "LEVEL is for Quick Game and new trips" + (", and your saved trip" if _has_trip() else ""),
@@ -567,8 +640,8 @@ func _crew_section(list: Control) -> void:
 				DETAIL_FONT)
 	else:
 		var rec: Dictionary = save.get("record", {}) if save.get("record", {}) is Dictionary else {}
-		_left(list, "Van: %s.   Record %d-%d.   %s." % [Cities.VAN_NAME.capitalize(), int(rec.get("wins", 0)),
-				int(rec.get("losses", 0)), _trip_summary()], DETAIL_FONT)
+		_left(list, "Van: %s.   Record %d-%d.   %s.   Crew points: %d." % [Cities.VAN_NAME.capitalize(),
+				int(rec.get("wins", 0)), int(rec.get("losses", 0)), _trip_summary(), crew_points_of(save)], DETAIL_FONT)
 	var roster: Array = []
 	var starters: Array = []
 	if save.get("roster", null) is Array:
@@ -588,17 +661,40 @@ func _crew_section(list: Control) -> void:
 		var ratings: Dictionary = r if r is Dictionary else {}
 		var row := HBoxContainer.new()
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_theme_constant_override("separation", 8)
+		row.add_theme_constant_override("separation", 6)
 		list.add_child(row)
 		var who: String = "#%s %s" % [str(p.get("number", "")), str(p.get("full", id))]
-		var nl := _left(row, who + ("  *" if starters.has(id) else ""), ENTRY_FONT)
-		nl.custom_minimum_size = Vector2(400, 0)
+		var name_text: String = who + ("  *" if starters.has(id) else "")
+		var nl := _left(row, name_text, _fit_font(name_text, NAME_W, ENTRY_FONT, NAME_MIN_FONT))
+		nl.custom_minimum_size = Vector2(NAME_W, 0)
 		var role := _left(row, str(p.get("role", "")), DETAIL_FONT, STUB_COLOR)
-		role.custom_minimum_size = Vector2(180, 0)
+		role.custom_minimum_size = Vector2(ROLE_W, 0)
 		for s in STAT_NAMES:
 			var sl := _left(row, "%s %d" % [s[1], int(ratings.get(s[0], 50))], DETAIL_FONT)
 			sl.custom_minimum_size = Vector2(STAT_W - 30, 0)
-	_left(list, "* = starter", DETAIL_FONT, STUB_COLOR)
+		# his own unspent points and how he joined (P8-08 "pts" / "via"; a 1.0.0 save has neither: no tags)
+		var tags := VBoxContainer.new()
+		tags.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tags.add_theme_constant_override("separation", 0)
+		tags.alignment = BoxContainer.ALIGNMENT_CENTER
+		tags.custom_minimum_size = Vector2(TAG_W, 0)
+		row.add_child(tags)
+		var pv = entry.get("pts", 0)
+		var pts: int = maxi(0, int(pv) if (pv is int or pv is float) else 0)
+		if pts > 0:
+			_left(tags, "%d PT%s" % [pts, "" if pts == 1 else "S"], TAG_FONT, PTS_COLOR)
+		if str(entry.get("via", "")) == "draft":
+			_left(tags, "DRAFTED", TAG_FONT, DRAFT_COLOR)
+	_left(list, "* = starter    PTS = his own stat points to spend    DRAFTED = signed into a star slot", DETAIL_FONT,
+			STUB_COLOR)
+
+# the biggest font size from `size` down to `min_size` at which `text` fits `width` px (long nicknamed names)
+static func _fit_font(text: String, width: int, size: int, min_size: int) -> int:
+	var f: Font = ThemeDB.fallback_font
+	var s: int = size
+	while s > min_size and f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, s).x + UI.OUTLINE > width:
+		s -= 1
+	return s
 
 func _section(list: Control, text: String) -> void:
 	_left(list, text, SECTION_FONT, UI.OFF_BORDER)
@@ -635,9 +731,22 @@ static func _has_trip() -> bool:
 static func _trip_finished() -> bool:
 	return _has_trip() and str(_read_save().get("phase", "")) == "done"
 
-# the trip save as a Dictionary ({} = none); read only when save.gd says there is a trip
+# the crew points of a saved trip: version 2 "crew_points"; a 1.0.0 save's shared pool "points" (its catch-up is
+# added when the trip is loaded, P8-08)
+static func crew_points_of(save: Dictionary) -> int:
+	var v = save.get("crew_points", 0) if save.has("crew_points") else save.get("points", 0)
+	return maxi(0, int(v) if (v is int or v is float) else 0)
+
+# the trip save as a Dictionary ({} = none); read only when save.gd says there is a trip (save.gd's read(): the test
+# file in a trip test, a newer temp file after a cut-off write)
 static func _read_save() -> Dictionary:
-	if not _has_trip() or not FileAccess.file_exists(TRIP_FILE):
+	if not _has_trip():
+		return {}
+	var sv: GDScript = _script(SAVE_PATH)
+	if sv != null and sv.has_method("read"):
+		var d = sv.call("read")
+		return d if d is Dictionary else {}
+	if not FileAccess.file_exists(TRIP_FILE):
 		return {}
 	var f := FileAccess.open(TRIP_FILE, FileAccess.READ)
 	if f == null:
@@ -706,6 +815,7 @@ func _test_tick() -> void:
 			_test_keep_settings_file()
 			_shot("title")
 			print("TITLE TEST version label: %s" % ("v" + version() if version() != "" else "(none)"))
+			_test_check_stars()
 			_press("ROAD TRIP")
 		2:
 			_shot("title_trip")
@@ -715,6 +825,7 @@ func _test_tick() -> void:
 			if _panel == "confirm":
 				_press("KEEP MY TRIP")
 			else:
+				_test_check_levels("new trip", _count_level_buttons())
 				_press("BACK")
 		4:
 			_press("BACK")
@@ -722,6 +833,7 @@ func _test_tick() -> void:
 			_press("SETTINGS")
 		6:
 			_shot("settings")
+			_test_check_levels("settings", _level_btns.size())
 			_press("ON" if MenuScript.music_on else "OFF")
 			_press(_lh_btn.text)                              # LEFT-HANDED: ON (kept on to reach the game)
 		7:
@@ -764,8 +876,72 @@ func _test_tick() -> void:
 			print("TITLE TEST crew list scrolled to %d" % _scroll.scroll_vertical)
 			_press("BACK")
 		13:
+			_test_locker(get_tree())
+			_press("LOCKER")
+		14:
+			_check(scr == "title", "LOCKER BACK did not come back to the title")
 			_test_quick_game(get_tree())
 			_press("QUICK GAME")
+
+# the STARS tab on ROAD TRIP shows Stars.total() (--stars N sets it) of Stars.MAX
+func _test_check_stars() -> void:
+	var tab: Node = null
+	for b in _buttons:
+		if is_instance_valid(b) and b.text == "ROAD TRIP":
+			tab = b.get_node_or_null("StarTab")
+	var shown: String = (tab.get_child(0) as Label).text if tab != null and tab.get_child_count() > 0 else "(none)"
+	print("TITLE TEST stars tab: %s (Stars.total %d, legend open %s)" % [shown, Stars.total(), Stars.legend_open()])
+	# with --stars N the total is fixed; otherwise the test settings file may change under us (other test runs
+	# record stars in it), so only the form is checked
+	if Stars.force_total >= 0:
+		_check(shown == "STARS %d/%d" % [Stars.total(), Stars.MAX], "the STARS tab does not show Stars.total()")
+	else:
+		var re := RegEx.new()
+		re.compile("^STARS \\d+/%d$" % Stars.MAX)
+		_check(re.search(shown) != null, "the STARS tab reads '%s'" % shown)
+	var lk: bool = false
+	for b in _buttons:
+		lk = lk or (is_instance_valid(b) and b.text == "LOCKER")
+	_check(lk, "no LOCKER button on the title")
+
+func _count_level_buttons() -> int:
+	var n := 0
+	for b in _buttons:
+		if is_instance_valid(b) and Difficulty.NAMES.has(b.text.to_lower()):
+			n += 1
+	return n
+
+# the level pickers offer LEGEND exactly when level_choices() does (Stars.legend_open() and difficulty.gd's level)
+static func _test_check_levels(where: String, n: int) -> void:
+	var want: int = level_choices().size()
+	print("TITLE TEST %s level buttons: %d (want %d; legend open %s, difficulty.gd has legend %s)" % [where, n, want,
+			Stars.legend_open(), Difficulty.NAMES.has(LEGEND_NAME)])
+	_check(n == want, "the %s level picker shows %d levels, not %d" % [where, n, want])
+
+# LOCKER (P8-13): the "locker" screen opens with args.back = "title" (locker.gd, or the flow's "not built yet" panel
+# until P8-15), then its BACK (Escape if it has none) lands on the title again
+static func _test_locker(tree: SceneTree) -> void:
+	tree.create_timer(TEST_HOWTO_WAIT).timeout.connect(func():
+		var node: Node = Flow.current_screen()
+		print("TITLE TEST locker: screen=%s back=%s node=%s" % [str(Flow.screen), str(Flow.args.get("back", "")),
+				node.get_script().resource_path if node != null and node.get_script() != null else "none"])
+		_check(str(Flow.screen) == LOCKER_SCREEN, "LOCKER did not open the locker screen")
+		_check(str(Flow.args.get("back", "")) == "title", "LOCKER did not pass back = title")
+		_shot("locker")
+		var back: Button = _find_back(node)
+		if back != null:
+			print("TITLE TEST locker: BACK")
+			back.emit_signal("pressed")
+		else:
+			print("TITLE TEST locker: Escape")
+			var k := InputEventKey.new()
+			k.keycode = KEY_ESCAPE
+			k.pressed = true
+			Input.parse_input_event(k)
+		tree.create_timer(TEST_HOWTO_WAIT).timeout.connect(func():
+			if str(Flow.screen) == LOCKER_SCREEN:
+				_check(false, "the locker's BACK did not leave the screen")
+				Flow.go("title")))
 
 func _press(text: String) -> void:
 	for b in _buttons:

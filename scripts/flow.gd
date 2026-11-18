@@ -46,6 +46,9 @@ const SCREENS := {
 	"bracket": "res://scripts/bracket.gd",    # P5-14
 	"howto": "res://scripts/howto.gd",        # P7-H3 (How to Play), args {"back": "<screen>"} (default "title");
 	                                          # a missing howto.gd shows the "not built yet" panel (BACK to the title)
+	"draft": "res://scripts/draft.gd",        # P8-16 (draft a player into an open roster slot), args {"back": "lineup"}
+	"locker": "res://scripts/locker.gd",      # P8-15 (star ladder, jersey / ball / van picks), args {"back": "title"};
+	                                          # the title's LOCKER button routes there already; a missing script shows "not built yet"
 }
 # Test modes that skip the title and play a game at once, as today (main.gd checks skip_title()).
 const TEST_FLAGS := ["--autoplay", "--humantest", "--shots", "--ballshots", "--menushot", "--viewtest", "--city",
@@ -53,7 +56,7 @@ const TEST_FLAGS := ["--autoplay", "--humantest", "--shots", "--ballshots", "--m
 const TRIP_TEST_FLAG := "--trip-test"
 
 static var screen := "title"      # "title", "settings", "crew", "howto", "map", "story", "lineup", "game",
-                                  # "result", "points", "recruit", "bracket"
+                                  # "result", "points", "recruit", "bracket", "draft", "locker"
 static var args := {}             # arguments for the screen, e.g. story: {"scene": "hometown_arrive", "then": "lineup"}
 static var match := {}            # the next game (board "Match config", built by trip.gd); {} = Quick Game / tests
 static var last_result := {}      # {"won": bool, "winner": int, "score": [a, b], "stats": {...}} after a trip game

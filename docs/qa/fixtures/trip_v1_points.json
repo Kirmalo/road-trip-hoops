@@ -1,0 +1,89 @@
+{
+	"beaten": [
+		"hometown",
+		"chicago",
+		"memphis"
+	],
+	"bracket": {
+		"round": 0
+	},
+	"city": "memphis",
+	"game": 3,
+	"human": "ud_deuce",
+	"level": "normal",
+	"phase": "points",
+	"points": 8,
+	"record": {
+		"losses": 1,
+		"wins": 9
+	},
+	"roster": [
+		{
+			"id": "ud_deuce",
+			"ratings": {
+				"defense": 51,
+				"finishing": 54,
+				"shooting": 62,
+				"speed": 52,
+				"stamina": 53
+			}
+		},
+		{
+			"id": "ud_jojo",
+			"ratings": {
+				"defense": 50,
+				"finishing": 52,
+				"shooting": 53,
+				"speed": 62,
+				"stamina": 54
+			}
+		},
+		{
+			"id": "ud_tank",
+			"ratings": {
+				"defense": 58,
+				"finishing": 62,
+				"shooting": 44,
+				"speed": 45,
+				"stamina": 48
+			}
+		},
+		{
+			"id": "ht_g2",
+			"ratings": {
+				"defense": 56,
+				"finishing": 56,
+				"shooting": 44,
+				"speed": 44,
+				"stamina": 44
+			}
+		},
+		{
+			"id": "chi_g1",
+			"ratings": {
+				"defense": 49,
+				"finishing": 49,
+				"shooting": 61,
+				"speed": 49,
+				"stamina": 61
+			}
+		}
+	],
+	"seen": [
+		"trip_start",
+		"hometown_arrive",
+		"hometown_won",
+		"chicago_arrive",
+		"first_loss",
+		"chicago_won",
+		"memphis_arrive",
+		"memphis_won"
+	],
+	"serial": 51,
+	"starters": [
+		"ud_deuce",
+		"chi_g1",
+		"ht_g2"
+	],
+	"version": 1
+}

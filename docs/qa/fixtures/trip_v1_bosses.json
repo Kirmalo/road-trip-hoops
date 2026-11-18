@@ -1,0 +1,100 @@
+{
+	"beaten": [
+		"hometown",
+		"chicago",
+		"memphis"
+	],
+	"bracket": {
+		"round": 0
+	},
+	"city": "new_orleans",
+	"game": 2,
+	"human": "chi_boss",
+	"level": "hard",
+	"phase": "map",
+	"points": 2,
+	"record": {
+		"losses": 1,
+		"wins": 10
+	},
+	"roster": [
+		{
+			"id": "ud_deuce",
+			"ratings": {
+				"defense": 54,
+				"finishing": 54,
+				"shooting": 62,
+				"speed": 55,
+				"stamina": 53
+			}
+		},
+		{
+			"id": "ud_jojo",
+			"ratings": {
+				"defense": 53,
+				"finishing": 55,
+				"shooting": 56,
+				"speed": 62,
+				"stamina": 54
+			}
+		},
+		{
+			"id": "ud_tank",
+			"ratings": {
+				"defense": 58,
+				"finishing": 62,
+				"shooting": 50,
+				"speed": 48,
+				"stamina": 48
+			}
+		},
+		{
+			"id": "ht_boss",
+			"ratings": {
+				"defense": 60,
+				"finishing": 60,
+				"shooting": 60,
+				"speed": 60,
+				"stamina": 60
+			}
+		},
+		{
+			"id": "chi_boss",
+			"ratings": {
+				"defense": 65,
+				"finishing": 65,
+				"shooting": 65,
+				"speed": 65,
+				"stamina": 65
+			}
+		},
+		{
+			"id": "mem_boss",
+			"ratings": {
+				"defense": 70,
+				"finishing": 70,
+				"shooting": 70,
+				"speed": 70,
+				"stamina": 70
+			}
+		}
+	],
+	"seen": [
+		"trip_start",
+		"hometown_arrive",
+		"hometown_won",
+		"chicago_arrive",
+		"chicago_won",
+		"memphis_arrive",
+		"first_loss",
+		"memphis_won",
+		"new_orleans_arrive"
+	],
+	"serial": 164,
+	"starters": [
+		"chi_boss",
+		"ht_boss",
+		"mem_boss"
+	],
+	"version": 1
+}
