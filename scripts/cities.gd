@@ -27,7 +27,9 @@ const ROUTE := ["hometown", "chicago", "memphis", "new_orleans", "denver", "seat
 
 # average player rating per trip stage (owner Q3: about 40 in Hometown rising to about 70 in New York).
 # QA (P6-30) may nudge these within that range to even out the ramp.
-const STAGE_AVG := {1: 40, 2: 45, 3: 50, 4: 54, 5: 58, 6: 62, 7: 66, 8: 70}
+# P8-25: raised from 40/45/50/54/58/62/66/70 (the progression plan's starting point) because every starter now earns
+# points after every win; trip.gd's BOSS_CAP (95) caps the New York boss (78 + 20). docs/qa/phase8-ramp.md.
+const STAGE_AVG := {1: 40, 2: 46, 3: 52, 4: 58, 5: 63, 6: 68, 7: 73, 8: 78}
 
 # tier bonuses on top of STAGE_AVG (owner Q3: good +12 in two specialties and a little better overall,
 # boss +20 at everything, no special moves). "spec" is added on the player's specialty stats only.
