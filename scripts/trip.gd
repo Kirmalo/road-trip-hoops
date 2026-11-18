@@ -15,14 +15,20 @@ extends RefCounted
 #   - Phase 8 (P8-08): every win pays each of the 3 starters his own points (POINTS_CITY_GAME for city games 1-2,
 #     POINTS_BOSS_GAME for the boss game and each New York round), each game once per trip ("paid"); the bench gets
 #     nothing. Crew points (a 1.0.0 save's pool + its catch-up) go to anyone. Each point +3 on one stat of one
-#     player; no stat above 90; spent (for now) after each city and between New York rounds (SPEND_PHASES)
+#     player; no stat above 90; spent on the STAT POINTS screen after every win, from the lineup / map between games,
+#     after each city and between New York rounds (SPEND_PHASES)
+#   - Phase 8 (P8-11): every win records the game's stars (Stars.record(key, level): best kept, in the settings file);
+#     a 1.0.0 save gets its won games' stars at its level once (stars section key V1_STAR_MARK)
 #   - after a city: recruit ONE of its 2 good players or the boss (he keeps his ratings, wears your colors)
 #   - roster = the 3 underdogs + recruits; 3 starters picked before each game (remembered); starter 0 = you
 #   - level (easy / normal / hard, legend once the stars open it) picked at trip start, changeable (set_level)
 #   - fixed route (cities.gd ROUTE), cities with "built": false are skipped, no replays
 #   - New York tournament: 3 rounds, all to 21; a loss replays that round
-# Phases (where CONTINUE resumes): "map" (next game from the map), "points" (spend after a city), "recruit",
-# "bracket" (New York), "done" (trip complete).
+# Phases (where CONTINUE resumes): "map" (next game from the map), "win_points" (the STAT POINTS screen after a won
+# city game 1 or 2; CONTINUE opens "points", DONE goes on to the next game), "points" (spend after a city),
+# "recruit", "bracket" (New York), "done" (trip complete).
+# The flow after a win (after_result): city game 1-2 -> points -> lineup; a boss game -> the city's "won" story ->
+# points -> recruit; a New York round -> points -> bracket; the final -> story "ending" -> title.
 # Test: godot --headless --path . -- --triptest-data           prints every city game's lineups + save checks,
 #       godot --headless --path . -- --triptest-data --load    (a second process) loads that save and compares.
 # Both use user://trip_test.json (save.gd), never the owner's save.
@@ -63,8 +69,13 @@ const POINT_GAIN := 3               # one point = +3 on one stat
 const STAT_CAP := 90                # spending stops at 90 (starting ratings may be higher; they are not lowered)
 const GAMES_PER_CITY := 3
 const STARTERS := 3
-const SPEND_PHASES := ["points", "bracket"]   # where spend() is allowed (the points screen; between NY rounds)
-const PHASES := ["map", "points", "recruit", "bracket", "done"]
+const SPEND_PHASES := ["points", "win_points", "map", "bracket"]   # where spend() is allowed: after any win, from the
+                                    # lineup / map between games (P8-18's badge), between New York rounds
+const PHASES := ["map", "win_points", "points", "recruit", "bracket", "done"]
+const POINTS_AFTER_EVERY_WIN := true   # P8-11: the STAT POINTS screen after every win (false = 1.0.0: only after a
+                                       # city, a won city game 1-2 goes straight to the lineup)
+const V1_STAR_MARK := "migrated_v1"    # Stars.SECTION key: a 1.0.0 save's stars were credited (once per settings file)
+const STARS_TEST_PATH := "user://trip_stars_selftest.cfg"   # --triptest-data's star checks only, deleted afterwards
 const MAX_POINTS := 999             # sanity cap for a loaded save
 const QUICK_KINGS := ["ud_jojo", "ud_tank", "ud_deuce"]   # P6-T3: the Kings in Quick Game (today's BLUE slots; Jojo = you)
 const QUICK_AVG := 50               # P6-T3: a Quick Game player's five stats average this (50 = today's Quick Game)
@@ -91,6 +102,7 @@ static var phase := "map"
 static var last_outcome := {}       # record_result()'s answer, for the result screen (see record_result)
 static var _spend_log: Array = []   # [[id, stat, old], ...] this points session, for undo_spend()
 static var saving := true           # false = state changes are not written (tests)
+static var _star_test := false      # --triptest-data: stars recorded (in STARS_TEST_PATH) while saving is off
 
 # ---------------- starting, continuing, saving ----------------
 
@@ -109,6 +121,8 @@ static func continue_trip() -> bool:
 		active = false
 		return false
 	var ok: bool = from_dict(d)
+	if ok and loaded_version == 1:
+		_credit_v1_stars()
 	if ok and loaded_version < Save.VERSION:
 		save()   # a migrated version 1 save is written as version 2 at once
 	return ok
@@ -117,10 +131,13 @@ static func continue_trip() -> bool:
 static func has_save() -> bool:
 	return Save.exists()
 
-# the screen CONTINUE goes to: "map", "points", "recruit", "bracket", or "title" when the trip is done
+# the screen CONTINUE goes to: "map", "points" (also after a won city game: "win_points"), "recruit", "bracket", or
+# "title" when the trip is done
 static func resume_screen() -> String:
 	if not active or phase == "done":
 		return "title"
+	if phase == "win_points":
+		return "points"
 	return phase
 
 static func is_done() -> bool:
@@ -216,7 +233,9 @@ static func from_dict(d: Dictionary) -> bool:
 	phase = p if PHASES.has(p) else "map"
 	if (phase == "points" or phase == "recruit") and not beaten.has(city):
 		phase = "map"
-	if beaten.has(city) and (phase == "map" or phase == "bracket"):
+	if phase == "win_points" and is_tournament(city):
+		phase = "bracket"
+	if beaten.has(city) and (phase == "map" or phase == "bracket" or phase == "win_points"):
 		city = next_city(city)   # a beaten city is never replayed (Q7)
 		phase = "map"
 	# an older save (Phase 5 had Hometown -> Chicago -> New York) can point past cities added since: go back to the
@@ -663,20 +682,33 @@ static func _expected_match(city_id: String, n: int) -> Dictionary:
 	return m
 
 # Records a finished trip game (flow.gd's game_finished calls it with Flow.last_result) and saves. Returns and keeps
-# in last_outcome: {"won", "city", "game", "points_won", "points_each", "city_done", "trip_done", "first_loss"}.
+# in last_outcome: {"won", "city", "game", "points_won", "points_each", "city_done", "trip_done", "first_loss",
+# "star_key", "stars_before", "stars_now", "new_best", "stars_gained", "stars_game", "replay"}.
 # Lost: the same game again. Won: each starter gets points_each (game_points(); 0 if the game has paid before),
-# points_won = all of them; the next game, or after game 3 the city is beaten -> points phase.
+# points_won = all of them; the game's stars are recorded (Stars.record at the trip's level: stars_gained > 0 =
+# new_best; stars_game = the game's best now, so stars_game - stars_gained was the best before; stars_before /
+# stars_now = Stars.total() around it, for Stars.rewards_between()); the next game ("win_points": the points screen
+# first), or after game 3 the city is beaten -> points phase.
 # New York: a won round moves the bracket on (the final = trip done); a lost round is replayed.
 static func record_result(result: Dictionary) -> Dictionary:
 	if not active or phase == "done":
 		return {}
 	var won: bool = bool(result.get("won", false))
+	var n: int = bracket_round() + 1 if is_tournament(city) else game
+	var k: String = Stars.key(city, n)
+	var total_before: int = Stars.total()
 	var out := {"won": won, "city": city, "game": game, "points_won": 0, "points_each": 0, "city_done": false,
-		"trip_done": false, "first_loss": false}
+		"trip_done": false, "first_loss": false, "star_key": k, "stars_before": total_before,
+		"stars_now": total_before, "new_best": false, "stars_gained": 0, "stars_game": Stars.best(k),
+		"replay": not replay.is_empty()}
 	if won:
-		var n: int = bracket_round() + 1 if is_tournament(city) else game
-		out["points_each"] = _pay_starters(Stars.key(city, n), game_points(city, n))
+		out["points_each"] = _pay_starters(k, game_points(city, n))
 		out["points_won"] = int(out["points_each"]) * starters.size()
+		var gained: int = _record_star(k)
+		out["stars_gained"] = gained
+		out["new_best"] = gained > 0
+		out["stars_game"] = Stars.best(k)
+		out["stars_now"] = Stars.total()
 	if won:
 		record["wins"] = int(record["wins"]) + 1
 	else:
@@ -701,7 +733,7 @@ static func record_result(result: Dictionary) -> Dictionary:
 			out["city_done"] = true
 		else:
 			game += 1
-			phase = "map"
+			phase = "win_points" if POINTS_AFTER_EVERY_WIN and points > 0 else "map"   # nothing to spend: lineup
 	else:
 		phase = "map"   # retry the same game, no penalty
 	last_outcome = out
@@ -711,6 +743,34 @@ static func record_result(result: Dictionary) -> Dictionary:
 	if won and (bool(out["city_done"]) or is_tournament(str(out["city"]))):
 		_unlock_team(str(out["city"]), int(out["game"]))
 	return out
+
+# the stars of a won game (Stars.record at the trip's level); never in the in-memory test trips (saving off), except
+# --triptest-data's star checks (_star_test, in their own file). Returns the stars gained now.
+static func _record_star(k: String) -> int:
+	if not saving and not _star_test:
+		return 0
+	return Stars.record(k, level)
+
+# A 1.0.0 save (loaded_version 1) has no stars: every game it has won counts at its level, once per settings file
+# (the stars section key V1_STAR_MARK; a second 1.0.0 save loaded later gets none). Returns the stars gained.
+static func _credit_v1_stars() -> int:
+	if not saving and not _star_test:
+		return 0
+	var p: String = Stars.path()
+	var cfg := ConfigFile.new()
+	cfg.load(p)
+	if bool(cfg.get_value(Stars.SECTION, V1_STAR_MARK, false)):
+		return 0
+	var got := 0
+	for k in paid:
+		got += Stars.record(str(k), level)
+	cfg = ConfigFile.new()
+	cfg.load(p)   # Stars.record wrote the bests; keep them and every other setting
+	cfg.set_value(Stars.SECTION, V1_STAR_MARK, true)
+	cfg.save(p)
+	print("TRIP STARS 1.0.0 save: %d games won at %s, +%d stars (total %d)" % [paid.size(), level, got,
+			Stars.real_total()])
+	return got
 
 # P6-17 hook: a won boss game (a city's game 3, or the New York final) unlocks that city's court for Quick Game.
 # Only when difficulty.gd has unlock_court() (P6-17), and never in the in-memory test trips (saving off).
@@ -791,21 +851,29 @@ static func _star_first(ids: Array) -> Array:
 	return out
 
 # Where the result screen goes next: {"screen": String, "args": Dictionary} (Flow.go(r.screen, r.args)).
-# Lost -> story "first_loss" once, then the lineup (retry). Won with games left -> lineup. City done -> the city's
-# "won" story, then points. Tournament: back to the bracket; the final won -> story "ending", then the title.
+# Lost -> story "first_loss" once, then the lineup (retry). Won with games left -> the points screen
+# ({"then": "lineup"}; phase "win_points", its DONE / finish_points() goes on), then the lineup. City done -> the
+# city's "won" story, then points (then recruit). Tournament: a won round -> the points screen ({"then": "bracket"})
+# when there are points to spend, then the bracket; a lost round -> the bracket; the final won -> story "ending", then
+# the title. With POINTS_AFTER_EVERY_WIN off: 1.0.0 (a won game 1-2 -> lineup, a won round -> bracket).
 static func after_result() -> Dictionary:
 	var o: Dictionary = last_outcome
 	if o.is_empty():
 		return {"screen": "map", "args": {}}
 	var next := "lineup"
+	var won: bool = bool(o.get("won", false))
 	if bool(o.get("trip_done", false)):
 		return _story_or("ending", "title")
 	if is_tournament(str(o.get("city", ""))):
 		next = "bracket"
+		if won and POINTS_AFTER_EVERY_WIN and points > 0 and SPEND_PHASES.has(phase):
+			return {"screen": "points", "args": {"then": next}}
 	elif bool(o.get("city_done", false)):
 		var st: Dictionary = Cities.city(str(o.get("city", ""))).get("story", {})
 		return _story_or(str(st.get("won", "")), "points")
-	if not bool(o.get("won", false)) and bool(o.get("first_loss", false)):
+	elif won and phase == "win_points":
+		return {"screen": "points", "args": {"then": next}}
+	if not won and bool(o.get("first_loss", false)):
 		return _story_or("first_loss", next)
 	return {"screen": next, "args": {}}
 
@@ -909,9 +977,13 @@ static func undo_spend() -> bool:
 static func can_undo() -> bool:
 	return not _spend_log.is_empty()
 
-# the points screen's DONE: on to the recruit screen (or the map if nobody is left to recruit). Saved.
+# the points screen's DONE (or SKIP): after a city on to the recruit screen (or the map if nobody is left to
+# recruit); after a won city game 1-2 ("win_points") back to "map" (the screen goes on to its "then", the lineup);
+# unspent points are kept. Saved.
 static func finish_points() -> void:
 	_spend_log = []
+	if phase == "win_points":
+		phase = "map"
 	if phase == "points":
 		phase = "recruit" if recruit_candidates().size() > 0 else "map"
 		if phase == "map":
@@ -999,6 +1071,7 @@ static func self_test(load_only: bool = false) -> bool:
 	ok = _check_city_data() and ok
 	ok = _check_expected_rosters() and ok
 	ok = _check_rules() and ok
+	ok = _check_stars() and ok
 	ok = _check_v1_fixtures() and ok
 	ok = _check_save_files() and ok
 	# the round trip: the scripted trip saved for the --load process
@@ -1108,18 +1181,25 @@ static func _check_rules() -> bool:
 	ok = _check(int(match_for().target) == 11 and str(match_for().level) == "hard", "game 1 to 11, level hard") and ok
 	record_result({"won": false})
 	ok = _check(game == 1 and points == 0 and bool(last_outcome.first_loss), "a loss retries game 1, no points") and ok
-	ok = _check(after_result().screen == "story" and after_result().screen == "lineup", "first loss story once") and ok
+	var ar: Dictionary = after_result()
+	ok = _check(ar.screen == "story" and after_result().screen == "lineup", "first loss story once") and ok
 	record_result({"won": true})
 	ok = _check(game == 2 and points == 3 and int(last_outcome.points_each) == POINTS_CITY_GAME
 			and int(last_outcome.points_won) == 3 and player_points("ud_jojo") == 1 and crew_points == 0
 			and int(match_for().target) == 15, "a win: game 2 to 15, 1 point each starter") and ok
-	ok = _check(not spend("ud_deuce", "speed"), "no spending during the city") and ok
+	ar = after_result()
+	ok = _check(phase == "win_points" and resume_screen() == "points" and ar.screen == "points"
+			and ar.args.get("then", "") == "lineup" and int(last_outcome.stars_gained) == 0,
+			"a won game 1: points screen, then the lineup (no stars in memory)") and ok
+	finish_points()
+	ok = _check(phase == "map" and points == 3 and can_spend("ud_deuce", "speed"),
+			"DONE / SKIP keeps the points, spendable between games") and ok
 	record_result({"won": true})
 	record_result({"won": true})
 	ok = _check(phase == "points" and beaten == ["hometown"] and points == 12 and player_points("ud_tank") == 4
 			and int(last_outcome.points_each) == POINTS_BOSS_GAME and bool(last_outcome.city_done)
 			and paid == ["hometown:1", "hometown:2", "hometown:3"], "3 wins: Hometown beaten, 4 each, paid") and ok
-	var ar: Dictionary = after_result()
+	ar = after_result()
 	ok = _check(ar.screen == "story" and ar.args.then == "points", "hometown_won story, then points") and ok
 	var before: int = int(_entry("ud_tank").ratings.finishing)
 	ok = _check(spend("ud_tank", "finishing") and int(_entry("ud_tank").ratings.finishing) == before + 3
@@ -1138,7 +1218,9 @@ static func _check_rules() -> bool:
 	ok = _check(not recruit("ht_a1") and not recruit("chi_g1"), "only the city's good players or boss") and ok
 	ok = _check(recruit("ht_boss") and city == "chicago" and game == 1 and phase == "map"
 			and roster_ids().size() == 4, "recruit the boss, on to Chicago") and ok
-	ok = _check(roster_player("ht_boss").sheet == "ht_boss_crew" and int(roster_player("ht_boss").ratings.speed) == 60,
+	ok = _check(roster_player("ht_boss").sheet == Cities.crew_sheet("ht_boss", true) \
+			and str(roster_player("ht_boss").sheet).begins_with("ht_boss_crew")
+			and int(roster_player("ht_boss").ratings.speed) == 60,
 			"recruit wears your colors, keeps 40 + 20") and ok
 	ok = _check(not recruit("ht_g1"), "only one recruit per city") and ok
 	ok = _check(str(_entry("ht_boss").via) == "recruit" and str(_entry("ud_jojo").via) == "start"
@@ -1186,11 +1268,85 @@ static func _check_rules() -> bool:
 			"the final against ny_boss") and ok
 	ok = _check(int(last_outcome.points_each) == POINTS_BOSS_GAME and paid.has("new_york:2")
 			and not paid.has("new_york:3"), "a New York round pays 2 each") and ok
+	ar = after_result()
+	ok = _check(phase == "bracket" and ar.screen == "points" and ar.args.get("then", "") == "bracket",
+			"a won round: points screen, then the bracket") and ok
 	record_result({"won": true})
 	ok = _check(paid == Stars.all_keys(), "every game paid once: %d" % paid.size()) and ok
 	ok = _check(phase == "done" and is_done() and after_result().args.get("scene", "") == "ending"
 			and record_result({"won": true}).is_empty(), "final won: ending, trip done") and ok
 	saving = true
+	_reset()
+	return ok
+
+# P8-11: stars on a win (best kept, new_best, the totals), the per-win flow and CONTINUE, the 1.0.0 star credit once.
+# In memory (saving off), the stars in their own scratch file (STARS_TEST_PATH), never the test settings file.
+static func _check_stars() -> bool:
+	var was: bool = saving
+	saving = false
+	_star_test = true
+	var old_force: int = Stars.force_total
+	Stars.force_total = -1   # --stars N would hide the totals
+	Stars._path_override = STARS_TEST_PATH
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(STARS_TEST_PATH))
+	var ok := true
+	new_trip("normal")
+	record_result({"won": false})
+	var o: Dictionary = last_outcome
+	ok = _check(not bool(o.new_best) and int(o.stars_gained) == 0 and int(o.stars_now) == 0
+			and str(o.star_key) == "hometown:1", "stars: a loss gives none") and ok
+	record_result({"won": true})
+	o = last_outcome
+	ok = _check(bool(o.new_best) and int(o.stars_gained) == 2 and int(o.stars_game) == 2 and int(o.stars_before) == 0
+			and int(o.stars_now) == 2 and Stars.best("hometown:1") == 2 and not bool(o.replay),
+			"stars: a Normal win = 2, new best") and ok
+	var ar: Dictionary = after_result()
+	ok = _check(ar.screen == "points" and ar.args.get("then", "") == "lineup" and resume_screen() == "points",
+			"stars: then the points screen (CONTINUE too)") and ok
+	# CONTINUE on the per-win points screen: the save keeps "win_points"
+	var d: Dictionary = to_dict()
+	d["version"] = Save.VERSION
+	ok = _check(from_dict(d) and phase == "win_points" and resume_screen() == "points" and game == 2,
+			"stars: CONTINUE resumes on the points screen") and ok
+	finish_points()
+	level = "hard"
+	record_result({"won": true})
+	o = last_outcome
+	ok = _check(int(o.stars_gained) == 3 and int(o.stars_before) == 2 and int(o.stars_now) == 5
+			and Stars.rewards_between(int(o.stars_before), int(o.stars_now)).is_empty(), "stars: a Hard win = 3") and ok
+	level = "easy"
+	record_result({"won": true})
+	o = last_outcome
+	ok = _check(int(o.stars_gained) == 1 and bool(o.city_done) and int(o.stars_now) == 6
+			and Stars.rewards_between(int(o.stars_before), int(o.stars_now)).size() == 1, "stars: Easy boss = 1, "
+			+ "reward at 6") and ok
+	game = 1   # white box: the same game won again on Hard (a replay later): the best goes up, no points
+	phase = "map"
+	level = "hard"
+	record_result({"won": true})
+	o = last_outcome
+	ok = _check(int(o.stars_gained) == 1 and int(o.stars_game) == 3 and int(o.points_each) == 0
+			and Stars.real_total() == 7, "stars: a better win raises the best, pays no points") and ok
+	record_result({"won": true})
+	ok = _check(int(last_outcome.stars_gained) == 0 and not bool(last_outcome.new_best) and Stars.real_total() == 7,
+			"stars: the same level again gains none") and ok
+	# the 1.0.0 credit: every won game at the save's level, once (needs the P8-01 fixture)
+	var fpath: String = FIXTURE_DIR + "trip_v1_chicago.json"
+	if FileAccess.file_exists(fpath):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(STARS_TEST_PATH))
+		var jd = JSON.parse_string(FileAccess.get_file_as_string(fpath))
+		var fd: Dictionary = jd if jd is Dictionary else {}
+		var got: int = _credit_v1_stars() if from_dict(fd) and loaded_version == 1 else -1
+		var again: int = _credit_v1_stars()
+		ok = _check(got == 4 and again == 0 and Stars.real_total() == 4 and Stars.best("chicago:1") == 1
+				and Stars.best("chicago:2") == 0, "stars: 1.0.0 save credited once (4 games on Easy)") and ok
+	else:
+		print("TRIPDATA fixture %s: not here, skipped" % fpath)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(STARS_TEST_PATH))
+	Stars._path_override = ""
+	Stars.force_total = old_force
+	_star_test = false
+	saving = was
 	_reset()
 	return ok
 
