@@ -63,6 +63,11 @@ extends RefCounted
 # file has him unlocked (he was when he was drafted). The save stays version 2 (a drafted legend is a plain roster
 # entry). A save with more legend starters is repaired on load like the bosses. end_of_trip_crew(best): the New York
 # final's three of --expected-roster / --best-roster, for the --challenge balance runs (P9-26).
+# Mentors (P9-23, owner L8 a): roster_player() adds "perk" (legends.gd perks_for(): {"id", "key", "value", "text",
+# "mentor"}) to a player an unlocked legend trains, only on a loaded trip (never the --city crews without a trip, never
+# the in-memory ramp sims: _perks_off; P9-30 adds the best perk there). The pairs live in legends.json, never here, so a
+# NEW TRIP keeps them; a pupil not on this trip's roster just has no effect. legends.gd strips "perk" from your side in
+# a challenge (Road Trip games only). P9-24 reads it in play.
 
 const Flow = preload("res://scripts/flow.gd")
 const Cities = preload("res://scripts/cities.gd")
@@ -149,6 +154,8 @@ static var _sim_legends := false    # P9-21: the --best-roster sim: every legend
 static var _sim_avoid: Array = []   # P9-21: end_of_trip_crew(): legend ids the sim never drafts (the challenge's own)
 static var _legends_override := ""  # P9-21: "all" / "none" = act as if every / no legend is unlocked (self_test only)
 static var _legends_script: GDScript = null   # legends.gd, loaded once at run time
+static var _perks_off := false      # P9-23: the in-memory ramp sims (_sim_roster) field no mentor perks
+const PERK_KEY := "perk"            # P9-23: roster_player()'s mentor perk dict (legends.gd perks_for())
 
 # ---------------- starting, continuing, saving ----------------
 
@@ -374,6 +381,7 @@ static func _reset() -> void:
 	_spend_log = []
 	_slots_override = -1
 	_sim_legends = false
+	_perks_off = false
 	boss_repair = []
 
 # a new roster entry: his starting ratings, no points, "via" from the data
@@ -577,10 +585,33 @@ static func roster_ids() -> Array:
 		out.append(str(e["id"]))
 	return out
 
-# one roster player's dict, {} if not on the roster
+# one roster player's dict, {} if not on the roster; with "perk" when a legend trains him (P9-23, perk_for())
 static func roster_player(id: String) -> Dictionary:
 	var e: Dictionary = _entry(id)
-	return player_dict(id, e["ratings"], true) if not e.is_empty() else {}
+	if e.is_empty():
+		return {}
+	var out: Dictionary = player_dict(id, e["ratings"], true)
+	var pk: Dictionary = perk_for(id)
+	if not pk.is_empty():
+		out[PERK_KEY] = pk
+	return out
+
+# P9-23: the mentor perk of a roster player on the loaded trip ({} = none: no trip, a ramp sim, not on the roster,
+# nobody trains him, his mentor is not unlocked). legends.gd perks_for() is the truth (loaded at run time).
+static func perk_for(id: String) -> Dictionary:
+	if not active or _perks_off or not _on_roster(id):
+		return {}
+	var ls: GDScript = _legends()
+	if ls == null or not ls.has_method("perks_for"):
+		return {}
+	var got = ls.call("perks_for", id)
+	return (got as Dictionary).duplicate() if got is Dictionary else {}
+
+# legends.gd, loaded once at run time (it preloads this file); null when it is missing
+static func _legends() -> GDScript:
+	if _legends_script == null:
+		_legends_script = load(LEGENDS_PATH) as GDScript if ResourceLoader.exists(LEGENDS_PATH) else null
+	return _legends_script
 
 static func _roster_or_default() -> Array:
 	if active and roster_data.size() > 0:
@@ -759,6 +790,7 @@ static func _sim_roster(city_id: String, n: int, best: bool) -> bool:
 	saving = false
 	new_trip(DEFAULT_LEVEL)
 	_slots_override = BEST_ROSTER_SLOTS if best else 0
+	_perks_off = true   # P9-23: the sims field no mentor perks (P9-30 adds the best perk to the best bound)
 	# P9-21: the best crew may draft any legend (as if all were unlocked; --legends-unlock-none: none, the P8 bound)
 	_sim_legends = best and not OS.get_cmdline_user_args().has(UNLOCK_NONE_FLAG)
 	var games: int = maxi(1, _rounds(city_id).size()) if is_tournament(city_id) else GAMES_PER_CITY
@@ -956,7 +988,8 @@ static func _snapshot() -> Dictionary:
 		"loaded_version": loaded_version, "roster_data": roster_data.duplicate(true), "starters": starters.duplicate(),
 		"human": human, "bracket": bracket.duplicate(true), "seen": seen.duplicate(), "record": record.duplicate(),
 		"phase": phase, "last_outcome": last_outcome.duplicate(true), "spend_log": _spend_log.duplicate(true),
-		"saving": saving, "slots": _slots_override, "sim_legends": _sim_legends, "boss_repair": boss_repair.duplicate()}
+		"saving": saving, "slots": _slots_override, "sim_legends": _sim_legends, "boss_repair": boss_repair.duplicate(),
+		"perks_off": _perks_off}
 
 static func _restore(k: Dictionary) -> void:
 	active = bool(k["active"])
@@ -982,6 +1015,7 @@ static func _restore(k: Dictionary) -> void:
 	_slots_override = int(k["slots"])
 	_sim_legends = bool(k["sim_legends"])
 	boss_repair = k["boss_repair"]
+	_perks_off = bool(k["perks_off"])
 
 # "RAMP <kind> <city> game <n> <level> | BLUE id s/s/s/s/s, ... (avg A) | RED ... (avg B)": one line per --city run
 static func ramp_line(m: Dictionary, kind: String) -> String:
@@ -1440,11 +1474,10 @@ static func legend_available(id: String) -> bool:
 		return _legends_override == "all"
 	if _sim_legends:
 		return true
-	if _legends_script == null:
-		_legends_script = load(LEGENDS_PATH) as GDScript if ResourceLoader.exists(LEGENDS_PATH) else null
-	if _legends_script == null or not _legends_script.has_method("is_unlocked"):
+	var ls: GDScript = _legends()
+	if ls == null or not ls.has_method("is_unlocked"):
 		return false
-	return bool(_legends_script.call("is_unlocked", id))
+	return bool(ls.call("is_unlocked", id))
 
 # the legends that can be drafted now (data order), minus the roster
 static func _legend_pool_ids() -> Array:
