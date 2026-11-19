@@ -32,6 +32,9 @@ extends Node
 #     Starters: the driver keeps the trip's starters in a replay (the lineup's auto_step keeps the picks; the pick
 #     test and the draft never run on a replay's lineup), so they are part of the check. A real player may change
 #     them in a replay's lineup (P8-20 allows it); this test does not cover that.
+#     P9: before PLAY the driver taps another level in the picker than the trip's (the highest offered, or the
+#     lowest when the trip is on it); the marker and the match must have that level, the result's stars are checked
+#     at it, and Trip.level (part of the trip's progress) must not change.
 #   With --mapshot the map drives its own replay: the driver then skips its replay but still checks the one played.
 # Phase 9 checks (P9-29), only in a run whose first draft finds a legend in the pool (--legends-unlock-all, or legends
 # unlocked in user://legends_test.json); without one every step above is exactly the Phase 8 driver:
@@ -99,6 +102,7 @@ static var _game_key := ""        # the key (Stars.key) of the game being played
 static var _game_city := ""
 static var _game_n := 0
 static var _game_replay := false
+static var _game_level := ""      # P9: the level the game plays at (the trip's, a replay's own)
 static var _star_before := 0      # that game's best stars before it
 static var _paid_before := 0      # Trip.paid.size() before it
 static var _star_checks := 0      # result screens checked
@@ -292,6 +296,11 @@ func _start_game() -> void:
 		_game_city = Trip.city
 		_game_n = Trip.bracket_round() + 1 if Trip.is_tournament(Trip.city) else Trip.game
 	_game_key = Stars.key(_game_city, _game_n)
+	_game_level = Trip.replay_level() if _game_replay else Trip.level
+	if str(m.get("level", "")) != _game_level:
+		_fail("the match plays %s, the %s is on %s" % [str(m.get("level", "")), "replay" if _game_replay else "trip",
+				_game_level])
+		return
 	_star_before = Stars.best(_game_key)
 	_paid_before = Trip.paid.size()
 
@@ -444,8 +453,8 @@ func _on_arrive() -> void:
 
 # the trip's progress, everything a replay must leave alone (the save is checked by _save_check)
 static func _progress() -> String:
-	return "city %s game %d phase %s bracket %d | record %d-%d | points %d | paid %d | beaten %s | starters %s" % [
-			Trip.city, Trip.game, Trip.phase, Trip.bracket_round(), int(Trip.record.get("wins", 0)),
+	return "city %s game %d phase %s bracket %d level %s | record %d-%d | points %d | paid %d | beaten %s | starters %s" % [
+			Trip.city, Trip.game, Trip.phase, Trip.bracket_round(), Trip.level, int(Trip.record.get("wins", 0)),
 			int(Trip.record.get("losses", 0)), Trip.points, Trip.paid.size(), str(Trip.beaten), str(Trip.starters)]
 
 # the result screen: the game's stars and points as the rules say (Trip.last_outcome, recorded by flow.gd)
@@ -455,7 +464,7 @@ func _check_result() -> void:
 		return   # no game of this run before this result
 	_star_checks += 1
 	var won: bool = bool(o.get("won", false))
-	var per: int = Stars.stars_for(Trip.level)
+	var per: int = Stars.stars_for(_game_level)
 	var want_best: int = maxi(_star_before, per) if won else _star_before
 	var now: int = Stars.best(_game_key)
 	var errs: Array = []
@@ -463,6 +472,8 @@ func _check_result() -> void:
 		errs.append("outcome key %s, game %s" % [str(o.get("star_key", "")), _game_key])
 	if bool(o.get("replay", false)) != _game_replay:
 		errs.append("outcome replay %s" % str(o.get("replay", false)))
+	if str(o.get("level", "")) != _game_level:
+		errs.append("outcome level %s, the game was on %s" % [str(o.get("level", "")), _game_level])
 	if now != want_best or int(o.get("stars_game", -1)) != want_best:
 		errs.append("stars %d (outcome %s), want %d" % [now, str(o.get("stars_game", "?")), want_best])
 	if int(o.get("stars_gained", -1)) != want_best - _star_before:
@@ -477,7 +488,8 @@ func _check_result() -> void:
 		errs.append("paid %d -> %d, points each %d (a %s pays nothing)" % [_paid_before, Trip.paid.size(), each,
 				"replay" if _game_replay else "loss"])
 	print("TRIP stars %s%s %s | level %s (%d a win) | best %d -> %d (+%s) | points each %d | paid %d/%d | %s" % [
-			_game_key, " (replay)" if _game_replay else "", "won" if won else "lost", Trip.level, per, _star_before,
+			_game_key, " (replay)" if _game_replay else "", "won" if won else "lost",
+			_game_level + ((" (trip %s)" % Trip.level) if _game_level != Trip.level else ""), per, _star_before,
 			now, str(o.get("stars_gained", "?")), each, Trip.paid.size(), ALL_GAMES,
 			"ok" if errs.is_empty() else "WRONG: " + "; ".join(PackedStringArray(errs))])
 	var k: String = _game_key
@@ -751,21 +763,41 @@ func _replay_step() -> void:
 		_fail("the %s picker has no PLAY button" % REPLAY_AFTER)
 		return
 	var n: int = int((btns as Dictionary).keys()[0])
+	# P9: the picker opens on the trip's level; tap another one (a level button, as a finger would)
+	var opened: String = str(node.call("replay_level"))
+	var lv: String = str(node.call("other_level", opened))
+	var lbtns = node.get("_level_btns")
+	if opened != str(node.call("start_level")) or not (lbtns is Dictionary) or not (lbtns as Dictionary).has(lv) \
+			or lv == opened:
+		_fail("the %s picker's level row: opened on %s (trip %s), no other level button (%s)" % [REPLAY_AFTER, opened,
+				Trip.level, str(lbtns.keys()) if lbtns is Dictionary else "none"])
+		return
+	node.set("_arm_t", 0.0)
+	((lbtns as Dictionary)[lv] as Button).pressed.emit()
+	if str(node.call("replay_level")) != lv:
+		_fail("the %s level button did not pick %s (picked %s)" % [REPLAY_AFTER, lv, str(node.call("replay_level"))])
+		return
 	_replay_snap = _progress()
 	_replay_state = 2
-	print("TRIP replay: PLAY %s from the map's picker | before: %s" % [Stars.key(REPLAY_AFTER, n), _replay_snap])
+	print("TRIP replay: PLAY %s at %s from the map's picker (opened on %s, trip %s) | before: %s" % [
+			Stars.key(REPLAY_AFTER, n), lv, opened, Trip.level, _replay_snap])
 	node.set("_arm_t", 0.0)
 	((btns as Dictionary)[n] as Button).pressed.emit()
 	if not Trip.replaying() or str(Trip.replay.get("city", "")) != REPLAY_AFTER or int(Trip.replay.get("game", 0)) != n:
 		_fail("PLAY did not start the replay of %s (marker %s)" % [Stars.key(REPLAY_AFTER, n), str(Trip.replay)])
+		return
+	if Trip.replay_level() != lv or str(Save.read().get("replay", {}).get("level", "")) != lv:
+		_fail("the replay marker plays %s (saved %s), the picker asked for %s" % [Trip.replay_level(),
+				str(Save.read().get("replay", {}).get("level", "")), lv])
 
 # back on the map after a replay's result: the trip did not move, the marker is gone, the save agrees
 func _check_replay_back() -> void:
 	var now: String = _progress()
 	var sc: String = _save_check()
 	var ok: bool = now == _replay_snap and not Trip.replaying() and sc == "saved ok"
-	print("TRIP replay back on the map | %s %s | trip %s | %s" % [str(Trip.last_outcome.get("star_key", "?")),
-			"won" if bool(Trip.last_outcome.get("won", false)) else "lost",
+	print("TRIP replay back on the map | %s %s at %s (trip level %s) | trip %s | %s" % [
+			str(Trip.last_outcome.get("star_key", "?")), "won" if bool(Trip.last_outcome.get("won", false)) else "lost",
+			str(Trip.last_outcome.get("level", "?")), Trip.level,
 			"unchanged" if now == _replay_snap else "MOVED (now: %s)" % now, sc])
 	_replay_snap = ""
 	_replay_state = 3

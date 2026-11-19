@@ -18,13 +18,18 @@ extends CanvasLayer
 #     play at the trip's current stage. CLOSE, a tap outside the panel, Escape or the Android back close it.
 #   - P8-20: the van is the picked van paint (Cosmetics.van_path(), the same sheet layout as van.png)
 #   - P8-20: a finished trip opens in replay mode: no GO, the picker works, TITLE bottom-right (where GO stands)
+#   - P9 (owner bug: no level choice on replays): the picker's level row, EASY / NORMAL / HARD and LEGEND once open
+#     (Difficulty.offered_levels(); LEGEND purple, the picked one gold), opens on the trip's level; the hint under it
+#     says what a win there earns ("A WIN ON HARD: 3 STARS"); PLAY = Trip.start_replay(city, n, level). The trip's own
+#     level (Settings) never changes.
 #   - P8-20: opening the map drops a replay marker left over (BACK out of a replay's lineup: Trip.cancel_replay())
 # Works without the art: a missing usa.png / pin / van / map.json is drawn with plain shapes (FALLBACK_CITIES).
 # Desktop testing: Enter / Space = GO, Escape = MENU (or closes the picker). Trip test: auto_step() skips the drive,
 # then taps GO (a finished trip: the title); it never starts a replay.
 # Test: -- --trip-test --trip-resume --mapshot DIR [--map-pick city]: on the first map, saves DIR/hoops_map*.png (the
-# map, the open picker), starts a replay and comes back to the map (the marker must be gone), then PLAYs it for real
-# (the trip test plays the replay game); prints MAPSHOT lines. Screenshots need xvfb.
+# map, the open picker, P9: the picker with another level picked), starts a replay at that level and comes back to the
+# map (the marker must be gone), then PLAYs it for real at another level than the trip's (the trip test plays the
+# replay game and checks its stars at that level); prints MAPSHOT lines. Screenshots need xvfb.
 
 const UI = preload("res://scripts/ui_kit.gd")
 const Flow = preload("res://scripts/flow.gd")
@@ -112,6 +117,14 @@ const PICK_STAR_R := 19.0
 const PICK_PLAY := Vector2(220, 110)           # PLAY (the board minimum height)
 const PICK_CLOSE := Vector2(200, 110)
 const PICK_GAP := 10
+const PICK_LEVEL := Vector2(170, 110)          # P9: a level button in the picker (touch height)
+const PICK_LEVEL_FONT := 28
+const PICK_LEVEL_GAP := 10
+const PICK_HINT_FONT := 26                     # P9: "A WIN ON HARD: 3 STARS" under the level row
+const PICK_HINT := "A WIN ON %s: %d STAR%s"
+const PICK_HINT_BEST := "  (no new stars: your best is kept)"   # when every game here already has that many
+const LEVEL_NAMES := {"easy": "EASY", "normal": "NORMAL", "hard": "HARD", "legend": "LEGEND"}
+const CLOSED_LEGEND := "hard"                  # the picker's start when the trip is on LEGEND but LEGEND is closed
 const PICK_INFO := "Replays pay stars only: no stat points, your record stays. The opponents play at your trip's" \
 		+ " current strength."
 const PICK_INFO_DONE := "Trip complete! Replays pay stars only, against opponents at full strength."
@@ -150,6 +163,9 @@ var _shown := ""                               # the city on the card
 var _picker: Control                           # the open replay picker (null = closed)
 var _picker_city := ""
 var _play_btns := {}                           # game n -> its PLAY button in the open picker
+var _level_btns := {}                          # P9: level name -> its button in the open picker
+var _pick_level := ""                          # P9: the level the open picker's PLAY starts the replay at
+var _hint: Label                               # P9: the picker's "A WIN ON ..." line
 var _arm_t := PANEL_ARM
 var _busy := false
 var _t := 0.0
@@ -699,7 +715,25 @@ func open_picker(id: String) -> void:
 			games_of(id) * STARS_PER_GAME], PICK_TITLE_FONT, GOLD_TEXT)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	UI.button(top, "CLOSE", _on_picker_close, UI.KIND_OPT, PICK_CLOSE)
+	# P9: the level row (the replay's level, the trip's to start with) with CLOSE at its end, the hint under it
+	_pick_level = start_level()
+	_level_btns = {}
+	var lrow := HBoxContainer.new()
+	lrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lrow.add_theme_constant_override("separation", PICK_LEVEL_GAP)
+	box.add_child(lrow)
+	for lv in offered_levels():
+		var b: Button = UI.button(lrow, str(LEVEL_NAMES.get(lv, str(lv).to_upper())), _tap.bind(
+				set_replay_level.bind(str(lv))), UI.KIND_MAIN, PICK_LEVEL)
+		b.add_theme_font_size_override("font_size", PICK_LEVEL_FONT)
+		_level_btns[str(lv)] = b
+	var gap := Control.new()
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lrow.add_child(gap)
+	UI.button(lrow, "CLOSE", _on_picker_close, UI.KIND_OPT, PICK_CLOSE)
+	_hint = UI.label(box, "", PICK_HINT_FONT, STAR_GOLD)
+	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	var info := UI.label(box, PICK_INFO_DONE if Trip.is_done() else PICK_INFO, PICK_INFO_FONT, TWIST_COLOR)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -725,6 +759,7 @@ func open_picker(id: String) -> void:
 		else:
 			var nw := UI.label(row, PICK_NOT_WON, PICK_INFO_FONT, LOCKED_COLOR)
 			nw.custom_minimum_size = PICK_PLAY
+	_refresh_levels()
 	_arm_t = PANEL_ARM   # the finger that opened it must not tap a row
 	_refresh_buttons()
 	_stat("map_picker")
@@ -732,7 +767,8 @@ func open_picker(id: String) -> void:
 		var games: Array = []
 		for n in range(1, games_of(id) + 1):
 			games.append("%d:%s%d*" % [n, "PLAY " if _play_btns.has(n) else "-", Stars.best(Stars.key(id, n))])
-		print("MAP PICKER %s | %s" % [id, " ".join(PackedStringArray(games))])
+		print("MAP PICKER %s | %s | levels %s, picked %s (trip %s) | %s" % [id, " ".join(PackedStringArray(games)),
+				"/".join(PackedStringArray(_level_btns.keys())), _pick_level, Trip.level, _hint.text])
 
 func close_picker() -> void:
 	if _picker == null:
@@ -740,6 +776,8 @@ func close_picker() -> void:
 	_picker.queue_free()
 	_picker = null
 	_play_btns = {}
+	_level_btns = {}
+	_hint = null
 	_refresh_buttons()
 
 func _on_picker_close() -> void:
@@ -757,8 +795,57 @@ func _on_picker_dim_input(event: InputEvent) -> void:
 	_picker.accept_event()
 	close_picker()
 
+# P9: the levels the picker offers (names): EASY, NORMAL, HARD, and LEGEND once the stars open it
+static func offered_levels() -> Array:
+	var out: Array = []
+	for lv in MenuScript.Difficulty.offered_levels():
+		out.append(MenuScript.Difficulty.level_name(int(lv)))
+	return out
+
+# the level the picker opens on: the trip's (a closed LEGEND: Hard; anything else not offered: the first one)
+static func start_level() -> String:
+	var lv: String = Trip.level
+	var offered: Array = offered_levels()
+	if lv == "legend" and not offered.has(lv):
+		lv = CLOSED_LEGEND
+	if not offered.has(lv):
+		lv = str(offered[0]) if offered.size() > 0 else Trip.DEFAULT_LEVEL
+	return lv
+
+# the level the open picker's PLAY uses
+func replay_level() -> String:
+	return _pick_level
+
+# picks the replay's level (a tap on a level button); false for a level the open picker doesn't offer
+func set_replay_level(lv: String) -> bool:
+	if _picker == null or not _level_btns.has(lv):
+		return false
+	if lv != _pick_level:
+		_pick_level = lv
+		_stat("map_replay_level")
+	_refresh_levels()
+	return true
+
+# the picked level gold, the others blue (LEGEND purple, as everywhere); the hint says what a win there earns
+func _refresh_levels() -> void:
+	for lv in _level_btns:
+		var b: Button = _level_btns[lv]
+		var kind: String = UI.KIND_LEGEND if str(lv) == "legend" else UI.KIND_MAIN
+		UI.set_kind(b, UI.KIND_LIT if str(lv) == _pick_level else kind)
+	if _hint == null:
+		return
+	var s: int = Stars.stars_for(_pick_level)
+	var txt: String = PICK_HINT % [str(LEVEL_NAMES.get(_pick_level, _pick_level.to_upper())), s, "" if s == 1 else "S"]
+	var lowest := STARS_PER_GAME
+	for n in range(1, games_of(_picker_city) + 1):
+		if Trip.can_replay(_picker_city, n):
+			lowest = mini(lowest, Stars.best(Stars.key(_picker_city, n)))
+	if s <= lowest:
+		txt += PICK_HINT_BEST
+	_hint.text = txt
+
 func _on_play(n: int) -> void:
-	if _picker_city == "" or not Trip.start_replay(_picker_city, n):
+	if _picker_city == "" or not Trip.start_replay(_picker_city, n, _pick_level):
 		return
 	_stat("map_replay")
 	_go("lineup")
@@ -807,10 +894,16 @@ func _mapshot_tick(delta: float) -> void:
 		if _shot_step == 3:
 			_mapshot_save("picker")
 			return
+		if _shot_step == 4:
+			_mapshot_tap_level()   # P9: another level, lit, with its hint
+			return
+		if _shot_step == 5:
+			_mapshot_save("picker_level")
+			return
 		var n: int = int(_play_btns.keys()[0]) if _play_btns.size() > 0 else 0
-		var ok: bool = Trip.start_replay(city_id, n)
-		print("MAPSHOT start_replay %s: %s, then back to the map as from the lineup" % [Stars.key(city_id, n),
-				"marked" if ok and Trip.replaying() else "REFUSED"])
+		var ok: bool = Trip.start_replay(city_id, n, _pick_level)
+		print("MAPSHOT start_replay %s at %s: %s, then back to the map as from the lineup" % [Stars.key(city_id, n),
+				_pick_level, "marked" if ok and Trip.replaying() else "REFUSED"])
 		_shot_stage = 1
 		_go("map")
 	elif _shot_stage == 1:
@@ -819,8 +912,10 @@ func _mapshot_tick(delta: float) -> void:
 			open_picker(city_id)
 			return
 		_arm_t = 0.0
+		_mapshot_tap_level()
 		var n: int = int(_play_btns.keys()[0]) if _play_btns.size() > 0 else 0
-		print("MAPSHOT PLAY %s (a tap on the picker's button)" % Stars.key(city_id, n))
+		print("MAPSHOT PLAY %s at %s (a tap on the picker's button; trip level %s)" % [Stars.key(city_id, n),
+				_pick_level, Trip.level])
 		_shot_stage = 2
 		if _play_btns.has(n):
 			(_play_btns[n] as Button).pressed.emit()
@@ -832,6 +927,22 @@ func _mapshot_tick(delta: float) -> void:
 			_mapshot_save("after_replay")
 		else:
 			_shot_stage = 3   # a step later: the screenshot is written before the trip test moves on
+
+# P9: a level other than the one the picker opened on (other_level()), by a tap on its button
+func _mapshot_tap_level() -> void:
+	var lv: String = other_level(_pick_level)
+	_arm_t = 0.0
+	if _level_btns.has(lv):
+		(_level_btns[lv] as Button).pressed.emit()
+	print("MAPSHOT level %s tapped: picked %s | %s" % [lv, _pick_level, _hint.text if _hint != null else "-"])
+
+# a level to test a replay at that isn't lv: the highest offered one, or the lowest when lv is the highest
+static func other_level(lv: String) -> String:
+	var offered: Array = offered_levels()
+	if offered.is_empty():
+		return lv
+	var top: String = str(offered.back())
+	return top if top != lv else str(offered[0])
 
 # --map-pick city, else the last city with a replayable game
 func _mapshot_city() -> String:
