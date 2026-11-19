@@ -30,6 +30,9 @@ Phase 5: entries with "recruit": true also write <id>_crew.png in your crew's co
 sheets are saved as indexed-palette PNGs when that is smaller (same pixels, about 40 KB instead of 95 KB).
 Phase 6 (P6-A1): the five new city crews and the New York crews ("phase": 6 in crews.json), new parts in the
 "Phase 6 parts" section below, preview docs/art/players_preview_p6.png. Sheets render in parallel (--jobs).
+Phase 9 (P9-04): the Grandfathers era parts ("Phase 9 era parts" section below; make_players_v2.py uses them through
+this loader). python3 tools/art/make_players.py --legends-sample writes only the owner's look sample
+docs/art/legends_sample_v1.png and .gif (one era look in the v2 style; nothing in assets/).
 Needs:  Pillow, numpy
 """
 import json
@@ -573,6 +576,135 @@ P.number_px = number_px_ext
 P.build = build_ext
 
 
+# ----------------------------------------------------------------------------- Phase 9 era parts (P9-04)
+# The Grandfathers era (Legends Chapter 1): outfit and face parts drawn once for the whole era, added around the
+# Phase 6 build in the same way, so a player without these keys goes straight through (every older sheet stays
+# pixel-identical). Original parts only: no real player's look, number or accessory is copied.
+#   era_shorts: true      short, snug shorts (shorts_len ERA_SHORTS_LEN, the thighs a little slimmer under them)
+#   socks: "striped"      tall tube socks (sock_len ERA_SOCK_LEN unless given) with two bands at the top (stripe_pal,
+#                         stripe2_pal for the second band, default the first)
+#   terry: true           a thick terry headband (band_pal) over any hair, ribbed, sitting on the hair's outside
+#                         (an afro too)
+#   chops: true           mutton chops (sideburns grown down to the jaw line, chin shaved)
+#   mustache: true        a full mustache, the ends turned down a little
+#   hair "flattop"        a flat-top: short sides, a squared top
+#   knee pads in era colors: the Phase 6 kneepads with an era pad_pal (ERA_PAD, ERA_RUST ...)
+# Era palettes are the ERA_* rows of crews.json. tools/art/make_players.py --legends-sample draws the owner's look
+# sample from these parts (docs/art/legends_sample_v1.png and .gif); nothing in assets/ is written by it.
+
+ERA_SHORTS_LEN = 0.46       # thigh fraction under the shorts (today's shortest is 0.62)
+ERA_SHORTS_SNUG = 0.38      # thigh radius taken off under the shorts (they hug the leg)
+ERA_SOCK_LEN = 0.9          # calf fraction under the socks (up to just below the knee)
+ERA_STRIPES = ((0.05, 0.11), (0.15, 0.21))     # the two bands, from the sock top down (calf fraction)
+TERRY_Y = 1.25              # head-local height of the terry band centre
+TERRY_R = 0.85              # its thickness (head-local radius of the ring's beads)
+TERRY_BEADS = 26
+ERA_KEYS = ("era_shorts", "terry", "chops", "mustache")
+
+_P6_BUILD = P.build
+
+
+def is_era(p):
+    return p.get("hair") == "flattop" or p.get("socks") == "striped" or any(p.get(k) for k in ERA_KEYS)
+
+
+def _inside(prim, pt):
+    if isinstance(prim, P.Sphere):
+        ok = float(np.linalg.norm(pt - prim.c)) <= prim.r
+    else:
+        ok = float(np.linalg.norm(np.linalg.solve(prim.A, pt - prim.c))) <= 1.0
+    if ok and prim.clip is not None:
+        p0, nrm = prim.clip
+        ok = float((pt - p0) @ nrm) >= 0.0
+    return ok
+
+
+def build_era(p, pose, expr="focus", portrait=False):
+    if not is_era(p):
+        return _P6_BUILD(p, pose, expr, portrait)
+    q = dict(p)
+    if p.get("hair") == "flattop":
+        q["hair"] = "buzz"
+    if p.get("era_shorts"):
+        q["shorts_len"] = ERA_SHORTS_LEN
+    if p.get("socks") == "striped" and not p.get("sock_len_set"):
+        q["sock_len"] = max(p.get("sock_len", 0.0), ERA_SOCK_LEN)
+    prims, info, pp = _P6_BUILD(q, pose, expr, portrait)
+    if p.get("stripe_pal"):
+        pp["stripe"] = P.pal(p["stripe_pal"])
+        pp["stripe2"] = P.pal(p.get("stripe2_pal") or p["stripe_pal"])
+    head_c, Rh = info["head_c"], info["Rh"]
+
+    def H(x, y, z):
+        return head_c + Rh @ P.vec(x, y, z)
+
+    def head_local(h):
+        return Rh.T @ (h - head_c) / (HK * HK)
+
+    # --- legs: snug short shorts, striped tube socks
+    slen, sock = q["shorts_len"], q["sock_len"]
+    for pr in prims:
+        if p.get("era_shorts") and pr.part == "thigh" and pr.t < slen:
+            pr.r = max(0.6, pr.r - ERA_SHORTS_SNUG)
+        if p.get("socks") == "striped" and pr.part == "calf" and callable(pr.mat) and p.get("stripe_pal"):
+            def sock_mat(h, prim, orig=pr.mat, top=1.0 - sock):
+                m = orig(h, prim)
+                if m != "sock":
+                    return m
+                (a0, a1), (b0, b1) = ERA_STRIPES
+                if top + a0 <= prim.t < top + a1:
+                    return "stripe"
+                if top + b0 <= prim.t < top + b1:
+                    return "stripe2"
+                return m
+            pr.mat = sock_mat
+
+    # --- face: mutton chops, mustache (wrap the head materials)
+    def face_era(l, m):
+        x, y, z = l
+        if m != "skin":
+            return m
+        ax = abs(x)
+        if p.get("chops") and z > -0.4 and -2.5 < y < 1.0 and ax > 2.35 - 0.25 * min(1.0, max(0.0, -y)) \
+                and not (y < -1.7 and ax < 2.3):
+            return "hair"
+        if p.get("mustache") and z > 2.0 and ((-1.55 < y < -0.85 and ax < 1.5) or (1.05 < ax < 1.6 and -2.05 < y < -0.85)):
+            return "hair"
+        return m
+
+    if p.get("chops") or p.get("mustache"):
+        for pr in prims:
+            if pr.part == "head" and callable(pr.mat):
+                def wrapped_f(h, prim, orig=pr.mat):
+                    return face_era(head_local(h), orig(h, prim))
+                pr.mat = wrapped_f
+
+    # --- flat-top: stacked flat layers, the top one a level lid
+    if p.get("hair") == "flattop":
+        HX, HY, HZ = info["HX"], info["HY"], info["HZ"]
+        for k, (y, s) in enumerate(((2.0, 0.96), (2.9, 0.97), (3.8, 0.97), (4.6, 0.95))):
+            prims.append(P.ell(H(0, y, -0.25), Rh, HX * s, 0.75 if k < 3 else 0.55, HZ * s * 0.97, "hair", "hair"))
+
+    # --- terry headband: a ring of ribbed beads on the outermost head or hair surface at the band height
+    if p.get("terry"):
+        shells = [pr for pr in prims if pr.part in ("head", "hair")]
+        for b in range(TERRY_BEADS):
+            th = 2.0 * math.pi * b / TERRY_BEADS
+            sx, sz = math.sin(th), math.cos(th)
+            rs = 0.0
+            for i in range(80, 0, -1):
+                r = i * 0.1
+                if any(_inside(pr, H(r * sx, TERRY_Y, r * sz)) for pr in shells):
+                    rs = r
+                    break
+            c = H((rs - 0.3) * sx, TERRY_Y, (rs - 0.3) * sz)
+            prims.append(P.Sphere(c, TERRY_R * HK, "band" if b % 2 else "band-1", "band"))
+    return prims, info, pp
+
+
+P.build = build_era
+
+
 # ----------------------------------------------------------------------------- render + checks
 
 def render_frame(p, anim, k, yaw, hands=None):
@@ -862,7 +994,205 @@ def _job(p):
     return p["id"], sheet, frames, probs, hp
 
 
+# ----------------------------------------------------------------------------- Phase 9 legend look sample (P9-04)
+# --legends-sample: one Grandfathers look (Steeple, the hook-shot center of docs/legends-plan.md; L1 a) in the
+# v2 sheet style (tools/art/make_players_v2.py's renderer, poses and preview helpers, imported read only), for the
+# owner's look check before P9-09 makes the legend sheets. Writes only docs/art/legends_sample_v1.png and .gif.
+# The look is data here, not in crews.json (no sheet is made from it); the number is a placeholder (the legends'
+# numbers come from a list the owner approves). The parts row puts the other era parts on plain bodies: a parts
+# check, not the other legends' final looks.
+
+LEGEND_SAMPLE_PNG = os.path.join(ROOT, "docs", "art", "legends_sample_v1.png")
+LEGEND_SAMPLE_GIF = os.path.join(ROOT, "docs", "art", "legends_sample_v1.gif")
+_ERA_KIT = {"top": "tank", "sleeve": None, "tight": None, "era_shorts": True, "socks": "striped"}
+LEGEND_SAMPLE = dict(_ERA_KIT, **{
+    "id": "lg_sample_steeple", "crew": "B", "number": 18, "role": "hook-shot center", "name": "Steeple",
+    "body": "wiry_center", "body_tweak": {"leg": 0.05, "torso": 0.02, "width": -0.05, "mass": -0.1},
+    "skin": "umber", "hair": "buzz", "hair_pal": "HAIR_BLACK", "chops": True, "terry": True, "band_pal": "ERA_MUSTARD",
+    "top_pal": "ERA_RUST", "trim_pal": "ERA_CREAM", "shorts_pal": "ERA_RUST", "shorts_trim": "ERA_CREAM",
+    "shorts_len": ERA_SHORTS_LEN, "sock_pal": "ERA_CREAM", "sock_len": ERA_SOCK_LEN, "stripe_pal": "ERA_RUST",
+    "stripe2_pal": "ERA_MUSTARD", "shoe_pal": "ERA_CREAM", "shoe_acc": "ERA_RUST", "sole_pal": "ERA_GUM"})
+# your colors (a drafted legend wears them, like a _crew recolor): era palette names swapped
+LEGEND_SAMPLE_CREW = {"ERA_CREAM": "WHITE", "ERA_RUST": "BLUE", "ERA_MUSTARD": "GOLD"}
+PARTS_CHECK = [  # (label, entry): the other era parts on plain bodies (not final looks)
+    ("flat-top, knee pads", dict(_ERA_KIT, id="era_part_1", crew="B", number=4, body="heavy_big", skin="light",
+                                hair="flattop", hair_pal="HAIR_BROWN", kneepads="both", pad_pal="ERA_PAD",
+                                top_pal="ERA_OLIVE", trim_pal="ERA_CREAM", shorts_pal="ERA_OLIVE",
+                                shorts_trim="ERA_CREAM", sock_pal="ERA_CREAM", stripe_pal="ERA_OLIVE",
+                                shoe_pal="ERA_CREAM", shoe_acc="ERA_OLIVE", sole_pal="ERA_GUM")),
+    ("mustache, tall socks", dict(_ERA_KIT, id="era_part_2", crew="B", number=2, body="stocky_guard", skin="tan",
+                                  hair="buzz", hair_pal="HAIR_DARK", mustache=True, top_pal="ERA_POWDER",
+                                  trim_pal="ERA_BROWN", shorts_pal="ERA_BROWN", shorts_trim="ERA_POWDER",
+                                  sock_pal="ERA_CREAM", stripe_pal="ERA_POWDER", stripe2_pal="ERA_BROWN",
+                                  shoe_pal="ERA_CREAM", shoe_acc="ERA_BROWN", sole_pal="ERA_GUM")),
+    ("afro + terry band", dict(_ERA_KIT, id="era_part_3", crew="B", number=9, body="lanky_wing", skin="brown",
+                               hair="afro", hair_pal="HAIR_BLACK", terry=True, band_pal="ERA_CREAM",
+                               top_pal="ERA_MUSTARD", trim_pal="ERA_BROWN", shorts_pal="ERA_MUSTARD",
+                               shorts_trim="ERA_BROWN", sock_pal="ERA_CREAM", stripe_pal="ERA_BROWN",
+                               stripe2_pal="ERA_MUSTARD", shoe_pal="ERA_CREAM", shoe_acc="ERA_BROWN",
+                               sole_pal="ERA_GUM")),
+    ("chops + mustache, pad", dict(_ERA_KIT, id="era_part_4", crew="B", number=5, body="power_forward",
+                                   skin="deep", hair="bald", hair_pal="HAIR_BLACK", chops=True, mustache=True,
+                                   wrist=True, wrist_pal="ERA_CREAM", kneepads="R", pad_pal="ERA_RUST",
+                                   top_pal="ERA_BROWN", trim_pal="ERA_MUSTARD", shorts_pal="ERA_BROWN",
+                                   shorts_trim="ERA_MUSTARD", sock_pal="ERA_CREAM", stripe_pal="ERA_BROWN",
+                                   shoe_pal="ERA_CREAM", shoe_acc="ERA_BROWN", sole_pal="ERA_GUM")),
+]
+SAMPLE_REF = "ud_deuce"     # today's player next to the sample, for size and style
+SAMPLE_ANIMS = ["idle", "run", "run_dribble", "dunk_two", "dunk_one"]
+
+
+def _sample_players():
+    """The sample entries through load_players (palettes, bodies) from a scratch copy of crews.json."""
+    import tempfile
+    raw = json.load(open(CREWS))
+    crew = dict(LEGEND_SAMPLE)
+    crew.update({k: LEGEND_SAMPLE_CREW.get(v, v) for k, v in LEGEND_SAMPLE.items() if isinstance(v, str)})
+    crew.update({"id": LEGEND_SAMPLE["id"] + "_crew", "crew": "U"})
+    entries = [dict(LEGEND_SAMPLE), crew] + [dict(e) for _, e in PARTS_CHECK]
+    for e in entries:
+        e.setdefault("sock_len", ERA_SOCK_LEN)
+        e.setdefault("shorts_len", ERA_SHORTS_LEN)
+    raw["players"] = entries
+    fd, tmp = tempfile.mkstemp(suffix=".json")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(raw, f)
+        return {p["id"]: p for p in load_players(tmp)}
+    finally:
+        os.remove(tmp)
+
+
+def _render_anims(V, p, anims, dirs):
+    D = V.dims_of(p)
+    out, probs = {}, []
+    for name in anims:
+        poses = V.anim_poses(name, D)
+        for dname, yaw in V.DIRS:
+            if dname not in dirs:
+                continue
+            seq = []
+            for k, (pose, ball) in enumerate(poses):
+                img, rec = V.render_frame(p, pose, ball, yaw, V.EXPR.get(name, "focus"))
+                probs += V.check(img, rec, "%s %s %s %d" % (p["id"], name, dname, k))
+                seq.append((img, rec))
+            out[(name, dname)] = seq
+    return out, probs
+
+
+def legends_sample(argv):
+    if __name__ == "__main__":
+        sys.modules["make_players"] = sys.modules["__main__"]    # make_players_v2 imports this module: no re-patch
+    import make_players_v2 as V
+    import make_anim_sample as AS
+    ps = _sample_players()
+    sid, cid = LEGEND_SAMPLE["id"], LEGEND_SAMPLE["id"] + "_crew"
+    ref = [q for q in V.players_v2() if q["id"] == SAMPLE_REF][0]
+    alld = ("S", "SE", "E", "NE", "N")
+    fr, probs = {}, []
+    for pid, p in ((sid, ps[sid]), (cid, ps[cid]), (SAMPLE_REF, ref)):
+        fr[pid], pr = _render_anims(V, p, SAMPLE_ANIMS, alld)
+        probs += pr
+    parts = []
+    for lab, e in PARTS_CHECK:
+        f, pr = _render_anims(V, ps[e["id"]], ["idle", "run"], ("S", "SE", "E"))
+        parts.append((lab, f))
+        probs += pr
+
+    # --- the PNG
+    Z, pad, lab_h = 2, 6, 18
+    cw, chh = V.FW * Z, V.FH * Z
+    cells_per_row = 10
+    W = 150 + cells_per_row * (cw + pad)
+
+    def C(f, name, dn, k=0, flip=False):
+        img, rec = f[(name, dn)][k]
+        if flip:
+            return V.compose(img.transpose(Image.FLIP_LEFT_RIGHT), dict(rec, ball=None))
+        return V.compose(img, rec)
+
+    def strip(f):
+        r = [C(f, "idle", dn) for dn in alld] + [C(f, "idle", "E", flip=True)]
+        r += [C(f, "run", "E", 3), C(f, "run_dribble", "SE", 2), C(f, "dunk_two", "SE", 5), C(f, "dunk_one", "E", 7)]
+        return r
+
+    heads = ("idle S SE E NE N W (mirrored) | run E | running dribble SE | two-hand dunk SE (hang) | one-hand dunk E "
+             "(at the rim; the game adds the jump height)")
+    rows = [("STEEPLE, era colors", strip(fr[sid])), ("in your colors", strip(fr[cid])),
+            ("today: " + SAMPLE_REF, strip(fr[SAMPLE_REF]))]
+    prow = []
+    for lab, f in parts:
+        prow += [C(f, "idle", "S"), C(f, "run", "SE", 2)]
+    H = 64 + len(rows) * (chh + lab_h + pad) + 2 * 30 + (chh + lab_h + pad) + 4 * V.FH + 2 * pad
+    base = AS.floor_bg(W, H)
+    dr = ImageDraw.Draw(base)
+    dr.rectangle([0, 0, W, 56], fill=(28, 26, 38, 255))
+    AS.label(dr, (8, 6), "Legends look sample v1 (P9-04): the Grandfathers era parts on Steeple, the hook-shot "
+                         "center (an original character; number 18 is a placeholder). Shown 2x as in the game.", 14)
+    AS.label(dr, (8, 30), heads, 12, (210, 204, 224))
+    y = 64
+    for name, r in rows:
+        AS.label(dr, (8, y + lab_h + chh // 2 - 8), name, 13)
+        for c, cell in enumerate(r):
+            base.alpha_composite(cell.resize((cw, chh), Image.NEAREST), (150 + c * (cw + pad), y + lab_h))
+        y += chh + lab_h + pad
+    dr.rectangle([0, y, W, y + 24], fill=(28, 26, 38, 255))
+    AS.label(dr, (8, y + 4), "Parts check: the other era parts on plain bodies (idle S, run SE). Not the other "
+                             "legends' final looks (P9-09 makes those).", 13)
+    y += 30
+    for i, (lab, f) in enumerate(parts):
+        AS.label(dr, (150 + 2 * i * (cw + pad) + 2, y + 2), lab, 12)
+    for c, cell in enumerate(prow):
+        base.alpha_composite(cell.resize((cw, chh), Image.NEAREST), (150 + c * (cw + pad), y + lab_h))
+    y += chh + lab_h + pad
+    dr.rectangle([0, y, W, y + 24], fill=(28, 26, 38, 255))
+    AS.label(dr, (8, y + 4), "Close-up 4x: terry headband, mutton chops, short shorts, striped tube socks (S, SE, E, "
+                             "NE, N)", 13)
+    y += 30
+    x = 150
+    for dn in alld:
+        img, rec = fr[sid][("idle", dn)][0]
+        base.alpha_composite(img.resize((V.FW * 4, V.FH * 4), Image.NEAREST), (x, y))
+        x += V.FW * 4 + pad
+    base.convert("RGB").save(LEGEND_SAMPLE_PNG, optimize=True)
+    print("wrote %s %s %d bytes" % (LEGEND_SAMPLE_PNG, base.size, os.path.getsize(LEGEND_SAMPLE_PNG)))
+
+    # --- the GIF: era colors, your colors and today's player side by side
+    moves = [("idle", "S", 1), ("run", "SE", 2), ("run", "E", 2), ("run_dribble", "SE", 2), ("run_dribble", "E", 2),
+             ("dunk_two", "SE", 1), ("dunk_one", "E", 1), ("idle", "SE", 1)]
+    top, head = 30, 22
+    panels = [(sid, "STEEPLE"), (cid, "YOUR COLORS"), (SAMPLE_REF, "TODAY")]
+    gw = pad + len(panels) * (cw + pad)
+    gh = head + (V.FH + top) * Z + pad + 14
+    frames, durs = [], []
+    for name, dn, loops in moves:
+        ms = V.ANIM[name][3]
+        lift = V.PREVIEW_LIFT.get(name)
+        for _ in range(loops):
+            for k, dur in enumerate(ms):
+                bg = AS.floor_bg(gw, gh)
+                d2 = ImageDraw.Draw(bg)
+                d2.rectangle([0, 0, gw, head - 4], fill=(28, 26, 38, 255))
+                AS.label(d2, (6, 3), "%s (%s) %d/%d" % (name, dn, k + 1, len(ms)), 13)
+                for c, (pid, title) in enumerate(panels):
+                    img, rec = fr[pid][(name, dn)][k]
+                    cell = AS.compose_frame(img, rec, lift=lift[k] if lift else 0, ball_spin=k, top=top)
+                    bg.alpha_composite(cell.resize((cw, (V.FH + top) * Z), Image.NEAREST),
+                                       (pad + c * (cw + pad), head))
+                    AS.label(d2, (pad + c * (cw + pad) + 4, gh - 18), title, 11)
+                frames.append(bg)
+                durs.append(max(20, dur))
+    AS.gif_save(frames, durs, LEGEND_SAMPLE_GIF)
+    print("wrote %s %d frames %d bytes" % (LEGEND_SAMPLE_GIF, len(frames), os.path.getsize(LEGEND_SAMPLE_GIF)))
+    for s in probs:
+        print("CHECK", s)
+    print("checks: %d problem(s)" % len(probs))
+    return len(probs)
+
+
 def main(argv):
+    if "--legends-sample" in argv:    # P9-04: the owner's look sample only, nothing in assets/
+        return legends_sample(argv)
     only = set(argv[argv.index("--only") + 1].split(",")) if "--only" in argv else None
     jobs = int(argv[argv.index("--jobs") + 1]) if "--jobs" in argv else (os.cpu_count() or 1)
     players = load_players()
