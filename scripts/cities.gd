@@ -20,6 +20,9 @@ const VAN_NAME := "THE BISCUIT"
 const CREW_COLORS := ["BLUE", "GOLD"]   # your crew always wears blue and gold (palette names in tools/art/crews.json)
 const START_CREW := ["ud_deuce", "ud_jojo", "ud_tank"]   # starter 0 is the one you control by default
 const COSMETICS_PATH := "res://scripts/cosmetics.gd"     # P8-10: the picked jersey (crew_sheet(); loaded at run time)
+# P9-21: the legends' rows (player(id) for an "lg_" id). legends_data.gd preloads nothing, so this makes no cycle
+# (never preload legends.gd here: it preloads trip.gd, which preloads this file).
+const LegendsData = preload("res://scripts/legends_data.gd")
 static var _cosmetics: GDScript = null
 
 # the fixed route (owner Q7); a city with "built": false would be skipped (map pin marked "coming soon")
@@ -459,9 +462,18 @@ const PLAYERS := {
 static func city(id: String) -> Dictionary:
 	return CITIES.get(id, {})
 
-# a player's data ({} for an unknown id)
+# a player's data ({} for an unknown id); P9-21: an "lg_" id gives his legends_data.gd row (tier "legend", the same
+# keys where they overlap), so a drafted legend is a player like any other (crew_sheet(), trip.gd player_dict())
 static func player(id: String) -> Dictionary:
-	return PLAYERS.get(id, {})
+	if PLAYERS.has(id):
+		return PLAYERS[id]
+	if id.begins_with(LegendsData.ID_PREFIX):
+		return LegendsData.legend(id)
+	return {}
+
+# P9-21: a legend id (a legends_data.gd row; tier "legend"); a legend is never a boss
+static func is_legend(id: String) -> bool:
+	return LegendsData.is_legend_id(id)
 
 static func is_built(id: String) -> bool:
 	return bool(city(id).get("built", false))
