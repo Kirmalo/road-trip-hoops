@@ -34,6 +34,13 @@ Usage:  python3 tools/art/make_players_v2.py [--only ID[,ID...] | --all] [--jobs
         [--jerseys]      (only the P8-09 jerseys: palettes/<id>_j<N>.png and cards/<id>_j<N>.png for every sheet in
                          your colors, crews.json "jerseys", from the written palettes and pages; a full run makes them too)
         [--anims a,b --frames DIR]   (a quick look: strips of those animations to DIR, no files written)
+        [--extra-sheets id,...]      (P9-04b: these sheets carry every EXTRA animation this run, e.g. the hook)
+        [--out-dir DIR]              (write the sheet files, cards and render cache under DIR: a scratch run)
+        [--hook-preview [ID]]        (only docs/art/hook_shot_v1.gif, the hook next to the jump shot; no files)
+        [--hook-strip ID DIR]        (a still strip of the hook in 5 directions to DIR)
+Extra animations (P9-04b): EXTRA (the hook shot) is rendered only for the sheets it names (lg_* ids, a crews.json
+"extra": [...] list, --extra-sheets), onto extra pages <id>_x<N>.png with the same palettes, and listed in
+format.json's "extra" section; every other sheet's files stay exactly as before.
 Output: assets/players2/format.json, hands.json, palettes.json, <id>_p<N>.png, palettes/<id>.png, cards/<id>.png;
         docs/art/players_preview_v3.png, docs/art/players_v3_moves.gif (the underdogs),
         docs/art/players_preview_v4.png (--all: one strip per crew)
@@ -1013,6 +1020,235 @@ def columns():
     return out, c
 
 
+# ----------------------------------------------------------------------------- P9-04b: extra animations
+# The "extra pages" rule (docs/BOARD.md, Phase 9 "Extra animations"): an animation in EXTRA is not part of every
+# sheet. It is rendered only for the sheets it names (extra_sheets()), onto pages of its own after the normal ones,
+# <sheet>_x<N>.png (logical extra columns in pages of PAGE_COLS, the same rows S SE E NE N, the same palette: the
+# index pages are written in one pass with the normal pages, so every recolor and star jersey works), and it is
+# listed in format.json's "extra" section ({name: {start (extra column), frames, fps, loop, ms, events, sheets}},
+# plus "extra_cols"). Sheets without extras get exactly the files they had before (no extra section is written when
+# no sheet carries one). A recolor carries what its base sheet carries.
+
+def k_hook(D):
+    """Hook shot, right hand (the legends' signature move, L6 b): the left shoulder turns to the hoop (the facing
+    direction), so the chest and face stay to the camera on the E rows as in the jump shot. 0 gather (two hands,
+    chest), 1 drop step with the left foot toward the hoop and the ball pulled to the right hip, 2 load sideways
+    (the left arm up to fend), 3 takeoff off the left foot with the right knee up, the right hand alone takes the
+    ball out wide, 4 the one-arm sweep up the far side, 5 the arm straight over the head (top), 6 release over the
+    head toward the hoop (the wrist flicks), 7 follow-through (the hand hangs toward the rim), 8 coming down,
+    9 land on both feet still sideways, 10 square up again. Feet leave the floor 3-8 (the game adds the jump)."""
+    hw, L = D["hw"], D["L"]
+    side = {"fL": F(hw * 0.4, 4.6, turn=-0.9), "fR": F(-hw - 1.6, -3.6, turn=0.9)}
+    land = {"fL": F(hw * 0.5, 3.6, turn=-0.8), "fR": F(-hw - 1.4, -3.0, turn=0.8)}
+
+    def air(u, v, toe=0.8):
+        return {"fL": F(hw * 0.5, 3.2, ANK + u, -toe, -0.6),
+                "fR": F(-hw * 0.9, 0.4 + 0.04 * L, ANK + v, -0.6, 0.4)}
+    guard = lambda up, fwd: ("sh", 2.6, up, fwd)                  # the off arm, bent, up toward the defender
+    on_hand = lambda dz: ("hR", 0.0, BR + 0.5, dz)               # the ball sits on the shooting palm
+    return [
+        (0.0, K(two(0.5), h=0.84, lean=12, twist=-12, head_up=14, head_yaw=10, ball=("chest", 0.0, -1.5, 7.0),
+                   fL=F(hw + 1.6, 1.8, turn=0.25), fR=F(-hw - 1.6, -0.8, turn=0.3),
+                   pL=(1, -0.6, -0.3), pR=(-1, -0.6, -0.3))),
+        (1.0, K(two(0.3), side, h=0.74, lean=18, twist=-42, head_up=18, head_yaw=30,
+                   ball=("chest", -2.0, -4.0, -2.5), pL=(1, -0.5, 0.2), pR=(-1, -0.6, -0.4))),
+        (2.0, K(h=0.68, lean=14, twist=-64, head_up=20, head_yaw=46, shrug=0.4,
+                   ball=("chest", -1.6, -2.0, -5.0), hR=("ball", -0.4, -(BR + 0.3), -0.8),
+                   hL=guard(-2.0, 5.0), pL=(0.6, -0.6, 0.6))),
+        (3.0, K(air(0.6, 6.0, 0.5), h=0.95, lean=6, twist=-68, head_up=24, head_yaw=50, shrug=1.0,
+                   hR=("sh", -0.4, 1.5, -6.8), ball=on_hand(-1.0), hL=guard(2.0, 5.0), pR=(-0.2, -0.4, -1.0))),
+        (4.0, K(air(1.8, 6.4), lean=2, shrug=1.6, hR=("sh", -0.8, 8.6, -6.2), ball=on_hand(-0.8),
+                   hL=guard(4.0, 4.6), pR=(-0.2, 0.0, -1.0))),
+        (5.0, K(air(2.6, 5.6), lean=0, head_up=26, shrug=2.0, hR=("sh", -1.6, 13.2, -1.6), ball=on_hand(0.4),
+                   hL=guard(3.0, 4.0), pR=(-0.4, 0.4, -1.0))),
+        (6.0, K(air(2.8, 4.6), shrug=2.0, hR=("sh", -1.8, 12.4, 3.4), ball=("hR", 0.0, BR + 0.4, 2.6),
+                   hL=guard(1.0, 3.6), pR=(-0.4, 0.6, -0.6))),
+        (7.0, K(air(2.2, 3.4), shrug=1.6, ball=None, hR=("sh", -1.4, 10.6, 6.4), hL=("sh", 3.0, -2.0, 3.6),
+                   pR=(-0.4, 0.8, -0.2))),
+        (8.0, K(air(0.9, 1.4), h=0.92, lean=6, shrug=1.0, head_up=20, hR=("sh", -0.6, 6.0, 7.0),
+                   hL=("sh", 3.0, -5.0, 3.0))),
+        (9.0, K(land, h=0.74, lean=14, twist=-56, head_yaw=40, head_up=18, shrug=0.2, hR=("sh", 2.0, -6.0, 4.0),
+                   hL=("sh", 2.8, -7.0, 2.0), pL=(1, 0.2, -0.6), pR=(-1, 0.2, -0.6))),
+        (10.0, K(h=0.86, lean=8, twist=-30, head_yaw=22, head_up=12, shrug=0.0, hR=("sh", 1.5, -11.0, 2.0),
+                    hL=("sh", 1.5, -11.0, 2.0), pL=(1, -0.2, -0.3), pR=(-1, -0.2, -0.3))),
+    ]
+
+
+# name -> definition, fps, ms, events (as ANIMS)
+EXTRA = [
+    ("hook", keyed(k_hook, 11), 0.0, [70, 80, 70, 50, 50, 60, 60, 120, 90, 90, 110],
+     {"gather": [0, 2], "takeoff": 3, "top": 5, "release": 6, "follow": [7, 8], "air": [3, 8], "land": 9,
+      "hand": "R"}),
+]
+EXTRA_ANIM = {a[0]: a for a in EXTRA}
+# who carries an extra: every sheet whose id starts with one of these (the era rule: all legend sheets carry the
+# hook), plus any crews.json player listing it in "extra": [names]. --extra-sheets id,... adds ids for one run.
+EXTRA_PREFIX = {"hook": ("lg_",)}
+EXTRA_FORCE = set()
+PREVIEW_LIFT["hook"] = [0, 0, 0, 4, 12, 17, 18, 15, 7, 0, 0]
+HOOK_GIF = os.path.join(ROOT, "docs", "art", "hook_shot_v1.gif")
+HOOK_BODY = "ht_a1"      # the preview body: a wiry center (as the hook-shot legend), a drafted player in his colors
+
+for _a in EXTRA:
+    assert _a[0] not in ANIM and len(_a[3]) == _a[1]["n"], _a[0]
+
+
+def extras_for(sid, players=None):
+    """The extra animations a sheet (or a recolor: its base) carries, in EXTRA order."""
+    players = players if players is not None else players_v2()
+    byid = {q["id"]: q for q in players}
+    p = byid.get(sid, {})
+    base = p.get("recolor_of", sid)
+    pb = byid.get(base, p)
+    listed = set(pb.get("extra", [])) | set(p.get("extra", []))
+    raw = {e["id"]: e for e in json.load(open(M.CREWS))["players"]}
+    listed |= set(raw.get(base, {}).get("extra", []))
+    out = []
+    for name, d, fps, ms, ev in EXTRA:
+        if name in listed or base in EXTRA_FORCE or sid in EXTRA_FORCE or base.startswith(EXTRA_PREFIX.get(name, ())):
+            out.append(name)
+    return out
+
+
+def extra_sheets(name, players=None):
+    """The base sheets (with pages) that carry the extra `name`."""
+    players = players if players is not None else players_v2()
+    return [q["id"] for q in players if "recolor_of" not in q and name in extras_for(q["id"], players)]
+
+
+def extra_columns(names):
+    """{name: (start, n)} in the extra column space of a sheet carrying `names`, and the total. Every extra keeps
+    the same start on every sheet (EXTRA order; a sheet without one leaves its columns empty), so one format.json
+    entry fits all."""
+    out = {}
+    c = 0
+    for name, d, fps, ms, ev in EXTRA:
+        out[name] = (c, d["n"])
+        c += d["n"]
+    return {k: v for k, v in out.items() if k in names}, c
+
+
+def assemble_extra_pages(frames, names):
+    """RGBA extra pages (<sheet>_x<N>) of a sheet carrying `names` ([] = none)."""
+    if not names:
+        return []
+    cols, total = extra_columns(names)
+    total = max(s + n for s, n in cols.values())
+    pages = []
+    for pg in range(int(math.ceil(total / PAGE_COLS))):
+        w = min(PAGE_COLS, total - pg * PAGE_COLS)
+        pages.append(Image.new("RGBA", (w * FW, FH * len(DIRS)), (0, 0, 0, 0)))
+    for name, (start, n) in cols.items():
+        for r, (dname, _) in enumerate(DIRS):
+            for k, (img, rec) in enumerate(frames[(name, dname)]):
+                c = start + k
+                pages[c // PAGE_COLS].paste(img, ((c % PAGE_COLS) * FW, r * FH))
+    return pages
+
+
+def extra_format(players=None):
+    """format.json's "extra" section: only the extras some sheet carries ({} = none, and no section is written)."""
+    players = players if players is not None else players_v2()
+    cols, total = extra_columns([a[0] for a in EXTRA])
+    out = {}
+    for name, d, fps, ms, ev in EXTRA:
+        sheets = extra_sheets(name, players)
+        if not sheets:
+            continue
+        start, n = cols[name]
+        e = {"start": start, "frames": n, "fps": fps, "loop": bool(d["loop"]), "ms": ms}
+        e.update(ev)
+        e["sheets"] = sheets
+        out[name] = e
+    return out, total
+
+
+def hook_preview(sid=HOOK_BODY, path=HOOK_GIF):
+    """docs/art/hook_shot_v1.gif for the owner's look check: one body in the 5 drawn directions, the hook shot
+    (top row) next to today's jump shot (bottom row), at game speed twice, then once at 1/3 speed. Renders in this
+    process only: nothing is written to assets/ or the cache."""
+    p = [q for q in players_v2() if q["id"] == sid][0]
+    D = dims_of(p)
+    rows = []
+    for name in ("hook", "shoot"):
+        poses = anim_poses(name, D)
+        row = {}
+        probs = []
+        for dname, yaw in DIRS:
+            seq = []
+            for k, (pose, ball) in enumerate(poses):
+                img, rec = render_frame(p, pose, ball, yaw, "focus")
+                probs += check(img, rec, "%s %s %s %d" % (sid, name, dname, k))
+                seq.append((img, rec))
+            row[dname] = seq
+        rows.append((name, row, probs))
+    Z = 2
+    top = 30
+    pad = 6
+    head = 22
+    lab = 18
+    cw, ch = FW * Z, (FH + top) * Z
+    W = 120 + len(DIRS) * (cw + pad)
+    H = head + 2 * (ch + lab + pad)
+    titles = {"hook": "HOOK SHOT (new, legend sheets only)", "shoot": "jump shot (today)"}
+
+    def ms_of(name):
+        return (EXTRA_ANIM.get(name) or ANIM[name])[3]
+    span = max(sum(ms_of(n)) for n, _, _ in rows) + 350          # each holds its last frame, then a pause
+    frames, durs = [], []
+    for speed, tag in ((1, "game speed"), (1, "game speed"), (3, "1/3 speed")):
+        cuts = {0}
+        for name, _, _ in rows:
+            t = 0
+            for ms in ms_of(name):
+                t += ms * speed
+                cuts.add(t)
+        cuts = sorted(c for c in cuts if c < span * speed)
+        for i, t0 in enumerate(cuts):
+            t1 = cuts[i + 1] if i + 1 < len(cuts) else span * speed
+            bg = S.floor_bg(W, H)
+            dr = ImageDraw.Draw(bg)
+            dr.rectangle([0, 0, W, head - 4], fill=(28, 26, 38, 255))
+            S.label(dr, (6, 3), "P9-04b hook shot preview: %s, %s (S SE E NE N; W side = mirrors)" % (sid, tag), 13)
+            for r, (name, row, _) in enumerate(rows):
+                ms = ms_of(name)
+                k, acc = 0, 0
+                while k < len(ms) - 1 and acc + ms[k] * speed <= t0:
+                    acc += ms[k] * speed
+                    k += 1
+                y0 = head + r * (ch + lab + pad)
+                S.label(dr, (6, y0 + 2), "%s  %d/%d" % (titles[name], k + 1, len(ms)), 12)
+                lift = PREVIEW_LIFT[name][k]
+                for c, (dname, _) in enumerate(DIRS):
+                    img, rec = row[dname][k]
+                    cell = S.compose_frame(img, rec, lift=lift, ball_spin=k, top=top)
+                    x0 = 120 + c * (cw + pad)
+                    bg.alpha_composite(cell.resize((cw, ch), Image.NEAREST), (x0, y0 + lab))
+                    S.label(dr, (x0 + 4, y0 + lab + 4), dname, 12, (200, 196, 214))
+            frames.append(bg)
+            durs.append(max(20, int(round((t1 - t0) / 10.0)) * 10))
+    S.gif_save(frames, durs, path)
+    return path, len(frames), [pr for _, _, pr in rows for pr in pr]
+
+
+def hook_strip(sid, path, Z=3):
+    """A still contact strip of the hook (5 rows, frames numbered) for checking poses; scratch use only."""
+    p = [q for q in players_v2() if q["id"] == sid][0]
+    D = dims_of(p)
+    poses = anim_poses("hook", D)
+    n = len(poses)
+    W, H = n * FW * Z, len(DIRS) * (FH + S.TOP) * Z
+    bg = S.floor_bg(W, H)
+    for r, (dname, yaw) in enumerate(DIRS):
+        for k, (pose, ball) in enumerate(poses):
+            img, rec = render_frame(p, pose, ball, yaw, "focus")
+            cell = S.compose_frame(img, rec, lift=PREVIEW_LIFT["hook"][k], ball_spin=k)
+            bg.alpha_composite(cell.resize((FW * Z, (FH + S.TOP) * Z), Image.NEAREST),
+                               (k * FW * Z, r * (FH + S.TOP) * Z))
+    bg.convert("RGB").save(path)
+    return path
+
+
 # ----------------------------------------------------------------------------- frames
 
 def frame_times(d):
@@ -1025,8 +1261,8 @@ def frame_times(d):
 
 
 def anim_poses(name, D):
-    """[(pixel3d pose, ball)] for every frame of an animation."""
-    _, d, _, _, _ = ANIM[name]
+    """[(pixel3d pose, ball)] for every frame of an animation (a normal one or an EXTRA)."""
+    _, d, _, _, _ = ANIM[name] if name in ANIM else EXTRA_ANIM[name]
     if d["kind"] == "mirror":
         return [mirror_pose(p, b) for p, b in anim_poses(d["of"], D)]
     if d["kind"] == "proc":
@@ -1122,7 +1358,8 @@ def render_sheet(sheet_id, dump=None, only_anims=None):
     p = [q for q in players_v2() if q["id"] == sheet_id][0]
     D = dims_of(p)
     frames, probs = {}, []
-    for name, d, fps, ms, ev in ANIMS:
+    extra = [EXTRA_ANIM[x] for x in extras_for(sheet_id)]       # P9-04b: only the sheets an extra names
+    for name, d, fps, ms, ev in ANIMS + extra:
         if only_anims and name not in only_anims:
             continue
         poses = anim_poses(name, D)
@@ -1164,7 +1401,15 @@ def _patch_job(args):
     pages = [Image.fromarray(a, "RGBA") for a in cached_pages(sid)]
     recs = cached_recs(sid)
     cols, _ = columns()
+    xfr = {k: v for k, v in fr.items() if k[0] in EXTRA_ANIM}
+    if xfr:        # P9-04b: patched extras are re-assembled from the cache's other extra frames
+        allx = {k: v for k, v in cached_frames(sid).items() if k[0] in EXTRA_ANIM}
+        allx.update(xfr)
+        _save_extra_cache(sid, allx)
     for (name, dname), seq in fr.items():
+        if name in EXTRA_ANIM:
+            recs[(name, dname)] = [rec for _, rec in seq]
+            continue
         start, n = cols[name]
         r = [d for d, _ in DIRS].index(dname)
         for k, (img, rec) in enumerate(seq):
@@ -1194,6 +1439,7 @@ def _render_job(args):
     open(os.path.join(CACHE, ".gdignore"), "w").close()      # Godot must not import the cache
     for pg, img in enumerate(assemble_pages(fr)):
         img.save(os.path.join(CACHE, "%s_p%d.png" % (sid, pg)), compress_level=1)
+    _save_extra_cache(sid, fr)
     with open(os.path.join(CACHE, sid + ".json"), "w") as f:
         json.dump({"%s|%s" % k: v for k, v in recs.items()}, f)
     os.makedirs(CARD_DIR, exist_ok=True)
@@ -1226,6 +1472,45 @@ def cached_frames(sid):
                 a = pages[c // PAGE_COLS][r * FH:(r + 1) * FH, (c % PAGE_COLS) * FW:(c % PAGE_COLS + 1) * FW]
                 seq.append((Image.fromarray(a.copy(), "RGBA"), recs[(name, dname)][k]))
             out[(name, dname)] = seq
+    out.update(cached_extra_frames(sid, recs))
+    return out
+
+
+def _save_extra_cache(sid, fr):
+    """P9-04b: the RGBA extra pages <sid>_x<N>.png of a sheet carrying extras (stale ones removed)."""
+    names = [x for x in extras_for(sid) if all((x, d) in fr for d, _ in DIRS)]
+    pages = assemble_extra_pages(fr, names)
+    for pg, img in enumerate(pages):
+        img.save(os.path.join(CACHE, "%s_x%d.png" % (sid, pg)), compress_level=1)
+    pg = len(pages)
+    while os.path.exists(os.path.join(CACHE, "%s_x%d.png" % (sid, pg))):
+        os.remove(os.path.join(CACHE, "%s_x%d.png" % (sid, pg)))
+        pg += 1
+
+
+def cached_extra_pages(sid):
+    """P9-04b: the cached RGBA extra pages of a sheet ([] = it carries none)."""
+    out = []
+    while os.path.exists(os.path.join(CACHE, "%s_x%d.png" % (sid, len(out)))):
+        out.append(np.array(Image.open(os.path.join(CACHE, "%s_x%d.png" % (sid, len(out)))).convert("RGBA")))
+    return out
+
+
+def cached_extra_frames(sid, recs):
+    pages = cached_extra_pages(sid)
+    names = [x for x in extras_for(sid) if (x, DIRS[0][0]) in recs]
+    if not pages or not names:
+        return {}
+    cols, _ = extra_columns(names)
+    out = {}
+    for name, (start, n) in cols.items():
+        for r, (dname, _) in enumerate(DIRS):
+            seq = []
+            for k in range(n):
+                c = start + k
+                a = pages[c // PAGE_COLS][r * FH:(r + 1) * FH, (c % PAGE_COLS) * FW:(c % PAGE_COLS + 1) * FW]
+                seq.append((Image.fromarray(a.copy(), "RGBA"), recs[(name, dname)][k]))
+            out[(name, dname)] = seq
     return out
 
 
@@ -1240,6 +1525,11 @@ def write_indexed(base, variants):
     pixel has in every variant (the base and each recolor render the same shapes), so a recolor is exactly its
     palette. More than 255 tuples: the rarest are merged into the nearest kept one (reported)."""
     pages = {v: cached_pages(v) for v in variants}
+    n_normal = len(pages[base])
+    for v in variants:     # P9-04b: the extra pages share the palette (one index pass), written as _x<N>
+        pages[v] = pages[v] + cached_extra_pages(v)
+    if len({len(pages[v]) for v in variants}) != 1:
+        raise RuntimeError("%s: its recolors carry different extra pages" % base)
     bp = pages[base]
     keys, masks, shapes = [], [], []
     for pg in range(len(bp)):
@@ -1273,7 +1563,10 @@ def write_indexed(base, variants):
         nn = int(m.sum())
         idx[m] = (inv[off:off + nn] + 1).astype(np.uint8)
         off += nn
-        path = os.path.join(OUT_DIR, "%s_p%d.png" % (base, pg))
+        if pg < n_normal:
+            path = os.path.join(OUT_DIR, "%s_p%d.png" % (base, pg))
+        else:
+            path = os.path.join(OUT_DIR, "%s_x%d.png" % (base, pg - n_normal))
         save_l8(idx, path)
         sizes.append((path, (shapes[pg][1], shapes[pg][0]), "L8", os.path.getsize(path)))
     os.makedirs(PAL_DIR, exist_ok=True)
@@ -1461,6 +1754,16 @@ def write_format():
            "art_scale": SCALE, "draw_scale": 2.0, "dirs": [d for d, _ in DIRS], "cols": total,
            "page_cols": PAGE_COLS, "indexed": True, "palette_dir": "palettes/", "palette_map": "palettes.json",
            "anims": anims}
+    extra, xcols = extra_format()
+    if extra:      # P9-04b: only when some sheet carries an extra (else format.json is exactly as before)
+        fmt["_help_extra"] = ("extra (P9-04b): animations only some sheets carry (sheets = the base sheets; a "
+                              "recolor or star jersey carries what its pages' sheet carries). Their frames are on "
+                              "extra pages <sheet>_x<N>.png after the normal pages: start = the logical extra "
+                              "column (extra_cols in all, pages of page_cols, the same rows and palettes as the "
+                              "normal pages). Events as above, plus top (the ball over the head). hook: right-hand "
+                              "hook shot, left shoulder to the hoop.")
+        fmt["extra_cols"] = xcols
+        fmt["extra"] = extra
     with open(os.path.join(OUT_DIR, "format.json"), "w") as f:
         json.dump(fmt, f, indent=1)
     return fmt
@@ -1476,7 +1779,7 @@ def _strip_front(pts):
 
 
 def _front_diff(p, q):
-    return sum(1 for a in p for d in p[a] for x, y in zip(p[a][d], q[a][d]) if x != y)
+    return sum(1 for a in p if a in q for d in p[a] for x, y in zip(p[a][d], q[a][d]) if x != y)
 
 
 def write_hands(all_recs, fresh=False):
@@ -1504,11 +1807,15 @@ def write_hands(all_recs, fresh=False):
         pts = {}
         for name, d, fps, ms, ev in ANIMS:
             pts[name] = {dn: [_rec_out(rec) for rec in recs[(name, dn)]] for dn, _ in DIRS}
+        xpts = {}      # P9-04b: a sheet's extras join its body entry (a body shared with sheets without them is fine)
+        for name in extras_for(sid, list(players.values())):
+            if (name, DIRS[0][0]) in recs:
+                xpts[name] = {dn: [_rec_out(rec) for rec in recs[(name, dn)]] for dn, _ in DIRS}
         sp = _strip_front(pts)
         name0 = body_of.get(sid, {}).get("body", sid)
         key = None
         for k in [name0] + sorted(k for k in stripped if k != name0):
-            if k in stripped and stripped[k] == sp:
+            if k in stripped and {a: v for a, v in stripped[k].items() if a not in EXTRA_ANIM} == sp:
                 key = k
                 break
         if key is None:
@@ -1519,6 +1826,8 @@ def write_hands(all_recs, fresh=False):
             n = _front_diff(data["bodies"][key], pts)
             if n:
                 flips[sid] = (key, n)
+        data["bodies"][key].update(xpts)
+        stripped[key].update(_strip_front(xpts))
         data["sheets"][sid] = key
     for sid in all_recs:
         base = players[sid].get("recolor_of")
@@ -1786,7 +2095,37 @@ def all_bases():
     return [p["id"] for p in players_v2() if "recolor_of" not in p and not p["id"].startswith(("blue_", "red_"))]
 
 
+def _extra_args(argv):
+    """P9-04b: --extra-sheets id,... (these sheets carry every EXTRA this run), --out-dir DIR (write the sheet files,
+    cards and the render cache under DIR instead of assets/players2 and build/players2_rgba: a scratch run),
+    --hook-preview [ID] (only docs/art/hook_shot_v1.gif, default body HOOK_BODY; writes nothing else),
+    --hook-strip ID DIR (a still strip of the hook to DIR; scratch)."""
+    global OUT_DIR, CARD_DIR, PAL_DIR, CACHE
+    if "--extra-sheets" in argv:
+        EXTRA_FORCE.update(argv[argv.index("--extra-sheets") + 1].split(","))
+    if "--out-dir" in argv:
+        OUT_DIR = os.path.abspath(argv[argv.index("--out-dir") + 1])
+        CARD_DIR = os.path.join(OUT_DIR, "cards")
+        PAL_DIR = os.path.join(OUT_DIR, "palettes")
+        CACHE = os.path.join(OUT_DIR, "_rgba")
+    if "--hook-preview" in argv:
+        i = argv.index("--hook-preview")
+        sid = argv[i + 1] if i + 1 < len(argv) and not argv[i + 1].startswith("--") else HOOK_BODY
+        path, n, probs = hook_preview(sid)
+        for p_ in probs:
+            print("CHECK", p_)
+        print("wrote %s: %d frames, %d bytes; checks: %d problem(s)" % (path, n, os.path.getsize(path), len(probs)))
+        return True
+    if "--hook-strip" in argv:
+        i = argv.index("--hook-strip")
+        print("wrote", hook_strip(argv[i + 1], os.path.join(argv[i + 2], "hook_%s.png" % argv[i + 1])))
+        return True
+    return False
+
+
 def main(argv):
+    if _extra_args(argv):
+        return
     if "--draft-strip" in argv:      # only the P8-05 contact strip, from the written files
         print("wrote", draft_strip())
         return
