@@ -38,6 +38,7 @@
 | `assets/music/denver.ogg` | Lasso Lady (seamless loop) | congusbongus | https://opengameart.org/content/lasso-lady-seamless-loop | CC0 | Whole loop file (73.7 s), 5 ms wrap blend, mono, -20 LUFS, Ogg Vorbis q3 |
 | `assets/music/seattle.ogg` | My Friends Will Cry. (title theme) | Christovix ("Music by Christovix Games") | https://opengameart.org/content/my-friends-will-cry | CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/) | Loop 11.20-93.25 s, 60 ms loop crossfade, mono, -20 LUFS, Ogg Vorbis q3 |
 | `assets/music/los_angeles.ogg` | Happy Ukelele Island Surfing Theme | Tarush Singhal | https://opengameart.org/content/happy-ukelele-island-surfing-theme | CC0 | Loop 6.40-93.67 s, 60 ms loop crossfade, mono, -21.8 LUFS (peak-limited), Ogg Vorbis q3 |
+| `assets/music/legends_grand.ogg` | Bebop (Chiptune) | Pro Sensory (Alex McCulloch; the page asks for his name, not mandatory) | https://opengameart.org/content/bebop-chiptune | CC0 | The `Bebop (Chiptune)` file (not the page's other `Bebop`); de-clipped (the master's clipped peaks rebuilt with ffmpeg adeclip), loop 28.25-78.25 s, 60 ms loop crossfade, mono, -20 LUFS (from -5.4), Ogg Vorbis q3 |
 
 Sound effects were processed with `tools/make_sfx.py` (commands in `tools/make_sfx.sh`). Music was cut into loops with
 `tools/make_music.py` (commands and loop points in `tools/make_music.sh`).

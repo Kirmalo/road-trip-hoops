@@ -47,3 +47,19 @@ $M "$D/swing.ogg"                       assets/music/new_orleans.ogg --start 11.
 $M "$D/lassolady_4.ogg"                 assets/music/denver.ogg      $W
 $M "$D/my_friends_will_cry_title_0.ogg" assets/music/seattle.ogg     --start 11.20 --end 93.2513 --xfade 0.06 --lufs -20 --q 3
 $M "$D/ukele.mp3"                       assets/music/los_angeles.ogg --start 6.40 --end 93.6728 --xfade 0.06 --lufs -20 --q 3
+# Phase 9 (P9-16), the Legends Chapter 1 (Grandfathers era) track, the owner's pick D from docs/audio_preview/LIST.md:
+#   legends_grand  Bebop (Chiptune) ("Bebop (Chiptune)_0.mp3", the stereo 320k MP3, not the page's other "Bebop.mp3")
+#   The master is very loud (-5.4 LUFS integrated, true peak +1.4 dBFS) and hard-clipped: flat tops at full scale on
+#   about 6% of the left channel's samples. Turning it down keeps the clipping, so first: the MP3's ripple on the
+#   flat tops is flattened (hard clip at 0.95, scaled to 0.5 for headroom) and ffmpeg's adeclip rebuilds the clipped
+#   peaks (afterwards 0.007% of samples above the old clip level, a smooth tail instead of a pile-up; it only rewrites
+#   the clipped runs). Then 192 bpm (the file's tag; 1 bar = 1.25 s):
+#   find --min 30 --max 95 --from 1 --to 101 -> 28.25-78.2516 (50.00 s, 40 bars, similarity 0.987, corr 0.839);
+#   loops of 58 s or more matched far worse (<= 0.89). Seam: the source's 20 ms envelope at 28.25 and 78.25 s is the
+#   same within 1 dB for 0.2 s before and 0.3 s after; wrap step 0.002 (the track's steps: p99 0.075).
+#   Mono sum is safe (L/R correlation 0.31, mono loses 1-2.6 dB per band, no cancellation). -20 LUFS, peak -5.4 dBFS.
+T=$(mktemp --suffix=.wav)
+ffmpeg -v error -y -i "$D/Bebop (Chiptune)_0.mp3" \
+    -af "aeval=exprs='0.5*clip(val(0)/0.95\,-1\,1)|0.5*clip(val(1)/0.95\,-1\,1)',adeclip=t=10:m=s" -c:a pcm_f32le "$T"
+$M "$T"                                 assets/music/legends_grand.ogg --start 28.25 --end 78.2516 --xfade 0.06 --lufs -20 --q 3
+rm -f "$T"
