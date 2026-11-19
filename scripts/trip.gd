@@ -54,6 +54,15 @@ extends RefCounted
 # (starters_ok() says why), so no screen or test gets around it. A save of any version with more boss starters is
 # repaired on load (_repair_bosses): the first boss stays, the others are swapped for the strongest non-boss bench
 # players (rating sum), boss_repair lists who went to the bench (the lineup's one-line note) and CONTINUE saves at once.
+# Legends in the draft (P9-21, board "Trip additions", owner L7 a): a legend unlocked in the Legends file (legends.gd
+# is_unlocked(), loaded at run time: it preloads this file) can be drafted into a star slot like any player
+# (draft_pool_by_crew()'s "legends" row). He joins boss-level at the stage reached (legend_ratings(): stage average +
+# LegendsData.DRAFT_TIER, his shape, each stat <= BOSS_CAP), 0 points, via "draft", your colors (Cities.crew_sheet).
+# At most LEGEND_LIMIT legend among the starters (starters_ok(): LEGEND_RULE); a legend is not a boss, so one legend
+# and one boss may start together (owner). A loaded "lg_" id stays on the roster whether or not this run's Legends
+# file has him unlocked (he was when he was drafted). The save stays version 2 (a drafted legend is a plain roster
+# entry). A save with more legend starters is repaired on load like the bosses. end_of_trip_crew(best): the New York
+# final's three of --expected-roster / --best-roster, for the --challenge balance runs (P9-26).
 
 const Flow = preload("res://scripts/flow.gd")
 const Cities = preload("res://scripts/cities.gd")
@@ -100,6 +109,15 @@ const QUICK_KINGS := ["ud_jojo", "ud_tank", "ud_deuce"]   # P6-T3: the Kings in 
 const QUICK_AVG := 50               # P6-T3: a Quick Game player's five stats average this (50 = today's Quick Game)
 const BOSS_LIMIT := 1               # P8-14b (owner): at most this many bosses among the starters
 const BOSS_RULE := "ONLY ONE BOSS CAN START"   # starters_ok()'s reason for too many bosses (the lineup shows it)
+const LegendsData = preload("res://scripts/legends_data.gd")   # P9-21: legend rows and the L7 a rule (preloads nothing)
+const LEGENDS_PATH := "res://scripts/legends.gd"   # P9-21: is_unlocked(); loaded at run time (it preloads trip.gd)
+const LEGEND_LIMIT := 1             # P9-21 (owner): at most this many legends among the starters (a boss may start too)
+const LEGEND_RULE := "ONLY ONE LEGEND CAN START"   # starters_ok()'s reason for too many legends (the lineup shows it)
+const LEGENDS_ROW := "legends"      # P9-21: draft_pool_by_crew()'s legends row ("city"; its "round" is 0)
+const LEGENDS_ROW_NAME := "LEGENDS" # that row's name on the DRAFT screen
+const LEGENDS_ROW_COLOR := Color(0.77, 0.35, 0.16)   # that row's band while no built chapter gives a ui_color
+const LEGENDS_MODE := "legends"     # Flow.match.mode of a challenge (end_of_trip_crew() skips its opponents)
+const UNLOCK_NONE_FLAG := "--legends-unlock-none"   # with --best-roster: no legends in the sim (the Phase 8 bound)
 
 # --- the trip (static: survives scene reloads) ---
 static var active := false          # a trip is loaded (new_trip / continue_trip)
@@ -126,6 +144,11 @@ static var _spend_log: Array = []   # [[id, stat, old], ...] this points session
 static var saving := true           # false = state changes are not written (tests)
 static var _star_test := false      # --triptest-data: stars recorded (in STARS_TEST_PATH) while saving is off
 static var boss_repair: Array = []  # P8-14b: boss starters the last load benched (ids; [] = none); the lineup's note
+                                    # (P9-21: legend starters over LEGEND_LIMIT too)
+static var _sim_legends := false    # P9-21: the --best-roster sim: every legend of a built chapter is draftable
+static var _sim_avoid: Array = []   # P9-21: end_of_trip_crew(): legend ids the sim never drafts (the challenge's own)
+static var _legends_override := ""  # P9-21: "all" / "none" = act as if every / no legend is unlocked (self_test only)
+static var _legends_script: GDScript = null   # legends.gd, loaded once at run time
 
 # ---------------- starting, continuing, saving ----------------
 
@@ -350,6 +373,7 @@ static func _reset() -> void:
 	last_outcome = {}
 	_spend_log = []
 	_slots_override = -1
+	_sim_legends = false
 	boss_repair = []
 
 # a new roster entry: his starting ratings, no points, "via" from the data
@@ -497,6 +521,8 @@ static func rating_bonus(lv: String) -> int:
 
 # the ratings a player starts with on your roster: the underdogs' own, a recruit's at his city's stage
 static func _start_ratings(id: String) -> Dictionary:
+	if is_legend(id):
+		return legend_ratings(id, stage_reached())   # P9-21: a drafted legend, boss-level at the stage reached
 	var p: Dictionary = Cities.player(id)
 	if str(p.get("tier", "")) == "start":
 		var r: Dictionary = p.get("ratings", {})
@@ -530,9 +556,13 @@ static func player_dict(id: String, ratings: Dictionary, for_your_crew: bool) ->
 		r[s] = int(ratings.get(s, Ratings.AVG_RATING))
 	r["steal"] = Ratings.derived(int(r["defense"]), int(p.get("steal_bias", 0)))
 	r["block"] = Ratings.derived(int(r["defense"]), int(p.get("block_bias", 0)))
-	return {"id": id, "name": str(p.get("name", id)), "full": str(p.get("full", p.get("name", id))),
+	var out := {"id": id, "name": str(p.get("name", id)), "full": str(p.get("full", p.get("name", id))),
 		"sheet": Cities.crew_sheet(id, for_your_crew), "role": str(p.get("role", "")),
 		"number": int(p.get("number", 0)), "tier": str(p.get("tier", "")), "ratings": r}
+	var sig = p.get("signature", {})
+	if sig is Dictionary and str((sig as Dictionary).get("id", "")) != "":
+		out["signature"] = str((sig as Dictionary).get("id", ""))   # P9-21: a legend's move id (as legends.gd's)
+	return out
 
 # your roster as player dicts (underdogs first, then recruits in the order they joined)
 static func roster() -> Array:
@@ -729,6 +759,8 @@ static func _sim_roster(city_id: String, n: int, best: bool) -> bool:
 	saving = false
 	new_trip(DEFAULT_LEVEL)
 	_slots_override = BEST_ROSTER_SLOTS if best else 0
+	# P9-21: the best crew may draft any legend (as if all were unlocked; --legends-unlock-none: none, the P8 bound)
+	_sim_legends = best and not OS.get_cmdline_user_args().has(UNLOCK_NONE_FLAG)
 	var games: int = maxi(1, _rounds(city_id).size()) if is_tournament(city_id) else GAMES_PER_CITY
 	var want: int = clampi(n, 1, games)
 	var guard: int = (Cities.ROUTE.size() + 1) * (GAMES_PER_CITY + 2)
@@ -793,22 +825,29 @@ static func _start_strongest() -> void:
 	if starters_ok(top) == "":
 		set_starters(top, str(top[0]), false)
 
-# [[id, rating sum, boss], ...] for these roster ids
+# [[id, rating sum, boss, legend], ...] for these roster ids
 static func _rated(ids: Array) -> Array:
 	var out: Array = []
 	for id in ids:
-		out.append([str(id), _sum_of(_entry(str(id)).get("ratings", {})), is_boss(str(id))])
+		out.append(_rate(str(id), _sum_of(_entry(str(id)).get("ratings", {}))))
 	return out
 
-# The strongest legal three of [[id, sum, boss], ...]: the strongest first, a boss skipped once BOSS_LIMIT are in
-# (greedy; with one limit on one kind this is the best sum). Order of the list on a tie.
+static func _rate(id: String, sum: int) -> Array:
+	return [id, sum, is_boss(id), is_legend(id)]
+
+# The strongest legal three of [[id, sum, boss, legend], ...]: the strongest first, a boss skipped once BOSS_LIMIT are
+# in, a legend once LEGEND_LIMIT are in (greedy; one limit per kind, the kinds apart, so this is the best sum). Order
+# of the list on a tie.
 static func _best_three(rated: Array) -> Array:
 	var top: Array = []
 	var bosses := 0
+	var legends := 0
 	while top.size() < STARTERS:
 		var pick: Array = []
 		for r in rated:
 			if top.has(str(r[0])) or (bool(r[2]) and bosses >= BOSS_LIMIT):
+				continue
+			if (r as Array).size() > 3 and bool(r[3]) and legends >= LEGEND_LIMIT:
 				continue
 			if pick.is_empty() or int(r[1]) > int(pick[1]):
 				pick = r
@@ -817,6 +856,8 @@ static func _best_three(rated: Array) -> Array:
 		top.append(str(pick[0]))
 		if bool(pick[2]):
 			bosses += 1
+		if pick.size() > 3 and bool(pick[3]):
+			legends += 1
 	return top
 
 # the rating sum of a list's strongest legal three
@@ -837,7 +878,7 @@ static func _best_addition(cands: Array) -> Dictionary:
 	for c in cands:
 		var id: String = str((c as Dictionary).get("id", ""))
 		var plus: Array = base.duplicate()
-		plus.append([id, _sum_of((c as Dictionary).get("ratings", {})), is_boss(id)])
+		plus.append(_rate(id, _sum_of((c as Dictionary).get("ratings", {}))))
 		var g: int = _three_sum(plus) - _three_sum(base)
 		if g > gain or (g == gain and _sum_of((c as Dictionary).get("ratings", {})) > _sum_of(pick.get("ratings", {}))):
 			gain = g
@@ -854,7 +895,7 @@ static func _draft_strongest() -> void:
 		var pick: Dictionary = _best_addition(pool)
 		var id: String = str(pick.get("id", ""))
 		var plus: Array = _rated(roster_ids())
-		plus.append([id, _sum_of(pick.get("ratings", {})), is_boss(id)])
+		plus.append(_rate(id, _sum_of(pick.get("ratings", {}))))
 		if _three_sum(plus) <= _three_sum(_rated(roster_ids())) or not can_draft(id):
 			return
 		roster_data.append(_new_entry(id, DRAFT_VIA))
@@ -877,6 +918,70 @@ static func _test_roster_match(city_id: String, n: int, best: bool) -> Dictionar
 	print(ramp_line(m, "best" if best else "expected"))
 	_reset()
 	return m
+
+# P9-21 (board "Trip additions"): the 3 player dicts (you first) that --expected-roster (best false) or --best-roster
+# (true) would start in the New York final, for the --challenge balance runs (P9-26). The expected crew never has a
+# legend (no star slots); the best one may have one (with one boss), never one of `avoid` (default: the opponents of
+# Flow.match when it is a legends game, so never the challenge's own legend). Played in memory like the ramp sims;
+# the trip state before the call (a loaded trip too) comes back exactly, nothing is saved. [] when it can't be built.
+static func end_of_trip_crew(best: bool, avoid: Array = []) -> Array:
+	var keep: Dictionary = _snapshot()
+	var skip: Array = []
+	for id in avoid:
+		skip.append(str(id))
+	if avoid.is_empty() and str(Flow.match.get("mode", "")) == LEGENDS_MODE:
+		var teams = Flow.match.get("teams", [])
+		if teams is Array and (teams as Array).size() > 1:
+			for pd in ((teams as Array)[1] as Dictionary).get("players", []):
+				skip.append(str((pd as Dictionary).get("id", "")))
+	_sim_avoid = skip
+	var ny: String = _tournament_id()
+	var out: Array = []
+	if ny != "" and _sim_roster(ny, maxi(1, _rounds(ny).size()), best):
+		for id in starters:
+			out.append(roster_player(str(id)))
+		var lines: Array = []
+		for pd in out:
+			lines.append("%s %s" % [str(pd.get("id", "")), _stat_line(pd.get("ratings", {}))])
+		print("TRIP END CREW %s | %s | avoid %s" % ["best" if best else "expected", ", ".join(PackedStringArray(lines)),
+				str(skip)])
+	_sim_avoid = []
+	_restore(keep)
+	return out
+
+# every static var of the trip (deep copies), for end_of_trip_crew() to put back
+static func _snapshot() -> Dictionary:
+	return {"active": active, "level": level, "city": city, "game": game, "beaten": beaten.duplicate(true),
+		"points": points, "crew_points": crew_points, "paid": paid.duplicate(true), "replay": replay.duplicate(true),
+		"loaded_version": loaded_version, "roster_data": roster_data.duplicate(true), "starters": starters.duplicate(),
+		"human": human, "bracket": bracket.duplicate(true), "seen": seen.duplicate(), "record": record.duplicate(),
+		"phase": phase, "last_outcome": last_outcome.duplicate(true), "spend_log": _spend_log.duplicate(true),
+		"saving": saving, "slots": _slots_override, "sim_legends": _sim_legends, "boss_repair": boss_repair.duplicate()}
+
+static func _restore(k: Dictionary) -> void:
+	active = bool(k["active"])
+	level = str(k["level"])
+	city = str(k["city"])
+	game = int(k["game"])
+	beaten = k["beaten"]
+	points = int(k["points"])
+	crew_points = int(k["crew_points"])
+	paid = k["paid"]
+	replay = k["replay"]
+	loaded_version = int(k["loaded_version"])
+	roster_data = k["roster_data"]
+	starters = k["starters"]
+	human = str(k["human"])
+	bracket = k["bracket"]
+	seen = k["seen"]
+	record = k["record"]
+	phase = str(k["phase"])
+	last_outcome = k["last_outcome"]
+	_spend_log = k["spend_log"]
+	saving = bool(k["saving"])
+	_slots_override = int(k["slots"])
+	_sim_legends = bool(k["sim_legends"])
+	boss_repair = k["boss_repair"]
 
 # "RAMP <kind> <city> game <n> <level> | BLUE id s/s/s/s/s, ... (avg A) | RED ... (avg B)": one line per --city run
 static func ramp_line(m: Dictionary, kind: String) -> String:
@@ -1305,6 +1410,52 @@ static func roster_limit() -> int:
 static func is_boss(id: String) -> bool:
 	return str(Cities.player(id).get("tier", "")) == "boss"
 
+# P9-21: a legend (an "lg_" id with a legends_data.gd row); never a boss
+static func is_legend(id: String) -> bool:
+	return Cities.is_legend(id)
+
+# how many of these ids are legends
+static func legend_count(ids: Array) -> int:
+	var n := 0
+	for id in ids:
+		if is_legend(str(id)):
+			n += 1
+	return n
+
+# P9-21 (owner L7 a): a drafted legend's ratings at a trip stage: boss-level (the stage average + DRAFT_TIER), his
+# shape on top, each stat in MIN_RATING..BOSS_CAP. {} for an unknown id.
+static func legend_ratings(id: String, stage: int) -> Dictionary:
+	var r: Dictionary = LegendsData.draft_ratings(id, Cities.stage_avg(stage))
+	var out: Dictionary = {}
+	for s in r:
+		out[s] = clampi(int(r[s]), Ratings.MIN_RATING, mini(BOSS_CAP, Ratings.MAX_RATING))
+	return out
+
+# P9-21: this legend may be drafted now: unlocked in the Legends file (legends.gd is_unlocked(); the --best-roster sim
+# takes any legend), not one end_of_trip_crew() avoids. Whether he is on the roster is _draftable()'s part.
+static func legend_available(id: String) -> bool:
+	if not LegendsData.is_legend_id(id) or _sim_avoid.has(id):
+		return false
+	if _legends_override != "":
+		return _legends_override == "all"
+	if _sim_legends:
+		return true
+	if _legends_script == null:
+		_legends_script = load(LEGENDS_PATH) as GDScript if ResourceLoader.exists(LEGENDS_PATH) else null
+	if _legends_script == null or not _legends_script.has_method("is_unlocked"):
+		return false
+	return bool(_legends_script.call("is_unlocked", id))
+
+# the legends that can be drafted now (data order), minus the roster
+static func _legend_pool_ids() -> Array:
+	var out: Array = []
+	if not active:
+		return out
+	for id in LegendsData.legend_ids():
+		if not _on_roster(str(id)) and legend_available(str(id)):
+			out.append(str(id))
+	return out
+
 # the crews beaten on this trip, in route order: [{"city", "round" (0 = a city crew, 1..3 = a New York round), "name",
 # "style", "color" (ui_color), "ids": [player ids, boss first, then good, then average]}]
 static func beaten_crews() -> Array:
@@ -1349,6 +1500,25 @@ static func draft_pool_by_crew() -> Array:
 			r.erase("ids")
 			r["players"] = players
 			out.append(r)
+	# P9-21: the unlocked legends not on the roster, one row after the crews
+	var lps: Array = []
+	for id in _legend_pool_ids():
+		var lpd: Dictionary = player_dict(id, _start_ratings(id), true)
+		lpd["city"] = LEGENDS_ROW
+		lpd["crew"] = LEGENDS_ROW_NAME
+		lpd["boss"] = false
+		lpd["legend"] = true
+		lpd["chapter"] = LegendsData.chapter_of(id)
+		lps.append(lpd)
+	if lps.size() > 0:
+		var col: Color = LEGENDS_ROW_COLOR
+		for ch in LegendsData.built_chapters():
+			var cc = (LegendsData.chapter(str(ch)).get("crew", {}) as Dictionary).get("ui_color", null)
+			if cc is Color:
+				col = cc
+				break
+		out.append({"city": LEGENDS_ROW, "round": 0, "name": LEGENDS_ROW_NAME, "style": "", "color": col,
+			"players": lps})
 	return out
 
 # the draft pool as one list (player dicts, crews in route order); the same with no open slot (the screen shows it)
@@ -1362,6 +1532,8 @@ static func draft_pool() -> Array:
 static func _draftable(id: String) -> bool:
 	if _on_roster(id):
 		return false
+	if is_legend(id):
+		return active and legend_available(id)   # P9-21: any unlocked legend, whatever crews are beaten
 	if phase == "recruit" and Cities.recruits(city).has(id):
 		return false
 	for row in beaten_crews():
@@ -1378,7 +1550,7 @@ static func draft_refusal(id: String) -> String:
 	if _on_roster(id):
 		return "already on the roster"
 	if not _draftable(id):
-		return "not from a crew beaten on this trip"
+		return "legend not unlocked" if is_legend(id) else "not from a crew beaten on this trip"
 	if open_slots() <= 0:
 		return "no open slot"
 	return ""
@@ -1414,6 +1586,8 @@ static func starters_ok(ids: Array) -> String:
 		return "pick %d starters" % STARTERS
 	if boss_count(picked) > BOSS_LIMIT:
 		return BOSS_RULE
+	if legend_count(picked) > LEGEND_LIMIT:
+		return LEGEND_RULE   # P9-21; a legend is not a boss, so one of each may start
 	return ""
 
 # how many of these ids are bosses
@@ -1427,40 +1601,57 @@ static func boss_count(ids: Array) -> int:
 # A loaded lineup with more than BOSS_LIMIT bosses (a 1.0.0 save, or any older one): the first bosses stay, every
 # later one is swapped in place for the strongest non-boss roster player not starting (rating sum; roster order on a
 # tie). boss_repair gets the benched ids. Other lineups come back unchanged (set_starters() checks the rest).
+# P9-21: the same for legends over LEGEND_LIMIT (the first stays); a swapped-in player is never a boss or a legend.
 static func _repair_bosses(ids: Array) -> Array:
-	if boss_count(ids) <= BOSS_LIMIT:
+	if boss_count(ids) <= BOSS_LIMIT and legend_count(ids) <= LEGEND_LIMIT:
 		return ids
 	var out: Array = ids.duplicate()
 	var kept := 0
+	var kept_legends := 0
+	var rules: Array = []
 	for i in out.size():
 		var id: String = str(out[i])
-		if not is_boss(id):
-			continue
-		if kept < BOSS_LIMIT:
-			kept += 1
+		if is_boss(id):
+			if kept < BOSS_LIMIT:
+				kept += 1
+				continue
+		elif is_legend(id):
+			if kept_legends < LEGEND_LIMIT:
+				kept_legends += 1
+				continue
+		else:
 			continue
 		var pick := ""
 		var hi: int = -1
 		for rid in roster_ids():
 			var v: int = _sum_of(_entry(str(rid)).get("ratings", {}))
-			if not is_boss(str(rid)) and not out.has(str(rid)) and v > hi:
+			if not is_boss(str(rid)) and not is_legend(str(rid)) and not out.has(str(rid)) and v > hi:
 				hi = v
 				pick = str(rid)
 		if pick == "":
 			return ids   # no one to swap in (can't happen: the 3 underdogs are always on the roster)
 		out[i] = pick
 		boss_repair.append(id)
-	print("TRIP lineup repaired on load (%s): %s -> %s" % [BOSS_RULE.to_lower(), str(ids), str(out)])
+		var rule: String = (LEGEND_RULE if is_legend(id) else BOSS_RULE).to_lower()
+		if not rules.has(rule):
+			rules.append(rule)
+	print("TRIP lineup repaired on load (%s): %s -> %s" % [", ".join(PackedStringArray(rules)), str(ids), str(out)])
 	return out
 
-# the lineup note after a repair ("" = none): who went to the bench, by name
+# the lineup note after a repair ("" = none): who went to the bench, by name (bosses under BOSS_RULE, legends under
+# LEGEND_RULE, P9-21)
 static func boss_repair_note() -> String:
 	if boss_repair.is_empty():
 		return ""
-	var names: Array = []
-	for id in boss_repair:
-		names.append(str(Cities.player(str(id)).get("name", id)))
-	return "%s: %s moved to the bench." % [BOSS_RULE, " and ".join(PackedStringArray(names))]
+	var parts: Array = []
+	for rule in [BOSS_RULE, LEGEND_RULE]:
+		var names: Array = []
+		for id in boss_repair:
+			if (rule == LEGEND_RULE) == is_legend(str(id)):
+				names.append(str(Cities.player(str(id)).get("name", id)))
+		if names.size() > 0:
+			parts.append("%s: %s moved to the bench." % [rule, " and ".join(PackedStringArray(names))])
+	return " ".join(PackedStringArray(parts))
 
 # ---------------- replays (P8-17) ----------------
 # Owner answers (VISION "Progression plan answers", docs/progression-plan.md part 5): any game won on this trip (city
@@ -1599,6 +1790,7 @@ static func self_test(load_only: bool = false) -> bool:
 	ok = _check_stars() and ok
 	ok = _check_draft() and ok
 	ok = _check_boss_rule() and ok
+	ok = _check_legends() and ok
 	ok = _check_replays() and ok
 	ok = _check_v1_fixtures() and ok
 	ok = _check_save_files() and ok
@@ -2211,6 +2403,139 @@ static func _check_boss_rule() -> bool:
 	saving = was
 	_reset()
 	return ok
+
+# P9-21: legends in the draft. Cities.player() / crew_sheet() for an "lg_" id, the pool's LEGENDS row only with
+# unlocked legends (_legends_override "none" / "all" stands in for the Legends file), the L7 a ratings at the stage
+# reached (stage avg + DRAFT_TIER, shaped, <= BOSS_CAP), LEGEND_LIMIT with legend + boss allowed, a version 2 round
+# trip that keeps a drafted legend also when he is not unlocked in this run, the load repair of two legend starters,
+# the best / expected sims and end_of_trip_crew() (avoid, and the trip state put back). In memory, nothing saved.
+static func _check_legends() -> bool:
+	var was: bool = saving
+	saving = false
+	var old_force: int = Stars.force_total
+	var ok := true
+	var steeple: Dictionary = Cities.player("lg_steeple")
+	ok = _check(str(steeple.get("tier", "")) == "legend" and is_legend("lg_steeple") and not is_boss("lg_steeple")
+			and not is_legend("ht_boss") and not is_legend("lg_nobody") and Cities.player("lg_nobody").is_empty()
+			and Cities.crew_sheet("lg_steeple", true).begins_with("lg_steeple_crew")
+			and _via_of("lg_steeple") == DRAFT_VIA, "legends: Cities.player, crew sheet, not a boss") and ok
+	Stars.force_total = 48
+	_legends_override = "none"
+	new_trip("normal")
+	ok = _check(draft_pool().is_empty() and draft_refusal("lg_steeple") == "legend not unlocked"
+			and not draft("lg_steeple"), "legends: none unlocked, none in the pool") and ok
+	_legends_override = "all"
+	var rows: Array = draft_pool_by_crew()
+	var last: Dictionary = rows[rows.size() - 1] if rows.size() > 0 else {}
+	ok = _check(rows.size() == 1 and str(last.get("city", "")) == LEGENDS_ROW and str(last.get("name", "")) == LEGENDS_ROW_NAME
+			and (last.get("players", []) as Array).size() == LegendsData.legend_ids().size()
+			and bool(last.players[0].get("legend", false)) and not bool(last.players[0].get("boss", true))
+			and str(last.players[0].get("signature", "")) != "",
+			"legends: all unlocked, a LEGENDS row before any crew is beaten") and ok
+	for i in GAMES_PER_CITY:
+		record_result({"won": true})
+	finish_points()
+	recruit("ht_boss")
+	rows = draft_pool_by_crew()
+	ok = _check(rows.size() == 2 and str(rows[0].city) == "hometown" and str(rows[1].city) == LEGENDS_ROW,
+			"legends: the row comes after the beaten crews") and ok
+	var want: Dictionary = legend_ratings("lg_steeple", 2)
+	var rule_ok := true
+	for st in Ratings.STATS:
+		rule_ok = rule_ok and int(want[st]) == clampi(Cities.stage_avg(2) + LegendsData.DRAFT_TIER
+				+ int(LegendsData.legend("lg_steeple").shape[st]), Ratings.MIN_RATING, BOSS_CAP)
+	var capped := true
+	for id in LegendsData.legend_ids():
+		var r8: Dictionary = legend_ratings(str(id), 8)
+		for st in Ratings.STATS:
+			capped = capped and int(r8[st]) <= BOSS_CAP and int(r8[st]) >= Ratings.MIN_RATING
+	var top8: int = 0
+	for st in Ratings.STATS:
+		top8 = maxi(top8, int(legend_ratings("lg_steeple", 8)[st]))
+	ok = _check(rule_ok and capped and top8 == BOSS_CAP and draft("lg_steeple") and str(_entry("lg_steeple").via) == DRAFT_VIA
+			and player_points("lg_steeple") == 0 and _same_stats(_entry("lg_steeple").ratings, want)
+			and str(roster_player("lg_steeple").sheet).begins_with("lg_steeple_crew")
+			and str(roster_player("lg_steeple").get("signature", "")) == "hook",
+			"legends: Steeple drafted in Chicago at stage 2 + %d, shaped (cap %d)" % [LegendsData.DRAFT_TIER, BOSS_CAP]) and ok
+	ok = _check(draft("lg_gate") and drafted_ids() == ["lg_steeple", "lg_gate"] and not can_draft("lg_steeple"),
+			"legends: a second legend fills a second slot") and ok
+	ok = _check(starters_ok(["lg_steeple", "ht_boss", "ud_jojo"]) == "" and starters_ok(["ht_boss", "lg_gate", "ud_tank"]) == ""
+			and starters_ok(["lg_steeple", "lg_gate", "ud_jojo"]) == LEGEND_RULE
+			and not set_starters(["ud_jojo", "lg_gate", "lg_steeple"]) and set_starters(["lg_steeple", "ht_boss", "ud_jojo"])
+			and human == "lg_steeple", "legends: one legend + one boss start, two legends refused") and ok
+	record_result({"won": true})
+	ok = _check(player_points("lg_steeple") == POINTS_CITY_GAME and str(match_for().teams[0].players[0].id) == "lg_steeple",
+			"legends: a legend starter plays and earns points") and ok
+	_start_strongest()
+	ok = _check(starters_ok(starters) == "" and legend_count(starters) == 1 and boss_count(starters) <= BOSS_LIMIT,
+			"legends: the strongest legal three %s" % str(starters)) and ok
+	# the save: version 2, the legend a plain draft entry; kept on load even when this run hasn't unlocked him
+	var dg: String = _digest()
+	var d: Dictionary = JSON.parse_string(JSON.stringify(to_dict()))
+	d["version"] = Save.VERSION
+	_legends_override = "none"
+	ok = _check(from_dict(d) and _digest() == dg and drafted_ids() == ["lg_steeple", "lg_gate"] and loaded_version == 2
+			and Save.VERSION == 2 and not d.has("legends"), "legends: kept by a version 2 save (also when not unlocked)") and ok
+	# two legend starters in a save (a hand edit): the first stays, the strongest non-boss non-legend comes in
+	var bd: Dictionary = d.duplicate(true)
+	bd["starters"] = ["lg_gate", "ud_deuce", "lg_steeple"]
+	bd["human"] = "lg_gate"
+	var strongest := ""
+	var hi: int = -1
+	for id in roster_ids():
+		if not is_boss(str(id)) and not is_legend(str(id)) and str(id) != "ud_deuce" \
+				and _sum_of(_entry(str(id)).ratings) > hi:
+			hi = _sum_of(_entry(str(id)).ratings)
+			strongest = str(id)
+	ok = _check(from_dict(bd) and starters == ["lg_gate", "ud_deuce", strongest] and boss_repair == ["lg_steeple"]
+			and boss_repair_note().begins_with(LEGEND_RULE) and not boss_repair_note().contains(BOSS_RULE),
+			"legends: a save with 2 legend starters repaired (%s)" % boss_repair_note()) and ok
+	_legends_override = ""
+	# the sims: the expected crew never has a legend; the best one may have one, legal, never an avoided one
+	expected_roster("new_york", 3)
+	var low: Array = starters.duplicate()
+	var low_legends: int = legend_count(drafted_ids())
+	_reset()
+	best_roster("new_york", 3)
+	var high: Array = starters.duplicate()
+	var high_ok: bool = starters_ok(high) == "" and legend_count(high) <= LEGEND_LIMIT and boss_count(high) <= BOSS_LIMIT
+	_reset()
+	ok = _check(low_legends == 0 and legend_count(low) == 0 and high_ok,
+			"legends: New York final, expected %s, best %s" % [str(low), str(high)]) and ok
+	new_trip("hard")
+	record_result({"won": true})
+	var before: String = _digest()
+	var before_phase: String = phase
+	var ex: Array = end_of_trip_crew(false)
+	var be: Array = end_of_trip_crew(true)
+	var picked := ""
+	for pd in be:
+		if is_legend(str(pd.get("id", ""))):
+			picked = str(pd.get("id", ""))
+	var av: Array = end_of_trip_crew(true, [picked] if picked != "" else [])
+	var av_ok := true
+	for pd in av:
+		av_ok = av_ok and str(pd.get("id", "")) != picked
+	var ex_ok := ex.size() == STARTERS
+	for pd in ex:
+		ex_ok = ex_ok and not is_legend(str(pd.get("id", ""))) and (pd as Dictionary).has("ratings")
+	var be_ids: Array = []
+	for pd in be:
+		be_ids.append(str(pd.get("id", "")))
+	ok = _check(ex_ok and be.size() == STARTERS and _legal_ids(be_ids) and av.size() == STARTERS and av_ok
+			and _digest() == before and phase == before_phase and active and saving == false and _slots_override == -1
+			and not _sim_legends and _sim_avoid.is_empty(),
+			"legends: end_of_trip_crew best %s (legend %s), avoid ok, the trip put back" % [str(be_ids),
+			picked if picked != "" else "-"]) and ok
+	Stars.force_total = old_force
+	_legends_override = ""
+	saving = was
+	_reset()
+	return ok
+
+# ids are a legal three by the boss and legend limits (no roster check: end_of_trip_crew()'s crew is a sim's)
+static func _legal_ids(ids: Array) -> bool:
+	return ids.size() == STARTERS and boss_count(ids) <= BOSS_LIMIT and legend_count(ids) <= LEGEND_LIMIT
 
 # the 5 stats of two ratings dicts are the same
 static func _same_stats(a: Dictionary, b: Dictionary) -> bool:
