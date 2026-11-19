@@ -99,7 +99,9 @@ func _ready() -> void:
 	_lines = StoryText.scene(scene_id)
 	_blip_ok = ResourceLoader.exists("res://assets/sfx/" + BLIP_SFX + ".ogg") \
 			or ResourceLoader.exists("res://assets/sfx/" + BLIP_SFX + ".wav")
-	if scene_id != "":
+	if scene_id.begins_with("lg_") or scene_id.begins_with("legends_"):
+		pass   # a Legends scene never writes the trip (legends.gd after_result() marks it in the Legends file)
+	elif scene_id != "":
 		Trip.mark_seen(scene_id)   # saved; nothing happens if it was marked already or no trip is loaded
 	_build()
 	_stat("story_scene")
