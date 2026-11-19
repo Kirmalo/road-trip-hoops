@@ -1784,7 +1784,7 @@ P6_SHEET = os.path.join(ROOT, "docs", "art", "portraits_p6.png")
 # they match the in-game sheets (P9-09). Base mood neutral, plus happy.
 LG = {
     # hook-shot center: very tall and wiry, mutton chops, a terry headband (the approved sample's look)
-    "lg_steeple": dict(name="STEEPLE", skin="umber", top="tank", top_pal="ERA_RUST", trim_pal="ERA_CREAM",
+    "lg_steeple": dict(name="STEEPLE", skin="umber", top="tank", top_pal="ERA_CRIMSON", trim_pal="ERA_CREAM",
                        broad=0.9, sx=0.88, sy=1.1, sxn=0.94, cy=138, jaw=-2, chin=3, crown=2, nose=1.0, wide=0.8,
                        lips=True, tilt=2.0, hair="buzz", hair_pal="HAIR_BLACK", brow=(16, 8, 10), brow_w=1.1,
                        extras={"chops": "HAIR_BLACK", "terry": "ERA_MUSTARD", "terry_low": 4.0}),
@@ -1797,11 +1797,11 @@ LG = {
                         broad=0.9, sx=0.9, sy=1.04, cy=136, jaw=-3, chin=2, nose=1.5, wide=0.3, tilt=3.0,
                         hair="part", hair_pal="HAIR_DARK", brow=(22, 14, 16)),
     # bruising power forward: heavy, bald
-    "lg_boxcar": dict(name="BOXCAR", skin="deep", top="tank", top_pal="ERA_BROWN", trim_pal="ERA_MUSTARD",
+    "lg_boxcar": dict(name="BOXCAR", skin="deep", top="tank", top_pal="ERA_WHITE", trim_pal="ERA_MUSTARD",
                       broad=1.22, sx=1.12, sxn=1.22, cy=132, jaw=7, chin=2, crown=-3, wide=1.3, lips=True, tilt=0.0,
                       hair="bald", brow=(14, 8, 10), brow_w=1.5),
     # smooth slasher: long, an afro with a terry headband
-    "lg_velvet": dict(name="VELVET", skin="brown", top="tank", top_pal="ERA_MUSTARD", trim_pal="ERA_BROWN",
+    "lg_velvet": dict(name="VELVET", skin="brown", top="tank", top_pal="ERA_LEMON", trim_pal="ERA_NAVY",
                       broad=0.92, sx=0.9, sy=1.06, sxn=0.96, cy=140, jaw=-2, chin=2, wide=0.7, lips=True, tilt=3.0,
                       hair="afro", hair_pal="HAIR_BLACK", seed=23, brow=(16, 8, 10),
                       extras={"terry": "ERA_CREAM", "terry_low": 7.0}),
