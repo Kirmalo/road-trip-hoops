@@ -29,6 +29,12 @@ extends RefCounted
 #     3 at finale_ratings(), each + Difficulty.rating_bonus(level) (LEGEND), every stat <= 95 (legends_data.gd)
 #   - court, music, twist: the chapter's look (court_looks.gd; GYM when missing), music (its fallback_music while the
 #     .ogg is missing) and era twist (none while twists.gd doesn't have it yet)
+#   - mentors (P9-23, owner L8 a): an unlocked legend trains one roster player (mentors {legend id: player id}, in
+#     legends.json, so a NEW TRIP keeps them); one perk per player (one mentor each), one pupil per legend; assign()
+#     switches any time (the legend's old pupil and the player's old mentor are freed). perks_for() gives the perk;
+#     Trip.roster_player() adds it as "perk" on a loaded trip (Road Trip games only); your_side() strips it (no perks
+#     in a challenge or a finale). A pupil not on the trip's roster just has no effect; a locked or unknown legend's
+#     pair is kept in the file but gives nothing. A file with two legends on one player keeps the first (load repair)
 # Test flags (any run): --legends-unlock-all / --legends-unlock-none (this run, never saved), --tokens N (this run
 # acts as if the token total were N), --challenge <id> (main.gd: test_match(); with --expected-roster /
 # --best-roster the end-of-trip crew, Trip.end_of_trip_crew(best), P9-21). --legendtest: legendtest().
@@ -72,13 +78,14 @@ const BEST_FLAG := "--best-roster"
 const DIFFICULTY_FLAG := "--difficulty"
 const TRIP_PATH := "res://scripts/trip.gd"
 const SELFTEST_PATH := "user://legends_progress_selftest.json"   # self_test()'s own Legends file, deleted after
+const PERK_KEY := "perk"              # = Trip.PERK_KEY: a player dict's mentor perk; never on your side in a challenge
 
 # ---------------------------------------------------------------------------------------------------- state
 static var tokens := {}               # {"lg:<id>" | "fin:<ch>": 1..3}, best kept
 static var unlocked: Array = []       # legend ids, in the order they were won
 static var seen: Array = []           # story scene ids already shown (intro, unlock, finale scenes)
 static var finales: Array = []        # chapter ids whose finale was won
-static var mentors := {}              # {"<legend id>": "<roster player id>"} (P9-23 owns the meaning)
+static var mentors := {}              # {"<legend id>": "<roster player id>"} (P9-23: one pupil each, one mentor each)
 static var last_outcome := {}         # record_result()'s answer, for after_result() and the screens
 static var saving := true             # false = record_result() and friends don't write (tests)
 static var unlock_override: String = _parse_unlock_flag()   # "all" / "none" / "" (this run only, never saved)
@@ -111,7 +118,88 @@ static func _from_dict(d: Dictionary) -> void:
 	unlocked = c["unlocked"]
 	seen = c["seen"]
 	finales = c["finales"]
-	mentors = c["mentors"]
+	mentors = _one_mentor_each(c["mentors"])
+
+# P9-23 load repair: a player trained by two legends (a hand edit) keeps the first in file order
+static func _one_mentor_each(m: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var taken: Array = []
+	for lid in m:
+		var pid: String = str(m[lid])
+		if taken.has(pid):
+			continue
+		taken.append(pid)
+		out[str(lid)] = pid
+	return out
+
+# ---------------------------------------------------------------------------------------------------- mentors
+
+# the legend who trains this player ("" = none). Raw pairs: a locked legend's pair is named too (perks_for() says if
+# it works)
+static func mentor_of(player_id: String) -> String:
+	load_state()
+	if player_id == "":
+		return ""
+	for lid in mentors:
+		if str(mentors[lid]) == player_id:
+			return str(lid)
+	return ""
+
+# the player this legend trains ("" = none)
+static func pupil_of(legend_id: String) -> String:
+	load_state()
+	return str(mentors.get(legend_id, ""))
+
+# a legend can train: a known legend, unlocked (--legends-unlock-all / -none win this run), with a perk
+static func can_mentor(legend_id: String) -> bool:
+	return LegendsData.is_legend_id(legend_id) and is_unlocked(legend_id) \
+			and not LegendsData.perk_of(legend_id).is_empty()
+
+# Puts this legend on this player (saved). Switching frees both sides: the legend's old pupil and the player's old
+# mentor. False (nothing changed) for a legend that can't train (locked, unknown, no perk), an empty or too long
+# player id, or a legend asked to train himself. The player need not be on this trip's roster (no effect until he
+# is). True also when the pair was already in place.
+static func assign(legend_id: String, player_id: String) -> bool:
+	load_state()
+	if not can_mentor(legend_id) or player_id == "" or player_id == legend_id \
+			or player_id.length() > LegendsSave.MAX_ID_LEN:
+		return false
+	if str(mentors.get(legend_id, "")) == player_id:
+		return true
+	var old: String = mentor_of(player_id)
+	if old != "":
+		mentors.erase(old)
+	mentors[legend_id] = player_id
+	save()
+	return true
+
+# the legend stops training (saved); false when he trained nobody
+static func release(legend_id: String) -> bool:
+	load_state()
+	if not mentors.has(legend_id):
+		return false
+	mentors.erase(legend_id)
+	save()
+	return true
+
+# The mentor perk this player gets: {"id", "key", "value", "text", "mentor"} or {} (nobody trains him, or his
+# mentor is locked, unknown or teaches no perk). Doesn't look at the trip: Trip.roster_player() asks only for its
+# roster players on a loaded trip.
+static func perks_for(player_id: String) -> Dictionary:
+	var lid: String = mentor_of(player_id)
+	if lid == "" or not can_mentor(lid):
+		return {}
+	var row: Dictionary = LegendsData.perk_of(lid)
+	return {"id": str(LegendsData.legend(lid).get("perk", "")), "key": str(row.get("key", "")),
+		"value": float(row.get("value", 0.0)), "text": str(row.get("text", "")), "mentor": lid}
+
+# a player dict without its mentor perk (your side in a challenge: Road Trip games only, L8 a)
+static func _no_perk(pd: Dictionary) -> Dictionary:
+	if not pd.has(PERK_KEY):
+		return pd
+	var out: Dictionary = pd.duplicate()
+	out.erase(PERK_KEY)
+	return out
 
 # ---------------------------------------------------------------------------------------------------- keys, tokens
 
@@ -332,7 +420,7 @@ static func your_side(opponents: Array) -> Dictionary:
 		var sid: String = str(id)
 		if ids.has(sid) or _is_legend(sid):
 			continue
-		var pd: Dictionary = Trip.roster_player(sid)
+		var pd: Dictionary = _no_perk(Trip.roster_player(sid))
 		if pd.is_empty():
 			continue
 		var at: int = bench.size()
@@ -344,7 +432,7 @@ static func your_side(opponents: Array) -> Dictionary:
 	var notes: Array = []
 	for i in ids.size():
 		var id: String = str(ids[i])
-		var pd: Dictionary = Trip.roster_player(id)
+		var pd: Dictionary = _no_perk(Trip.roster_player(id))   # no perks in a challenge (L8 a)
 		if opponents.has(id):
 			var sub: Dictionary = {}
 			if not bench.is_empty():
@@ -614,7 +702,9 @@ static func test_match() -> Dictionary:
 			for pd in (m["teams"][1] as Dictionary).get("players", []):
 				opp.append(str((pd as Dictionary).get("id", "")))
 			if got is Array and (got as Array).size() == Trip.STARTERS:
-				var ps: Array = (got as Array).duplicate(true)
+				var ps: Array = []
+				for gp in (got as Array):
+					ps.append(_no_perk(gp).duplicate(true) if gp is Dictionary else gp)   # no perks in a challenge
 				var clash: bool = false
 				for pd in ps:
 					if pd is Dictionary and opp.has(str((pd as Dictionary).get("id", ""))):
@@ -862,6 +952,9 @@ static func self_test() -> String:
 	_check(errs, JSON.stringify(Save.read(), "", true) == trip_dict_disk, "the trip save reads differently")
 	_check(errs, JSON.stringify(Trip.to_dict(), "", true) == trip_mem, "the trip in memory changed")
 
+	# mentors (P9-23): assign, switch, one perk per player, one pupil per legend, the perk in trip games only
+	_check_mentors(errs, ids)
+
 	# the swap: a drafted legend who is an opponent sits; the strongest bench non-legend plays (in your slot if he was
 	# you); a legend who isn't an opponent plays
 	var mem: Dictionary = Trip.to_dict()
@@ -947,6 +1040,114 @@ static func self_test() -> String:
 		return ""
 	var shown: Array = errs.slice(0, 6)
 	return "; ".join(PackedStringArray(shown)) + ("" if errs.size() <= 6 else " (+%d more)" % (errs.size() - 6))
+
+# P9-23: the mentor rules on the loaded (test) trip, in SELFTEST_PATH; the trip and this file's unlocks and mentors
+# are put back (the trip is never saved here: Trip.saving is off)
+static func _check_mentors(errs: Array, ids: Array) -> void:
+	var kept_unlocked: Array = unlocked.duplicate()
+	var kept_mentors: Dictionary = mentors.duplicate()
+	var kept_override: String = unlock_override
+	var trip_mem: Dictionary = Trip.to_dict()
+	unlock_override = ""
+	unlocked = ids.duplicate()
+	mentors = {}
+	if ids.size() < 3 or Trip.starters.size() != Trip.STARTERS:
+		_check(errs, false, "mentors: need 3 legends and a trip (%d, %s)" % [ids.size(), str(Trip.starters)])
+		unlocked = kept_unlocked
+		mentors = kept_mentors
+		unlock_override = kept_override
+		return
+	var a: String = str(ids[0])
+	var b: String = str(ids[1])
+	var c: String = str(ids[2])
+	var you: String = str(Trip.starters[0])
+	var mate: String = str(Trip.starters[1])
+	var pa: Dictionary = LegendsData.perk_of(a)
+	# assign
+	_check(errs, assign(a, you) and mentor_of(you) == a and pupil_of(a) == you and mentors.size() == 1,
+			"mentors: assign %s -> %s (%s)" % [a, you, str(mentors)])
+	var pk: Dictionary = perks_for(you)
+	_check(errs, str(pk.get("key", "")) == str(pa.get("key", "-")) and is_equal_approx(float(pk.get("value", 0.0)),
+			float(pa.get("value", -1.0))) and str(pk.get("mentor", "")) == a
+			and str(pk.get("id", "")) == str(LegendsData.legend(a).get("perk", "")) and str(pk.get("text", "")) != "",
+			"mentors: perks_for %s" % str(pk))
+	_check(errs, assign(a, you) and mentors.size() == 1, "mentors: the same pair again")
+	_check(errs, perks_for(mate).is_empty() and mentor_of(mate) == "" and pupil_of(b) == "", "mentors: untrained")
+	# one perk per player: a second legend on the same player frees the first
+	_check(errs, assign(b, you) and mentor_of(you) == b and pupil_of(a) == "" and mentors.size() == 1
+			and str(perks_for(you).get("mentor", "")) == b, "mentors: switch the player's mentor %s" % str(mentors))
+	# one pupil per legend: the legend moves to another player, the old one is freed
+	_check(errs, assign(b, mate) and pupil_of(b) == mate and mentor_of(you) == "" and perks_for(you).is_empty()
+			and mentors.size() == 1, "mentors: switch the legend's pupil %s" % str(mentors))
+	_check(errs, assign(a, you) and assign(c, mate) and mentor_of(mate) == c and pupil_of(b) == "" and pupil_of(a) == you
+			and mentors.size() == 2, "mentors: two pairs %s" % str(mentors))
+	# refusals change nothing
+	var before: String = JSON.stringify(mentors)
+	unlocked.erase(b)
+	_check(errs, not can_mentor(b) and not assign(b, you), "mentors: a locked legend trains")
+	_check(errs, not assign("lg_nobody", you) and not assign("ud_jojo", you) and not assign(a, "") and not assign(a, a)
+			and not assign(a, "x".repeat(LegendsSave.MAX_ID_LEN + 1)), "mentors: a bad pair accepted")
+	_check(errs, JSON.stringify(mentors) == before, "mentors: a refusal changed %s" % JSON.stringify(mentors))
+	# a locked mentor's pair stays in the file but gives nothing
+	mentors[b] = "zz_keep"
+	_check(errs, mentor_of("zz_keep") == b and perks_for("zz_keep").is_empty(), "mentors: a locked mentor's perk")
+	unlock_override = "none"
+	_check(errs, perks_for(you).is_empty() and Trip.roster_player(you).get(PERK_KEY, {}).is_empty(),
+			"mentors: --legends-unlock-none still gives a perk")
+	unlock_override = ""
+	_check(errs, release(b) and not release(b) and mentor_of("zz_keep") == "", "mentors: release")
+	unlocked.append(b)
+	# a pupil not on the roster: kept, no effect
+	_check(errs, assign(b, "zz_nobody") and pupil_of(b) == "zz_nobody" and Trip.roster_player("zz_nobody").is_empty()
+			and Trip.perk_for("zz_nobody").is_empty(), "mentors: a pupil not on the roster")
+	# the perk reaches the trip's player dicts and its match, never a challenge's side
+	var rp: Dictionary = Trip.roster_player(you)
+	_check(errs, str((rp.get(PERK_KEY, {}) as Dictionary).get("mentor", "")) == a
+			and str((Trip.roster_player(mate).get(PERK_KEY, {}) as Dictionary).get("mentor", "")) == c
+			and not Trip.roster_player(str(Trip.starters[2])).has(PERK_KEY), "mentors: Trip.roster_player %s" % str(rp))
+	var trip_m: Dictionary = Trip.match_for()
+	var with_perk: int = 0
+	for p in (trip_m.get("teams", [{}])[0] as Dictionary).get("players", []):
+		if (p as Dictionary).has(PERK_KEY):
+			with_perk += 1
+	for p in (trip_m.get("teams", [{}, {}])[1] as Dictionary).get("players", []):
+		_check(errs, not (p as Dictionary).has(PERK_KEY), "mentors: an opponent has a perk")
+	_check(errs, with_perk == 2, "mentors: %d trip players with a perk, want 2" % with_perk)
+	var cm: Dictionary = match_for_challenge(str(ids[ids.size() - 1]), "normal")
+	for t in 2:
+		for p in (cm["teams"][t] as Dictionary).get("players", []):
+			_check(errs, not (p as Dictionary).has(PERK_KEY), "mentors: a perk in a challenge (%s)" % str(p.get("id", "")))
+	# the ramp sims field no perk (ud_jojo is in every sim crew)
+	assign(a, "ud_jojo")
+	for p in Trip.end_of_trip_crew(true):
+		_check(errs, not (p as Dictionary).has(PERK_KEY), "mentors: a perk in the --best-roster sim")
+	_check(errs, pupil_of(a) == "ud_jojo", "mentors: the sim dropped a pair")
+	# the trip never holds mentors; a NEW TRIP keeps them (they are in the Legends file)
+	_check(errs, not JSON.stringify(Trip.to_dict()).contains(PERK_KEY) and not JSON.stringify(Trip.to_dict()).contains("mentor"),
+			"mentors: in the trip save")
+	var pairs: String = JSON.stringify(mentors)
+	var was_saving: bool = Trip.saving
+	Trip.saving = false
+	Trip.new_trip("normal")
+	Trip.saving = was_saving
+	_check(errs, JSON.stringify(mentors) == pairs and str((Trip.roster_player("ud_jojo").get(PERK_KEY, {}) as Dictionary)
+			.get("mentor", "")) == a, "mentors: a NEW TRIP dropped them")
+	# saved and loaded back; the load repair (two legends on one player: the first in file order stays)
+	_check(errs, save(), "mentors: save %s" % LegendsSave.last_error)
+	mentors = {}
+	load_state(true)
+	unlocked = ids.duplicate()
+	_check(errs, JSON.stringify(mentors) == pairs, "mentors: round trip %s vs %s" % [JSON.stringify(mentors), pairs])
+	_from_dict({"unlocked": ids, "mentors": {a: "p_one", b: "p_one", c: "p_two"}})
+	_check(errs, mentors.size() == 2 and pupil_of(a) == "p_one" and pupil_of(b) == "" and pupil_of(c) == "p_two",
+			"mentors: load repair %s" % str(mentors))
+	# put back
+	trip_mem["version"] = Save.VERSION
+	Trip.from_dict(trip_mem)
+	unlocked = kept_unlocked
+	mentors = kept_mentors
+	unlock_override = kept_override
+	save()
 
 # the challenge match's fields, opponents and level
 static func _check_match(errs: Array, m: Dictionary, id: String, lv: String) -> void:
