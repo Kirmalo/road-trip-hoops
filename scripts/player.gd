@@ -69,6 +69,33 @@ const BLOCK_HUMAN_GOOD_BONUS := 0.1   # human (P2.5): a well-timed block jump's 
 const RIM_BLOCK_RATING_SPAN := 0.5  # rim-block dice (defense.rim_blocker) x0.5 at rating 0, x1.5 at 100
 
 var ratings := {"steal": 50, "block": 50}
+
+# ---- P9-20 signature moves (owner L6 b): a legend's small play edge, read from "signature" in his player dict
+# (legends.gd legend_player, trip.gd player_dict). "" (everyone else) = today's game, every rule below is skipped.
+const SIG_HOOK := "hook"                  # Steeple: close jumpers are hook shots (the "hook" frames), hard to block
+const SIG_KEEP_BLOCK := "keep_block"      # Gate: his blocks stay in play (defense.gd keep_block)
+const SIG_DEEP_SET := "deep_set"          # Set Shot: his long-range falloff starts further out
+const SIG_LONG_DUNK := "long_dunk"        # Boxcar: dunks from further out
+const SIG_FINGER_ROLL := "finger_roll"    # Velvet: layups slip past contests
+const SIG_OUTLET := "outlet"              # Quarterback: long outlet passes (ball.gd flies them faster, safer)
+const HOOK_MAX_FT := 14.0         # a hook man's jumper this close to the rim (outside LAYUP_RANGE) is a hook shot
+const HOOK_BLOCK_MULT := 0.4      # block chance x this on his hooks and his layups (defense.gd asks sig_block_mult)
+const HOOK_CPU_CHANCE := 0.45     # CPU hook man inside HOOK_MAX_FT with a defender within HOOK_CPU_GUARD_FT: chance per
+const HOOK_CPU_GUARD_FT := 6.0    # decision to go up with the hook (a defender on him is why he shoots it)
+const DEEP_SET_EXTRA_FT := 4.0    # main.shot_probability's long falloff (from 23.75 ft) starts this much further out
+const DEEP_SET_ARC_FT := 23.75    # (main.gd's arc distance, as shot_probability uses it)
+const LONG_DUNK_EXTRA_FT := 3.0   # dunk range DUNK_RANGE + this (6 -> 9 ft, the layup range)
+const LONG_DUNK_GLIDE := 0.9      # a long dunk glides to the rim at this fraction of top speed (RIM_GLIDE otherwise)
+const FINGER_ROLL_KEEP := 0.25    # a finger roll keeps this fraction of main's rim contest penalty (0 = none)
+const FINGER_ROLL_CPU_LAYUP := 0.8  # CPU finger roller: chance he pulls up for the layup entering LAYUP_RANGE
+const OUTLET_MIN_FT := 34.0       # an outlet: an outlet passer's pass this long or longer (ball.gd reads it)
+const OUTLET_OPEN_FT := 8.0       # CPU outlet passer in his backcourt: a teammate this open in the frontcourt ...
+const OUTLET_HOOP_FT := 30.0      # ... and this close to the hoop, with at most OUTLET_AHEAD opponents between him
+const OUTLET_AHEAD := 0           # and the hoop, gets the long pass
+var signature := ""               # P9-20: his move id ("" = none)
+var hook_shot := false            # the current / last jumper is a hook (drawn with the hook frames; harder to block)
+var long_dunk := false            # this dunk took off beyond DUNK_RANGE (glides further; drawn two-handed)
+var _sig_print := false           # test runs (any user argument) print a SIGNATURE line when a move fires
 # P5-03: the player dict from Flow.match (board "Match config"); {} in Quick Game. Ratings missing from it are 50.
 const CREW_SHEET_SUFFIX := "_crew"           # a city player's recolor in your colors, used when he plays for team 0
 # Quick Game (no match dict) and the last fallback of a trip player: the sheet of each slot (P6-25; the old v1
@@ -364,6 +391,9 @@ func _apply_pdict(pdict: Dictionary) -> void:
 		return
 	pid = str(pdict.get("id", ""))
 	pname = str(pdict.get("name", ""))
+	var sig = pdict.get("signature", "")
+	signature = str((sig as Dictionary).get("id", "")) if sig is Dictionary else str(sig)
+	_sig_print = signature != "" and OS.get_cmdline_user_args().size() > 0
 	var r: Dictionary = pdict.get("ratings", {})
 	for k in r:
 		ratings[k] = clampi(int(r[k]), Ratings.MIN_RATING, Ratings.MAX_RATING)
@@ -876,6 +906,7 @@ func seek(t: Vector2, mult: float) -> Vector2:
 func start_shot() -> void:
 	if has_ball() and not shooting and rim_kind == "":
 		cpu_three_try = false
+		hook_shot = false
 		if fake_t > 0.0:
 			end_pump_fake()   # out of a pump fake straight into the real shot
 			game.stat("pump_then_shoot_t%d" % team)
@@ -885,6 +916,7 @@ func start_shot() -> void:
 			return
 		shooting = true
 		shot_charge = 0.0
+		hook_shot = signature == SIG_HOOK and d_ft <= HOOK_MAX_FT and not at_free_throw()   # P9-20
 		cpu_shot_time = game.rng.randf_range(CPU_WINDUP_MIN, CPU_WINDUP_MAX)
 		if _cpu_catch_t <= CPU_CATCH_SHOT_T and not game.is_human(self) and not at_free_throw():
 			cpu_shot_time = game.rng.randf_range(CPU_CATCH_WINDUP_MIN, CPU_CATCH_WINDUP_MAX)   # catch and shoot
@@ -941,6 +973,13 @@ func release_shot() -> void:
 	# jump-shot counters: attempts per team, 5 ft distance bands, threes, and makes
 	var counted := has_ball()
 	var three: bool = game.is_three(position, hoop)
+	if counted and signature == SIG_DEEP_SET and three:
+		var dm: float = deep_set_mult()
+		if dm > 1.0:
+			quality *= dm   # P9-20 deep set: the long falloff starts DEEP_SET_EXTRA_FT further out
+			sig_log(SIG_DEEP_SET, "set shot from %.1f ft (odds x%.2f)" % [position.distance_to(hoop) / game.FT, dm])
+	if counted and hook_shot:
+		sig_log(SIG_HOOK, "hook shot from %.1f ft" % (position.distance_to(hoop) / game.FT))
 	if cpu_three_try and counted and not three:
 		game.stat("cpu_threes_inside")   # a CPU 2 that drifted inside the arc during the windup (worth 1)
 	var two_src := ""
@@ -1006,6 +1045,72 @@ func contests_me(o, reach_ft: float, since: float) -> bool:
 	var to_hoop: Vector2 = (game.attack_hoop(team) - position).normalized()
 	return r.length() < 0.1 or r.normalized().dot(to_hoop) > CLOSEOUT_TRAIL_DOT
 
+# ---------------- signature moves (P9-20) ----------------
+# Each rule runs only for a player whose "signature" is that move; with signature "" every helper returns today's
+# value (x1.0, DUNK_RANGE), so a game without legends plays exactly as before.
+
+# a move fired: counts sig_<id>_t<team> (in the stats printout) and, in test runs, prints a SIGNATURE line
+func sig_log(id: String, what: String) -> void:
+	game.stat("sig_%s_t%d" % [id, team])
+	if _sig_print:
+		print("SIGNATURE %s %s (team %d, %d-%d): %s" % [id, pname if pname != "" else pid, team,
+				int(game.score[0]), int(game.score[1]), what])
+
+# how far out he can take off for a dunk
+func dunk_range() -> float:
+	return DUNK_RANGE + (LONG_DUNK_EXTRA_FT if signature == SIG_LONG_DUNK else 0.0)
+
+# defense.gd: x this on a block try at my shot of `kind` ("" jumper, "layup", "dunk"); 1.0 for everyone but the hook man
+func sig_block_mult(kind: String) -> float:
+	if signature != SIG_HOOK:
+		return 1.0
+	if kind == "layup" or (kind == "" and hook_shot):
+		return HOOK_BLOCK_MULT
+	return 1.0
+
+# deep set: main.shot_probability's long base with the falloff moved DEEP_SET_EXTRA_FT out, over today's (>= 1.0)
+func deep_set_mult() -> float:
+	var d: float = position.distance_to(game.attack_hoop(team)) / game.FT
+	var tw: float = Twists.value("long_shot_mult", 1.0)
+	var now: float = maxf((game.SHOT_LONG_BASE - maxf(0.0, d - DEEP_SET_ARC_FT) * game.SHOT_LONG_FALLOFF) * tw, game.SHOT_MIN)
+	var want: float = maxf((game.SHOT_LONG_BASE - maxf(0.0, d - DEEP_SET_ARC_FT - DEEP_SET_EXTRA_FT) * game.SHOT_LONG_FALLOFF) * tw,
+			game.SHOT_MIN)
+	return maxf(1.0, want / now)
+
+# finger roll: undoes all but FINGER_ROLL_KEEP of main.shot_probability's rim contest (1.0 when nobody contests)
+func finger_roll_mult() -> float:
+	var cont: float = game.openness(self)
+	var pen: float = 1.0
+	if cont < game.CONTEST_TIGHT_FT:
+		pen = game.RIM_CONTEST_TIGHT_MULT
+	elif cont < game.CONTEST_NEAR_FT:
+		pen = game.RIM_CONTEST_NEAR_MULT
+	if pen >= 1.0:
+		return 1.0
+	return lerpf(1.0 / pen, 1.0, FINGER_ROLL_KEEP)
+
+# CPU outlet passer with the ball in his backcourt: the long pass to a teammate who is open near the hoop with at most
+# OUTLET_AHEAD opponents between him and it (no dice: he sees it, he throws it)
+func try_cpu_outlet(hoop: Vector2) -> bool:
+	var best = null
+	var best_open: float = OUTLET_OPEN_FT
+	for mate in game.teams[team]:
+		if mate == self or not game.in_frontcourt(mate.position, team) or mate.is_airborne():
+			continue
+		if mate.position.distance_to(position) < OUTLET_MIN_FT * game.FT:
+			continue
+		if mate.position.distance_to(hoop) > OUTLET_HOOP_FT * game.FT or mate.opponents_ahead(hoop) > OUTLET_AHEAD:
+			continue
+		var o: float = game.openness(mate)
+		if o >= best_open:
+			best_open = o
+			best = mate
+	if best == null:
+		return false
+	game.stat("cpu_outlets_t%d" % team)
+	game.do_pass(self, best)   # ball.gd sees the length and flies it as an outlet (and logs it)
+	return true
+
 func green_lo() -> float:
 	return FIRE_GREEN_LO if on_fire else GREEN_LO
 
@@ -1019,7 +1124,10 @@ func is_dunk_speed() -> bool:
 
 # Shoot near the rim: take off for a dunk (very close and fast) or a layup. No shot meter.
 func start_rim_move(d_ft: float) -> void:
-	var dunk := d_ft <= DUNK_RANGE and is_dunk_speed()
+	var dunk := d_ft <= dunk_range() and is_dunk_speed()
+	long_dunk = dunk and d_ft > DUNK_RANGE   # P9-20: only a long_dunk signature reaches past DUNK_RANGE
+	if long_dunk:
+		sig_log(SIG_LONG_DUNK, "power dunk from %.1f ft" % d_ft)
 	alley_oop = false
 	rim_kind = "dunk" if dunk else "layup"
 	jump_time = DUNK_TIME if dunk else LAYUP_TIME
@@ -1069,7 +1177,7 @@ func update_rim_move(delta: float) -> Vector2:
 		return Vector2.ZERO
 	var hoop: Vector2 = game.attack_hoop(team)
 	var under: Vector2 = hoop + Vector2(game.inward(hoop) * 1.5 * game.FT, 0)
-	return seek(under, RIM_GLIDE)
+	return seek(under, LONG_DUNK_GLIDE if long_dunk else RIM_GLIDE)
 
 func release_rim_shot() -> void:
 	var ball = game.ball
@@ -1084,6 +1192,7 @@ func release_rim_shot() -> void:
 			game.stat("alleyoop_blocks")
 		game.rim_shot_blocked(self, blocker)
 		game.stat("rim_blocks")
+		Defense.keep_block(game, blocker)   # P9-20: a keep_block blocker's swat stays in play
 		return
 	# aim the open make chance at DUNK_OPEN_PCT / LAYUP_OPEN_PCT; shot_probability() then applies its own
 	# rim contest (x RIM_CONTEST_TIGHT_MULT with a defender on you)
@@ -1097,6 +1206,11 @@ func release_rim_shot() -> void:
 	if game.openness(self) < CLOSEOUT_FT and not contests_me(game.nearest_opponent(self), CLOSEOUT_FT, jump_t):
 		soft = RIM_SOFT_MULT   # the man on me is beaten (stumbling), trailing, or came down from an early jump
 		game.stat("rim_soft_contests_t%d" % team)
+	if signature == SIG_FINGER_ROLL and rim_kind == "layup":
+		var fr: float = finger_roll_mult()
+		if fr > 1.0:
+			soft = maxf(soft, fr)   # P9-20 finger roll: slips past the contest (not on top of the soft-contest ease)
+			sig_log(SIG_FINGER_ROLL, "finger roll past a contest (odds x%.2f)" % fr)
 	game.release_shot(self, target / base * rim_quality * fire_mult * alley_mult * soft)
 	count_pump_and_score()
 	if ball.state == ball.SHOT:
@@ -1273,6 +1387,8 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		if fast_break:
 			target = hoop + Vector2(game.inward(hoop) * 3.0 * FT, 0)
 			cpu_turbo_want = true
+		if signature == SIG_OUTLET and not cpu_call_hold():
+			try_cpu_outlet(hoop)   # P9-20: the long pass to a teammate who leaked out
 		return
 	# drive to the rim, sidestepping a defender who is in the way
 	target = hoop + Vector2(game.inward(hoop) * 3.0 * FT, 0)
@@ -1304,12 +1420,15 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 	# attack the rim: once per drive, maybe pull up early for a layup; at full speed close in, dunk
 	if dist_ft > LAYUP_RANGE + 2.0:
 		cpu_rim_rolled = false
-	elif dist_ft <= LAYUP_RANGE and dist_ft > DUNK_RANGE and not cpu_rim_rolled:
+	elif dist_ft <= LAYUP_RANGE and dist_ft > dunk_range() and not cpu_rim_rolled:
 		cpu_rim_rolled = true
-		if game.rng.randf() < (CPU_LAYUP_CHANCE if open_ft < CPU_LAYUP_GUARD_FT else CPU_LAYUP_OPEN_CHANCE):
+		var lay_p: float = CPU_LAYUP_CHANCE if open_ft < CPU_LAYUP_GUARD_FT else CPU_LAYUP_OPEN_CHANCE
+		if signature == SIG_FINGER_ROLL:
+			lay_p = FINGER_ROLL_CPU_LAYUP   # P9-20: the finger roller goes up for it
+		if game.rng.randf() < lay_p:
 			start_shot()
 			return
-	if dist_ft <= DUNK_RANGE and is_dunk_speed():
+	if dist_ft <= dunk_range() and is_dunk_speed():
 		start_shot()
 		return
 	decision_timer -= delta
@@ -1325,6 +1444,10 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		start_shot()
 	elif try_cpu_lob():
 		pass   # alley-oop lob to a cutter
+	elif signature == SIG_HOOK and dist_ft > LAYUP_RANGE and dist_ft <= HOOK_MAX_FT and open_ft < HOOK_CPU_GUARD_FT \
+			and game.rng.randf() < HOOK_CPU_CHANCE:
+		game.stat("cpu_hooks_t%d" % team)
+		start_shot()   # P9-20: the hook over the man on him
 	elif step_side != 0.0 and open_ft < CPU_CROSS_FT and dist_ft > LAYUP_RANGE and cross_cd <= 0.0 \
 			and not lane_open(hoop) and game.rng.randf() < CPU_CROSS_CHANCE:
 		# crossover: cut back the other way, behind a defender sliding with the sidestep
@@ -1338,7 +1461,8 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 			and (open_ft >= CPU_PULLUP_ROOM_FT or guard_behind) and game.rng.randf() < Difficulty.value(team, "pullup_chance", CPU_PULLUP_CHANCE):
 		game.stat("pullups_t%d" % team)
 		start_shot()
-	elif three_set and dist_ft <= CPU_THREE_MAX_FT and open_ft >= CPU_THREE_OPEN_FT \
+	elif three_set and dist_ft <= CPU_THREE_MAX_FT + (DEEP_SET_EXTRA_FT if signature == SIG_DEEP_SET else 0.0) \
+			and open_ft >= CPU_THREE_OPEN_FT \
 			and game.rng.randf() < Difficulty.value(team, "three_chance", CPU_THREE_CHANCE) * Twists.value("long_shot_mult", 1.0):
 		# (a twist that makes long shots harder or easier makes the CPU take them less or more: wind, thin air)
 		game.stat("cpu_threes")
@@ -1414,6 +1538,7 @@ func start_alley_dunk() -> void:
 		end_pump_fake()
 	cross_t = 0.0
 	alley_oop = true
+	long_dunk = false
 	rim_kind = "dunk"
 	jump_time = ALLEY_JUMP_TIME
 	jump_t = 0.0
@@ -1747,7 +1872,8 @@ func _update_view(delta: float) -> void:
 	if _v_was_shooting and not shooting and rim_kind == "" and ball.state == ball.SHOT and ball.shooter == self:
 		_v_follow_t = FOLLOW_TIME
 		if _v_ver == 2:
-			_v_follow_t = _v2_time_from("shoot", Sheets.anim_event(_v_fmt, "shoot", "release", 0))
+			var sa: String = _v2_shot_anim()
+			_v_follow_t = _v2_time_from(sa, Sheets.anim_event(_v_fmt, sa, "release", 0))
 	_v_was_shooting = shooting
 	if ball.state == ball.SHOT and ball.shooter == self and ball.shot_made:
 		if not _v_make_seen:
@@ -2026,6 +2152,7 @@ var _v_pass_kind := "pass_chest"
 var _v_celebrate_b := false
 var _v_texmem_frames := -1
 var _v_slide_hold := 0.0
+var _v_hook_seen := -1            # game.shot_serial of the last hook counted in anim_hook
 
 # the sheet ids to try, in order: team 0 his _crew recolor, his own sheet, then his slot's Quick Game sheet. A Quick
 # Game team (P6-T3, "own_colors" in the dict) wears its own colors on either side: no _crew recolor.
@@ -2148,10 +2275,22 @@ func _v2_phase_x(anim: String, p: float) -> float:
 		return start + p / 0.5 * (fl - start)
 	return fl + (p - 0.5) / 0.5 * (start + seg - fl)
 
+# P9-20: a hook shot plays the sheet's "hook" frames when it carries them (Sheets.has_anim; P9-04c extra pages), else
+# the normal jump shot. Drawing only: hook_shot is the sim's.
+func _v2_shot_anim() -> String:
+	if hook_shot and Sheets.has_anim(_v_fmt, "hook"):
+		if shooting and _v_hook_seen != game.shot_serial:
+			_v_hook_seen = game.shot_serial
+			game.stat("anim_hook")
+		return "hook"
+	return "shoot"
+
 # Q6: the dunk's look. Score chance is the sim's; this only picks the frames (a hash of the player and the play)
 func _v2_dunk_style() -> String:
 	if alley_oop:
 		return "dunk_alley"
+	if long_dunk:
+		return "dunk_two"   # P9-20: the power drop-step ends in a two-hand dunk
 	var roll: int = absi(hash([team, index, pid, game.shot_serial, int(game.score[0]), int(game.score[1])])) % 100
 	var fast: bool = turbo or since_turbo < TURBO_DUNK_WINDOW
 	var great: bool = rating("finishing") >= WINDMILL_FINISH or str(pdata.get("tier", "")) == "boss"
@@ -2314,7 +2453,7 @@ func _update_sheet_frame_v2(delta: float) -> void:
 		var g: float = clampf(1.0 - fake_t / PUMP_TIME, 0.0, 1.0)
 		x = (1.0 - absf(2.0 * g - 1.0)) * float(top)
 	elif shooting:
-		anim = Sheets.resolve(fmt, "shoot")   # jumper or free throw: gather and rise through the windup / meter
+		anim = Sheets.resolve(fmt, _v2_shot_anim())   # jumper or free throw: gather and rise through the windup / meter
 		var fs := 0.0
 		if game.is_human(self):
 			fs = shot_charge
@@ -2322,7 +2461,7 @@ func _update_sheet_frame_v2(delta: float) -> void:
 			fs = shot_elapsed / maxf(shot_elapsed + maxf(cpu_shot_time, 0.0), 0.01)
 		x = clampf(fs, 0.0, 0.999) * float(maxi(1, Sheets.anim_event(fmt, anim, "release", 3)))
 	elif _v_follow_t > 0.0:
-		anim = Sheets.resolve(fmt, "shoot")   # release, then the follow-through
+		anim = Sheets.resolve(fmt, _v2_shot_anim())   # release, then the follow-through
 		var r0: int = Sheets.anim_event(fmt, anim, "release", 0)
 		var tot: float = _v2_time_from(anim, r0)
 		x = _v2_clock_x(anim, _v2_time_from(anim, 0) - minf(_v_follow_t, tot), false)
