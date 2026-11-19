@@ -8,6 +8,10 @@ extends RefCounted
 # The owner can edit the numbers below (owner Q1 a "as proposed", Q2 a "fenced cage"). Keys:
 #   name, banner, icon       text for the tip-off banner, the trip map and the pause screen (twist_fx draws the icon)
 #   long_shot_mult           x make chance of jump shots beyond the arc (main.shot_probability); 1.0 = today
+#   inside_mult              x make chance of close shots: jumpers inside main.SHOT_CLOSE_FT, every layup and dunk
+#                            (main.shot_probability, P9-08); 1.0 = today
+#   foul_mult                x the chance a foul is called: bad block jumps into the shooter and reaching fouls
+#                            (defense._foul_roll, defense.try_reach_foul; P9-08); 1.0 = today
 #   shot_clock               seconds on the shot clock (main.SHOT_CLOCK_LENGTH, 24 today)
 #   speed_mult               x every player's top speed (player.speed, after the speed rating)
 #   turbo_mult               the turbo speed multiplier itself (player.TURBO_SPEED_MULT, 1.35 today)
@@ -77,6 +81,15 @@ const TWISTS := {
 		"sideline_fence": 1.0,        # no out of bounds on the sidelines; baselines as now
 		"fence_bounce": 0.6,          # the ball keeps 60% of its speed off the fence
 	},
+	# Legends, Chapter 1 (P9-08, owner L5 a): the Grandfathers era, "OLD SCHOOL". Starting values; QA tunes them (P9-17)
+	"era_grand": {
+		"name": "OLD SCHOOL", "banner": "Old school: slower, more inside, fewer threes and fouls",
+		"icon": "era_grand",
+		"speed_mult": 0.94,           # everyone 6% slower
+		"long_shot_mult": 0.88,       # shots beyond the arc go in 12% less often
+		"inside_mult": 1.08,          # close jumpers, layups and dunks go in 8% more often
+		"foul_mult": 0.6,             # fouls are called 60% as often as today (rougher defense)
+	},
 }
 
 # Today's value of every hook key (what each hook passes as `default`; listed so the table can be checked)
@@ -84,7 +97,7 @@ const DEFAULTS := {
 	"long_shot_mult": 1.0, "shot_clock": 24.0, "speed_mult": 1.0, "turbo_mult": 1.35,
 	"stamina_drain_mult": 1.0, "stamina_refill_mult": 1.0, "cut_grip": 1.0, "cut_min_speed": 0.8,
 	"cut_angle_deg": 60.0, "lob_drift_ft": 0.0, "shot_curve_ft": 0.0, "lob_time_mult": 1.0, "arc_mult": 1.0,
-	"sideline_fence": 0.0, "fence_bounce": 0.6, "crowd_db": 0.0,
+	"sideline_fence": 0.0, "fence_bounce": 0.6, "crowd_db": 0.0, "inside_mult": 1.0, "foul_mult": 1.0,
 }
 const TEXT_KEYS := ["name", "banner", "icon", "gust_min", "gust_keys"]
 

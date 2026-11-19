@@ -4,6 +4,7 @@ extends RefCounted
 # CPU skill knobs go through Difficulty.value(team, key, CONST) at the point of use (P3-03; Hard = the constant).
 
 const Difficulty = preload("res://scripts/difficulty.gd")
+const Twists = preload("res://scripts/twists.gd")   # foul_mult (era_grand, P9-08): x every foul call chance; 1.0 = today
 
 # ---- tuning ----
 const GAP_FT := 5.5               # off-ball: stay this far off my man, on the hoop side
@@ -346,6 +347,7 @@ static func _foul_roll(g, d, shooter, serial: int, why: String) -> bool:
 	d.def.foul_rolled = serial
 	g.stat("bad_jump_contacts_" + why)
 	var chance: float = Difficulty.value(d.team, "foul_bad_jump", FOUL_BAD_JUMP_CHANCE)
+	chance *= Twists.value("foul_mult", 1.0)   # era_grand: fewer whistles; 1.0 without a twist
 	return g.rng.randf() < chance * (FOUL_LATE_MULT if why == "late" else 1.0)
 
 # a jump that is already coming down at the release: "fake" if it started at the shooter's pump fake, else "early"
@@ -438,6 +440,7 @@ static func try_reach_foul(g, d, h) -> bool:
 		g.stat("human_steal_pokes")
 		g.stat("human_shield_pokes")
 	var chance: float = REACH_FOUL_HUMAN_CHANCE if human else Difficulty.value(d.team, "reach_foul", REACH_FOUL_CHANCE)
+	chance *= Twists.value("foul_mult", 1.0)   # era_grand: fewer whistles; 1.0 without a twist
 	if g.rng.randf() < chance:
 		commit_foul(g, d, h, "reach", "reach")
 	return true

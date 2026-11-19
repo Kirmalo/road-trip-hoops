@@ -1128,8 +1128,10 @@ func shot_probability(p, quality: float) -> float:
 	else:
 		base = SHOT_LONG_BASE - maxf(0.0, d - 23.75) * SHOT_LONG_FALLOFF
 		base *= Twists.value("long_shot_mult", 1.0)   # wind (gusting) and thin air; 1.0 without a twist
-	base = maxf(base, SHOT_MIN)
 	var rim: bool = p.rim_kind != ""
+	if rim or d < SHOT_CLOSE_FT:
+		base *= Twists.value("inside_mult", 1.0)   # close shots, layups and dunks (era_grand); 1.0 without a twist
+	base = maxf(base, SHOT_MIN)
 	var cont := openness(p)
 	if cont < CONTEST_TIGHT_FT:
 		base *= RIM_CONTEST_TIGHT_MULT if rim else CONTEST_TIGHT_MULT
