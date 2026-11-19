@@ -343,10 +343,10 @@ const LOOKS := {
 	},
 	# ---- Phase 9 era court (P9-05; tools/art/make_courts.py --era, --print-looks): the Legends Chapter 1 court, an
 	# old wood gym. No twist key (the legends match brings era_grand), no reward, not a city: never in quick_courts().
-	# Music: an existing track until the era's own (the legends match names it) ----
+	# Music: the era's own track, Bebop (P9-16, owner's pick; assets/music/legends_grand.ogg) ----
 	"era_grand": {
 		"name": "OLD GYM",
-		"music": "memphis",
+		"music": "legends_grand",
 		"floor_texture": "res://assets/courts/era_grand_floor.png",
 		"floor_scale": 2.0,
 		"floor": Color(0.80, 0.60, 0.33),
