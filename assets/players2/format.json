@@ -628,5 +628,53 @@
     4
    ]
   }
+ },
+ "_help_extra": "extra (P9-04b): animations only some sheets carry (sheets = the base sheets; a recolor or star jersey carries what its pages' sheet carries). Their frames are on extra pages <sheet>_x<N>.png after the normal pages: start = the logical extra column (extra_cols in all, pages of page_cols, the same rows and palettes as the normal pages). Events as above, plus top (the ball over the head). hook: right-hand hook shot, left shoulder to the hoop.",
+ "extra_cols": 11,
+ "extra": {
+  "hook": {
+   "start": 0,
+   "frames": 11,
+   "fps": 0.0,
+   "loop": false,
+   "ms": [
+    70,
+    80,
+    70,
+    50,
+    50,
+    60,
+    60,
+    120,
+    90,
+    90,
+    110
+   ],
+   "gather": [
+    0,
+    2
+   ],
+   "takeoff": 3,
+   "top": 5,
+   "release": 6,
+   "follow": [
+    7,
+    8
+   ],
+   "air": [
+    3,
+    8
+   ],
+   "land": 9,
+   "hand": "R",
+   "sheets": [
+    "lg_steeple",
+    "lg_gate",
+    "lg_set_shot",
+    "lg_boxcar",
+    "lg_velvet",
+    "lg_quarterback"
+   ]
+  }
  }
 }

@@ -38,6 +38,8 @@ Usage:  python3 tools/art/make_players_v2.py [--only ID[,ID...] | --all] [--jobs
         [--out-dir DIR]              (write the sheet files, cards and render cache under DIR: a scratch run)
         [--hook-preview [ID]]        (only docs/art/hook_shot_v1.gif, the hook next to the jump shot; no files)
         [--hook-strip ID DIR]        (a still strip of the hook in 5 directions to DIR)
+        [--legends-strip]            (P9-09: only docs/art/legends_grand.png, the six lg_ sheets with the hook, from
+                                     the written files; the sheets themselves: --only <the LEGENDS ids>)
 Extra animations (P9-04b): EXTRA (the hook shot) is rendered only for the sheets it names (lg_* ids, a crews.json
 "extra": [...] list, --extra-sheets), onto extra pages <id>_x<N>.png with the same palettes, and listed in
 format.json's "extra" section; every other sheet's files stay exactly as before.
@@ -1972,7 +1974,7 @@ def moves_gif(all_frames, path=MOVES_GIF):
 
 
 PREVIEW4 = os.path.join(ROOT, "docs", "art", "players_preview_v4.png")
-CREW_ORDER = ["U", "HT", "CHI", "MEM", "NOL", "DEN", "SEA", "LA", "NYQ", "NYS", "NYF", "NY"]
+CREW_ORDER = ["U", "HT", "CHI", "MEM", "NOL", "DEN", "SEA", "LA", "NYQ", "NYS", "NYF", "NY", "GR"]
 
 
 def decoded_pages(base, pal_id):
@@ -2088,6 +2090,100 @@ def draft_strip(path=DRAFT_STRIP):
     return path
 
 
+# ----------------------------------------------------------------------------- P9-09: the Grandfathers sheets
+# The six legend sheets (crews.json crew "GR", ids lg_*; original characters, numbers are placeholders) are ordinary
+# 'draft': true entries: era colors, a _crew recolor in your colors (crew_recolor "GR") and the _crew_j1..3 star
+# jerseys; every lg_ sheet carries the hook extra pages (EXTRA_PREFIX). Rebuild: --only <the LEGENDS ids> (one comma
+# list), then --legends-strip (docs/art/legends_grand.png, read from the written files: what the game draws).
+LEGENDS = ["lg_steeple", "lg_gate", "lg_set_shot", "lg_boxcar", "lg_velvet", "lg_quarterback"]
+LEGENDS_STRIP = os.path.join(ROOT, "docs", "art", "legends_grand.png")
+LEGEND_CELLS = [("idle", "S", 0), ("idle", "SE", 0), ("idle", "E", 0), ("idle", "NE", 0), ("idle", "N", 0),
+                ("run_dribble", "SE", 2), ("shoot", "E", 6), ("block", "S", 3)]
+LEGEND_HOOK = [("E", k) for k in (0, 2, 4, 5, 6, 8)] + [("S", 6), ("SE", 6)]
+
+
+def decoded_extra_pages(base, pal_id):
+    """The extra pages (<base>_x<N>) through a palette, as the game draws them."""
+    pal = np.array(Image.open(os.path.join(PAL_DIR, pal_id + ".png")).convert("RGBA"))[0]
+    out = []
+    while os.path.exists(os.path.join(OUT_DIR, "%s_x%d.png" % (base, len(out)))):
+        out.append(pal[np.array(Image.open(os.path.join(OUT_DIR, "%s_x%d.png" % (base, len(out)))))])
+    return out
+
+
+def cut_extra(pages, name, dname, k):
+    fmt = json.load(open(os.path.join(OUT_DIR, "format.json")))
+    e = fmt["extra"][name]
+    c = int(e["start"]) + min(k, int(e["frames"]) - 1)
+    r = fmt["dirs"].index(dname)
+    return Image.fromarray(pages[c // PAGE_COLS][r * FH:(r + 1) * FH, (c % PAGE_COLS) * FW:(c % PAGE_COLS + 1) * FW].copy())
+
+
+def legends_strip(path=LEGENDS_STRIP):
+    """P9-09 contact sheet: per legend, two lines. Era colors: idle in the 5 drawn directions, running dribble SE,
+    jump shot release E, block S | the hook shot (E: gather, sweep, top, release, follow; release S and SE, lifted
+    as the preview does). Your colors: the _crew recolor and the 3 star jerseys (idle S) | _crew's hook.
+    Everything is decoded from the written index pages and palettes (no render); the ball from hands.json."""
+    raw = json.load(open(M.CREWS))
+    ent = {e["id"]: e for e in raw["players"]}
+    hands = json.load(open(os.path.join(OUT_DIR, "hands.json")))
+    jn = [(n, name) for n, name, _ in jersey_defs()]
+    Z, pad = 2, 6
+    cw, chh = FW * Z, FH * Z
+    lift = PREVIEW_LIFT.get("hook", [0] * 11)
+    W = 150 + len(LEGEND_CELLS) * cw + 16 + len(LEGEND_HOOK) * cw + pad
+    line_h = chh + 22
+    H = 44 + len(LEGENDS) * (2 * line_h + 10)
+    img = S.floor_bg(W, H)
+    dr = ImageDraw.Draw(img)
+    dr.rectangle([0, 0, W, 36], fill=(28, 26, 38, 255))
+    S.label(dr, (8, 3), "Legends Chapter 1, the Grandfathers (P9-09): the six legend sheets as the game draws them "
+                        "(index pages + palettes), 2x. Original characters; the numbers are placeholders.", 14)
+    S.label(dr, (8, 20), "Top: era colors (idle S SE E NE N, run dribble SE, jump shot E, block S | HOOK: E gather .. "
+                         "follow, release S, SE). Bottom: your colors (_crew, star jerseys %s) | the _crew hook." %
+            ", ".join(nm for _, nm in jn), 12)
+
+    def rec_of(sid, name, dn, k):
+        r = hands["bodies"][hands["sheets"][sid]][name][dn][k]
+        return {"ball": r["ball"], "hands": r["hands"], "ball_floor": r.get("ball_floor"), "ball_h": r.get("ball_h", 0)}
+
+    def put(fr, rec, x, y, lf=0):
+        cell = S.compose_frame(fr, rec, lift=lf, top=0)
+        img.alpha_composite(cell.resize((cw, chh), Image.NEAREST), (x, y))
+
+    y = 44
+    for sid in LEGENDS:
+        e = ent[sid]
+        pages = decoded_pages(sid, sid)
+        S.label(dr, (8, y + 30), e["name"].upper(), 14)
+        S.label(dr, (8, y + 48), "%s #%d" % (sid, e["number"]), 11)
+        S.label(dr, (8, y + 64), e["role"], 11)
+        x = 150
+        for name, dn, k in LEGEND_CELLS:
+            put(cut(pages, name, dn, k), rec_of(sid, name, dn, k), x, y)
+            x += cw
+        x += 16
+        S.label(dr, (x + 2, y + 2), "HOOK", 12, (255, 224, 138))
+        xp = decoded_extra_pages(sid, sid)
+        for dn, k in LEGEND_HOOK:
+            put(cut_extra(xp, "hook", dn, k), rec_of(sid, "hook", dn, k), x, y, lift[k])
+            x += cw
+        y += line_h
+        x = 150
+        for v, lab in [(sid + "_crew", "your colors")] + [("%s_crew_j%d" % (sid, n), nm.lower()) for n, nm in jn]:
+            put(cut(decoded_pages(sid, v), "idle", "S", 0), {"ball": None}, x, y)
+            S.label(dr, (x + 4, y + chh - 4), lab, 11)
+            x += cw
+        x = 150 + len(LEGEND_CELLS) * cw + 16
+        cx = decoded_extra_pages(sid, sid + "_crew")
+        for dn, k in LEGEND_HOOK:
+            put(cut_extra(cx, "hook", dn, k), rec_of(sid, "hook", dn, k), x, y, lift[k])
+            x += cw
+        y += line_h + 10
+    img.convert("RGB").save(path, optimize=True)
+    return path
+
+
 # ----------------------------------------------------------------------------- main
 
 def all_bases():
@@ -2125,6 +2221,9 @@ def _extra_args(argv):
 
 def main(argv):
     if _extra_args(argv):
+        return
+    if "--legends-strip" in argv:    # only the P9-09 contact sheet, from the written files
+        print("wrote", legends_strip())
         return
     if "--draft-strip" in argv:      # only the P8-05 contact strip, from the written files
         print("wrote", draft_strip())
