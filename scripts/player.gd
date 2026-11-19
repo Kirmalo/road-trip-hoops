@@ -330,6 +330,22 @@ const BOXOUT_FT := 2.5            # box-out: get this far in front of the neares
 const BOXOUT_SPEED := 0.9         # speed multiplier while boxing out
 const BOXOUT_CRASH_T := 0.6       # fraction of the free throw's flight after which the chasers go for the ball
 
+# ---- rebounding (field goals; main.rebound_phase() says when). The defense has the inside position: every
+# defender but the chaser boxes out his man and goes for a loose ball that comes near him. The offense sends only
+# its nearest man (main.chasers) plus a shooter who follows his shot (main.REB_SHOOTER_CRASH); a jump shooter who
+# doesn't gets back. A CPU crasher with a defender in front of him is sealed (slowed). ----
+const REB_DEF_SPOT_FT := 4.0      # the defensive chaser waits this far out from the rim (inside the offense's 6 ft)
+const REB_OFF_SPOT_FT := 6.0      # the offensive crasher's spot (as before the rebound work)
+const REB_HELP_FT := 8.0          # a boxing-out defender goes for a loose rebound this close to him
+const REB_BOX_RANGE_FT := 20.0    # he boxes out his man only if the man is this close to the rim (else he crashes)
+const REB_BOX_SPEED := 1.0        # speed multiplier while boxing out on a field goal
+const REB_SEAL_FT := 3.0          # a CPU crasher with a grounded defender this close in front of him ...
+const REB_SEAL_CONE := 0.4        # ... ("in front": cos of the angle off his way to the ball at least this) ...
+const REB_SEALED_MULT := 0.55     # ... moves at this fraction of his speed, no turbo
+const REB_BACK_FT := 4.0          # a jump shooter who gets back heads this far past half court
+
+var reb_follow := true            # main.release_shot: this shooter follows his shot (rolled per shot)
+
 static var ft_box_serial := -1    # game.shot_serial of the last free throw of a trip, in the air (everyone released)
 var ft_wait := -1.0               # CPU at the line: seconds until he shoots (< 0 = not counting)
 var ft_wait_total := 0.0
@@ -1290,6 +1306,10 @@ func ai(delta: float) -> void:
 			_box_counted = ft_box_serial
 			game.stat("ft_boxouts_t%d" % team)
 		return
+	# a field goal's rebound: box-outs, one crasher, getting back
+	var reb_phase: String = game.rebound_phase()
+	if reb_phase != "" and rebound_ai(reb_phase, delta):
+		return
 	# chase loose balls and rebounds (sprint for them)
 	if ball.state == ball.LOOSE:
 		if game.is_chaser(self):
@@ -1382,6 +1402,64 @@ func ft_stand(delta: float, is_human: bool) -> Vector2:
 	elif not has_ball():
 		ft_wait = -1.0
 	return desired
+
+# A field goal's rebound (phase "air" or "loose", main.rebound_phase()). True if it set target / speed_mult.
+func rebound_ai(phase: String, delta: float) -> bool:
+	var ball = game.ball
+	var hoop: Vector2 = ball.shot_hoop
+	var out := Vector2(game.inward(hoop), 0.0)
+	var loose: bool = phase == "loose"
+	if team != game.rebound_team():
+		# defense: the chaser goes for it, everyone else boxes out his man, or crashes if his man isn't coming
+		def.cpu_update(delta)   # block jumps and the rest of the defense brain run on; the target is set below
+		speed_mult = 1.0
+		var man = game.teams[1 - team][index]
+		var crash: bool = game.is_chaser(self) or man.position.distance_to(hoop) > REB_BOX_RANGE_FT * game.FT \
+				or (man == game.rebound_shooter() and not man.reb_follow)
+		if loose and (crash or position.distance_to(ball.position) < REB_HELP_FT * game.FT):
+			target = ball.position
+			cpu_turbo_want = position.distance_to(target) > 3.0 * game.FT
+			return true
+		if crash:
+			target = hoop + out * REB_DEF_SPOT_FT * game.FT
+			cpu_turbo_want = position.distance_to(target) > 6.0 * game.FT
+			return true
+		target = boxout_of(man, hoop)
+		speed_mult = REB_BOX_SPEED
+		game.stat("reb_boxout_frames_t%d" % team)
+		return true
+	# offense: the crasher (main.chasers) goes; a jump shooter who doesn't follow his shot gets back
+	if game.is_chaser(self):
+		target = ball.position if loose else hoop + out * REB_OFF_SPOT_FT * game.FT
+		cpu_turbo_want = position.distance_to(target) > (3.0 if loose else 6.0) * game.FT
+		if _reb_sealed(target):
+			speed_mult = REB_SEALED_MULT
+			cpu_turbo_want = false
+			game.stat("reb_sealed_frames_t%d" % team)
+		return true
+	if self == game.rebound_shooter() and not reb_follow:
+		target = Vector2(game.COURT_W / 2.0 + out.x * REB_BACK_FT * game.FT, lerpf(position.y, game.COURT_H / 2.0, 0.5))
+		return true
+	return false   # the others stay on their spots (offball_ai)
+
+# a grounded opponent close in front of me on my way to goal: he has the inside position
+func _reb_sealed(goal: Vector2) -> bool:
+	var way: Vector2 = goal - position
+	if way.length() < 1.0:
+		return false
+	for o in game.teams[1 - team]:
+		var to: Vector2 = o.position - position
+		if to.length() > 0.1 and to.length() < REB_SEAL_FT * game.FT and not o.is_airborne() \
+				and to.normalized().dot(way.normalized()) >= REB_SEAL_CONE:
+			return true
+	return false
+
+# box-out spot: between opponent o and the hoop, BOXOUT_FT in front of him (or halfway if he is closer)
+func boxout_of(o, hoop: Vector2) -> Vector2:
+	var line: Vector2 = hoop - o.position
+	if line.length() < 1.0:
+		return position
+	return o.position + line.normalized() * minf(BOXOUT_FT * game.FT, line.length() * 0.5)
 
 # CPU box-out while the last free throw is in the air: get between the nearest opponent and the rim
 func boxout_spot() -> Vector2:
