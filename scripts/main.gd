@@ -194,6 +194,8 @@ const BACKTEST_ARM_FRAMES := 90      # frames on a screen before the request (ev
 const BACKTEST_LAND_FRAMES := 30     # frames after the request before the check (a Flow.go reload has happened)
 const BACKTEST_GAME_WAIT := 1200     # most frames to wait in a game for the pause to be allowed (tip-off)
 const BACKTEST_STARS := 12          # the star total --backtest plays with (P8-24: one roster slot open for DRAFT)
+const BACKTEST_LEGEND_STARS := 24   # the star total from the Legends steps on (P9-28): Chapter 1's gate
+const BACKTEST_CHAPTER := "grand"    # the chapter the Legends steps open (its first legend is the challenge)
 static var _backtest_node: Node = null   # the --backtest driver (on the root, survives the reloads)
 const TOP_BAR_FONT_TRIP := 24       # top bar font in a trip game (crew names are longer than BLUE / RED; Quick Game 30)
 # --city <id> --cgame N without trip.gd: this hand-built match (your 3 underdogs vs a Hometown-like crew; ratings
@@ -2410,6 +2412,8 @@ func _update_hud() -> void:
 # On the root, so it lives across the reloads. Goes to each screen, waits until its tap guard has passed, sends the
 # back request the way the engine does (propagated from the root) and checks where it landed. Trip screens use the
 # test save (user://trip_test.json). Prints BACKTEST lines, then BACKTEST OK (exit 0) or BACKTEST FAILED (exit 1).
+# P9-28: the Legends screens too (tour, Hall, the mentor picker, a challenge game and its QUIT); they never write the
+# Legends file (saving off, unlocks and stars for this run only).
 #   godot --headless --path . --fixed-fps 60 --quit-after 20000 -- --backtest
 class BackTest extends Node:
 	const FlowS = preload("res://scripts/flow.gd")
@@ -2417,6 +2421,8 @@ class BackTest extends Node:
 	const TripS = preload("res://scripts/trip.gd")
 	const MenuS = preload("res://scripts/menu.gd")
 	const StarsS = preload("res://scripts/stars.gd")
+	const LegendsS = preload("res://scripts/legends.gd")
+	const LegendsDataS = preload("res://scripts/legends_data.gd")
 	# go: the screen to open ("" = stay in this game); expect: the screen after back; did: what main.gd reports
 	const STEPS := [
 		{"go": "title", "expect": "title", "did": "quit"},
@@ -2441,7 +2447,27 @@ class BackTest extends Node:
 		{"go": "map", "trip": true, "beaten": true, "prep": "picker", "expect": "map", "did": "escape",
 				"closed": "_picker"},
 		{"go": "", "expect": "title", "did": "escape"},
+		# P9-28: the Legends screens. "legends": BACKTEST_LEGEND_STARS open the chapter, every legend unlocked this run,
+		# its intro seen, nothing saved; "chapter": the tour's chapter() after it ("" = the timeline)
+		{"go": "legends", "legends": true, "args": {"chapter": BACKTEST_CHAPTER}, "expect": "legends", "did": "escape",
+				"chapter": ""},
+		{"go": "", "expect": "title", "did": "escape"},
+		{"go": "hall", "legends": true, "args": {"back": "legends", "back_args": {"chapter": BACKTEST_CHAPTER}},
+				"expect": "legends", "did": "escape", "chapter": BACKTEST_CHAPTER},
+		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "hall", "legends": true, "args": {"back": "crew"}, "expect": "crew", "did": "escape"},
+		{"go": "hall", "legends": true, "args": {"back": "legends"}, "prep": "mentor_picker", "expect": "hall",
+				"did": "escape", "closed": "_picker"},
+		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
 		{"go": "game", "quick": true, "expect": "title", "did": "escape"},
+		# a challenge game pauses and resumes; "action" "quit": the pause panel's QUIT (both taps) instead of the
+		# request, back on the challenge's chapter view (flow.gd), then BACK to the timeline and the title
+		{"go": "game", "legends": true, "challenge": true, "expect": "game", "did": "pause", "paused": true},
+		{"go": "", "expect": "game", "did": "resume", "paused": false},
+		{"go": "", "expect": "game", "did": "pause", "paused": true},
+		{"go": "", "action": "quit", "expect": "legends", "did": "", "chapter": BACKTEST_CHAPTER, "paused": false},
+		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "", "expect": "title", "did": "escape"},
 		# "countdown": the request goes out during the 3-2-1 (P8-31), and the pause holds the count
 		{"go": "game", "trip": true, "expect": "game", "did": "pause", "paused": true, "countdown": true},
 		{"go": "", "expect": "game", "did": "resume", "paused": false},
@@ -2484,7 +2510,10 @@ class BackTest extends Node:
 					_prep_ok = _prep(st)
 					_count_t = _countdown_t()
 					_did = ""
-					get_tree().root.propagate_notification(NOTIFICATION_WM_GO_BACK_REQUEST)
+					if str(st.get("action", "")) == "quit":
+						_quit_game()
+					else:
+						get_tree().root.propagate_notification(NOTIFICATION_WM_GO_BACK_REQUEST)
 					_t = 0
 					_phase = 2
 				elif _t > BACKTEST_GAME_WAIT:
@@ -2503,10 +2532,14 @@ class BackTest extends Node:
 			TripS.new_trip()
 		if bool(st.get("beaten", false)):
 			_beat_hometown()
+		if bool(st.get("legends", false)):
+			_open_legends()
 		if to == FlowS.GAME:
 			if bool(st.get("quick", false)):
 				MenuS.start_done = false   # the start panel (level, court) shows
 				FlowS.match = {}
+			elif bool(st.get("challenge", false)):   # P9-28: the chapter's first challenge
+				FlowS.match = LegendsS.match_for_challenge(_first_legend(), "normal")
 			else:
 				FlowS.match = TripS.match_for()
 		FlowS.go(to, st.get("args", {}))
@@ -2532,6 +2565,33 @@ class BackTest extends Node:
 		print("BACKTEST trip: beaten %s, now %s game %d phase %s, open slots %d" % [str(TripS.beaten), TripS.city,
 				TripS.game, TripS.phase, TripS.open_slots()])
 
+	# P9-28: the chapter open (BACKTEST_LEGEND_STARS), every legend unlocked (so a mentor can train), the chapter's
+	# intro seen (the chapter view opens without its story), and the Legends file never written. This run only.
+	func _open_legends() -> void:
+		if StarsS.force_total < BACKTEST_LEGEND_STARS:
+			StarsS.force_total = BACKTEST_LEGEND_STARS
+		LegendsS.load_state()
+		LegendsS.saving = false
+		LegendsS.unlock_override = "all"
+		var intro: String = str(LegendsDataS.chapter(BACKTEST_CHAPTER).get("intro_scene", ""))
+		if intro != "" and not LegendsS.seen.has(intro):
+			LegendsS.seen.append(intro)
+
+	func _first_legend() -> String:
+		var ids: Array = LegendsDataS.legend_ids(BACKTEST_CHAPTER)
+		return str(ids[0]) if not ids.is_empty() else ""
+
+	# the pause panel's QUIT, both taps (the first arms QUIT?)
+	func _quit_game() -> void:
+		var m: Node = get_tree().current_scene
+		var p = m.get("pause_node") if m != null else null
+		if p == null or not bool(p.get("_open")):
+			_fail("step %d: no open pause panel to QUIT" % (_i + 1))
+			return
+		p.call("_on_quit")
+		if bool(p.get("_open")):
+			p.call("_on_quit")
+
 	# opens what the step needs open before the back request; false if it didn't open
 	func _prep(st: Dictionary) -> bool:
 		var what: String = str(st.get("prep", ""))
@@ -2551,6 +2611,9 @@ class BackTest extends Node:
 				return node.get("_confirm") != null
 			"picker":          # the replay picker of the beaten city
 				node.call("open_picker", "hometown")
+				return node.get("_picker") != null
+			"mentor_picker":   # P9-28: the Hall's mentor picker, for the chapter's first legend
+				node.call("open_picker", _first_legend())
 				return node.get("_picker") != null
 		return false
 
@@ -2594,6 +2657,16 @@ class BackTest extends Node:
 		if st.has("prep"):
 			what += " | %s opened %s" % [str(st["prep"]), str(_prep_ok)]
 			ok = ok and _prep_ok
+		if bool(st.get("challenge", false)):   # P9-28: the game is the legends challenge
+			what += " | legends game %s (%s)" % [str(FlowS.in_legends()), str(FlowS.match.get("key", ""))]
+			ok = ok and FlowS.in_legends()
+		if st.has("action"):
+			what += " | %s tapped" % str(st["action"]).to_upper()
+		if st.has("chapter"):   # P9-28: the tour's chapter view ("" = the timeline)
+			var node: Node = FlowS.current_screen()
+			var ch: String = str(node.call("chapter")) if node != null and node.has_method("chapter") else "?"
+			what += " | chapter '%s'" % ch
+			ok = ok and ch == str(st["chapter"])
 		if st.has("closed"):
 			var node: Node = FlowS.current_screen()
 			var still: bool = node == null or node.get(str(st["closed"])) != null

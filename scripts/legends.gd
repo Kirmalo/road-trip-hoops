@@ -78,6 +78,7 @@ const BEST_FLAG := "--best-roster"
 const DIFFICULTY_FLAG := "--difficulty"
 const TRIP_PATH := "res://scripts/trip.gd"
 const SELFTEST_PATH := "user://legends_progress_selftest.json"   # self_test()'s own Legends file, deleted after
+const SELFTEST_TRIP_LEVEL := "hard"   # self_test()'s scripted trip (in place of any left-over test trip, P9-28)
 const PERK_KEY := "perk"              # = Trip.PERK_KEY: a player dict's mentor perk; never on your side in a challenge
 
 # ---------------------------------------------------------------------------------------------------- state
@@ -767,8 +768,9 @@ static func legendtest() -> bool:
 # ---------------------------------------------------------------------------------------------------- self test
 
 # Records, gates, unlocks, both crew sources, the swap, the match fields, the trip file unchanged byte for byte after
-# a challenge, a save round trip. Its own Legends file (SELFTEST_PATH); the test trip save is only read (made and
-# removed again when there is none); every static of this file, Trip's and Stars' --stars is put back. "" = OK.
+# a challenge, a save round trip. Its own Legends file (SELFTEST_PATH); its own scripted trip in the test trip save
+# (P9-28: whatever a trip or legends run left there is kept aside and put back byte for byte at the end, so the test
+# never depends on it); every static of this file, Trip's and Stars' --stars is put back. "" = OK.
 static func self_test() -> String:
 	var errs: Array = []
 	# keep everything this test changes
@@ -789,6 +791,16 @@ static func self_test() -> String:
 	var trip_bytes: PackedByteArray = _bytes(trip_path)
 	var trip_had: bool = FileAccess.file_exists(trip_path)
 	var trip_tmp_had: bool = FileAccess.file_exists(trip_path + Save.TMP_SUFFIX)
+	var trip_tmp_bytes: PackedByteArray = _bytes(trip_path + Save.TMP_SUFFIX)
+	# P9-28: never the test trip a trip or legends run left behind: a fresh scripted trip in its place (from the very
+	# first match_for_challenge() on), and the old file put back byte for byte at the end
+	Trip.saving = false
+	_remove_trip_files(trip_path)
+	Trip.new_trip(SELFTEST_TRIP_LEVEL)
+	Trip.saving = true
+	Trip.save()
+	Trip.saving = false
+	Trip.active = false
 	LegendsSave._path_override = SELFTEST_PATH
 	_wipe()
 	saving = true
@@ -919,15 +931,8 @@ static func self_test() -> String:
 	_check(errs, dl == level_ok(Difficulty.level_name(Difficulty.level)), "default level without a trip %s" % dl)
 	_skip_trip_load = false
 
-	# your trip: the test trip save if there is one (read only), else a scripted trip written there and removed after
+	# your trip: the scripted trip written at the start (read only from here on)
 	Trip.saving = false
-	var made_trip: bool = false
-	if not trip_had or Save.read().is_empty():
-		Trip.new_trip("hard")
-		Trip.saving = true
-		Trip.save()
-		Trip.saving = false
-		made_trip = true
 	Trip.active = false
 	var on_disk: PackedByteArray = _bytes(trip_path)
 	var trip_dict_disk: String = JSON.stringify(Save.read(), "", true)
@@ -1009,13 +1014,15 @@ static func self_test() -> String:
 			and parse_challenge("fin:grand") == "fin:grand" and parse_challenge("fathers") == ""
 			and parse_challenge("nobody") == "", "parse_challenge")
 
-	# put everything back
-	if made_trip:
-		for f in [trip_path, trip_path + Save.TMP_SUFFIX]:
-			if FileAccess.file_exists(f):
-				DirAccess.remove_absolute(f)
+	# put everything back (the test trip file as it was, or none)
+	_remove_trip_files(trip_path)
+	if trip_had:
+		_put_bytes(trip_path, trip_bytes)
+	if trip_tmp_had:
+		_put_bytes(trip_path + Save.TMP_SUFFIX, trip_tmp_bytes)
 	_check(errs, FileAccess.file_exists(trip_path) == trip_had and _bytes(trip_path) == trip_bytes
-			and FileAccess.file_exists(trip_path + Save.TMP_SUFFIX) == trip_tmp_had, "the test trip file was not put back")
+			and FileAccess.file_exists(trip_path + Save.TMP_SUFFIX) == trip_tmp_had
+			and _bytes(trip_path + Save.TMP_SUFFIX) == trip_tmp_bytes, "the test trip file was not put back")
 	Trip.saving = kept_trip_saving
 	if kept_trip_active:
 		kept_trip["version"] = Save.VERSION
@@ -1181,6 +1188,19 @@ static func _bytes(p: String) -> PackedByteArray:
 	if not FileAccess.file_exists(p):
 		return PackedByteArray()
 	return FileAccess.get_file_as_bytes(p)
+
+# P9-28: the self test's trip file and its temp file, removed
+static func _remove_trip_files(trip_path: String) -> void:
+	for f in [trip_path, trip_path + Save.TMP_SUFFIX]:
+		if FileAccess.file_exists(f):
+			DirAccess.remove_absolute(f)
+
+static func _put_bytes(p: String, data: PackedByteArray) -> void:
+	var f: FileAccess = FileAccess.open(p, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_buffer(data)
+	f.close()
 
 static func _wipe() -> void:
 	for f in [SELFTEST_PATH, SELFTEST_PATH + LegendsSave.TMP_SUFFIX]:
