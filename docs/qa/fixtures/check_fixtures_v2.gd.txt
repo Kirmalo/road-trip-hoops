@@ -1,0 +1,103 @@
+extends SceneTree
+# P9-01 check: every version 2 fixture in FIXTURE_DIR loads in this build (Trip.continue_trip from user://trip.json),
+# the loaded state is the file's own (to_dict == the file minus version/serial), CONTINUE's screen, the drafts, each
+# player's own points and the replay marker are printed and checked. Each settings fixture is put in as
+# user://settings.cfg and its stars, slots, LEGEND, LOCKER picks and settings are read back.
+#   FIXTURE_DIR=/abs/dir godot --headless --path <copy> -s res://check_fixtures_v2.gd
+
+const Trip = preload("res://scripts/trip.gd")
+const Save = preload("res://scripts/save.gd")
+const Difficulty = preload("res://scripts/difficulty.gd")
+const Stars = preload("res://scripts/stars.gd")
+const Cosmetics = preload("res://scripts/cosmetics.gd")
+
+# file, CONTINUE screen, drafted ids, starters' own points (> 0 wanted), phase
+const TRIPS := [
+	["trip_v2_mid.json", "map", ["ht_boss"], true, "map"],
+	["trip_v2_done.json", "map", ["ht_boss", "chi_a1", "mem_boss", "sea_a1"], true, "done"],
+]
+# file, stars, slots, legend open, jersey, ball, van, level
+const SETTINGS := [
+	["settings_v2_24.cfg", 24, 2, false, "jersey_1", "ball_1", "van_1", "normal"],
+	["settings_v2_72.cfg", 72, 4, true, "jersey_3", "ball_3", "van_3", "legend"],
+]
+
+var ok := true
+
+func _copy(src: String, dst: String) -> bool:
+	if not FileAccess.file_exists(src):
+		return false
+	var f: FileAccess = FileAccess.open(src, FileAccess.READ)
+	var b: PackedByteArray = f.get_buffer(f.get_length())
+	f.close()
+	var w: FileAccess = FileAccess.open(dst, FileAccess.WRITE)
+	w.store_buffer(b)
+	w.close()
+	return true
+
+func _want(cond: bool, what: String) -> void:
+	if not cond:
+		ok = false
+		print("CHECK   FAILED: %s" % what)
+
+func _initialize() -> void:
+	var dir: String = OS.get_environment("FIXTURE_DIR")
+	for t in TRIPS:
+		var n: String = str(t[0])
+		Save.erase()
+		if not _copy(dir.path_join(n), Save.path()):
+			print("CHECK %s: MISSING" % n)
+			ok = false
+			continue
+		var raw: Dictionary = Save.read()
+		var loaded: bool = Trip.continue_trip()
+		var want: Dictionary = raw.duplicate(true)
+		want.erase("version")
+		want.erase("serial")
+		var same: bool = loaded and JSON.stringify(Trip.to_dict(), "", true) == JSON.stringify(want, "", true)
+		var own: Array = []
+		var all_have := true
+		for id in Trip.starters:
+			own.append(Trip.player_points(str(id)))
+			if Trip.player_points(str(id)) <= 0:
+				all_have = false
+		print("CHECK %s: version %s loaded %s, same state %s, CONTINUE -> %s | level %s city %s game %d phase %s points %d crew %d | roster %d | drafted %s | starters %s own pts %s (bosses %d) | paid %d | record %s | replay %s | repair %s" % [
+				n, str(raw.get("version", "?")), loaded, same, Trip.resume_screen(), Trip.level, Trip.city, Trip.game,
+				Trip.phase, Trip.points, Trip.crew_points, Trip.roster_ids().size(), str(Trip.drafted_ids()),
+				str(Trip.starters), str(own), Trip.boss_count(Trip.starters), Trip.paid.size(), str(Trip.record),
+				str(Trip.replay), str(Trip.boss_repair)])
+		_want(loaded and same, n + " loads as saved")
+		_want(int(raw.get("version", 0)) == Save.VERSION, n + " is version 2")
+		_want(Trip.resume_screen() == str(t[1]), n + " CONTINUE")
+		_want(Trip.drafted_ids() == t[2], n + " drafts")
+		_want(all_have == bool(t[3]), n + " starters' own points")
+		_want(Trip.phase == str(t[4]), n + " phase")
+		_want(Trip.replay.is_empty() and Trip.boss_repair.is_empty(), n + " no replay marker, no repair")
+		_want(Trip.boss_count(Trip.starters) <= Trip.BOSS_LIMIT, n + " boss rule")
+	Save.erase()
+	for s in SETTINGS:
+		var n: String = str(s[0])
+		Cosmetics._reset_cache()
+		if not _copy(dir.path_join(n), Difficulty.SAVE_PATH):
+			print("CHECK %s: MISSING" % n)
+			ok = false
+			continue
+		Difficulty.load_saved()
+		var teams: Array = []
+		for tm in Difficulty.all_teams():
+			if Difficulty.team_unlocked(str(tm["id"])):
+				teams.append(str(tm["id"]))
+		var picks: Array = [Cosmetics.picked("jersey"), Cosmetics.picked("ball"), Cosmetics.picked("van")]
+		print("CHECK %s: stars %d slots %d legend %s | picks %s | courts %d %s | open reward courts %s | teams %d | level %s | left-handed %s | fullscreen %s" % [
+				n, Stars.real_total(), Stars.slots(), Stars.legend_open(), str(picks),
+				Difficulty.unlocked_cities().size(), str(Difficulty.unlocked_cities()), str(Cosmetics.open_court_looks()),
+				teams.size(), Difficulty.level_name(), Difficulty.left_handed_saved(), Difficulty.fullscreen_saved()])
+		_want(Stars.real_total() == int(s[1]), n + " stars")
+		_want(Stars.slots() == int(s[2]), n + " slots")
+		_want(Stars.legend_open() == bool(s[3]), n + " legend")
+		_want(picks == [s[4], s[5], s[6]], n + " picks")
+		_want(Difficulty.level_name() == str(s[7]), n + " level")
+		_want(Difficulty.unlocked_cities().size() == 8, n + " courts")
+		DirAccess.remove_absolute(Difficulty.SAVE_PATH)
+	print("CHECK %s" % ("OK" if ok else "FAILED"))
+	quit(0 if ok else 1)

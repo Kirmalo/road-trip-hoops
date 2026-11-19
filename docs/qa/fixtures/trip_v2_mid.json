@@ -1,0 +1,123 @@
+{
+	"beaten": [
+		"hometown",
+		"chicago"
+	],
+	"bracket": {
+		"round": 0
+	},
+	"city": "memphis",
+	"crew_points": 0,
+	"game": 2,
+	"human": "ud_deuce",
+	"level": "normal",
+	"paid": [
+		"hometown:1",
+		"hometown:2",
+		"hometown:3",
+		"chicago:1",
+		"chicago:2",
+		"chicago:3",
+		"memphis:1"
+	],
+	"phase": "map",
+	"points": 6,
+	"record": {
+		"losses": 1,
+		"wins": 7
+	},
+	"replay": {
+
+	},
+	"roster": [
+		{
+			"id": "ud_deuce",
+			"pts": 1,
+			"ratings": {
+				"defense": 54,
+				"finishing": 57,
+				"shooting": 62,
+				"speed": 55,
+				"stamina": 56
+			},
+			"via": "start"
+		},
+		{
+			"id": "ud_jojo",
+			"pts": 1,
+			"ratings": {
+				"defense": 56,
+				"finishing": 55,
+				"shooting": 56,
+				"speed": 62,
+				"stamina": 54
+			},
+			"via": "start"
+		},
+		{
+			"id": "ud_tank",
+			"pts": 1,
+			"ratings": {
+				"defense": 58,
+				"finishing": 62,
+				"shooting": 44,
+				"speed": 45,
+				"stamina": 48
+			},
+			"via": "start"
+		},
+		{
+			"id": "ht_g1",
+			"pts": 1,
+			"ratings": {
+				"defense": 47,
+				"finishing": 47,
+				"shooting": 56,
+				"speed": 56,
+				"stamina": 47
+			},
+			"via": "recruit"
+		},
+		{
+			"id": "chi_g1",
+			"pts": 1,
+			"ratings": {
+				"defense": 50,
+				"finishing": 50,
+				"shooting": 62,
+				"speed": 50,
+				"stamina": 62
+			},
+			"via": "recruit"
+		},
+		{
+			"id": "ht_boss",
+			"pts": 1,
+			"ratings": {
+				"defense": 60,
+				"finishing": 60,
+				"shooting": 60,
+				"speed": 60,
+				"stamina": 60
+			},
+			"via": "draft"
+		}
+	],
+	"seen": [
+		"rule:per_starter",
+		"trip_start",
+		"hometown_arrive",
+		"first_loss",
+		"hometown_won",
+		"chicago_arrive",
+		"chicago_won",
+		"memphis_arrive"
+	],
+	"serial": 49,
+	"starters": [
+		"ud_deuce",
+		"ht_boss",
+		"chi_g1"
+	],
+	"version": 2
+}
