@@ -197,6 +197,15 @@ const BACKTEST_STARS := 12          # the star total --backtest plays with (P8-2
 const BACKTEST_LEGEND_STARS := 24   # the star total from the Legends steps on (P9-28): Chapter 1's gate
 const BACKTEST_CHAPTER := "grand"    # the chapter the Legends steps open (its first legend is the challenge)
 static var _backtest_node: Node = null   # the --backtest driver (on the root, survives the reloads)
+# rebound stats: every missed field goal ends as an offensive rebound (the shooting team holds it
+# first), a defensive rebound or out of bounds; a putback is a shot by the rebounding team within PUTBACK_SECS
+const PUTBACK_SECS := 3.0
+# rebounding (owner: too many offensive rebounds; the baseline was 56% of missed field goals, real ball ~25%).
+# player.gd rebound_ai() does the moves (box-outs, crashers, getting back); these set when they apply.
+const REB_BOX_T := 0.35              # a field goal in the air: after this fraction of its flight the rebound is on
+const REB_SCRAMBLE_SECS := 1.5       # a missed field goal's loose ball: the box-out rules hold this long, then anyone
+const REB_SHOOTER_CRASH := 0.2       # a jump shooter follows his own shot with this chance, else he gets back (a
+                                     # dunk or layup shooter is under the rim: he always may)
 const TOP_BAR_FONT_TRIP := 24       # top bar font in a trip game (crew names are longer than BLUE / RED; Quick Game 30)
 # --city <id> --cgame N without trip.gd: this hand-built match (your 3 underdogs vs a Hometown-like crew; ratings
 # near the contract's example). The flags set its label, target, look and music from cities.gd. Sheets fall back to
@@ -290,6 +299,14 @@ var human_player = null
 var game_over := false
 var autoplay := false
 var chasers := []
+var _reb_team := -1                 # a missed field goal's shooting team while its rebound is undecided (-1: none)
+var _reb_block := false             # ... that miss was a block
+var _reb_shooter = null             # ... its shooter and shot kind (dunk, layup, jumper, block)
+var _reb_kind := ""
+var _reb_t := 0.0                   # ... and rules.play_time at the miss
+var _putback_team := -1             # the team of the last offensive rebound and its play_time (putback window)
+var _putback_t := -100.0
+var _putback_serial := -1           # shot_serial of a putback in the air
 var key_a_down := false
 var stats := {}
 var _trail_on := false              # fire trail currently shown behind the ball
@@ -1270,6 +1287,8 @@ func give_ball(p) -> void:
 	ball.hold(p)
 
 func on_ball_held(p) -> void:
+	if _reb_team >= 0:
+		_rebound_end("off" if p.team == _reb_team else "def", p.team, p)
 	if p.team != possession or not shot_clock_running:
 		shot_clock = shot_clock_length()
 	shot_clock_running = true
@@ -1298,9 +1317,14 @@ func release_shot(p, quality: float) -> void:
 	var pts: int = rules.points_for(p, hoop)
 	shot_clock_running = false
 	shot_serial += 1
+	p.reb_follow = rng.randf() < REB_SHOOTER_CRASH or p.rim_kind != "" or is_human(p)   # the human crashes as he likes
 	stat("shots")
 	stat("shots_t%d" % p.team)
 	stat("shots_half%d_t%d" % [2 if rules.sides_swapped else 1, p.team])
+	if p.team == _putback_team and rules.play_time - _putback_t <= PUTBACK_SECS:
+		stat("putback_shots_t%d" % p.team)
+		_putback_serial = shot_serial
+	_putback_team = -1
 	stat("shot_d%d" % int(p.position.distance_to(hoop) / FT / 5) )
 	if Twists.base_value("long_shot_mult", 1.0) != 1.0 and p.rim_kind == "" and is_three(p.position, hoop):
 		stat(Twists.current + "_long_shots")   # a long shot the twist moved (wind_long_shots, thin_air_long_shots)
@@ -1343,6 +1367,7 @@ func _release_free_throw(p, quality: float) -> void:
 # a dunk or layup blocked at take-off: counts as a missed shot, the ball is swatted out of the shooter's hands
 func rim_shot_blocked(p, defender) -> void:
 	shot_clock_running = false
+	p.reb_follow = true   # swatted at the rim: he is right there
 	shot_serial += 1   # it counts as a shot: lets the blocker (defense.gd rolled_shot) try again on the next one
 	stat("shots")
 	stat("shots_t%d" % p.team)
@@ -1400,6 +1425,8 @@ func on_shot_made(shooter, pts: int) -> void:
 	audio.play("crowd")
 	if ball.shot_kind == "dunk":
 		stat("dunk_makes_t%d" % shooter.team)   # pause screen (team_stats)
+	if shot_serial == _putback_serial:
+		stat("putbacks_t%d" % shooter.team)
 	_update_fire_on_make(shooter)
 	_count_points(shooter, pts)
 	rules.add_score(shooter.team, pts, ball.shot_kind if ball.shot_kind != "" else "shot")
@@ -1420,6 +1447,12 @@ func on_shot_missed(shooter) -> void:
 		return
 	if rules.resolve_pending_foul(shooter, false):
 		return   # fouled on the miss: free throws (the fire streak isn't charged with this miss)
+	if ball.state == ball.LOOSE:
+		_reb_team = shooter.team   # a live rebound: on_ball_held / rebound_out() decide it
+		_reb_block = ball.loose_cause == "block"
+		_reb_shooter = shooter
+		_reb_t = rules.play_time
+		_reb_kind = "block" if _reb_block else (ball.shot_kind if ball.shot_kind != "" else "jumper")
 	shooter.make_streak = 0
 	if shooter.on_fire:
 		shooter.fire_misses += 1
@@ -1428,6 +1461,60 @@ func on_shot_missed(shooter) -> void:
 		else:
 			show_message("He's cooling down.")
 			stat("fire_cooldowns")
+
+# a missed field goal's rebound is decided: kind "off" / "def" / "oob" / "other" (the ball went dead another way)
+func _rebound_end(kind: String, team: int, who = null) -> void:
+	var t: int = _reb_team
+	_reb_team = -1
+	if who != null:   # who got it: the shooter himself, his team's chaser, someone else
+		stat("rebx_%s_%s" % [kind, "self" if who == _reb_shooter else ("chaser" if chasers.has(who) else "other")])
+	stat("rebx_%s_after_%s" % [kind, _reb_kind])
+	stat("reb_misses_t%d" % t)
+	stat("reb_%s_t%d" % [kind, t])   # keyed by the SHOOTING team: reb_off_t0 = BLUE's offensive rebounds
+	if _reb_block:
+		stat("reb_block_misses")
+		stat("reb_block_%s" % kind)
+	if kind == "off":
+		_putback_team = team
+		_putback_t = rules.play_time
+
+# the rebound of a field goal is on (player.gd rebound_ai): "air" late in the shot's flight, "loose" for
+# REB_SCRAMBLE_SECS after the miss, "" otherwise (free throws have their own box-out, player.ft_box_live)
+func rebound_phase() -> String:
+	if ball.state == ball.SHOT and not rules.ft_shot_live and ball.shooter != null and ball.shot_t > REB_BOX_T:
+		return "air"
+	if ball.state == ball.LOOSE and _reb_team >= 0 and rules.play_time - _reb_t < REB_SCRAMBLE_SECS:
+		return "loose"
+	return ""
+
+# the shooting team and the shooter of the rebound that is on (rebound_phase() != "")
+func rebound_team() -> int:
+	return ball.shooter.team if ball.state == ball.SHOT and ball.shooter != null else _reb_team
+
+func rebound_shooter():
+	return ball.shooter if ball.state == ball.SHOT else _reb_shooter
+
+# ball.gd: a loose ball was called out of bounds
+func rebound_out() -> void:
+	if _reb_team >= 0:
+		_rebound_end("oob", -1)
+
+func _rebound_summary() -> String:
+	var g := func(k: String) -> int:
+		return int(stats.get(k, 0))
+	var pct := func(a: int, b: int) -> float:
+		return 100.0 * float(a) / float(maxi(1, b))
+	var line := "REBOUNDS"
+	for t in 2:
+		var m: int = g.call("reb_misses_t%d" % t)
+		line += " | %s misses %d: off %d def %d out %d other %d (OREB %.0f%%), putbacks %d/%d" % [TEAM_NAMES[t], m,
+				g.call("reb_off_t%d" % t), g.call("reb_def_t%d" % t), g.call("reb_oob_t%d" % t),
+				g.call("reb_other_t%d" % t), pct.call(g.call("reb_off_t%d" % t), m),
+				g.call("putbacks_t%d" % t), g.call("putback_shots_t%d" % t)]
+	var all_m: int = g.call("reb_misses_t0") + g.call("reb_misses_t1")
+	line += " | ALL OREB %.1f%% of %d misses (blocks %d: off %d)" % [pct.call(g.call("reb_off_t0") + g.call("reb_off_t1"),
+			all_m), all_m, g.call("reb_block_misses"), g.call("reb_block_off")]
+	return line
 
 # ---------------- on fire ----------------
 
@@ -1813,16 +1900,26 @@ func _physics_process(delta: float) -> void:
 	if game_over:
 		return
 
+	if _reb_team >= 0 and ball.state != ball.LOOSE:
+		if ball.state == ball.DEAD:
+			_rebound_end("other", -1)   # dead another way (a foul, the game's end)
+		elif ball.state == ball.SHOT and ball.shooter != null:
+			_rebound_end("off" if ball.shooter.team == _reb_team else "def", ball.shooter.team)   # a tip shot
 	# who chases loose balls and rebounds: the closest player on each team
 	chasers = []
 	if ball.state == ball.LOOSE or ball.state == ball.SHOT:
 		var spot: Vector2 = ball.position if ball.state == ball.LOOSE else ball.shot_hoop
+		var reb_shooter = rebound_shooter() if rebound_phase() != "" else null
 		for t in 2:
 			var best = null
 			var best_d := INF
 			for p in teams[t]:
 				if ball.state == ball.SHOT and p == ball.shooter:
 					continue
+				if p == reb_shooter and not p.reb_follow:
+					continue   # a jump shooter who gets back isn't his team's crasher
+				if reb_shooter != null and is_human(p):
+					continue   # a field goal's rebound: a CPU teammate crashes for you (you steer yourself)
 				var d: float = p.position.distance_to(spot)
 				if d < best_d:
 					best_d = d
@@ -2270,6 +2367,7 @@ func on_game_over(winner: int) -> void:
 			return "%s %d pts, shots %d/%d, dunks %d, steals %d, blocks %d" % [TEAM_NAMES[t], d.points, d.makes,
 					d.shots, d.dunks, d.steals, d.blocks]
 		print("TEAMS %s | %s" % [ts.call(0), ts.call(1)])   # the pause screen's numbers (team_stats)
+		print(_rebound_summary())
 		if not verdict.is_empty():
 			var cd: Dictionary = Flow.match.get("challenge", {})
 			print("CHALLENGE %s %s %s %d-%d | %s | %s" % [str(cd.get("legend", "")), str(Flow.match.get("level", "")),

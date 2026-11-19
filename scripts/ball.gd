@@ -430,6 +430,8 @@ func _went_out() -> bool:
 		return false
 	if not game.rules.ball_out(position, last_touch_team):
 		return false
+	if game.has_method("rebound_out"):
+		game.rebound_out()   # rebound stats: a missed shot's ball went out
 	sprite.position = Vector2(0, -z)
 	queue_redraw()
 	return true
