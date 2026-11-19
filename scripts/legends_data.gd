@@ -63,10 +63,12 @@ extends RefCounted
 # ---------------------------------------------------------------------------------------------------- tuning
 const TOKENS_BY_LEVEL := {"easy": 1, "normal": 2, "hard": 3, "legend": 3}   # best kept per challenge / finale
 const TOKEN_MAX := 3                # the most one challenge or finale can give
-const CHALLENGE_AVG := 80           # the challenge legend's stat average before his shape (fixed: your crew grows, L3 b)
-const MATE_DROP := 8                # his 2 legend teammates play this much under CHALLENGE_AVG
+const CHALLENGE_AVG := 66           # the challenge legend's stat average before his shape (fixed: your crew grows, L3 b;
+                                    # P9-26 QA: 80 -> 66, docs/qa/phase9-challenges.md)
+const MATE_DROP := 14               # his 2 legend teammates play this much under CHALLENGE_AVG (P9-26: 8 -> 14)
 const DRAFT_TIER := 20              # L7 a: a drafted legend = stage average + this, shaped (like a boss's +20)
-const FINALE_STAGE_AVG := 78        # the finale's stage average (= Cities.STAGE_AVG[8], New York); + DRAFT_TIER, shaped
+const FINALE_STAGE_AVG := 52        # the finale's base (+ DRAFT_TIER, shaped): P9-26 78 -> 52, so the finale legends
+                                    # keep their shapes under the 95 cap (78 + 20 put nearly every stat at 95)
 const RATING_CAP := 95              # = Trip.BOSS_CAP: no legend stat above this (also with the LEGEND bonus)
 const RATING_MIN := 1               # no legend stat below this (shapes go down to -20)
 const SPEC_MIN := 15                # a shape of +15 or more makes the stat one of his "spec" stats
@@ -142,8 +144,8 @@ const LEGENDS := {
 		"shape": {"speed": -15, "shooting": 0, "finishing": 20, "defense": 5, "stamina": -10},
 		"spec": ["finishing"], "steal_bias": -8, "block_bias": 10,
 		"signature": {"id": "hook", "text": "High hook shot over the defender: close shots are hard to block"},
-		"challenge": {"type": "hold", "target": 15, "limit": 6, "mates": ["lg_set_shot", "lg_quarterback"],
-			"line": "HOLD STEEPLE UNDER 6 POINTS AND WIN (TO 15)"},
+		"challenge": {"type": "hold", "target": 15, "limit": 7, "mates": ["lg_set_shot", "lg_quarterback"],
+			"line": "HOLD STEEPLE UNDER 7 POINTS AND WIN (TO 15)"},
 		"perk": "close_touch",
 		"colors": ["ERA_RUST", "ERA_CREAM"],
 		"look": "very tall and wiry, umber skin, black buzz cut, mutton chops, mustard terry headband, rust tank with cream trim, short shorts, tall striped socks",
@@ -157,8 +159,8 @@ const LEGENDS := {
 		"shape": {"speed": -10, "shooting": -15, "finishing": 5, "defense": 25, "stamina": -5},
 		"spec": ["defense"], "steal_bias": -10, "block_bias": 20,
 		"signature": {"id": "keep_block", "text": "Blocks that stay in play: he keeps the ball or tips it to a teammate"},
-		"challenge": {"type": "race", "target": 11, "their_target": 7, "mates": ["lg_velvet", "lg_quarterback"],
-			"line": "REACH 11 BEFORE GATE'S CREW GETS 7"},
+		"challenge": {"type": "race", "target": 11, "their_target": 10, "mates": ["lg_velvet", "lg_quarterback"],
+			"line": "REACH 11 BEFORE GATE'S CREW GETS 10"},
 		"perk": "block_timing",
 		"colors": ["ERA_OLIVE", "ERA_CREAM"],
 		"look": "broad heavy big, light skin, brown flat-top, knee pads, olive tank with cream trim, short shorts, tall striped socks",
@@ -187,8 +189,8 @@ const LEGENDS := {
 		"shape": {"speed": -10, "shooting": -10, "finishing": 20, "defense": 10, "stamina": -10},
 		"spec": ["finishing"], "steal_bias": -6, "block_bias": 6,
 		"signature": {"id": "long_dunk", "text": "Power drop-step to a two-hand dunk: he dunks from further out"},
-		"challenge": {"type": "stop", "target": 15, "count": 3, "mates": ["lg_set_shot", "lg_velvet"],
-			"line": "BLOCK OR STEAL ON BOXCAR 3 TIMES AND WIN (TO 15)"},
+		"challenge": {"type": "stop", "target": 15, "count": 2, "mates": ["lg_set_shot", "lg_velvet"],
+			"line": "BLOCK OR STEAL ON BOXCAR 2 TIMES AND WIN (TO 15)"},
 		"perk": "long_dunk",
 		"colors": ["ERA_BROWN", "ERA_MUSTARD"],
 		"look": "heavy and wide, deep brown skin, bald, wristbands, brown tank with mustard trim, short shorts, tall striped socks",
@@ -202,8 +204,8 @@ const LEGENDS := {
 		"shape": {"speed": 10, "shooting": -5, "finishing": 15, "defense": -10, "stamina": -10},
 		"spec": ["finishing"], "steal_bias": 6, "block_bias": -4,
 		"signature": {"id": "finger_roll", "text": "Soaring finger roll: his layups slip past contests"},
-		"challenge": {"type": "hold", "target": 11, "limit": 5, "mates": ["lg_steeple", "lg_set_shot"],
-			"line": "HOLD VELVET UNDER 5 POINTS AND WIN (TO 11)"},
+		"challenge": {"type": "hold", "target": 11, "limit": 6, "mates": ["lg_steeple", "lg_set_shot"],
+			"line": "HOLD VELVET UNDER 6 POINTS AND WIN (TO 11)"},
 		"perk": "soft_layup",
 		"colors": ["ERA_MUSTARD", "ERA_BROWN"],
 		"look": "long and loose, brown skin, big afro under a cream terry headband, mustard tank with brown trim, short shorts, tall striped socks",
@@ -217,8 +219,8 @@ const LEGENDS := {
 		"shape": {"speed": 5, "shooting": 5, "finishing": -10, "defense": 0, "stamina": 0},
 		"spec": [], "steal_bias": 12, "block_bias": -12,
 		"signature": {"id": "outlet", "text": "Full-court outlet pass for a lay-in"},
-		"challenge": {"type": "comeback", "target": 15, "start_score": [0, 6], "mates": ["lg_boxcar", "lg_gate"],
-			"line": "START DOWN 0-6: COME BACK AND WIN (TO 15)"},
+		"challenge": {"type": "comeback", "target": 15, "start_score": [0, 2], "mates": ["lg_boxcar", "lg_gate"],
+			"line": "START DOWN 0-2: COME BACK AND WIN (TO 15)"},
 		"perk": "quick_pass",
 		"colors": ["ERA_CREAM", "ERA_RUST"],
 		"look": "short and quick, tan skin, dark buzz cut, thick mustache, cream tank with rust trim, short shorts, high striped socks",
