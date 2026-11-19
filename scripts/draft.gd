@@ -12,6 +12,10 @@ extends CanvasLayer
 #   panel (YES, SIGN / NOT YET). Trip.draft(id) adds him (saved). Then he says his joining line (story_text.gd
 #   RECRUIT_LINES) if he has one, else a short banner, and the screen goes back to args.back.
 #   With no open slot (none earned yet, or all filled) the cards still show, SIGN is off and the line says why.
+#   P9-22: the LEGENDS row (Trip.draft_pool_by_crew()'s last row, "city" Trip.LEGENDS_ROW, players with "legend":
+#   true): its header reads the row's "name" and the legends' chapters ("UNLOCKED IN LEGENDS - THE GRANDFATHERS"), each
+#   legend's card stands in his era's card frame (assets/legends/frame_<chapter>.png, ui.json's window and card crop)
+#   in your colors, with a LEGEND tag in the row's colour; picking one says only one legend can start (Trip.LEGEND_RULE).
 # Taps are ignored for ARM_T s when the screen opens and SIGN for PICK_ARM_T s after a pick (a double tap can't
 # confirm). Desktop: Escape = BACK (closes the confirm panel first; on the joining line it goes on); main.gd turns the
 # Android back gesture into an Escape press. auto_step() (test drivers): draft the first card if a slot is open (no
@@ -94,6 +98,22 @@ const PIP_LOCKED := Color(0.42, 0.43, 0.5)
 const TIER_TEXT := {"good": "GOOD", "boss": "BOSS", "avg": "", "start": ""}
 const STAT_NAMES := [["speed", "SPD"], ["shooting", "SHT"], ["finishing", "FIN"], ["defense", "DEF"],
 		["stamina", "STA"]]
+# P9-22: the LEGENDS row
+const LEGEND_FRAME_PATH := "res://assets/legends/frame_%s.png"   # the era card frame per chapter id (56 x 88 texels)
+const LEGEND_FRAME_DEFAULT := "grand"    # a chapter without a frame of its own uses this one
+const LEGEND_FRAME_SCALE := 1.5          # px per frame texel (84 x 132 on a card, where the 80 x 128 sprite box was)
+const LEGEND_WINDOW := Rect2(8, 8, 40, 60)     # texels: the frame's window (assets/legends/ui.json "window")
+const LEGEND_CARD_CROP := Rect2(12, 34, 40, 60)   # px of a 64 x 96 v2 card shown in it (ui.json "card_crop")
+const LEGEND_CARD_FRAME := Vector2(64, 96)     # the v2 card size the crop is for (else the card draws as usual)
+const LEGEND_PLATE := Rect2(6, 72, 44, 11)     # texels: the frame's name plate (ui.json "name_plate"): his name
+const LEGEND_PLATE_FONT := 12
+const LEGEND_PLATE_MIN_FONT := 8         # a long name shrinks down to this on the plate
+const LEGEND_PLATE_TEXT := Color(0.24, 0.14, 0.08)   # dark brown ink on the cream plate
+const LEGEND_TAG_TEXT := "LEGEND"
+const LEGEND_TAG_FONT := 17
+const LEGEND_TAG_COLOR := Color(1.0, 0.82, 0.25)   # gold text and border on the row's colour
+const LEGEND_WHERE := "UNLOCKED IN LEGENDS"     # the LEGENDS header's line (then the chapter names)
+const ROLE_MIN_FONT := 12                # a long role ("no-look floor general") shrinks down to this to fit
 
 var main                     # main.gd (set by Flow.build_screen)
 var audio                    # this screen's audio.gd
@@ -246,7 +266,7 @@ func _build_list() -> void:
 		var color: Color = _color_of(crew)
 		var hd := CrewHead.new()
 		hd.screen = self
-		hd.title = str(crew.get("name", "")).to_upper()
+		hd.title = str(crew.get("name", crew.get("city", ""))).to_upper()
 		hd.where = _where(crew)
 		hd.color = color
 		hd.count = (crew.get("players", []) as Array).size()
@@ -265,6 +285,9 @@ func _build_list() -> void:
 			c.p = pl
 			c.color = color
 			c.card = _card_of(str((pl as Dictionary).get("sheet", "")))
+			if bool((pl as Dictionary).get("legend", false)):
+				c.frame = _legend_frame(str((pl as Dictionary).get("chapter", "")))
+				c.legend = true
 			c.custom_minimum_size = CARD_SIZE
 			c.mouse_filter = Control.MOUSE_FILTER_STOP
 			grid.add_child(c)
@@ -274,8 +297,16 @@ func _color_of(crew: Dictionary) -> Color:
 	var c = crew.get("color", UI.OPT_COLOR)
 	return c if c is Color else UI.OPT_COLOR
 
-# "CHICAGO" for a city crew, "NEW YORK - ROUND 2" for a bracket crew
+# "CHICAGO" for a city crew, "NEW YORK - ROUND 2" for a bracket crew, "UNLOCKED IN LEGENDS - THE GRANDFATHERS" for
+# the LEGENDS row (P9-22)
 func _where(crew: Dictionary) -> String:
+	if str(crew.get("city", "")) == Trip.LEGENDS_ROW:
+		var chs: Array = []
+		for pl in crew.get("players", []):
+			var ch: String = str(Trip.LegendsData.chapter(str((pl as Dictionary).get("chapter", ""))).get("name", ""))
+			if ch != "" and not chs.has(ch.to_upper()):
+				chs.append(ch.to_upper())
+		return LEGEND_WHERE + ("" if chs.is_empty() else " - " + ", ".join(PackedStringArray(chs)))
 	var city_name: String = str(Cities.city(str(crew.get("city", ""))).get("name", str(crew.get("city", "")))).to_upper()
 	var rd: int = int(crew.get("round", 0))
 	return city_name if rd <= 0 else "%s - ROUND %d" % [city_name, rd]
@@ -285,6 +316,16 @@ func _card_of(sheet: String) -> Dictionary:
 	var tries: Array = Sheets.with_base(sheet) if sheet != "" else []
 	tries.append(FALLBACK_SHEET)
 	return Sheets.card_first(tries)
+
+# P9-22: the era card frame of a chapter (its own, else the default one; null = none, the card draws as usual)
+func _legend_frame(chapter: String) -> Texture2D:
+	for ch in [chapter, LEGEND_FRAME_DEFAULT]:
+		var path: String = LEGEND_FRAME_PATH % str(ch)
+		if str(ch) != "" and ResourceLoader.exists(path):
+			var tex: Texture2D = load(path) as Texture2D
+			if tex != null:
+				return tex
+	return null
 
 # ---------------- state ----------------
 
@@ -337,7 +378,10 @@ func _refresh() -> void:
 			_sign.text = "TAP A PLAYER"
 		else:
 			var p: Dictionary = _player(_picked)
-			_hint.text = "%s joins at these stats, with 0 points. Final for this trip." % str(p.get("name", _picked))
+			if bool(p.get("legend", false)):
+				_hint.text = "%s joins at these stats. %s." % [str(p.get("name", _picked)), Trip.LEGEND_RULE]
+			else:
+				_hint.text = "%s joins at these stats, with 0 points. Final for this trip." % str(p.get("name", _picked))
 			_sign.text = "SIGN " + str(p.get("name", _picked)).to_upper()
 		UI.set_enabled(_sign, armed and _picked != "" and _sign_arm_t <= 0.0)
 	for c in _cards:
@@ -615,6 +659,14 @@ func tap_player(id: String) -> bool:
 
 # ---------------- drawing helpers ----------------
 
+# the font size (fs, or smaller down to lo) that fits `text` in max_w px on one line
+static func fit_size(text: String, fs: int, max_w: float, lo: int = ROLE_MIN_FONT) -> int:
+	var font: Font = ThemeDB.fallback_font
+	var n: int = fs
+	while n > lo and font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, n).x + 12.0 > max_w:
+		n -= 1
+	return n
+
 static func draw_text(c: CanvasItem, pos: Vector2, text: String, fs: int, col: Color,
 		align := HORIZONTAL_ALIGNMENT_LEFT, w := -1.0) -> void:
 	var font: Font = ThemeDB.fallback_font
@@ -644,6 +696,8 @@ class Card extends Control:
 	var p := {}
 	var color := Color.GRAY  # his old crew's colour (the band)
 	var card: Dictionary = {}   # Sheets.card_info() in your colors
+	var frame: Texture2D = null   # P9-22: a legend's era card frame (null = none)
+	var legend := false        # P9-22: a legend (the LEGEND tag)
 	var _st := {}
 
 	func _gui_input(event: InputEvent) -> void:
@@ -664,15 +718,25 @@ class Card extends Control:
 		var sc: float = s.SPRITE_SCALE
 		var spr: Vector2 = s.SHEET_FRAME * sc
 		var sp := Vector2(pad + 4.0, pad + s.BAND_H + 4.0)
-		s.draw_sprite(self, card, sp, sc, s.UI.OFF_COLOR)
-		var x: float = sp.x + spr.x + 6.0
+		var box_w: float = spr.x
+		if frame != null:
+			box_w = maxf(box_w, _draw_framed(sp).x)
+		else:
+			s.draw_sprite(self, card, sp, sc, s.UI.OFF_COLOR)
+		var x: float = sp.x + box_w + 6.0
 		var tw: float = w - x - pad
 		var num: int = int(p.get("number", 0))
 		if num > 0:
 			s.draw_text(self, Vector2(x, sp.y + 34.0), "#%d" % num, s.NUM_FONT, s.DIM_TEXT, HORIZONTAL_ALIGNMENT_CENTER, tw)
 		var boss: bool = bool(p.get("boss", false))
 		var tier: String = str(s.TIER_TEXT.get(str(p.get("tier", "")), ""))
-		if boss:
+		if legend:
+			var lw: float = minf(tw, s.TAG_SIZE.x)
+			var lr := Rect2(x + (tw - lw) / 2.0, sp.y + 52.0, lw, s.TAG_SIZE.y)
+			draw_style_box(s.UI.style_box(color, s.LEGEND_TAG_COLOR, 2), lr)
+			s.draw_text(self, Vector2(lr.position.x, lr.position.y + 21.0), s.LEGEND_TAG_TEXT, s.LEGEND_TAG_FONT,
+					s.LEGEND_TAG_COLOR, HORIZONTAL_ALIGNMENT_CENTER, lr.size.x)
+		elif boss:
 			var br := Rect2(x + (tw - s.TAG_SIZE.x) / 2.0, sp.y + 52.0, s.TAG_SIZE.x, s.TAG_SIZE.y)
 			draw_style_box(s.UI.style_box(s.BOSS_FILL, s.UI.LIT_BORDER, 2), br)
 			s.draw_text(self, Vector2(br.position.x, br.position.y + 22.0), "BOSS", 20, s.UI.TEXT_COLOR,
@@ -687,7 +751,8 @@ class Card extends Control:
 		s.draw_text(self, Vector2(pad, y), str(p.get("name", id)).to_upper(), s.NAME_FONT,
 				s.UI.LIT_COLOR if picked else s.UI.TEXT_COLOR, HORIZONTAL_ALIGNMENT_CENTER, w - pad * 2.0)
 		y += 22.0
-		s.draw_text(self, Vector2(pad, y), str(p.get("role", "")).to_upper(), s.SMALL_FONT, s.DIM_TEXT,
+		var role: String = str(p.get("role", "")).to_upper()
+		s.draw_text(self, Vector2(pad, y), role, s.fit_size(role, s.SMALL_FONT, w - pad * 2.0), s.DIM_TEXT,
 				HORIZONTAL_ALIGNMENT_CENTER, w - pad * 2.0)
 		y += 8.0
 		# the 5 stats he joins with
@@ -704,6 +769,25 @@ class Card extends Control:
 			s.draw_text(self, Vector2(bx + bar_w, y + 15.0), str(v), s.STAT_FONT, s.UI.TEXT_COLOR,
 					HORIZONTAL_ALIGNMENT_RIGHT, s.STAT_NUM_W)
 			y += s.STAT_ROW
+
+	# P9-22: the era frame at `at` with his card's crop in its window; returns the frame's size on the card
+	func _draw_framed(at: Vector2) -> Vector2:
+		var s = screen
+		var k: float = s.LEGEND_FRAME_SCALE
+		var fsz: Vector2 = frame.get_size() * k
+		draw_texture_rect(frame, Rect2(at, fsz), false)
+		var win := Rect2(at + s.LEGEND_WINDOW.position * k, s.LEGEND_WINDOW.size * k)
+		var tex: Texture2D = card.get("texture", null)
+		if tex != null and tex.get_size() == s.LEGEND_CARD_FRAME:
+			draw_texture_rect_region(tex, win, s.LEGEND_CARD_CROP)
+		elif tex != null:
+			draw_texture_rect(tex, Rect2(win.position, win.size), false)
+		var plate := Rect2(at + s.LEGEND_PLATE.position * k, s.LEGEND_PLATE.size * k)
+		var nm: String = str(p.get("name", "")).to_upper()
+		var fs: int = s.fit_size(nm, s.LEGEND_PLATE_FONT, plate.size.x + 8.0, s.LEGEND_PLATE_MIN_FONT)
+		draw_string(ThemeDB.fallback_font, Vector2(plate.position.x, plate.get_center().y + fs * 0.36), nm,
+				HORIZONTAL_ALIGNMENT_CENTER, plate.size.x, fs, s.LEGEND_PLATE_TEXT)
+		return fsz
 
 
 # ---------------- a crew's header in the list (its colour, name and city; drag = scroll) ----------------

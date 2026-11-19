@@ -20,6 +20,9 @@ extends CanvasLayer
 # One boss in the starting three (P8-14b, owner): boss cards carry a BOSS tag; tapping a second boss flashes
 # Trip.BOSS_RULE and doesn't pick him; PLAY stays off until Trip.starters_ok() is happy. After a load that benched
 # boss starters (Trip.boss_repair), the hint line shows Trip.boss_repair_note() until the first tap.
+# One legend in the starting three (P9-22, Trip.LEGEND_LIMIT): legend cards carry a LEGEND tag (era colour, gold) in
+# the same place; tapping a second legend flashes Trip.LEGEND_RULE and doesn't pick him. A legend is not a boss, so one
+# legend and one boss may start together.
 # Drag the list (or its wide scroll bar) to scroll; a drag never counts as a tap. Taps are ignored for ARM_T s when the
 # screen opens and once PLAY is on its way, so nothing leaks into the next screen or the game.
 # Desktop testing: Enter = PLAY, Escape = BACK. Trip test: auto_step() keeps the lineup and taps PLAY;
@@ -81,7 +84,7 @@ const WARN_COLOR := Color(1.0, 0.6, 0.35)
 const THEIR_RING := Color(0.85, 0.16, 0.23)   # the opponents' ring is always red (owner Q11 a)
 const STAT_NAMES := [["speed", "SPD"], ["shooting", "SHT"], ["finishing", "FIN"], ["defense", "DEF"],
 		["stamina", "STA"]]
-const TIER_TEXT := {"start": "", "avg": "", "good": "GOOD", "boss": "BOSS"}
+const TIER_TEXT := {"start": "", "avg": "", "good": "GOOD", "boss": "BOSS", "legend": "LEGEND"}
 # P8-18: points badge, STAT POINTS card, slot cards, DRAFTED tag
 const PTS_BADGE := Rect2(8, 128, 96, 44)   # px in a card: the gold "2 PTS" badge, bottom-left over the sprite's feet
 const PTS_ZONE := Rect2(0, 108, 128, 76)   # px in a card: a tap here (badge shown) opens the points screen
@@ -94,6 +97,10 @@ const BOSS_TAG := Rect2(8, 6, 72, 24)     # px in a card: the BOSS tag, top-left
 const BOSS_TAG_FILL := Color(0.42, 0.08, 0.1, 0.97)
 const BOSS_TAG_COLOR := Color(1.0, 0.82, 0.25)
 const TAG_GAP := 4.0                       # px between the BOSS and DRAFTED tags
+const LEGEND_TAG := Rect2(8, 6, 88, 24)   # P9-22: px in a card: the LEGEND tag, top-left (DRAFTED goes below it)
+const LEGEND_TAG_FILL := Color(0.77, 0.35, 0.16, 0.97)   # when his chapter has no ui_color (the Grandfathers' rust)
+const LEGEND_TAG_COLOR := Color(1.0, 0.82, 0.25)
+const LEGEND_TAG_TEXT := "LEGEND"
 const NOTE_MIN_FONT := 16                  # the repair note shrinks down to this to fit its one line
 const POINTS_CARD_FILL := Color(0.26, 0.21, 0.07, 0.97)
 const SLOT_FILL := Color(0.08, 0.14, 0.26, 0.95)       # an OPEN SLOT card
@@ -359,12 +366,28 @@ func boss_in_the_way(id: String) -> String:
 			return str(e)
 	return ""
 
+# P9-22: the legend already picked when `id` is a second one ("" = he may be picked)
+func legend_in_the_way(id: String) -> String:
+	if not Trip.is_legend(id):
+		return ""
+	for e in _picks:
+		if str(e) != id and Trip.is_legend(str(e)):
+			return str(e)
+	return ""
+
+# P9-22: a legend's tag colour: his chapter's ui_color (legends_data.gd), else LEGEND_TAG_FILL
+static func legend_color(id: String) -> Color:
+	var ch: String = str(Cities.player(id).get("chapter", ""))
+	var c = (Trip.LegendsData.chapter(ch).get("crew", {}) as Dictionary).get("ui_color", null)
+	return Color(c as Color, LEGEND_TAG_FILL.a) if c is Color else LEGEND_TAG_FILL
+
 # a tap on a roster card (also the trip test's tap)
 func tap_player(id: String) -> void:
 	if _busy:
 		return
 	_note = ""
 	var other: String = boss_in_the_way(id) if not _picks.has(id) else ""
+	var other_legend: String = legend_in_the_way(id) if not _picks.has(id) else ""
 	if _picks.has(id):
 		_picks.erase(id)
 		_stat("lineup_bench")
@@ -372,6 +395,11 @@ func tap_player(id: String) -> void:
 		_stat("lineup_boss_refused")
 		_flash("%s. Bench %s first." % [Trip.BOSS_RULE, _name_of(other)])
 		print("LINEUP %s refused: %s (%s already starts)" % [id, Trip.BOSS_RULE, other])
+		return
+	elif other_legend != "":
+		_stat("lineup_legend_refused")
+		_flash("%s. Bench %s first." % [Trip.LEGEND_RULE, _name_of(other_legend)])
+		print("LINEUP %s refused: %s (%s already starts)" % [id, Trip.LEGEND_RULE, other_legend])
 		return
 	elif _picks.size() < Trip.STARTERS:
 		_picks.append(id)
@@ -513,8 +541,8 @@ func _on_play() -> void:
 	if _busy or _arm_t > 0.0 or _picks.size() != Trip.STARTERS:
 		return
 	var why: String = Trip.starters_ok(_picks)
-	if why == Trip.BOSS_RULE:
-		_flash(Trip.BOSS_RULE + ".")
+	if why == Trip.BOSS_RULE or why == Trip.LEGEND_RULE:
+		_flash(why + ".")
 		return
 	if not Trip.set_starters(_picks, str(_picks[0])):
 		_flash("That lineup doesn't work: pick 3 different players.")
@@ -539,15 +567,15 @@ func _go(to: String, to_args := {}) -> void:
 	_refresh()
 	Flow.go(to, to_args)
 
-# trip test: keep the lineup (fill it from the roster if it isn't 3, never with a second boss: the BOSS_RULE) and
-# PLAY
+# trip test: keep the lineup (fill it from the roster if it isn't 3, never with a second boss or a second legend: the
+# BOSS_RULE and the LEGEND_RULE) and PLAY
 func auto_step() -> bool:
 	if _busy:
 		return false
 	for id in Trip.roster_ids():
 		if _picks.size() >= Trip.STARTERS:
 			break
-		if not _picks.has(str(id)) and boss_in_the_way(str(id)) == "":
+		if not _picks.has(str(id)) and boss_in_the_way(str(id)) == "" and legend_in_the_way(str(id)) == "":
 			_picks.append(str(id))
 	_arm_t = 0.0
 	_on_play()
@@ -653,7 +681,8 @@ class Card extends Control:
 		s.draw_text(self, Vector2(x, pad + 26.0), str(p.get("name", id)), s.NAME_FONT, s.UI.TEXT_COLOR)
 		var role: String = str(p.get("role", ""))
 		var num: int = int(p.get("number", 0))
-		var tier: String = str(s.TIER_TEXT.get(str(p.get("tier", "")), "")) if not Trip.is_boss(id) else ""   # the tag
+		var tagged: bool = Trip.is_boss(id) or Trip.is_legend(id)
+		var tier: String = str(s.TIER_TEXT.get(str(p.get("tier", "")), "")) if not tagged else ""   # the tag says it
 		var sub: String = ("#%d  " % num if num > 0 else "") + role + (("  " + tier) if tier != "" else "")
 		s.draw_text(self, Vector2(x, pad + 50.0), sub, s.SMALL_FONT, s.DIM_TEXT, HORIZONTAL_ALIGNMENT_LEFT, tw)
 		# the 5 stats
@@ -686,10 +715,17 @@ class Card extends Control:
 			var bt: Rect2 = s.BOSS_TAG
 			draw_style_box(s.UI.style_box(s.BOSS_TAG_FILL, s.BOSS_TAG_COLOR, 2), bt)
 			_centered(bt, "BOSS", s.DRAFTED_FONT + 2, s.BOSS_TAG_COLOR, false)
+		var legend: bool = Trip.is_legend(id)
+		if legend:
+			var lt: Rect2 = s.LEGEND_TAG
+			draw_style_box(s.UI.style_box(s.legend_color(id), s.LEGEND_TAG_COLOR, 2), lt)
+			_centered(lt, s.LEGEND_TAG_TEXT, s.DRAFTED_FONT + 1, s.LEGEND_TAG_COLOR, false)
 		if s._drafted.has(id):
 			var tr: Rect2 = s.DRAFTED_TAG
 			if boss:
 				tr.position.y += s.BOSS_TAG.size.y + s.TAG_GAP
+			elif legend:
+				tr.position.y += s.LEGEND_TAG.size.y + s.TAG_GAP
 			draw_style_box(s.UI.style_box(s.SLOT_FILL, s.DRAFTED_COLOR, 2), tr)
 			_centered(tr, "DRAFTED", s.DRAFTED_FONT, s.DRAFTED_COLOR, false)
 		if s.has_badge(id):
@@ -808,7 +844,7 @@ class Side extends Control:
 			var tier: String = str(s.TIER_TEXT.get(str(p.get("tier", "")), ""))
 			var role: String = str(p.get("role", ""))
 			var sub: String = (tier + "  " if tier != "" else "") + role
-			s.draw_text(self, Vector2(x, y + 72.0), sub, s.SMALL_FONT, s.STAT_HIGH if tier == "BOSS" else s.DIM_TEXT,
+			s.draw_text(self, Vector2(x, y + 72.0), sub, s.SMALL_FONT, s.STAT_HIGH if tier == "BOSS" or tier == "LEGEND" else s.DIM_TEXT,
 					HORIZONTAL_ALIGNMENT_LEFT, size.x - x - 12.0)
 			var rt: Dictionary = p.get("ratings", {})
 			var tot := 0
