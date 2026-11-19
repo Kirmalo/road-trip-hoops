@@ -39,7 +39,8 @@ tournament in New York, beating every local crew on the way.
   Stamina.
 - After each city, sign one of its best players for your bench, then pick your 3 starters before every game (only
   one boss among them).
-- Every game earns stars: 1 on Easy, 2 on Normal, 3 on Hard. Replay any game you've won from the map to get more.
+- Every game earns stars: 1 on Easy, 2 on Normal, 3 on Hard. Replay any game you've won from the map, on the level
+  you pick, to get more.
 - Stars open extra roster spots (draft any player from a crew you've beaten, bosses too), new jerseys, balls and
   van paint jobs in the LOCKER, two new Quick Game courts, and at all 72 stars the LEGEND level.
 - New York is a 3-round bracket in a fenced cage, all games to 21, with the champions waiting in the final.
@@ -67,6 +68,15 @@ Each city plays a little differently, and the twist is the same for both teams:
 One game to 21 whenever you like. Pick the level, the court and the music, plus your team and your opponent. Each
 city court and each crew you beat on the road trip joins Quick Game for good, and so do the two star courts.
 
+## Legends
+Earn 24 stars and the Legends tour opens: a trip back through the eras of the game. Chapter 1 is the Grandfathers,
+six old-school legends of our own invention (a hook-shot center, a shot-blocking wall, a two-hand set shooter and
+more) in an old wood gym, under OLD SCHOOL rules: a slower game, big men rule, fewer threes and fewer whistles. Each
+one gives your road trip crew a challenge game: hold him under a few points, beat him while he's on fire, come back
+from behind. Win to unlock him for good and earn tokens, then take on the era finale. Unlocked legends hang in the
+Hall of Legends, coach your players with a small perk on the road trip, and one of them can join your starting
+three, right next to a boss.
+
 ## Controls
 - Touch: drag anywhere on the left half of the screen to move (pull past the ring to sprint). Two buttons on the
   right: the orange one shoots on offense and steals or blocks on defense; the blue one passes, calls for the ball,
@@ -79,8 +89,8 @@ city court and each crew you beat on the road trip joins Quick Game for good, an
 Plays in landscape. Tap the fullscreen button under the game for the best view on a phone or tablet.
 
 ## Saves
-Your road trip, stars and settings are saved in your browser on this device. They stay there between visits, but clearing
-the browser's site data deletes them, and they don't move to another device or browser.
+Your road trip, stars, Legends progress and settings are saved in your browser on this device. They stay there
+between visits, but clearing the browser's site data deletes them, and they don't move to another device or browser.
 
 ## Coming later
 An Android app (a downloadable APK) will be added to this page later.
@@ -90,7 +100,8 @@ Made with the Godot Engine (MIT license). The players, courts, portraits and map
 this game.
 
 Music and sound by Juhani Junkala (SubspaceAudio), RandomMind, emanresU, Haley Halcyon, congusbongus, Christovix,
-Tarush Singhal, Gregor Quendel, BMacZero, rubberduck, StarNinjas and themightyglider; fallback sprites by Kenney.
+Tarush Singhal, Pro Sensory, Gregor Quendel, BMacZero, rubberduck, StarNinjas and themightyglider; fallback sprites
+by Kenney.
 Full credits in the game's CREW & CREDITS screen.
 
 Used under CC-BY (thank you!):

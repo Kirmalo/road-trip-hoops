@@ -49,6 +49,8 @@ The game opens on the title screen:
   one to play), the teams, the COURT and the MUSIC (see QUICK GAME below). After the game the panel comes back; its
   TITLE button goes back to the title.
 - LOCKER: your star rewards (see STARS AND THE LOCKER below).
+- LEGENDS: the era tour (see LEGENDS below). It opens at 24 stars; until then it is dark with a "24 STARS" tab, and
+  a tap on it says how many stars you have.
 - SETTINGS (all remembered):
   - MUSIC: ON / OFF, and the MUSIC volume slider next to it;
   - SOUND: the volume of the sound effects;
@@ -60,7 +62,8 @@ The game opens on the title screen:
 - HOW TO PLAY: the picture pages (see above).
 - CREW & CREDITS: the version, your crew and their stats, unspent points and DRAFTED tags (from your saved trip,
   if any), the art, music and sound
-  credits, and the Godot Engine license. Drag the list to scroll.
+  credits, and the Godot Engine license. Drag the list to scroll. Once you have unlocked a legend, a HALL OF
+  LEGENDS button sits in its top right corner (see LEGENDS below).
 BACK on each screen goes back to the title (on Android the back gesture does the same; on the title it closes the
 app).
 
@@ -183,7 +186,10 @@ tournament in New York.
   you face and the city's twist. Tap a pin to look at that city; tap the map to go back to yours. GO plays on. MENU
   (top right) goes to the title.
 - Replays: tap a pin where you have won games on this trip to open its picker (its 3 games, or New York's rounds,
-  with their best stars), then PLAY. The opponents play at the stage you have reached. A replay only earns stars:
+  with their best stars), pick the level (EASY / NORMAL / HARD, and LEGEND once you have all 72 stars; it starts on
+  your trip's level, and the line under it says what a win there earns, e.g. "A WIN ON HARD: 3 STARS"), then PLAY.
+  The replay plays and records its stars at that level; your trip's own level does not change. The opponents play
+  at the stage you have reached. A replay only earns stars:
   no stat points, no story, no recruit, and your trip stays where it was. CLOSE (or a tap outside) closes the
   picker. After the whole trip the map stays open for replays.
 - Each city has one local crew, and you play them 3 times, each time stronger:
@@ -206,10 +212,12 @@ tournament in New York.
   ratings and wears your blue and gold.
 - Lineup: before every game you pick your 3 starters from the whole crew. Tap a card to put him in; the FIRST one
   you pick is you (he gets the YOU badge), the next two are your teammates. Tap a starter again to bench him. Only
-  one BOSS may start (however he joined). The game remembers your lineup for the next game. PLAY starts the game.
+  one BOSS may start (however he joined), and only one LEGEND (see LEGENDS below); one legend and one boss may
+  start together. The game remembers your lineup for the next game. PLAY starts the game.
 - Draft: stars open extra roster slots (at 12, 24, 36 and 48 stars). An OPEN SLOT card in the lineup opens the
   DRAFT screen: any player from a crew you have beaten on this trip, bosses too. Tap a card, then SIGN and YES,
-  SIGN. A draft is final for the trip; he joins with his city's ratings and a DRAFTED tag.
+  SIGN. A draft is final for the trip; he joins with his city's ratings and a DRAFTED tag. Legends you have
+  unlocked are in the list too, in a LEGENDS row at the end (see LEGENDS below).
 - New York: the tournament, a bracket of 3 rounds (quarterfinal, semifinal, final), all to 21, in a fenced cage.
   You meet the Bridge Runners, the Bodega Bandits and, in the final, the champions, the Concrete Crowns, with their
   boss, King. A loss just replays that round. Each won round gives every starter 2 points, spent right after the
@@ -228,6 +236,61 @@ STARS AND THE LOCKER
   BALL and VAN: tap an open tile to wear it (CLASSIC is the normal look). The jersey is your crew's on the trip and
   the Kings' in Quick Game, the ball is in every game, the van drives on the trip map. Against a crew whose colors
   are too close to your jersey, your team wears its normal jersey for that game.
+
+LEGENDS
+The Legends mode is a tour through the eras of the game. You beat old-time legends in challenge games and unlock
+them for good. Every legend is a made-up character with his own name and looks, not a real player.
+- Opening it: the LEGENDS button on the title opens once you have 24 stars, from any trip games (a whole trip on
+  EASY gives exactly 24).
+- The era tour: a timeline of four chapters. Chapter 1, THE GRANDFATHERS, is open; THE FATHERS, THE PRESENT and
+  THE NEW GENERATION show as COMING LATER, with what will open them. Tap the open chapter (or its PLAY button). The
+  first time, a story scene introduces the era. HALL opens the Hall of Legends; BACK goes to the title.
+- The chapter view: the six legends' plaques (a locked one is a silhouette with "?" and his challenge), the finale
+  card, YOUR CREW, the level buttons and PLAY. Tap a plaque to pick his game, pick the level (EASY / NORMAL / HARD,
+  LEGEND once you have all 72 stars; it starts on your trip's level), then PLAY. BACK goes to the timeline.
+- Who plays: your Road Trip crew, your 3 current starters with their stats as they are now (so the challenges get
+  easier as your trip crew grows). With no saved trip, the Cornfield Kings play at even stats ("NO TRIP: THE KINGS
+  PLAY"). If you drafted a legend and he is on the other side, he sits that game and your best bench player plays
+  ("STEEPLE SITS: ... PLAYS"). A Legends game never changes your trip: no stat points, no stars, no record.
+- Each legend plays with two other Grandfathers as his teammates. The goal shows on a line under the score. If you
+  break it (he scores too much, or his crew reaches its number first), the game ends at once as a loss.
+  - Steeple, the hook-shot center: hold him under 7 points and win (to 15).
+  - Gate, the shot-blocking wall: reach 11 before his crew gets 10.
+  - Set Shot, the deep shooter: he starts on fire and cools down only after 2 misses in a row; win (to 15).
+  - Boxcar, the bruising power forward: block or steal the ball on him 2 times and win (to 15). A win with fewer
+    stops doesn't count.
+  - Velvet, the smooth slasher: hold him under 6 points and win (to 11).
+  - Quarterback, the no-look floor general: you start down 0-2; come back and win (to 15).
+- Tokens: a won challenge gives 1 token on EASY, 2 on NORMAL, 3 on HARD or LEGEND. Only your best result for each
+  game counts, so play a game again on a higher level for more: 21 tokens in Chapter 1 (6 challenges and the finale,
+  3 each). Your first win against a legend unlocks him for good: he says a few words, and his plaque goes into the
+  Hall of Legends.
+- The finale: once all six are beaten, the GRANDFATHERS FINALE opens: your crew against Steeple, Velvet and
+  Quarterback, to 21, with no special goal. A story scene comes before and after it; winning it finishes the
+  chapter.
+- OLD SCHOOL rules: every Grandfathers game is played in the OLD GYM with the era's rules, the same for both teams
+  (a banner shows them at the tip-off): everyone is 6% slower, shots beyond the arc go in 20% less often, close
+  shots, layups and dunks go in 8% more often, and fouls are called a little over half as often (60%).
+- Signature moves: each legend has one small edge only he has. Steeple shoots hook shots close to the rim (hard to
+  block), Gate's blocks stay in play (he keeps the ball or tips it to a teammate), Set Shot's long range starts
+  further out, Boxcar dunks from further out, Velvet's finger rolls slip past defenders, and Quarterback throws
+  long outlet passes.
+- The Hall of Legends: HALL on the tour, or HALL OF LEGENDS on CREW & CREDITS. One row of plaques per era. Tap an
+  unlocked legend to see his card, name, archetype, number, tokens, his strengths (the rating shape), his signature
+  move and his mentor perk; REPLAY STORY plays his unlock scene again.
+- Mentors: in the Hall, tap TRAIN on an unlocked legend and pick one of your players (your trip's crew; without a
+  trip, Deuce, Jojo and Tank). The player gets a small perk, about 2 stat points' worth:
+  Steeple: close shots and layups +1.5%; Gate: block timing window 5% wider; Set Shot: shots beyond the arc +1.5%;
+  Boxcar: dunks from a little further out; Velvet: contested layups +1.5%; Quarterback: passes 5% faster.
+  Each player has one mentor at most and each legend trains one player at a time. SWITCH moves him to another
+  player and STOP TRAINING ends it (both ask first). Mentors coach your regular players only (a drafted legend can't
+  be trained). Perks work in Road Trip games only, not in Quick Game or Legends games, and they stay when you start
+  a new trip.
+- Drafting a legend: every legend you have unlocked joins the DRAFT list for your open star roster slots (a LEGENDS
+  row at the end). He joins boss-level for the part of the trip you have reached, with his own strengths (no stat
+  above 95). Only one legend can start, but he may start next to one boss.
+- Saving: the Legends progress (tokens, unlocked legends, scenes seen, mentors) is saved by itself, apart from the
+  trip; a NEW TRIP keeps it.
 
 THE CITIES AND THEIR TWISTS
 Each city's twist works the same for both teams. A banner shows it at the tip-off and again after the switch.
@@ -250,8 +313,8 @@ In every game a pause button (two bars) sits in the top right corner. Tap it to 
 shows the score, the stats of both teams and the court's twist, and has:
 - RESUME: back to the game (the controls wait a moment, so the tap doesn't leak into the game)
 - RESTART: the same game again from 0-0 (tap twice to confirm)
-- QUIT: to the title in a Quick Game, to the trip map in a trip game; the quit game doesn't count and starts again at
-  0-0 next time (tap twice to confirm)
+- QUIT: to the title in a Quick Game, to the trip map in a trip game, to the chapter view in a Legends game; the quit
+  game doesn't count and starts again at 0-0 next time (tap twice to confirm)
 - MUSIC on/off, FULL SCREEN on/off and the SOUND volume (all remembered)
 
 THE PLAYERS AND THEIR MOVES
@@ -284,9 +347,10 @@ and on the CREW & CREDITS screen.
 No sound in the browser? Make sure the tablet's media volume is up (not just the ringer), then tap the screen once.
 
 SAVES
-The game saves by itself: the trip after every game and every choice (user://trip.json), and your settings, the
-unlocked courts and teams, your stars and what you wear (user://settings.cfg). A trip saved by the first version
-(1.0.0) loads and plays on. Where that is:
+The game saves by itself: the trip after every game and every choice (user://trip.json), your settings, the
+unlocked courts and teams, your stars and what you wear (user://settings.cfg), and the Legends progress (tokens,
+unlocked legends, mentors; user://legends.json). A trip saved by the first version (1.0.0) loads and plays on.
+Where that is:
 - in the browser: in the browser's storage for that site (clearing the site's data or a private window loses it;
   the itch.io page and the GitHub Pages build have separate saves);
 - in the Android app: in the app's own storage (an update keeps it; uninstalling the app deletes it);
@@ -341,6 +405,7 @@ scripts/trip.gd (the trip rules):
 - STAT_CAP: no stat goes above this by spending points (90)
 - BOSS_CAP: no opponent stat goes above this (95)
 - BOSS_LIMIT: how many bosses may start (1)
+- LEGEND_LIMIT: how many legends may start (1; a legend is not a boss, so one of each may start)
 - DEFAULT_LEVEL: the level of a trip when none is picked ("normal")
 scripts/story_text.gd (the story):
 - SCENES: every scene as a list of lines. Each line has "who" (a player id from cities.gd, or "narrator"), "side"
@@ -352,7 +417,20 @@ scripts/story_text.gd (the story):
 scripts/twists.gd (the city twists):
 - TWISTS: one block per twist with its numbers, each with a comment, e.g. "speed_mult": 0.9 (sand: everyone 10%
   slower), "shot_clock": 18.0 (Memphis), "stamina_refill_mult": 0.7 (humid: 30% slower). The "banner" text is what
-  the banner, the map card and the pause screen show.
+  the banner, the map card and the pause screen show. "era_grand" is the Grandfathers' OLD SCHOOL rules
+  ("inside_mult": close shots, "foul_mult": fouls called).
+scripts/legends_data.gd (the Legends mode, all plain data):
+- CHAPTERS: the four eras (only THE GRANDFATHERS is built): name, court, music, era rules, the stars that open it
+  ("gate"), its six legends and the finale
+- LEGENDS: one block per legend: names, number, "shape" (his five stats around his level; they add up to 0),
+  "signature", "challenge" (the goal and its numbers, and "line", the text the game shows), "perk", "bio"
+- PERKS: the mentor perks and their sizes
+- TOKENS_BY_LEVEL: tokens for a win on each level (1 / 2 / 3, LEGEND 3)
+- CHALLENGE_AVG: the challenge legend's level before his shape (66); MATE_DROP: how much lower his 2 teammates play
+  (14)
+- DRAFT_TIER: what a drafted legend adds to the stage's average player (20); FINALE_STAGE_AVG: the finale legends'
+  base before that (52)
+Any new legend must pass the real-name check (--legendtest; the list is docs/legends-namecheck.md).
 scripts/trip_map.gd: DRIVE_TIME: seconds the van drives to the next city (3.0)
 scripts/stars.gd: REWARDS: the reward list (at how many stars each one opens)
 scripts/difficulty.gd: LEGEND_BONUS: what LEGEND adds to every opponent stat (12)
@@ -476,7 +554,7 @@ FILES
 - countdown.gd: the 3-2-1-GO! at the start of every game
 The Road Trip:
 - flow.gd: moves between the screens (title, map, story, lineup, game, result, points, recruit, bracket, draft,
-  locker)
+  locker, legends, hall)
 - trip.gd: the trip's rules and progress (games, retries, stat points, recruits, drafts, starters, replays, New
   York, CONTINUE)
 - stars.gd: the stars and the list of rewards they open (REWARDS at the top)
@@ -497,6 +575,14 @@ The Road Trip:
 - bracket.gd: the New York tournament bracket
 - pause.gd: the pause button and screen
 - trip_test.gd: a test that plays a whole trip by itself (for the team, not used in play)
+Legends:
+- legends_data.gd: the eras, legends, challenges and perks (data)
+- legends.gd: the Legends progress (tokens, unlocks, the finale, mentors) and how a challenge game is set up
+- legends_save.gd: writes and reads the Legends save (user://legends.json) safely
+- challenge.gd: the challenge goal in a game (the line under the score, the win or loss)
+- legends_tour.gd: the era tour screen (the timeline and the chapter view)
+- hall.gd: the Hall of Legends and the mentor picker
+- legends_test.gd: a test that plays Chapter 1 by itself (for the team, not used in play)
 - anim_test.gd: a test that checks every player's pictures (for the team, not used in play)
 - howto_shots.gd: takes the game screenshots the How to Play pictures are made from (for the team, not used
   in play)
@@ -519,6 +605,9 @@ The pictures are drawn by scripts, not by hand, so they can be changed and made 
   8 city courts) and the ball in assets/ball.
 - python3 tools/art/make_portraits_v2.py   makes the story portraits in assets/portraits (comic style).
 - python3 tools/art/make_map.py       makes the trip map, pins, van and van paints in assets/map.
+- Legends: make_players_v2.py --only lg_steeple,... makes the legend players (with their hook-shot pages,
+  lg_<id>_x0.png); make_portraits_v2.py --legends their portraits; make_courts.py --era the OLD GYM;
+  python3 tools/art/make_legends_ui.py   the tour timeline, chapter pins and Hall frames in assets/legends.
 - python3 tools/art/make_cosmetics_preview.py   puts every star reward (jerseys, balls, vans, courts) on one
   picture, docs/art/cosmetics_preview.png.
 - python3 tools/art/make_icon.py      makes the app icons in assets/icon and the itch.io cover
