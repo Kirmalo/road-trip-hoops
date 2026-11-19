@@ -110,6 +110,7 @@ tablet with a joystick and two buttons.
 | Replay level (owner bug report) | Replays get a level picker in the map's replay picker (EASY / NORMAL / HARD, LEGEND once open), opening on the trip's level; a replay plays and records its stars at the picked level; the trip's own level never changes |
 | Mentor perk size (after P9-30) | Shrunk to about 2 stat points each (owner): shot perks +1.5% (close shots, threes, contested layups), blocks / dunk reach / pass speed 5% |
 | Challenge goals tuned (P9-26) | To keep every challenge winnable with the end-of-trip crew: Steeple hold under 7 (to 15), Gate race to 11 before his crew gets 10, Boxcar 2 stops, Velvet hold under 6 (to 11), Quarterback comeback from 0-2; legends rated lower (challenge average 66, finale 72 + shape). Results per level in docs/qa/phase9-challenges.md. Shown to the owner at the Phase 9 check-in |
+| Rebounding (owner) | Offensive rebounds were too many (56% of misses); now about 25% (defense boxes out, only the nearest attacker crashes). Game length won back with a small make-rate nudge to about 9.5 min. A light box-out assist for the human defender when not steering (any stick input takes over) |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
