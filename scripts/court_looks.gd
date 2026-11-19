@@ -341,6 +341,33 @@ const LOOKS := {
 		"reward": "court_2",
 		"twist": "none",
 	},
+	# ---- Phase 9 era court (P9-05; tools/art/make_courts.py --era, --print-looks): the Legends Chapter 1 court, an
+	# old wood gym. No twist key (the legends match brings era_grand), no reward, not a city: never in quick_courts().
+	# Music: an existing track until the era's own (the legends match names it) ----
+	"era_grand": {
+		"name": "OLD GYM",
+		"music": "memphis",
+		"floor_texture": "res://assets/courts/era_grand_floor.png",
+		"floor_scale": 2.0,
+		"floor": Color(0.80, 0.60, 0.33),
+		"floor_stripe": Color(0.75, 0.55, 0.29),
+		"stripe_ft": 0.0,
+		"speckle": 0,
+		"line": Color(1.00, 0.96, 0.86, 0.92),
+		"paint": Color(0.59, 0.23, 0.18, 0.82),
+		"logo": Color(0.78, 0.57, 0.23, 0.82),
+		"apron": Color(0.43, 0.27, 0.14),
+		"backdrop": "bleachers",
+		"backdrop_texture": "res://assets/courts/era_grand_backdrop.png",
+		"backdrop_scale": 2.0,
+		"wall": Color(0.82, 0.75, 0.61),
+		"wall_dark": Color(0.31, 0.18, 0.09),
+		"backboard": "wood",
+		"board_square": Color(0.94, 0.90, 0.80),
+		"pole": Color(0.48, 0.31, 0.19),
+		"rim": Color(0.91, 0.38, 0.16),
+		"net": Color(0.96, 0.94, 0.89, 0.85),
+	},
 }
 const DEFAULT := "gym"
 const ALWAYS_OPEN := ["gym", "blacktop"]   # Quick Game courts that need no unlock (twist none)
