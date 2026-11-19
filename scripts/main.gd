@@ -37,6 +37,10 @@ const Ratings = preload("res://scripts/ratings.gd") # stat formulas: rating 50 =
 const Cities = preload("res://scripts/cities.gd")   # city data (names, targets) for the --city test flags
 const Twists = preload("res://scripts/twists.gd")   # Phase 6 city twists: every twist hook is Twists.value(key, today)
 const CountdownScript = preload("res://scripts/countdown.gd")   # P8-31: the 3-2-1-GO! at the start of every match
+# Phase 9 (P9-13): a Legends challenge game (Flow.match.challenge not empty) adds challenge.gd (the goal, its HUD line
+# and the verdict). Loaded at run time, so a missing file changes nothing; Quick Game and the trip never add it.
+const CHALLENGE_PATH := "res://scripts/challenge.gd"
+const LEGENDS_PATH := "res://scripts/legends.gd"   # --legendtest, --challenge <id> (Legends.test_match())
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
@@ -331,6 +335,9 @@ var howto_shots := false             # test only (-- --howto-shots DIR, P7-H1): 
 var twist_label: Label               # the twist's banner line under the tip-off message
 var _twist_line_t := 0.0
 var countdown                        # P8-31 countdown.gd (on the HUD); frozen() holds the game during 3-2-1
+var challenge = null                 # P9-13 challenge.gd (null: no challenge in this game)
+var hud_root: Control                # the HUD's full-screen Control (the challenge line goes on it)
+var points_by := {}                  # P9-13: points this game per player id (pid; "" in Quick Game), free throws too
 
 func stat(k: String) -> void:
 	stats[k] = stats.get(k, 0) + 1
@@ -378,6 +385,12 @@ func _ready() -> void:
 		set_process(false)
 		get_tree().quit(0 if ok_c else 1)
 		return
+	if OS.get_cmdline_user_args().has("--legendtest"):
+		var ok_l: bool = bool((load(LEGENDS_PATH) as GDScript).call("legendtest"))   # test only: P9-12's checks
+		set_physics_process(false)
+		set_process(false)
+		get_tree().quit(0 if ok_l else 1)
+		return
 	if OS.get_cmdline_user_args().has("--twisttest"):
 		var ok_t: bool = Twists.self_test()   # test only: the twist table's defaults (P6-01)
 		set_physics_process(false)
@@ -413,6 +426,7 @@ func _ready() -> void:
 		Flow.build_screen(self)   # title, map, story, ...: that screen's node and its music; no court
 		return
 	_parse_city_args()   # --city <id> --cgame N: Flow.match = that trip matchup
+	_parse_challenge_args()   # --challenge <id>: Flow.match = that Legends game (P9-13)
 	autoplay = OS.get_cmdline_user_args().has("--autoplay") or _city_autoplay() or anim_test
 	humantest = OS.get_cmdline_user_args().has("--humantest") or howto_shots
 	force_fouls = OS.get_cmdline_user_args().has("--force-fouls")
@@ -498,7 +512,8 @@ func _ready() -> void:
 	add_child(menu)
 	shot_clock = shot_clock_length()
 	start_game()
-	if Flow.in_trip() and str(Flow.match.get("label", "")) != "":
+	_add_challenge()             # P9-13: after the tip-off line-up (a comeback's start score, the legend on fire)
+	if Flow.in_match() and str(Flow.match.get("label", "")) != "":
 		show_message(str(Flow.match.get("label", "")), rules.START_MSG_TIME)   # instead of "FIRST TO N"
 	_add_anim_test()
 	if howto_shots:
@@ -511,7 +526,7 @@ func _ready() -> void:
 	# the launch panel: once per run, never in the headless tests (or --shots, unless -- --menushot), never in a trip
 	# game (the lineup screen came before it)
 	var shots_run: bool = OS.get_cmdline_user_args().has("--shots") or OS.get_cmdline_user_args().has("--ballshots")
-	var tests: bool = autoplay or humantest or (shots_run and not menushot) or Flow.in_trip()
+	var tests: bool = autoplay or humantest or (shots_run and not menushot) or Flow.in_match()
 	if not tests and not MenuScript.start_done:
 		menu_wait = true
 		msg_label.visible = false   # no "FIRST TO 21" under the panel; the reloaded game shows it
@@ -523,12 +538,14 @@ func _ready() -> void:
 		_play_court_music()
 		_show_twist_banner()   # (behind the launch panel it would be hidden: the reloaded game shows it)
 		_start_countdown()     # P8-31: the banner slides in under the top bar, the countdown is in the middle
+		if challenge != null:
+			challenge.show_start()   # P9-13: "ON FIRE!" over a fire challenge's legend
 
 # in play: the court's track, softly (owner Q5 a). The panels play the menu music (menu.gd)
 func _play_court_music() -> void:
 	var track: String = Looks.music()
-	if Flow.in_trip() and str(Flow.match.get("music", "")) != "":
-		track = str(Flow.match.get("music", ""))   # the city's track
+	if Flow.in_match() and str(Flow.match.get("music", "")) != "":
+		track = str(Flow.match.get("music", ""))   # the city's track (a legends game: the era's)
 	audio.play_music(track)
 	audio.set_music_ducked(true)
 
@@ -537,7 +554,7 @@ func _play_court_music() -> void:
 
 # player i of team t from Flow.match ({} in Quick Game): {"id", "name", "sheet", "ratings": {...}}
 func _match_player(t: int, i: int) -> Dictionary:
-	if not Flow.in_trip():
+	if not Flow.in_match():
 		return _quick_player(t, i)
 	var tms: Array = Flow.match.get("teams", [])
 	if t >= tms.size():
@@ -567,7 +584,7 @@ func _quick_player(t: int, i: int) -> Dictionary:
 # look when the other crew's colors are too close to that jersey (Cosmetics.jersey_clashes(), e.g. AFTER HOURS black
 # and pink against the Bridge Runners' black and red). Changes only this game's player dicts, never the save.
 func _fix_jersey_clash() -> void:
-	var tms: Array = Flow.match.get("teams", []) if Flow.in_trip() else quick_teams
+	var tms: Array = Flow.match.get("teams", []) if Flow.in_match() else quick_teams
 	if tms.size() != 2 or not ResourceLoader.exists(COSMETICS_PATH):
 		return
 	var cos: GDScript = load(COSMETICS_PATH) as GDScript
@@ -591,7 +608,7 @@ func _fix_jersey_clash() -> void:
 func _apply_quick_teams() -> void:
 	quick_teams = []
 	MenuScript.Difficulty.quick_styles = []
-	if Flow.in_trip() or not ResourceLoader.exists(TRIP_PATH):
+	if Flow.in_match() or not ResourceLoader.exists(TRIP_PATH):
 		return
 	var trip: GDScript = load(TRIP_PATH) as GDScript
 	if trip == null or not trip.has_method("quick_team"):
@@ -628,7 +645,7 @@ func _apply_quick_teams() -> void:
 
 # the top bar shows crew names (smaller font): a trip game, or a Quick Game with its crews
 func _crew_names() -> bool:
-	return Flow.in_trip() or quick_teams.size() == 2
+	return Flow.in_match() or quick_teams.size() == 2
 
 # player.setup() with the player dict (P5-03 adds the optional 5th argument: sheet and ratings). Called the old way
 # when the dict is empty or player.gd doesn't take it yet; then the dict's ratings are copied in here, so steal,
@@ -651,7 +668,7 @@ func _setup_player(p, t: int, i: int, tex: Texture2D, pdata: Dictionary) -> void
 # --difficulty flag wins, for tests). A game without a trip match gets the Quick Game look and level back.
 func _apply_match_settings() -> void:
 	var diff = MenuScript.Difficulty
-	if not Flow.in_trip():
+	if not Flow.in_match():
 		if _quick_look != "":
 			Looks.set_current(_quick_look)
 			_quick_look = ""
@@ -808,7 +825,7 @@ func _twist_summary() -> String:
 # after rules.gd is made: a trip game's target (side switch at (target + 1) / 2, as --target does; a --target flag
 # wins) and the crew names for the top bar and the messages
 func _apply_match_rules() -> void:
-	if not Flow.in_trip():
+	if not Flow.in_match():
 		return
 	var tg: int = int(Flow.match.get("target", 0))
 	if tg > 0 and not OS.get_cmdline_user_args().has("--target"):
@@ -868,6 +885,55 @@ func _parse_city_args() -> void:
 		names.append(str((tm as Dictionary).get("name", "?")))
 	print("MATCH %s | to %d | %s | level %s | twist %s" % [str(built.get("label", "")), int(built.get("target", 21)),
 			" vs ".join(PackedStringArray(names)), str(built.get("level", "")), _twist_id()])
+
+# test flag -- --challenge <id> (P9-13): Flow.match = that Legends challenge or finale (Legends.test_match(): a legend
+# id or short name, or "finale"; your side the test trip save's starters, else the Kings; --difficulty its level;
+# --expected-roster / --best-roster the end-of-trip crew). With --autoplay CPU vs CPU, with --humantest scripted.
+func _parse_challenge_args() -> void:
+	if not OS.get_cmdline_user_args().has("--challenge") or not ResourceLoader.exists(LEGENDS_PATH):
+		return
+	var lg: GDScript = load(LEGENDS_PATH) as GDScript
+	if lg == null or not lg.has_method("test_match"):
+		return
+	lg.call("test_match")
+
+# P9-13: a challenge game (Flow.match.challenge not empty, Flow.in_legends()) gets challenge.gd: its goal, the HUD
+# line, the start (score, fire) and the verdict. A finale, Quick Game and the trip get nothing.
+func _add_challenge() -> void:
+	if not Flow.in_legends() or not ResourceLoader.exists(CHALLENGE_PATH):
+		return
+	var c = Flow.match.get("challenge", {})
+	if not (c is Dictionary) or (c as Dictionary).is_empty():
+		return
+	var s: GDScript = load(CHALLENGE_PATH) as GDScript
+	if s == null:
+		return
+	challenge = s.new()
+	challenge.game = self
+	challenge.data = (c as Dictionary).duplicate(true)
+	add_child(challenge)
+	challenge.start(hud_root)
+	ft_label.offset_top = challenge.FT_LABEL_TOP   # "FREE THROW 1 OF 2" under the goal line
+	if autoplay or humantest:
+		print("CHALLENGE GOAL %s: %s" % [str(c.get("legend", "")), challenge.line_text()])
+
+# P9-13: the challenge's goal broke (challenge.gd): the game ends at once, as a loss when won is false
+func end_challenge(won: bool) -> void:
+	if game_over:
+		return
+	stats["game_seconds"] = int(rules.play_time)
+	stats["dead_seconds"] = int(rules.dead_time)
+	ft_label.visible = false   # a free throw cut short: no "FREE THROW 2 OF 2" over the result
+	on_game_over(0 if won else 1)
+
+# a basket or free throw of pts by p is about to be added: the per-player count and the challenge's
+func _count_points(p, pts: int) -> void:
+	if p == null:
+		return
+	var k: String = str(p.pid)
+	points_by[k] = int(points_by.get(k, 0)) + pts
+	if challenge != null:
+		challenge.count_points(p, pts)
 
 # --city plays CPU vs CPU unless the run is a --humantest or a screenshot mode
 func _city_autoplay() -> bool:
@@ -979,6 +1045,7 @@ func _build_hud() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(root)
+	hud_root = root
 
 	var bar := ColorRect.new()
 	bar.color = Color(0, 0, 0, 0.55)
@@ -1221,6 +1288,8 @@ func rim_shot_blocked(p, defender) -> void:
 	stat("shots_t%d" % p.team)
 	if p.on_fire:
 		stat("fire_shots")
+	if challenge != null:
+		challenge.on_stop(defender, p, "block")
 	block_shot(defender)
 	on_shot_missed(p)
 
@@ -1236,6 +1305,8 @@ func block_shot(defender) -> void:
 			if ball.shooter != null and ball.shooter.on_fire:
 				stats["fire_makes"] = stats.get("fire_makes", 1) - 1
 		missed_shooter = ball.shooter
+		if challenge != null:
+			challenge.on_stop(defender, ball.shooter, "block")
 	var away: Vector2 = (ball.position - defender.position).normalized()
 	ball.make_loose(ball.position, away * rng.randf_range(200.0, 300.0), ball.z, 80.0)
 	show_message("BLOCKED!")
@@ -1257,7 +1328,10 @@ func on_shot_made(shooter, pts: int) -> void:
 	if rules.ft_shot_live:
 		# a free throw: no "SCORES" banner and no on-fire streak, just the +1 at the hoop
 		fx.popup("+%d" % pts, hoop + Vector2(0, -SCORE_POPUP_RISE), TEAM_COLORS[shooter.team], SCORE_POPUP_SIZE)
+		_count_points(shooter, pts)
 		rules.ft_result(true)
+		if challenge != null:
+			challenge.check()   # a broken goal ends the game now
 		return
 	show_message("%s %s" % [TEAM_NAMES[shooter.team], "FOR TWO!" if pts >= 2 else "SCORES"], SCORE_MSG_TIME,
 			TEAM_COLORS[shooter.team])
@@ -1267,7 +1341,10 @@ func on_shot_made(shooter, pts: int) -> void:
 	if ball.shot_kind == "dunk":
 		stat("dunk_makes_t%d" % shooter.team)   # pause screen (team_stats)
 	_update_fire_on_make(shooter)
+	_count_points(shooter, pts)
 	rules.add_score(shooter.team, pts, ball.shot_kind if ball.shot_kind != "" else "shot")
+	if challenge != null:
+		challenge.check()   # a broken goal (hold, race) ends the game now
 	if game_over:
 		return
 	if rules.resolve_pending_foul(shooter, true):
@@ -1286,7 +1363,7 @@ func on_shot_missed(shooter) -> void:
 	shooter.make_streak = 0
 	if shooter.on_fire:
 		shooter.fire_misses += 1
-		if shooter.fire_misses >= FIRE_MISSES:
+		if shooter.fire_misses >= _fire_misses(shooter):
 			_end_fire(shooter)
 		else:
 			show_message("He's cooling down.")
@@ -1303,7 +1380,13 @@ func _update_fire_on_make(shooter) -> void:
 		fx.popup("ON FIRE!", shooter.position + Vector2(0, -5.0 * FT), FIRE_COLOR, FIRE_POPUP_SIZE)
 		audio.play("fire")
 
+# the misses in a row that put p's fire out: FIRE_MISSES, or a fire challenge's cool_misses for its legend
+func _fire_misses(p) -> int:
+	return challenge.fire_misses(p, FIRE_MISSES) if challenge != null else FIRE_MISSES
+
 func _end_fire(p) -> void:
+	if challenge != null:
+		challenge.on_fire_out(p)
 	p.on_fire = false
 	p.make_streak = 0
 	p.fire_misses = 0
@@ -1445,6 +1528,8 @@ func attempt_steal(defender, _legacy := -1.0) -> void:
 		show_message("STEAL!")
 		stat("steals")
 		stat("steals_t%d" % defender.team)
+		if challenge != null:
+			challenge.on_stop(defender, h, "steal")
 		if is_human(defender):
 			stat("human_steals")
 
@@ -2061,9 +2146,18 @@ func on_game_over(winner: int) -> void:
 	_update_hud()
 	# a trip game (not the --city CPU test): FINAL, then the result screen after Flow.RESULT_DELAY s. Under
 	# --trip-test always, even when its driver made the game CPU vs CPU
-	var trip_end: bool = Flow.in_trip() and (Flow.test != "" or not (autoplay or humantest))
+	var trip_end: bool = Flow.in_match() and (Flow.test != "" or not (autoplay or humantest))
+	# P9-13: a challenge's verdict ({"type", "met", "why"}) for Flow.game_finished() -> Legends.record_result()
+	var verdict: Dictionary = challenge.verdict(winner) if challenge != null else {}
+	if not verdict.is_empty():
+		Flow.last_result["challenge"] = verdict.duplicate(true)
 	if autoplay or humantest or trip_end:
-		show_message("FINAL  %d - %d\n%s WINS!" % [score[0], score[1], TEAM_NAMES[winner]], 9999.0, TEAM_COLORS[winner])
+		var second: String = "%s WINS!" % TEAM_NAMES[winner]
+		var color: Color = TEAM_COLORS[winner]
+		if not verdict.is_empty():
+			second = "CHALLENGE MET!" if bool(verdict["met"]) else "CHALLENGE FAILED"   # the goal line says why
+			color = TEAM_COLORS[0] if bool(verdict["met"]) else TEAM_COLORS[1]
+		show_message("FINAL  %d - %d\n%s" % [score[0], score[1], second], 9999.0, color)
 		if trip_end:
 			stats["team_stats"] = [team_stats(0), team_stats(1)]
 			var fin := func() -> void:
@@ -2091,6 +2185,16 @@ func on_game_over(winner: int) -> void:
 			return "%s %d pts, shots %d/%d, dunks %d, steals %d, blocks %d" % [TEAM_NAMES[t], d.points, d.makes,
 					d.shots, d.dunks, d.steals, d.blocks]
 		print("TEAMS %s | %s" % [ts.call(0), ts.call(1)])   # the pause screen's numbers (team_stats)
+		if not verdict.is_empty():
+			var cd: Dictionary = Flow.match.get("challenge", {})
+			print("CHALLENGE %s %s %s %d-%d | %s | %s" % [str(cd.get("legend", "")), str(Flow.match.get("level", "")),
+					"met" if bool(verdict["met"]) else "failed", score[0], score[1], challenge.summary(),
+					str(verdict["why"]) if str(verdict["why"]) != "" else "-"])
+		elif Flow.in_legends():
+			print("CHALLENGE %s %s %s %d-%d | finale" % [str(Flow.match.get("key", "")), str(Flow.match.get("level", "")),
+					"met" if winner == 0 else "failed", score[0], score[1]])
+		if Flow.in_legends():
+			print("POINTS %s" % str(points_by))
 		if Twists.active():
 			print(_twist_summary())
 		print(stats)
