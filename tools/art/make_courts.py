@@ -19,6 +19,8 @@ Outputs (all opaque except the ball):
   assets/courts/gold_hall_*.png         HALL), same sizes as the city looks; see "Phase 8 star rewards" below
   assets/ball/ball_1..3.png            P8-06 special balls (SKY, NIGHT GLOW, GOLD), the same 4 frames as ball.png
   docs/art/rewards_preview.png         the reward looks and balls for the owner (needs --rewards-preview DIR)
+  assets/courts/era_grand_*.png       P9-05 Legends Chapter 1 court (OLD GYM: an old wood gym with banners of old
+                                       years), same sizes as the city looks; see "Phase 9 era courts" below
   docs/art/courts_preview_v2.png      the city looks for the owner: the game's own 1280 x 720 screenshot of each, its
                                        whole backdrop and its floor tile 3 x 3 (needs --shots DIR, below)
   docs/art/courts_preview_v1.png      preview: both looks composed in the 3/4 view as the game frames it, plus the
@@ -44,8 +46,13 @@ Usage:  python3 tools/art/make_courts.py                  all textures, the v1 p
         python3 tools/art/make_courts.py --rewards        only the P8-06 reward looks and balls
         python3 tools/art/make_courts.py --rewards-preview DIR   the same, plus docs/art/rewards_preview.png from
                                                           DIR/<look>.png (-- --court midnight / gold_hall --shots)
-        python3 tools/art/make_courts.py --print-looks    prints the city looks' court_looks.gd entries (colours for
-                                                          the lines, paint, hoop; CITY_LOOKS below) as GDScript
+        python3 tools/art/make_courts.py --era            only the P9-05 era looks (era_grand)
+        python3 tools/art/make_courts.py --era-preview DIR   the same, plus DIR/era_grand_tiles.png (backdrop at 3x
+                                                          and the floor tile 3 x 3; game check: -- --court era_grand
+                                                          --shots)
+        python3 tools/art/make_courts.py --print-looks    prints the city, reward and era looks' court_looks.gd
+                                                          entries (colours for the lines, paint, hoop; CITY_LOOKS,
+                                                          REWARD_LOOKS, ERA_LOOKS below) as GDScript
 Needs:  Pillow, numpy
 """
 import math
@@ -1900,7 +1907,7 @@ def looks_gdscript():
              "paint", "logo", "apron", "backdrop", "backdrop_texture", "backdrop_scale", "wall", "wall_dark",
              "ambience", "backboard", "board_square", "pole", "rim", "net", "front_fence", "floor_overlay", "reward", "twist"]
     out = []
-    for lid, d in list(CITY_LOOKS.items()) + list(REWARD_LOOKS.items()):
+    for lid, d in list(CITY_LOOKS.items()) + list(REWARD_LOOKS.items()) + list(ERA_LOOKS.items()):
         d = dict(d)
         if lid in REWARD_IDS:
             d["reward"] = REWARD_IDS[lid]
@@ -2283,6 +2290,325 @@ REWARD_IDS = {"midnight": "court_1", "gold_hall": "court_2"}
 REWARD_MAKERS = {"midnight": (midnight_floor, midnight_backdrop), "gold_hall": (gold_hall_floor, gold_hall_backdrop)}
 
 
+
+# ============================================================================= Phase 9 era courts (P9-05)
+# Legends, Chapter 1 (the Grandfathers): look "era_grand", an old wood gym from long ago. Same conventions as the city
+# looks (64 x 64 seamless floor tile, 384 x 100 backdrop repeating in x). Made up and generic: the banners carry only
+# old years, stars and stripes (no names, letters, teams, arenas, leagues or logos). Its court_looks.gd row has no
+# twist (the era twist comes from the match, legends.gd) and it never joins the Quick Game COURT list in Phase 9.
+#   era_grand  OLD GYM  wide old boards under amber varnish (nail heads, worn patches); a plaster wall with tall
+#                       arched windows of late-day light, felt banners of old years, a round wall clock and a
+#                       hand-flipped score board; a wooden running-track balcony with an iron rail; folding wooden
+#                       bleachers, half full of a crowd in hats and muted colours; a wooden kick board
+
+# --- era_grand floor
+AGEWOOD = pal("#d8a861", "#cc9a55", "#bf8c4a", "#b07f42")     # aged maple, yellowed by old varnish
+AGEWOOD_SEAM = H("#7e5228")
+AGEWOOD_GRAIN = H("#a8743c")
+AGEWOOD_NAIL = H("#5a3a1e")
+
+
+def era_grand_floor(seed=51):
+    """Wide old boards (4 texels + seam, longer than the gym's), amber varnish worn duller in patches, nail heads at
+    every board end, a few dark scuffs."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, AGEWOOD[1], wrap_y=True)
+    wear = periodic_noise(TILE, TILE, 2, rnd, octaves=2)
+    wear = (wear - wear.min()) / (wear.max() - wear.min())
+    rows_h = [5, 5, 6] * 4                                      # wide boards of 4 and 5 texels + a seam (sum 64)
+    y = 0
+    for bh in rows_h:
+        while True:
+            n = rnd.choice((1, 2, 2))
+            js = sorted(rnd.randrange(TILE) for _ in range(n))
+            gaps = [((js[(k + 1) % n] - js[k]) % TILE) or TILE for k in range(n)]
+            if min(gaps) >= 18:
+                break
+        for k in range(n):
+            x0, L = js[k], gaps[k]
+            base = AGEWOOD[rnd.choice((0, 1, 1, 2, 2, 3))]
+            for dx in range(L):
+                x = x0 + dx
+                for dy in range(bh - 1):
+                    c = base
+                    if dy == 0:
+                        c = mix(base, (255, 234, 190), 0.12)    # lit top edge
+                    elif dy == bh - 2:
+                        c = mix(base, AGEWOOD_SEAM, 0.12)       # shaded lower edge
+                    if wear[(y + dy) % TILE, x % TILE] > 0.70:
+                        c = mix(c, H("#e4c79a"), 0.28)          # dull, worn varnish
+                    if dx == L - 1:
+                        c = mix(base, AGEWOOD_SEAM, 0.65)       # end joint
+                    px.put(x, y + dy, c)
+            px.blend(x0 + 1, y + bh // 2 - 1, AGEWOOD_NAIL, 0.55)  # a nail head at the board's end
+            for _ in range(max(1, L // 8)):                     # long grain streaks
+                gx = x0 + rnd.randint(2, max(2, L - 8))
+                gy = y + rnd.randint(1, bh - 2)
+                for q in range(rnd.randint(4, 8)):
+                    if (gx + q - x0) % TILE < L - 1:
+                        px.put(gx + q, gy, mix(base, AGEWOOD_GRAIN, 0.5))
+        for x in range(TILE):
+            px.put(x, y + bh - 1, AGEWOOD_SEAM)
+        y += bh
+    for _ in range(5):                                          # sneaker scuffs
+        x, yy = rnd.randrange(TILE), rnd.randrange(TILE)
+        for k in range(rnd.randint(3, 5)):
+            px.blend(x + k, yy + (1 if k in (0, 4) else 0), H("#4a2e18"), 0.45)
+    return px.image()
+
+
+# --- era_grand backdrop
+PLASTER = pal("#e2d2b0", "#d0bf9c", "#b8a684", "#988668")      # cream plaster wall, warm
+WAINSCOT = pal("#a8703e", "#8c5a30", "#6e4424", "#4e2e18")      # dark wood panelling, the balcony and the kick board
+RAFTER = pal("#6a4a30", "#563a24", "#40291a", "#2a1a10")
+WINDOW = pal("#fff2c8", "#f8dc96", "#e8bc70", "#c8945a")        # late-day light through old glass (light .. dark)
+MULLION = H("#5a3e26")
+IRON = pal("#5a5a5e", "#3e3e44", "#2a2a30", "#18181c")
+FELT = [pal("#b8503e", "#963a2e", "#742a22", "#501c18"),        # maroon
+        pal("#e0b050", "#c8923a", "#9c6c26", "#6a4618"),        # mustard
+        pal("#5a8a5a", "#3e6e46", "#2c5234", "#1c3824"),        # forest green
+        pal("#5a6e9a", "#3e507c", "#2c3a5e", "#1c2640"),        # navy
+        pal("#f0e6cc", "#d8ccae", "#b4a688", "#8a7c62")]        # cream
+OLD_SHIRTS = [pal("#e8dcc0", "#cfc2a4", "#a89a7e", "#7a6e58"), pal("#8a9ab8", "#62749a", "#46567a", "#2e3a56"),
+              pal("#b87a5a", "#965a40", "#744230", "#502c20"), pal("#9aa47a", "#7a8458", "#5c6440", "#3e442a"),
+              pal("#6a6470", "#4e4856", "#38343e", "#24222a"), pal("#c89a5a", "#a87a40", "#84602e", "#5a401e"),
+              pal("#b06060", "#8e4646", "#6c3434", "#4a2424")]
+HAT = pal("#5a4a3c", "#3e3228", "#2a221a")                       # felt hats (dark brown .. near black)
+ERA_TIERS = 1
+ERA_TIER_H = 9
+ERA_YEARS = ["1948", "1953", "1957", "1961", "1964", "1969"]   # made-up old seasons, no names
+
+
+def felt_banner(px, bx, top, w, h, c, ink, year, stripes=2):
+    """A hanging felt banner: a wooden rod, a star, an old year, stripes near the notched bottom (no letters)."""
+    px.rect(bx - 2, top - 1, bx + w + 1, top - 1, RAFTER[1])     # rod
+    px.put(bx - 2, top - 1, RAFTER[0])
+    for y in range(top, top + h):
+        for x in range(bx, bx + w):
+            k = 1
+            if x == bx:
+                k = 0
+            if x == bx + w - 1:
+                k = 2
+            px.put(x, y, c[k])
+    mid = bx + (w - 1) / 2.0
+    for d in range(3):                                          # swallow-tail bottom
+        for x in range(bx, bx + w):
+            if abs(x - mid) > d * 2 + 1:
+                px.put(x, top + h + d, c[2] if x > mid else c[1])
+    for s in range(stripes):
+        yy = top + h - 3 - 2 * s
+        px.rect(bx + 1, yy, bx + w - 2, yy, ink)
+    cx = bx + w // 2
+    for dy, row in enumerate(("..X..", "XXXXX", ".XXX.", ".X.X.")):
+        for dx, ch in enumerate(row):
+            if ch == "X":
+                px.put(cx - 3 + dx, top + 2 + dy, ink)
+    number(px, year, cx - 8, top + 8, ink)
+
+
+def era_person(px, x, y, rnd, t, standing=False, arms_up=False):
+    """A spectator of the old days: muted clothes, often a felt hat or a flat cap."""
+    person(px, x, y, rnd, t, standing, arms_up, shirts=OLD_SHIRTS)
+    r = rnd.random()
+    hx = x + 1
+    if r < 0.30:                                                # felt hat: crown and brim
+        hc = rnd.choice(HAT)
+        px.rect(hx, y - 1, hx + 2, y, hc)
+        px.rect(hx - 1, y + 1, hx + 3, y + 1, mix(hc, (0, 0, 0), 0.2))
+        px.put(hx, y - 1, mix(hc, (255, 255, 255), 0.15))
+    elif r < 0.45:                                              # flat cap
+        cc = rnd.choice(OLD_SHIRTS)
+        px.rect(hx, y, hx + 2, y, cc[2])
+        px.put(hx + 3, y + 1, cc[3])
+
+
+def era_window(px, x0, y0, x1, y1):
+    """A tall arched window of warm late-day light with iron mullions."""
+    cxw = (x0 + x1) / 2.0
+    r2 = ((x1 - x0) / 2.0) ** 2
+    ay = y0 + 5                                                 # where the arch meets the straight sides
+
+    def inside(x, y):
+        return y >= ay or (x - cxw) ** 2 + (y - ay) ** 2 * 2.6 <= r2
+
+    for y in range(y0 - 2, y1 + 1):
+        for x in range(x0 - 1, x1 + 2):
+            if inside(x, y) and x0 <= x <= x1 and y >= y0 - 1:
+                k = 0 if (x - x0) + (y - y0) // 2 < 7 else 1
+                if y > y1 - 6:
+                    k = 2
+                px.put(x, y, WINDOW[k])
+            elif any(inside(x + ex, y + ey) and x0 <= x + ex <= x1 for ex, ey in ((1, 0), (-1, 0), (0, 1))):
+                px.put(x, y, MULLION)                           # frame round the glass
+    for y in range(y0 - 1, y1 + 1):
+        for x in (int(cxw), int(cxw) + 1):
+            if inside(x, y):
+                px.put(x, y, MULLION)
+    for yy in (y0 + 8, y0 + 16):
+        for x in range(x0, x1 + 1):
+            px.put(x, yy, MULLION)
+    px.rect(x0 - 1, y1 + 1, x1 + 1, y1 + 1, WAINSCOT[1])         # sill
+    px.rect(x0 - 1, y1 + 2, x1 + 1, y1 + 2, WAINSCOT[3])
+    for y in range(y0, y1 + 2):                                 # a soft glow on the plaster round the window
+        for x in (x0 - 4, x0 - 3, x0 - 2, x1 + 2, x1 + 3, x1 + 4):
+            px.blend(x, y, WINDOW[1], 0.16)
+
+
+def era_grand_backdrop(seed=52):
+    """The game shows rows ~50-100 at 1280 x 720 (the top bar covers ~50-68), so the landmarks sit low: the
+    balcony up high (seen on taller screens and in previews), the windows, banners, clock and score board in rows
+    ~52-82, one tier of folding bleachers under them, the kick board at the floor."""
+    rnd = random.Random(seed)
+    px = bd_canvas(PLASTER[1])
+    wall_bot = 84                                               # plaster down to here, then the dado and bleachers
+    for y in range(wall_bot):                                   # plaster, darker toward the top, trowel marks
+        for x in range(BD_W):
+            k = 1 if y > 46 else 2
+            if (x * 7 + y * 13) % 29 == 0:
+                k = min(3, k + 1)
+            elif (x * 5 + y * 3) % 31 == 0:
+                k = max(0, k - 1)
+            px.put(x, y, PLASTER[k])
+    # ceiling: dark wood with rafter ends
+    px.rect(0, 0, BD_W - 1, 4, RAFTER[2])
+    px.rect(0, 5, BD_W - 1, 5, RAFTER[3])
+    for x in range(0, BD_W, 24):
+        px.rect(x, 5, x + 3, 8, RAFTER[1])
+        px.put(x, 5, RAFTER[0])
+        px.rect(x, 9, x + 3, 9, mix(PLASTER[2], RAFTER[3], 0.4))
+    # balcony: a wooden running track high on the wall, spectators leaning on its iron rail
+    bt = 36
+    x = 3
+    while x < BD_W - 6:
+        if rnd.random() < 0.45:
+            era_person(px, x, bt - 9, rnd, 0)
+        x += rnd.choice((5, 6, 7, 9, 12))
+    px.rect(0, bt - 3, BD_W - 1, bt - 3, IRON[1])
+    px.rect(0, bt - 2, BD_W - 1, bt - 2, IRON[3])
+    for x in range(2, BD_W, 6):
+        px.put(x, bt - 1, IRON[2])
+    px.rect(0, bt, BD_W - 1, bt + 6, WAINSCOT[1])
+    px.rect(0, bt, BD_W - 1, bt, WAINSCOT[0])
+    px.rect(0, bt + 5, BD_W - 1, bt + 6, WAINSCOT[3])
+    for x in range(0, BD_W, 16):                                # fascia panels
+        px.rect(x, bt + 2, x, bt + 4, WAINSCOT[2])
+        px.put(x + 1, bt + 2, WAINSCOT[0])
+    for x in range(0, BD_W):                                    # its shadow on the plaster
+        px.blend(x, bt + 7, RAFTER[3], 0.35)
+        px.blend(x, bt + 8, RAFTER[3], 0.15)
+    # tall arched windows of late-day light, one every 64 texels (the strip repeats every 384)
+    for wx in range(6, BD_W, 64):
+        era_window(px, wx, 55, wx + 15, 80)
+    # felt banners between the windows (years and stars only) ...
+    banner_x = [30, 94, 222, 286, 350]
+    for k, bx in enumerate(banner_x):
+        c = FELT[(0, 1, 4, 3, 2)[k]]                               # maroon, mustard, cream, navy, green
+        felt_banner(px, bx, 58, 20, 19, c, FELT[4][0] if k != 2 else FELT[0][1], ERA_YEARS[k], stripes=2 if k % 2 == 0 else 1)
+    # ... and in the middle, between two windows, the round wall clock over a hand-flipped score board
+    ccx, ccy, cr = 174, 60, 6
+    for y in range(ccy - cr - 1, ccy + cr + 2):
+        for x in range(ccx - cr - 1, ccx + cr + 2):
+            d = (x - ccx) ** 2 + (y - ccy) ** 2
+            if d <= (cr - 1) ** 2:
+                px.put(x, y, H("#f8f0dc"))
+            elif d <= (cr + 1) ** 2:
+                px.put(x, y, RAFTER[3] if (x - ccx) + (y - ccy) > 0 else RAFTER[1])
+    for k in range(4):                                          # quarter ticks
+        a = k * math.pi / 2
+        px.put(ccx + int(round(math.cos(a) * (cr - 2))), ccy + int(round(math.sin(a) * (cr - 2))), RAFTER[1])
+    px.rect(ccx, ccy - 4, ccx, ccy, H("#2a1a10"))               # hands
+    px.rect(ccx, ccy, ccx + 3, ccy, H("#2a1a10"))
+    sx0, sx1, sy0, sy1 = 156, 192, 69, 80
+    px.rect(ccx, ccy + cr + 2, ccx, sy0 - 1, IRON[2])           # the clock's wire down to the board
+    px.rect(sx0, sy0, sx1, sy1, WAINSCOT[2])
+    px.rect(sx0, sy0, sx1, sy0, WAINSCOT[0])
+    px.rect(sx0, sy0, sx0, sy1, WAINSCOT[1])
+    px.rect(sx1, sy0, sx1, sy1, WAINSCOT[3])
+    px.rect(sx0, sy1, sx1, sy1, WAINSCOT[3])
+    for (cx0, s) in ((sx0 + 3, "14"), (sx1 - 13, "12")):       # cream flip cards
+        px.rect(cx0, sy0 + 2, cx0 + 10, sy0 + 8, H("#f0e6cc"))
+        px.rect(cx0 + 5, sy0 + 2, cx0 + 5, sy0 + 8, H("#b4a688"))
+        px.rect(cx0, sy0 + 9, cx0 + 10, sy0 + 9, WAINSCOT[3])
+        number(px, s, cx0 + 2, sy0 + 3, H("#2a1a10"))
+    px.rect(sx0 + 16, sy0 + 4, sx0 + 20, sy0 + 6, FELT[0][0])  # possession lamp
+    # dark wood dado behind the top of the bleachers
+    px.rect(0, wall_bot, BD_W - 1, BD_H - 1, WAINSCOT[2])
+    px.rect(0, wall_bot, BD_W - 1, wall_bot, WAINSCOT[0])
+    px.rect(0, wall_bot + 1, BD_W - 1, wall_bot + 1, WAINSCOT[1])
+    # folding wooden bleachers, half full
+    top0 = BD_H - 7 - ERA_TIERS * ERA_TIER_H
+    for t in range(ERA_TIERS):
+        y0 = top0 + t * ERA_TIER_H
+        px.rect(0, y0 + 2, BD_W - 1, y0 + ERA_TIER_H - 4, RISER[2 if t < ERA_TIERS - 1 else 1])
+        px.rect(0, y0 + 2, BD_W - 1, y0 + 2, RISER[3])
+        px.rect(0, y0 + ERA_TIER_H - 3, BD_W - 1, y0 + ERA_TIER_H - 3, BLEACH[0])
+        px.rect(0, y0 + ERA_TIER_H - 2, BD_W - 1, y0 + ERA_TIER_H - 2, BLEACH[1])
+        px.rect(0, y0 + ERA_TIER_H - 1, BD_W - 1, y0 + ERA_TIER_H - 1, BLEACH[3])
+        for x in range(0, BD_W, 32):                            # plank ends on the seats
+            px.put(x, y0 + ERA_TIER_H - 2, BLEACH[3])
+        x = rnd.randint(0, 4)
+        density = 0.70
+        while x < BD_W - 2:
+            if rnd.random() < density:
+                standing = rnd.random() < 0.08
+                era_person(px, x, y0 + ERA_TIER_H - 10 - (2 if standing else 0), rnd, t, standing,
+                           arms_up=rnd.random() < 0.10)
+            x += rnd.choice((5, 6, 6, 7))
+    # front: a wooden kick board along the floor
+    fy = BD_H - 7
+    px.rect(0, fy, BD_W - 1, BD_H - 1, WAINSCOT[1])
+    px.rect(0, fy, BD_W - 1, fy, WAINSCOT[0])
+    px.rect(0, BD_H - 2, BD_W - 1, BD_H - 1, WAINSCOT[2])
+    px.rect(0, BD_H - 1, BD_W - 1, BD_H - 1, WAINSCOT[3])
+    for x in range(0, BD_W, 24):
+        px.rect(x, fy + 1, x, BD_H - 3, WAINSCOT[3])
+        px.put(x + 1, fy + 1, WAINSCOT[0])
+    return haze_rows(px.image(), H("#5a4632"), 0.30, 0.10)     # warm and a little faded: the old days
+
+
+# The era looks' court_looks.gd data (like CITY_LOOKS; --print-looks prints them too). Music: an existing track until
+# the era's own (P9-16); no "twist" key (the match brings the era twist).
+ERA_LOOKS = {
+    "era_grand": {"name": "OLD GYM", "music": "memphis", "floor": "#cc9a55", "floor_stripe": "#bf8c4a",
+                  "stripe_ft": 0, "speckle": 0, "line": ("#fff4dc", 0.92), "paint": ("#963a2e", 0.82),
+                  "logo": ("#c8923a", 0.82), "apron": "#6e4424", "backdrop": "bleachers", "wall": "#d0bf9c",
+                  "wall_dark": "#4e2e18", "backboard": "wood", "board_square": "#f0e6cc",
+                  "pole": "#7a5030", "rim": "#e8602a", "net": ("#f4f0e4", 0.85)},
+}
+ERA_MAKERS = {"era_grand": (era_grand_floor, era_grand_backdrop)}
+
+
+def era_outputs():
+    """P9-05: {path: image} for the era court looks (floor + backdrop)."""
+    out = {}
+    for lid, (fl, bd) in ERA_MAKERS.items():
+        out[os.path.join(COURTS, lid + "_floor.png")] = fl()
+        out[os.path.join(COURTS, lid + "_backdrop.png")] = bd()
+    return out
+
+
+def write_era(args):
+    """The P9-05 outputs; --era-preview DIR also writes DIR/<look>_tiles.png (the backdrop at 3x, the floor 3 x 3)."""
+    os.makedirs(COURTS, exist_ok=True)
+    era = era_outputs()
+    for path, img in era.items():
+        img.save(path, optimize=True)
+        print("wrote %s %s %d bytes" % (os.path.relpath(path, ROOT), img.size, os.path.getsize(path)))
+    if "--era-preview" in args:
+        i = args.index("--era-preview")
+        d = args[i + 1]
+        for lid in ERA_MAKERS:
+            bd = era[os.path.join(COURTS, lid + "_backdrop.png")]
+            t3 = tile_test(era[os.path.join(COURTS, lid + "_floor.png")], n=3, zoom=2)
+            pv = Image.new("RGB", (BD_W * 3, BD_H * 3 + 8 + t3.size[1]), (20, 18, 28))
+            pv.paste(bd.resize((BD_W * 3, BD_H * 3), Image.NEAREST), (0, 0))
+            pv.paste(t3, (0, BD_H * 3 + 8))
+            out = os.path.join(d, lid + "_tiles.png")
+            pv.save(out)
+            print("wrote", out)
+
+
 # ----------------------------------------------------------------------------- ball
 
 BALL = pal("#ffb070", "#f0761e", "#b84a16", "#702a12")
@@ -2648,6 +2974,9 @@ def main():
     if "--rewards" in args or "--rewards-preview" in args:
         write_rewards(args)                       # only the P8-06 files (the other textures are left as they are)
         return
+    if "--era" in args or "--era-preview" in args:
+        write_era(args)                           # only the P9-05 era looks (the other textures are left as they are)
+        return
     shots_dir = None
     if "--shots" in args:
         shots_dir = args[args.index("--shots") + 1]
@@ -2663,6 +2992,7 @@ def main():
         print("courts_preview_v2.png not rebuilt (needs game screenshots: --shots DIR, see the top of this file)")
     v1_main()
     write_rewards(args)
+    write_era(args)
 
 
 def v1_main():
