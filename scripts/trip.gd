@@ -67,7 +67,7 @@ extends RefCounted
 # final's three of --expected-roster / --best-roster, for the --challenge balance runs (P9-26).
 # Mentors (P9-23, owner L8 a): roster_player() adds "perk" (legends.gd perks_for(): {"id", "key", "value", "text",
 # "mentor"}) to a player an unlocked legend trains, only on a loaded trip (never the --city crews without a trip, never
-# the in-memory ramp sims: _perks_off; P9-30 adds the best perk there). The pairs live in legends.json, never here, so a
+# the in-memory ramp sims: _perks_off; they give no perk, P9-30 measured with --perk). The pairs live in legends.json, never here, so a
 # NEW TRIP keeps them; a pupil not on this trip's roster just has no effect. legends.gd strips "perk" from your side in
 # a challenge (Road Trip games only). P9-24 reads it in play.
 
@@ -799,7 +799,7 @@ static func _sim_roster(city_id: String, n: int, best: bool) -> bool:
 	saving = false
 	new_trip(DEFAULT_LEVEL)
 	_slots_override = BEST_ROSTER_SLOTS if best else 0
-	_perks_off = true   # P9-23: the sims field no mentor perks (P9-30 adds the best perk to the best bound)
+	_perks_off = true   # P9-23: the sims field no mentor perks (P9-30 measured the bound with --perk instead)
 	# P9-21: the best crew may draft any legend (as if all were unlocked; --legends-unlock-none: none, the P8 bound)
 	_sim_legends = best and not OS.get_cmdline_user_args().has(UNLOCK_NONE_FLAG)
 	var games: int = maxi(1, _rounds(city_id).size()) if is_tournament(city_id) else GAMES_PER_CITY

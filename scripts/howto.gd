@@ -73,9 +73,9 @@ const PAGES := [
 	]},
 	{"id": "stars", "pic": "trip", "title": "STARS", "lines": [
 		"Each win earns stars: Easy 1, Normal 2, Hard 3. Best kept, 72 in all.",
-		"Stars open roster slots: draft any player from a crew you've beaten.",
+		"Stars open roster slots: draft a player from a crew you've beaten, or a legend.",
 		"And jerseys, balls, van paints, courts and LEGEND. See the LOCKER.",
-		"Lost? Just retry. Won? Replay it from the map for more stars.",
+		"Lost? Just retry. Won? Replay it from the map, on any level, for more stars.",
 	]},
 ]
 

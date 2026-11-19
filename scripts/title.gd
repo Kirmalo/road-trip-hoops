@@ -145,10 +145,10 @@ const SIGN_POS := Vector2(1080, 518)   # below the three-button row (P7-04 made 
 #   [what, title, author, license, source, changes]   (changes: "" = none; every CC-BY item says what was changed)
 # --titletest checks that every CC-BY row of CREDITS.md has an entry here with its source URL and license.
 const CREDITS_LIST := [
-	["Players, jerseys, courts, balls, portraits, trip map, van paints, icon, How to Play pictures",
+	["Players, legends, jerseys, courts, balls, portraits, trip map, van paints, Legends screens, icon, How to Play pictures",
 		"Original pixel art made for this project",
 		"Road Trip Hoops project", "Original",
-		"tools/art (make_players_v2.py, make_courts.py, make_portraits_v2.py, make_map.py, make_icon.py, make_howto.py)", ""],
+		"tools/art (make_players_v2.py, make_courts.py, make_portraits_v2.py, make_map.py, make_legends_ui.py, make_icon.py, make_howto.py)", ""],
 	["Fallback sprites", "Sports Pack", "Kenney", "CC0 1.0", "https://www.kenney.nl", ""],
 	["Menu music", "Stage 1 (4 Chiptunes, Adventure)", "Juhani Junkala (SubspaceAudio)", "CC0",
 		"https://opengameart.org/content/4-chiptunes-adventure", ""],
