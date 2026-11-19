@@ -26,7 +26,7 @@
     "stripe2_pal), terry: true (a thick ribbed headband over any hair, an afro too; band_pal), chops: true (mutton",
     "chops), mustache: true, hair flattop, and the kneepads above in an era pad_pal. Era colors are the ERA_* palettes",
     "(made up, no real team's colors); legend sheets are added by P9-09. Look sample: make_players.py --legends-sample.",
-    "P9-09: the six Grandfathers legends are crew 'GR' (ids lg_*, original characters, numbers are placeholders), each",
+    "P9-09: the six Grandfathers legends are crew 'GR' (ids lg_*, original characters, numbers approved by the owner), each",
     "'draft': true (a _crew recolor through crew_recolor 'GR' and the _crew_j1..3 jerseys); every lg_ sheet carries the",
     "hook extra pages. Kits match the P9-10 portraits. Contact sheet: make_players_v2.py --legends-strip."
   ],
@@ -700,7 +700,7 @@
       "shoe_acc": "ERA_RUST", "sole_pal": "ERA_GUM", "action": ["dunk", 3]
     },
     {
-      "id": "lg_gate", "crew": "GR", "phase": 9, "number": 27, "role": "shot-blocking wall", "name": "Gate",
+      "id": "lg_gate", "crew": "GR", "phase": 9, "number": 54, "role": "shot-blocking wall", "name": "Gate",
       "draft": true, "desc": "P9-09 legend (original): broad big, light skin, brown flat-top, knee pads; olive tank, cream trim, short shorts, striped tube socks",
       "body": "heavy_big", "skin": "light", "hair": "flattop", "hair_pal": "HAIR_BROWN", "kneepads": "both",
       "pad_pal": "ERA_PAD", "top": "tank", "top_pal": "ERA_OLIVE", "trim_pal": "ERA_CREAM", "shorts_pal": "ERA_OLIVE",
@@ -709,7 +709,7 @@
       "sole_pal": "ERA_GUM", "action": ["block", 3]
     },
     {
-      "id": "lg_set_shot", "crew": "GR", "phase": 9, "number": 26, "role": "deep shooter", "name": "Set Shot",
+      "id": "lg_set_shot", "crew": "GR", "phase": 9, "number": 9, "role": "deep shooter", "name": "Set Shot",
       "draft": true, "desc": "P9-09 legend (original): lean, tan skin, black hair with a side part; powder blue tank, brown trim, short shorts, tall striped socks",
       "body": "lanky_guard", "skin": "tan", "hair": "part", "hair_pal": "HAIR_BLACK", "top": "tank", "top_pal": "ERA_POWDER",
       "trim_pal": "ERA_BROWN", "shorts_pal": "ERA_POWDER", "shorts_trim": "ERA_BROWN", "shorts_len": 0.46,
@@ -718,7 +718,7 @@
       "sole_pal": "ERA_GUM", "action": ["shoot", 2]
     },
     {
-      "id": "lg_boxcar", "crew": "GR", "phase": 9, "number": 48, "role": "power forward", "name": "Boxcar",
+      "id": "lg_boxcar", "crew": "GR", "phase": 9, "number": 46, "role": "power forward", "name": "Boxcar",
       "draft": true, "desc": "P9-09 legend (original): heavy, deep skin, bald, cream wristbands; brown tank, mustard trim, short shorts, striped tube socks",
       "body": "power_forward", "body_tweak": {"mass": 0.15}, "skin": "deep", "hair": "bald", "hair_pal": "HAIR_BLACK",
       "wrist": true, "wrist_pal": "ERA_CREAM", "top": "tank", "top_pal": "ERA_BROWN", "trim_pal": "ERA_MUSTARD",
@@ -728,7 +728,7 @@
       "action": ["dunk_two", 4]
     },
     {
-      "id": "lg_velvet", "crew": "GR", "phase": 9, "number": 29, "role": "smooth slasher", "name": "Velvet",
+      "id": "lg_velvet", "crew": "GR", "phase": 9, "number": 19, "role": "smooth slasher", "name": "Velvet",
       "draft": true, "desc": "P9-09 legend (original): long, brown skin, black afro under a cream terry headband; mustard tank, brown trim, short shorts, striped tube socks",
       "body": "lanky_wing", "skin": "brown", "hair": "afro", "hair_pal": "HAIR_BLACK", "terry": true, "band_pal": "ERA_CREAM",
       "top": "tank", "top_pal": "ERA_MUSTARD", "trim_pal": "ERA_BROWN", "shorts_pal": "ERA_MUSTARD", "shorts_trim": "ERA_BROWN",
@@ -737,7 +737,7 @@
       "shoe_acc": "ERA_BROWN", "sole_pal": "ERA_GUM", "action": ["layup", 3]
     },
     {
-      "id": "lg_quarterback", "crew": "GR", "phase": 9, "number": 2, "role": "floor general", "name": "Quarterback",
+      "id": "lg_quarterback", "crew": "GR", "phase": 9, "number": 12, "role": "floor general", "name": "Quarterback",
       "draft": true, "desc": "P9-09 legend (original): short, light skin, rust curly hair, rust mustache; cream tank, rust trim, short shorts, high striped socks",
       "body": "stocky_guard", "skin": "light", "hair": "shaggy", "hair_pal": "HAIR_RUST", "mustache": true,
       "top": "tank", "top_pal": "ERA_CREAM", "trim_pal": "ERA_RUST", "shorts_pal": "ERA_CREAM", "shorts_trim": "ERA_RUST",

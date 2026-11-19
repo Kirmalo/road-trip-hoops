@@ -2091,7 +2091,7 @@ def draft_strip(path=DRAFT_STRIP):
 
 
 # ----------------------------------------------------------------------------- P9-09: the Grandfathers sheets
-# The six legend sheets (crews.json crew "GR", ids lg_*; original characters, numbers are placeholders) are ordinary
+# The six legend sheets (crews.json crew "GR", ids lg_*; original characters, numbers approved by the owner) are ordinary
 # 'draft': true entries: era colors, a _crew recolor in your colors (crew_recolor "GR") and the _crew_j1..3 star
 # jerseys; every lg_ sheet carries the hook extra pages (EXTRA_PREFIX). Rebuild: --only <the LEGENDS ids> (one comma
 # list), then --legends-strip (docs/art/legends_grand.png, read from the written files: what the game draws).
@@ -2138,7 +2138,7 @@ def legends_strip(path=LEGENDS_STRIP):
     dr = ImageDraw.Draw(img)
     dr.rectangle([0, 0, W, 36], fill=(28, 26, 38, 255))
     S.label(dr, (8, 3), "Legends Chapter 1, the Grandfathers (P9-09): the six legend sheets as the game draws them "
-                        "(index pages + palettes), 2x. Original characters; the numbers are placeholders.", 14)
+                        "(index pages + palettes), 2x. Original characters; owner-approved numbers.", 14)
     S.label(dr, (8, 20), "Top: era colors (idle S SE E NE N, run dribble SE, jump shot E, block S | HOOK: E gather .. "
                          "follow, release S, SE). Bottom: your colors (_crew, star jerseys %s) | the _crew hook." %
             ", ".join(nm for _, nm in jn), 12)
