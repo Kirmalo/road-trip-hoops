@@ -288,17 +288,36 @@ func _update_block_jump(delta: float) -> void:
 	elif phase == "fake":
 		game.stat("cpu_fake_reads")
 
-# "good", "bad" or "wait" (still rising, not high yet): how well timed this defender's block jump is right now
+# "good", "bad" or "wait" (still rising, not high yet): how well timed this defender's block jump is right now.
+# P9-24 block_window_mult (a mentor perk): his "good" stretch of the jump lasts that much longer, on each side of the
+# peak (x1.0 = today's heights, untouched)
 static func _jump_timing(d) -> String:
+	return _jump_timing_at(d, d.perk("block_window_mult", 1.0))
+
+static func _jump_timing_at(d, window_mult: float) -> String:
 	var rising: bool = d.block_jump_t < d.BLOCK_JUMP_TIME * 0.5
 	var need: float = BLOCK_HEIGHT_MIN
 	if d.game.is_human(d):
 		need = BLOCK_HUMAN_RISE_MIN if rising else BLOCK_HUMAN_FALL_MIN
+	if window_mult != 1.0:
+		need = _widened_need(need, window_mult)
 	if d.block_height_frac() >= need:
 		return "good"
 	if rising:
 		return "wait"
 	return "bad"
+
+# the height fraction that makes the time above it `mult` times as long: the jump is sin(PI x t), so a need n is good
+# from asin(n) / PI to the peak (0.5); that half-window x mult, back to a height (never below 0)
+static func _widened_need(need: float, mult: float) -> float:
+	var half: float = 0.5 - asin(clampf(need, 0.0, 1.0)) / PI
+	var edge: float = maxf(0.0, 0.5 - half * mult)
+	return sin(PI * edge)
+
+# P9-24: this good try was good only thanks to his block_window_mult perk (counted, and logged the first time)
+static func _perk_block_check(d, good: bool, what: String) -> void:
+	if good and d.perk_key != "" and _jump_timing_at(d, 1.0) != "good":
+		d.perk_log("well timed %s block try (window x%.2f)" % [what, d.perk("block_window_mult", 1.0)])
 
 static func _reach_bonus(g, d) -> float:
 	return BLOCK_HUMAN_REACH_FT if g.is_human(d) else 0.0
@@ -323,6 +342,7 @@ static func rim_blocker(g, shooter, kind: String):
 		d.def._air_saw_release = true
 		var good := tim == "good"
 		_count_try(g, d, good)
+		_perk_block_check(d, good, kind)
 		var chance: float = d.block_chance(good) * (DUNK_BLOCK_MULT if dunk else 1.0)
 		var roll: float = g.rng.randf()
 		if roll < chance * shooter.sig_block_mult(kind):   # P9-20 hook: x1.0 for everyone else
@@ -524,6 +544,7 @@ static func check_jump_shot_block(g) -> void:
 		d.def.rolled_shot = g.shot_serial
 		var good := tim == "good"
 		_count_try(g, d, good)
+		_perk_block_check(d, good, "layup" if layup else "jumper")
 		var c: float = d.block_chance(good) * (LAYUP_AIR_BLOCK_MULT if layup else 1.0)
 		var roll: float = g.rng.randf()
 		if roll < c * ball.shooter.sig_block_mult(ball.shot_kind):   # P9-20 hook: x1.0 for everyone else

@@ -96,6 +96,21 @@ var signature := ""               # P9-20: his move id ("" = none)
 var hook_shot := false            # the current / last jumper is a hook (drawn with the hook frames; harder to block)
 var long_dunk := false            # this dunk took off beyond DUNK_RANGE (glides further; drawn two-handed)
 var _sig_print := false           # test runs (any user argument) print a SIGNATURE line when a move fires
+
+# ---- mentor perks (P9-24, owner L8 a). The match dict's "perk" ({"id", "key", "value", "text", "mentor"}, P9-23
+# Trip.roster_player(); your side in Road Trip games only, challenges strip it) is read here once. The sim asks
+# perk(key, default) at the one spot each key belongs to; without a perk every call returns the default, so the game
+# is exactly today's. legends_data.gd PERKS has the sizes; a "_mult" key defaults 1.0, a "_bonus" key 0.0.
+const PERK_KEY := "perk"           # = Trip.PERK_KEY, the player dict's perk entry
+const PERK_TEAM := 0              # only BLUE (your side) ever plays a perk (never the CPU crew, L8 a)
+const PERK_CLOSE_FT := 14.0       # close_shot_bonus: a jumper this close to the rim is a "close shot" (= HOOK_MAX_FT,
+                                  # the range of Steeple's hook); layups count at any range, dunks never
+var perk_id := ""                 # legends_data PERKS id ("" = none)
+var perk_key := ""                # the sim key it changes (close_shot_bonus, block_window_mult, ...)
+var perk_value := 0.0
+var perk_mentor := ""             # the legend who trains him (log line only)
+var _perk_logged := false         # the first time it applies in this game prints a PERK line (test runs)
+var _perk_print := false
 # P5-03: the player dict from Flow.match (board "Match config"); {} in Quick Game. Ratings missing from it are 50.
 const CREW_SHEET_SUFFIX := "_crew"           # a city player's recolor in your colors, used when he plays for team 0
 # Quick Game (no match dict) and the last fallback of a trip player: the sheet of each slot (P6-25; the old v1
@@ -394,6 +409,7 @@ func _apply_pdict(pdict: Dictionary) -> void:
 	var sig = pdict.get("signature", "")
 	signature = str((sig as Dictionary).get("id", "")) if sig is Dictionary else str(sig)
 	_sig_print = signature != "" and OS.get_cmdline_user_args().size() > 0
+	_apply_perk(pdict.get(PERK_KEY, {}))
 	var r: Dictionary = pdict.get("ratings", {})
 	for k in r:
 		ratings[k] = clampi(int(r[k]), Ratings.MIN_RATING, Ratings.MAX_RATING)
@@ -403,6 +419,35 @@ func _apply_pdict(pdict: Dictionary) -> void:
 			ratings["steal"] = Ratings.derived(dfn, int(pdict.get("steal_bias", 0)))
 		if not r.has("block"):
 			ratings["block"] = Ratings.derived(dfn, int(pdict.get("block_bias", 0)))
+
+# P9-24: the match dict's mentor perk; anything but a well-formed perk on BLUE leaves him without one
+func _apply_perk(pk) -> void:
+	if team != PERK_TEAM or not (pk is Dictionary):
+		return
+	var k: String = str((pk as Dictionary).get("key", ""))
+	if k == "" or not (pk as Dictionary).has("value"):
+		return
+	perk_id = str((pk as Dictionary).get("id", ""))
+	perk_key = k
+	perk_value = float((pk as Dictionary)["value"])
+	perk_mentor = str((pk as Dictionary).get("mentor", ""))
+	_perk_print = OS.get_cmdline_user_args().size() > 0
+
+# P9-24: his perk's value for this sim key, or `default` (today's value) when his perk is another one or none
+func perk(key: String, default: float) -> float:
+	return perk_value if perk_key == key and key != "" else default
+
+# P9-24: his perk changed a play: counts perk_<id>_t<team> (in the stats printout) and, the first time in this game in
+# a test run, prints a PERK line
+func perk_log(what: String) -> void:
+	game.stat("perk_%s_t%d" % [perk_id, team])
+	if _perk_logged:
+		return
+	_perk_logged = true
+	if _perk_print:
+		print("PERK %s %s (key %s %s, mentor %s, team %d, %d-%d): %s" % [perk_id, pname if pname != "" else pid,
+				perk_key, str(perk_value), perk_mentor if perk_mentor != "" else "-", team, int(game.score[0]),
+				int(game.score[1]), what])
 
 func has_ball() -> bool:
 	return game.ball.state == game.ball.HELD and game.ball.holder == self
@@ -1058,7 +1103,11 @@ func sig_log(id: String, what: String) -> void:
 
 # how far out he can take off for a dunk
 func dunk_range() -> float:
-	return DUNK_RANGE + (LONG_DUNK_EXTRA_FT if signature == SIG_LONG_DUNK else 0.0)
+	return dunk_reach() + (LONG_DUNK_EXTRA_FT if signature == SIG_LONG_DUNK else 0.0)
+
+# P9-24: DUNK_RANGE with his dunk_reach_mult perk (DUNK_RANGE without it); a long_dunk signature reaches past this
+func dunk_reach() -> float:
+	return DUNK_RANGE * perk("dunk_reach_mult", 1.0)
 
 # defense.gd: x this on a block try at my shot of `kind` ("" jumper, "layup", "dunk"); 1.0 for everyone but the hook man
 func sig_block_mult(kind: String) -> float:
@@ -1125,9 +1174,11 @@ func is_dunk_speed() -> bool:
 # Shoot near the rim: take off for a dunk (very close and fast) or a layup. No shot meter.
 func start_rim_move(d_ft: float) -> void:
 	var dunk := d_ft <= dunk_range() and is_dunk_speed()
-	long_dunk = dunk and d_ft > DUNK_RANGE   # P9-20: only a long_dunk signature reaches past DUNK_RANGE
+	long_dunk = dunk and d_ft > dunk_reach()   # P9-20: only a long_dunk signature reaches past DUNK_RANGE
 	if long_dunk:
 		sig_log(SIG_LONG_DUNK, "power dunk from %.1f ft" % d_ft)
+	elif dunk and d_ft > DUNK_RANGE:
+		perk_log("dunk from %.1f ft (reach %.1f ft)" % [d_ft, dunk_reach()])   # P9-24 dunk_reach_mult
 	alley_oop = false
 	rim_kind = "dunk" if dunk else "layup"
 	jump_time = DUNK_TIME if dunk else LAYUP_TIME

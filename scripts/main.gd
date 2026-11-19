@@ -41,6 +41,12 @@ const CountdownScript = preload("res://scripts/countdown.gd")   # P8-31: the 3-2
 # and the verdict). Loaded at run time, so a missing file changes nothing; Quick Game and the trip never add it.
 const CHALLENGE_PATH := "res://scripts/challenge.gd"
 const LEGENDS_PATH := "res://scripts/legends.gd"   # --legendtest, --challenge <id> (Legends.test_match())
+# P9-24 mentor perks: a player's perk (player.perk(key, default), from his match dict) is read at one spot per key:
+# close_shot_bonus, three_bonus and contested_layup_bonus here in shot_probability(), pass_speed_mult in
+# _perk_pass_step(), dunk_reach_mult in player.dunk_reach(), block_window_mult in defense._jump_timing(). No perk =
+# today's game. Test flag -- --perk <id>[,<id>,<id>]: BLUE's players get these legends_data PERKS (one id = all 3).
+const LEGENDS_DATA_PATH := "res://scripts/legends_data.gd"   # PERKS, for --perk (loaded only with the flag)
+const PERK_FLAG := "--perk"
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
@@ -469,7 +475,8 @@ func _ready() -> void:
 		for i in 3:
 			var p = PlayerScript.new()
 			var color := "blue" if t == 0 else "red"
-			_setup_player(p, t, i, load("res://assets/%s_%d.png" % [color, looks[t][i]]), _match_player(t, i))
+			_setup_player(p, t, i, load("res://assets/%s_%d.png" % [color, looks[t][i]]),
+					_with_test_perk(t, i, _match_player(t, i)))
 			add_child(p)
 			players.append(p)
 			teams[t].append(p)
@@ -564,6 +571,32 @@ func _match_player(t: int, i: int) -> Dictionary:
 	if i >= ps.size() or not (ps[i] is Dictionary):
 		return {}
 	return ps[i]
+
+# P9-24 test flag -- --perk <id>[,<id>,<id>] (or --perk=...): a copy of BLUE player i's dict with that legends_data
+# PERKS row as his "perk" (one id: every BLUE player; else id i, "-" or a missing one = none). Without the flag, or
+# for RED, the dict itself.
+func _with_test_perk(t: int, i: int, pd: Dictionary) -> Dictionary:
+	if t != HUMAN_TEAM:
+		return pd
+	var v: String = _flag_value(PERK_FLAG)
+	if v == "" or not ResourceLoader.exists(LEGENDS_DATA_PATH):
+		return pd
+	var ids: PackedStringArray = v.split(",", false)
+	if ids.is_empty():
+		return pd
+	var id: String = ids[0] if ids.size() == 1 else (ids[i] if i < ids.size() else "")
+	var ld: GDScript = load(LEGENDS_DATA_PATH) as GDScript
+	var perks: Dictionary = ld.get("PERKS") if ld != null and ld.get("PERKS") is Dictionary else {}
+	if not perks.has(id):
+		if id != "" and id != "-" and i == 0:
+			print("--perk: unknown perk '%s' (known: %s)" % [id, ", ".join(PackedStringArray(perks.keys()))])
+		return pd
+	var row: Dictionary = perks[id]
+	var out: Dictionary = pd.duplicate()
+	out["perk"] = {"id": id, "key": str(row.get("key", "")), "value": float(row.get("value", 0.0)),
+			"text": str(row.get("text", "")), "mentor": "test"}
+	print("PERK TEST BLUE %d %s: %s" % [i, id, str(row.get("text", ""))])
+	return out
 
 # ---------------- P6-T3: Quick Game teams ----------------
 # A Quick Game (no trip match) fields the two crews picked on the menu panel (menu.gd quick_team_ids(): the Kings vs
@@ -1206,7 +1239,27 @@ func shot_probability(p, quality: float) -> float:
 		base *= RIM_CONTEST_NEAR_MULT if rim else CONTEST_NEAR_MULT
 	# the shooting rating moves jump shots only (dunks and layups use finishing, in player.gd); 50 = x1.0
 	var rate: float = 1.0 if rim else Ratings.shot_mult(_shooting(p))
-	return clampf(base * quality * rate, SHOT_MIN, SHOT_CAP)
+	return clampf(base * quality * rate + _perk_shot_bonus(p, d, hoop, cont), SHOT_MIN, SHOT_CAP)
+
+# P9-24: the make chance a shooter's mentor perk adds to this shot (0.0 without one; still capped at SHOT_CAP):
+# close_shot_bonus on layups and on jumpers inside player.PERK_CLOSE_FT (not dunks), three_bonus beyond the arc,
+# contested_layup_bonus on a layup with a defender inside CONTEST_NEAR_FT. Free throws never get here.
+func _perk_shot_bonus(p, d_ft: float, hoop: Vector2, cont: float) -> float:
+	if not ("perk_key" in p) or p.perk_key == "":
+		return 0.0
+	var layup: bool = p.rim_kind == "layup"
+	var jumper: bool = p.rim_kind == ""
+	if layup or (jumper and d_ft <= p.PERK_CLOSE_FT):
+		var cb: float = p.perk("close_shot_bonus", 0.0)
+		if cb != 0.0:
+			return cb
+	if jumper and is_three(p.position, hoop):
+		var tb: float = p.perk("three_bonus", 0.0)
+		if tb != 0.0:
+			return tb
+	if layup and cont < CONTEST_NEAR_FT:
+		return p.perk("contested_layup_bonus", 0.0)
+	return 0.0
 
 # ---------------- ball events ----------------
 
@@ -1235,6 +1288,11 @@ func release_shot(p, quality: float) -> void:
 	var hoop := attack_hoop(p.team)
 	var prob := shot_probability(p, quality)
 	var made := rng.randf() < prob
+	if "perk_key" in p and p.perk_key != "":
+		var pb: float = _perk_shot_bonus(p, p.position.distance_to(hoop) / FT, hoop, openness(p))
+		if pb != 0.0:   # P9-24: counted and, the first time, logged
+			p.perk_log("%s from %.1f ft, odds %.2f (+%.2f) %s" % [p.rim_kind if p.rim_kind != "" else "jumper",
+					p.position.distance_to(hoop) / FT, prob, pb, "made" if made else "missed"])
 	var pts: int = rules.points_for(p, hoop)
 	shot_clock_running = false
 	shot_serial += 1
@@ -1404,6 +1462,30 @@ func _update_fire_trail() -> void:
 	if want != _trail_on:
 		_trail_on = want
 		fx.set_trail(want, FIRE_COLOR)
+
+# P9-24 pass_speed_mult: a passer with the perk sends his flat pass faster. ball.gd moved it PASS_SPEED x delta (an
+# outlet x OUTLET_SPEED_MULT) this frame; this adds the perk's share on the same line, never past the catch (ball.gd
+# catches it next frame). Lobs keep their own flight. Nothing happens without the perk.
+var _perk_pass_on := false   # this pass was already counted (perk_<id>_t<team>)
+func _perk_pass_step(delta: float) -> void:
+	if ball.state != ball.PASS or ball.lob or ball.passer == null or ball.receiver == null:
+		_perk_pass_on = false
+		return
+	var pr = ball.passer
+	if not ("perk_key" in pr) or pr.perk_key == "":
+		return
+	var m: float = pr.perk("pass_speed_mult", 1.0)
+	if m == 1.0:
+		return
+	var extra: float = ball.PASS_SPEED * delta * (ball.OUTLET_SPEED_MULT if ball.outlet else 1.0) * (m - 1.0)
+	var to: Vector2 = ball.receiver.position - ball.position
+	if to.length() <= extra + 16.0:
+		return
+	ball.position += to.normalized() * extra
+	if not _perk_pass_on:
+		_perk_pass_on = true   # counted once per pass
+		pr.perk_log("pass x%.2f to %s, %.0f ft" % [m, ball.receiver.pname if ball.receiver.pname != "" else
+				ball.receiver.pid, to.length() / FT])
 
 func do_pass(from_p, to_p) -> void:
 	if not from_p.has_ball() or to_p == from_p:
@@ -1776,6 +1858,7 @@ func _physics_process(delta: float) -> void:
 	if not rules.ft_active:
 		_separate_players()
 	ball.update(delta)
+	_perk_pass_step(delta)
 	if not rules.ft_shot_live:
 		DefenseScript.check_jump_shot_block(self)   # free throws can't be blocked
 	_update_fire_trail()
