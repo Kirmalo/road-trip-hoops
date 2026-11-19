@@ -39,6 +39,20 @@ extends RefCounted
 #      else; cities.gd crew_sheet()). A jersey id whose palette is missing falls back to the normal look: with_base()
 #      lists it before <sheet>_crew and <sheet>, and load_sheet() / card_info() of a missing jersey id give the first of
 #      those that exists (so a sheet without that jersey wears the plain crew colors, never the Quick Game slot sheet).
+# Extra animations (P9-04c, board "Art files", L6 b): an animation only some sheets carry (the legends' hook shot).
+#      format.json "extra": {"hook": {"start": 0, "frames": 10, "fps": 0, "loop": false, "ms": [...], events...,
+#      "sheets": ["lg_...", ...]}}: the same keys as an "anims" row, plus the sheets that carry it (page ids, or any id
+#      along with_base(); a recolor draws its base sheet's). "start" is the column in the extra column space (an extra
+#      without it goes after the ones before it); every direction row as usual. A sheet that carries extras has extra
+#      pages <pages id>_x0.png, _x1.png ... after its normal pages, page_cols(fmt) columns each (x page q holds extra
+#      columns q*page_cols ...; the last may be narrower), the same rows and the same palettes, so every recolor and
+#      jersey works. load_sheet() of such a sheet gives its own "fmt": the format with the extras it carries added to
+#      "anims" (start = page_count * page_cols + the extra start, "cols" grown to match, "extras": [names]), and the
+#      x pages appended to "pages"; frame_index(), frame_region(), hand() and the anim_* helpers then work on them like
+#      on any animation (hand and ball points: hands.json body "<extra name>"). Every other sheet keeps the shared
+#      format (the same Dictionary as v2_format()), so it draws exactly as before; a format.json without "extra" reads
+#      as before. A listed sheet with a missing or wrong-sized x page loads without its extras (one warning), and an
+#      extra name resolves through ALIASES (hook -> shoot) on any sheet without it. has_anim(sheet, anim) says which.
 # Test: Sheets.self_test() (prints SHEETS lines, ends with SHEETS OK / FAILED); it builds a v2 sheet in user://.
 # Test flag: -- --players2-dir DIR reads the v2 files from DIR (res://, user:// or an absolute path) instead.
 
@@ -58,6 +72,9 @@ const PALETTE_SIZE := 256
 const PALETTE_SHADER := "res://scripts/shaders/palette.gdshader"
 const DIR_FLAG := "--players2-dir"    # test flag: read the v2 files from another folder
 const GRAY_SAMPLES := 48              # an index page imported as RGB: this x this pixels checked to be gray
+const EXTRA_SECTION := "extra"        # P9-04c: format.json's extra animations (only the sheets they list carry them)
+const EXTRA_SHEETS := "sheets"        # P9-04c: an extra's list of the sheet ids that carry it
+const EXTRA_PAGE_SUFFIX := "_x"       # P9-04c: extra pages <pages id>_x0.png, _x1.png ... after the normal pages
 
 # today's v1 sheet (player.gd SHEET_FRAME, SHEET_COLS, SHEET_FEET_Y, ANIMS and the *_FPS constants). fps 0 = the
 # frame comes from a progress (jump, shot meter), not a clock.
@@ -111,6 +128,8 @@ const ALIASES := {
 	"celebrate_a": ["celebrate"],
 	"celebrate_b": ["celebrate_a", "celebrate"],
 	"celebrate": ["celebrate_a"],
+	# P9-04c extras: a sheet without the extra plays the normal animation
+	"hook": ["shoot"],
 }
 
 static var v2_dir := V2_DIR           # tests point this at a scratch folder (then clear_cache())
@@ -126,6 +145,8 @@ static var _materials := {}           # v2.1: palette texture -> ShaderMaterial 
 static var _shader: Shader = null
 static var _dir_checked := false      # the --players2-dir flag was read
 static var _warned_rgb := false
+static var _xfmts := {}               # P9-04c: "names|need" -> the format with those extras added (shared by the sheets)
+static var _warned_extra := {}        # P9-04c: pages id -> true once its missing extra pages were warned about
 
 # ---------------- formats ----------------
 
@@ -215,8 +236,65 @@ static func resolve(fmt: Dictionary, anim: String) -> String:
 			return str(alt)
 	return "idle" if anims.has("idle") else ""
 
-static func has_anim(fmt: Dictionary, anim: String) -> bool:
+# Does this sheet really carry `anim` (not an alias)? `sheet` is a sheet id (String), a load_sheet() result, or a
+# format Dictionary. P9-04c: true for an extra only on a sheet that lists it and has its x pages.
+static func has_anim(sheet, anim: String) -> bool:
+	var fmt: Dictionary = {}
+	if sheet is String or sheet is StringName:
+		var sh: Dictionary = load_sheet(str(sheet))
+		fmt = sh.get("fmt", {})
+	elif sheet is Dictionary:
+		var d: Dictionary = sheet
+		if d.has("fmt"):
+			fmt = d["fmt"]
+		else:
+			fmt = d
 	return (fmt.get("anims", {}) as Dictionary).has(anim)
+
+# P9-04c: the format's extra animations, name -> its row (a copy, "start" filled in: the column in the extra space;
+# "sheets" kept). Rows without frames, or named like a normal animation, are left out. {} without an "extra" section.
+static func extra_anims(fmt: Dictionary) -> Dictionary:
+	var out := {}
+	var src = fmt.get(EXTRA_SECTION, null)
+	if not (src is Dictionary):
+		return out
+	var normal: Dictionary = fmt.get("anims", {})
+	var next := 0
+	for a in src:
+		var e = src[a]
+		if not (e is Dictionary) or int((e as Dictionary).get("frames", 0)) <= 0 or normal.has(str(a)):
+			continue
+		var row: Dictionary = (e as Dictionary).duplicate(true)
+		if not row.has("start"):
+			row["start"] = next
+		row["start"] = maxi(0, int(row["start"]))
+		next = maxi(next, int(row["start"]) + int(row["frames"]))
+		out[str(a)] = row
+	return out
+
+# P9-04c: the extras the format lists for this sheet id (by its pages id or any id along with_base()), in format
+# order. Whether the sheet really has their pages: has_anim().
+static func extras_for(sheet_id: String, fmt: Dictionary = {}) -> Array:
+	var out: Array = []
+	if sheet_id == "":
+		return out
+	var f: Dictionary = fmt if not fmt.is_empty() else v2_format()
+	var ex: Dictionary = extra_anims(f)
+	if ex.is_empty():
+		return out
+	var ids: Array = with_base(sheet_id)
+	var base: String = pages_id(sheet_id)
+	if not ids.has(base):
+		ids.append(base)
+	for a in ex:
+		var list = (ex[a] as Dictionary).get(EXTRA_SHEETS, [])
+		if not (list is Array):
+			continue
+		for id in ids:
+			if (list as Array).has(id):
+				out.append(a)
+				break
+	return out
 
 static func _anim(fmt: Dictionary, anim: String) -> Dictionary:
 	var a: String = resolve(fmt, anim)
@@ -336,10 +414,12 @@ static func _load_v2(sheet_id: String) -> Dictionary:
 		return {}
 	if indexed(fmt):
 		return _load_indexed(fmt, sheet_id)
-	var pages: Array = _v2_pages(fmt, sheet_id)
+	var files: Array = []
+	var pages: Array = _v2_pages(fmt, sheet_id, files)
 	if pages.is_empty():
 		return {}
-	return {"id": sheet_id, "version": 2, "fmt": fmt, "texture": pages[0], "pages": pages}
+	return _add_extras({"id": sheet_id, "version": 2, "fmt": fmt, "texture": pages[0], "pages": pages,
+		"page_files": files}, sheet_id)
 
 # v2.1: the palette of this id, drawn on its own pages or (a recolor) on its base sheet's pages
 static func _load_indexed(fmt: Dictionary, sheet_id: String) -> Dictionary:
@@ -350,9 +430,11 @@ static func _load_indexed(fmt: Dictionary, sheet_id: String) -> Dictionary:
 		push_warning("Sheets: palette %s is %dx%d, want %dx1" % [sheet_id, pal.get_width(), pal.get_height(), PALETTE_SIZE])
 		return {}
 	var base: String = pages_id(sheet_id)
-	var pages: Array = _v2_pages(fmt, base)
+	var files: Array = []
+	var pages: Array = _v2_pages(fmt, base, files)
 	if pages.is_empty() and base != sheet_id:
-		pages = _v2_pages(fmt, sheet_id)
+		files = []
+		pages = _v2_pages(fmt, sheet_id, files)
 		base = sheet_id
 	if pages.is_empty():
 		return {}
@@ -366,8 +448,8 @@ static func _load_indexed(fmt: Dictionary, sheet_id: String) -> Dictionary:
 		if not _warned_rgb:
 			_warned_rgb = true
 			push_warning("Sheets: %s index pages were imported as format %d, not L8 (3-4x the video memory): set the project's rendering/textures/lossless_compression/force_png = true" % [base, img.get_format()])
-	return {"id": sheet_id, "version": 2, "fmt": fmt, "texture": pages[0], "pages": pages, "indexed": true,
-		"palette": pal, "pages_id": base}
+	return _add_extras({"id": sheet_id, "version": 2, "fmt": fmt, "texture": pages[0], "pages": pages, "indexed": true,
+		"palette": pal, "pages_id": base, "page_files": files}, sheet_id)
 
 # an image whose pixels are all gray (r = g = b), checked on a grid of samples: an index page stored as RGB
 static func _gray_image(img: Image) -> bool:
@@ -400,30 +482,109 @@ static func pages_id(sheet_id: String) -> String:
 	var ids: Array = with_base(sheet_id)
 	return str(ids[ids.size() - 1])
 
-# the v2 pages of one sheet id ([] when any is missing or of the wrong size)
-static func _v2_pages(fmt: Dictionary, sheet_id: String) -> Array:
+# the v2 pages of one sheet id ([] when any is missing or of the wrong size); their file paths are appended to `files`
+static func _v2_pages(fmt: Dictionary, sheet_id: String, files: Array) -> Array:
 	var n: int = page_count(fmt)
-	var fs: Vector2 = frame_size(fmt)
-	var h: int = int(fs.y) * dir_rows(fmt)
 	var pages: Array = []
 	for p in n:
 		var tries: Array = [v2_dir + sheet_id + PAGE_SUFFIX + str(p) + ".png"]
 		if n == 1:
 			tries.push_front(v2_dir + sheet_id + ".png")
 		var tex: Texture2D = null
+		var used := ""
 		for path in tries:
 			tex = _texture(str(path))
 			if tex != null:
+				used = str(path)
 				break
 		if tex == null:
 			return []
-		var want_w: int = mini(page_cols(fmt), cols(fmt) - p * page_cols(fmt)) * int(fs.x)
-		var sz: Vector2 = tex.get_size()
-		if int(sz.y) != h or int(sz.x) < want_w or sz.x > MAX_TEXTURE or sz.y > MAX_TEXTURE:
-			push_warning("Sheets: %s page %d is %dx%d, want %dx%d" % [sheet_id, p, int(sz.x), int(sz.y), want_w, h])
+		var want_w: int = mini(page_cols(fmt), cols(fmt) - p * page_cols(fmt)) * int(frame_size(fmt).x)
+		if not _page_ok(fmt, tex, want_w, "%s page %d" % [sheet_id, p]):
 			return []
 		pages.append(tex)
+		files.append(used)
 	return pages
+
+# a page texture of the format's height, at least want_w wide, inside MAX_TEXTURE (a warning when not)
+static func _page_ok(fmt: Dictionary, tex: Texture2D, want_w: int, what: String) -> bool:
+	var h: int = int(frame_size(fmt).y) * dir_rows(fmt)
+	var sz: Vector2 = tex.get_size()
+	if int(sz.y) != h or int(sz.x) < want_w or sz.x > MAX_TEXTURE or sz.y > MAX_TEXTURE:
+		push_warning("Sheets: %s is %dx%d, want %dx%d" % [what, int(sz.x), int(sz.y), want_w, h])
+		return false
+	return true
+
+# P9-04c: a loaded v2 sheet plus the extras the format lists for it: its own format (the extras in "anims") and the
+# x pages after its pages. Unchanged (the shared format) when it lists none or an x page is missing or wrong.
+static func _add_extras(out: Dictionary, sheet_id: String) -> Dictionary:
+	var fmt: Dictionary = out["fmt"]
+	var names: Array = extras_for(sheet_id, fmt)
+	if names.is_empty():
+		return out
+	var ex: Dictionary = extra_anims(fmt)
+	var need := 0
+	for a in names:
+		need = maxi(need, int(ex[a]["start"]) + int(ex[a]["frames"]))
+	var base: String = str(out.get("pages_id", sheet_id))
+	var files: Array = []
+	var xp: Array = _x_pages(fmt, base, need, files)
+	if xp.is_empty():
+		if not _warned_extra.has(base):
+			_warned_extra[base] = true
+			push_warning("Sheets: %s carries %s but its extra pages %s%s<N>.png are missing or the wrong size: it plays the normal animation instead" % [
+					base, ", ".join(PackedStringArray(names)), base, EXTRA_PAGE_SUFFIX])
+		return out
+	var pages: Array = (out["pages"] as Array).duplicate()
+	pages.append_array(xp)
+	var pf: Array = (out.get("page_files", []) as Array).duplicate()
+	pf.append_array(files)
+	out["fmt"] = _extra_format(fmt, names, need)
+	out["pages"] = pages
+	out["page_files"] = pf
+	out["extras"] = names
+	return out
+
+# P9-04c: the x pages of a pages id for `need` extra columns ([] when one is missing or of the wrong size)
+static func _x_pages(fmt: Dictionary, base: String, need: int, files: Array) -> Array:
+	var pc: int = page_cols(fmt)
+	var n: int = int(ceil(float(need) / float(pc)))
+	var out: Array = []
+	for q in n:
+		var path: String = v2_dir + base + EXTRA_PAGE_SUFFIX + str(q) + ".png"
+		var tex: Texture2D = _texture(path)
+		if tex == null:
+			return []
+		if not _page_ok(fmt, tex, mini(pc, need - q * pc) * int(frame_size(fmt).x), "%s extra page %d" % [base, q]):
+			return []
+		out.append(tex)
+		files.append(path)
+	return out
+
+# P9-04c: the format with these extras added after the normal pages (cached: the sheets with the same extras share it)
+static func _extra_format(fmt: Dictionary, names: Array, need: int) -> Dictionary:
+	var key: String = "%s|%d" % [",".join(PackedStringArray(names)), need]
+	if _xfmts.has(key):
+		return _xfmts[key]
+	var pc: int = page_cols(fmt)
+	var first: int = page_count(fmt) * pc
+	var ex: Dictionary = extra_anims(fmt)
+	var anims: Dictionary = (fmt.get("anims", {}) as Dictionary).duplicate()
+	for a in names:
+		var row: Dictionary = (ex[a] as Dictionary).duplicate(true)
+		row.erase(EXTRA_SHEETS)
+		row["start"] = first + int(row["start"])
+		row["extra"] = true
+		anims[a] = row
+	var f: Dictionary = fmt.duplicate()
+	f["anims"] = anims
+	f["cols"] = first + need
+	f["page_cols"] = pc
+	f["base_cols"] = cols(fmt)
+	f["extra_page0"] = page_count(fmt)
+	f["extras"] = names.duplicate()
+	_xfmts[key] = f
+	return f
 
 # v2.1: the material that draws an indexed sheet in its palette (one per palette, shared by everyone wearing it; the
 # sprite's flip and modulate still work). null for an RGBA sheet (draw it without a material).
@@ -559,7 +720,7 @@ static func _hand_v2(fmt: Dictionary, sheet_id: String, row: int, col: int):
 
 # the animation and frame that a column belongs to: [anim, k], or [] for an unused column
 static func _anim_at(fmt: Dictionary, col: int) -> Array:
-	var key: String = "%d/%d" % [int(fmt.get("version", 1)), cols(fmt)]
+	var key: String = "%d/%d/%s" % [int(fmt.get("version", 1)), cols(fmt), ",".join(PackedStringArray(fmt.get("extras", [])))]
 	if not _ranges.has(key):
 		var list: Array = []
 		var anims: Dictionary = fmt.get("anims", {})
@@ -689,6 +850,8 @@ static func clear_cache() -> void:
 	_ranges = {}
 	_recolors = null
 	_materials = {}
+	_xfmts = {}
+	_warned_extra = {}
 
 # ---------------- test ----------------
 
@@ -753,6 +916,7 @@ static func self_test() -> bool:
 	# v2: a built test sheet
 	ok = _v2_test() and ok
 	ok = _indexed_test() and ok
+	ok = _extra_test() and ok
 	_remove_files(TEST_DIR + V1_TEST_SUBDIR)
 	v2_dir = real_v2
 	v1_dir = real_v1
@@ -905,6 +1069,108 @@ static func _indexed_test() -> bool:
 	ok = _t(tt.size() == 6 and is_equal_approx(tt[1], 0.2) and is_equal_approx(anim_times(fmt, "dribble")[0], 0.1)
 			and anim_event(fmt, "dribble", "floor") == 1 and anim_event(fmt, "idle", "floor", -7) == -7
 			and resolve(fmt, "dribble_l") == "dribble" and resolve(fmt, "dunk_alley") == "idle", "v2 times, events, *_l aliases") and ok
+	for fn in DirAccess.get_files_at(dir + PALETTE_SUBDIR):
+		DirAccess.remove_absolute(dir + PALETTE_SUBDIR + fn)
+	for fn in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir + fn)
+	return ok
+
+# P9-04c: extra animations. An indexed format of 40 columns (pages of 32: p0, p1) with two extras: "hook" (extra
+# columns 0..4) on test_ex (and so its recolors), "twirl" (columns 30..33, across x0 and x1) on test_ex2; test_plain
+# lists none, test_nox and test_badx list the hook but have no x page / a wrong-sized one.
+static func _extra_test() -> bool:
+	var ok := true
+	var dir: String = TEST_DIR + "ext/"
+	DirAccess.make_dir_recursive_absolute(dir + PALETTE_SUBDIR)
+	v2_dir = dir
+	var fmt := {"version": 2, "indexed": true, "frame": [64, 96], "feet_row": 88, "center_x": 32, "head_px": 50,
+		"draw_scale": 2.0, "dirs": DIR_NAMES, "cols": 40, "page_cols": 32,
+		"anims": {"idle": {"start": 0, "frames": 6, "fps": 6, "loop": true},
+			"shoot": {"start": 6, "frames": 10, "fps": 0, "loop": false, "release": 6}},
+		"extra": {"hook": {"start": 0, "frames": 5, "fps": 0, "loop": false, "release": 3, "ms": [60, 60, 60, 80, 120],
+				"sheets": ["test_ex", "test_nox", "test_badx"]},
+			"twirl": {"start": 30, "frames": 4, "fps": 8, "loop": true, "sheets": ["test_ex2"]},
+			"idle": {"start": 40, "frames": 2, "sheets": ["test_ex"]}}}   # named like a normal one: ignored
+	_write_text(dir + FORMAT_FILE, JSON.stringify(fmt))
+	var hook_pts: Array = []
+	for k in 5:
+		hook_pts.append({"hands": {"L": [20 + k, 40], "R": [40, 30 - k]}, "ball": [40, 26 - k, 1], "ball_h": 0})
+	_write_text(dir + HANDS_FILE, JSON.stringify({"frame": [64, 96], "feet_row": 88,
+			"bodies": {"tall": {"idle": {"E": [{"hands": {"L": [1, 2], "R": [3, 4]}}, {"hands": {"L": [1, 2], "R": [3, 4]}},
+				{"hands": {"L": [5, 6], "R": [7, 8]}}, {"hands": {"L": [1, 2], "R": [3, 4]}},
+				{"hands": {"L": [1, 2], "R": [3, 4]}}, {"hands": {"L": [1, 2], "R": [3, 4]}}]}, "hook": {"E": hook_pts}}},
+			"sheets": {"test_ex": "tall", "test_ex2": "tall", "test_plain": "tall"}}))
+	var page_w := {"p0": 32, "p1": 8}
+	for id in ["test_ex", "test_ex2", "test_plain", "test_nox", "test_badx"]:
+		for pg in page_w:
+			var img := Image.create(int(page_w[pg]) * 64, 5 * 96, false, Image.FORMAT_L8)
+			img.fill(Color8(3, 3, 3))
+			img.save_png(dir + id + "_" + str(pg) + ".png")
+		var pal := Image.create(PALETTE_SIZE, 1, false, Image.FORMAT_RGBA8)
+		pal.set_pixel(3, 0, Color(1, 0, 0, 1))
+		pal.set_pixel(7, 0, Color(0, 1, 0, 1))
+		pal.save_png(dir + PALETTE_SUBDIR + id + ".png")
+	var crew := Image.create(PALETTE_SIZE, 1, false, Image.FORMAT_RGBA8)
+	crew.set_pixel(7, 0, Color(0, 0, 1, 1))
+	crew.save_png(dir + PALETTE_SUBDIR + "test_ex_crew.png")
+	crew.save_png(dir + PALETTE_SUBDIR + "test_ex_crew_j1.png")
+	var xw := {"test_ex": [5], "test_ex2": [32, 2], "test_badx": [5]}
+	for id in xw:
+		for q in (xw[id] as Array).size():
+			var h: int = 5 * 96 if id != "test_badx" else 96
+			var xi := Image.create(int(xw[id][q]) * 64, h, false, Image.FORMAT_L8)
+			xi.fill(Color8(7, 7, 7))
+			xi.save_png(dir + id + EXTRA_PAGE_SUFFIX + str(q) + ".png")
+	clear_cache()
+	var base: Dictionary = v2_format()
+	var ex: Dictionary = extra_anims(base)
+	ok = _t(ex.size() == 2 and int(ex["hook"]["start"]) == 0 and int(ex["twirl"]["start"]) == 30
+			and not (base["anims"] as Dictionary).has("hook") and extra_anims(fmt.duplicate().merged({"extra": 5}, true)).is_empty(),
+			"extra: the format's extra section (a clash with a normal name ignored)") and ok
+	var s: Dictionary = load_sheet("test_ex")
+	var f: Dictionary = s.get("fmt", {})
+	var plain: Dictionary = load_sheet("test_plain")
+	ok = _t(is_same(plain.get("fmt", null), base) and not has_anim(plain, "hook") and resolve(base, "hook") == "shoot"
+			and (plain.get("pages", []) as Array).size() == 2, "extra: an unlisted sheet keeps the shared format") and ok
+	ok = _t(has_anim(s, "hook") and has_anim("test_ex", "hook") and not has_anim(s, "twirl") and not has_anim(base, "hook")
+			and (s.get("pages", []) as Array).size() == 3 and cols(f) == 64 + 5 and int(f.get("base_cols", 0)) == 40
+			and str(s.get("extras", [""])[0]) == "hook", "extra: a listed sheet carries it (3 pages, its own format)") and ok
+	var i_h: int = frame_index(f, 2, "hook", 4)
+	var reg: Dictionary = frame_region(s, i_h)
+	ok = _t(i_h == 2 * 69 + 64 + 4 and reg.get("texture", null) == s["pages"][2]
+			and reg.get("region", Rect2()) == Rect2(4 * 64, 2 * 96, 64, 96)
+			and str(s["page_files"][2]).ends_with("test_ex_x0.png"), "extra: hook frame on the x0 page") and ok
+	var reg_i: Dictionary = frame_region(s, frame_index(f, 2, "shoot", 3))
+	var reg_b: Dictionary = frame_region(plain, frame_index(base, 2, "shoot", 3))
+	ok = _t(reg_i.get("region", Rect2(1, 1, 1, 1)) == reg_b.get("region", Rect2()) and reg_i["texture"] == s["pages"][0],
+			"extra: the normal frames of a listed sheet are where they were") and ok
+	ok = _t(anim_frames(f, "hook") == 5 and anim_event(f, "hook", "release") == 3 and is_equal_approx(anim_times(f, "hook")[4], 0.12)
+			and not anim_loops(f, "hook") and resolve(f, "hook") == "hook", "extra: frames, events and times") and ok
+	var hh: Dictionary = hand(f, "test_ex", i_h)
+	var hi: Dictionary = hand(f, "test_ex", frame_index(f, 2, "idle", 2))
+	var hb: Dictionary = hand(base, "test_plain", frame_index(base, 2, "idle", 2))
+	var hf: Dictionary = hand(f, "test_ex_crew", i_h, true)
+	ok = _t(hh.get("R", Vector2.ZERO) == Vector2(40, 26) and hh.get("ball", Vector2.ZERO) == Vector2(40, 22)
+			and hi.get("L", Vector2.ZERO) == Vector2(5, 6) and hb.get("L", Vector2.ZERO) == Vector2(5, 6)
+			and hf.get("L", Vector2.ZERO) == Vector2(63 - 40, 26), "extra: hook hand and ball points (and the normal ones)") and ok
+	var sc: Dictionary = load_sheet("test_ex_crew")
+	var sj: Dictionary = load_sheet("test_ex_crew_j1")
+	ok = _t(has_anim(sc, "hook") and is_same(sc.get("fmt", null), f) and sc["page_files"] == s["page_files"]
+			and has_anim(sj, "hook") and str(sj.get("pages_id", "")) == "test_ex" and extras_for("test_ex_crew_j1") == ["hook"]
+			and material(sc) != material(s), "extra: recolors and jerseys carry it (same pages, own palette)") and ok
+	var s2: Dictionary = load_sheet("test_ex2")
+	var f2: Dictionary = s2.get("fmt", {})
+	var reg2: Dictionary = frame_region(s2, frame_index(f2, 1, "twirl", 3))
+	ok = _t(has_anim(s2, "twirl") and not has_anim(s2, "hook") and (s2.get("pages", []) as Array).size() == 4
+			and reg2.get("texture", null) == s2["pages"][3] and reg2.get("region", Rect2()) == Rect2(1 * 64, 96, 64, 96)
+			and frame_index(f2, 0, "twirl", 6) == 64 + 30 + 2, "extra: across two x pages (x1), loops wrap") and ok
+	var nx: Dictionary = load_sheet("test_nox")
+	var bx: Dictionary = load_sheet("test_badx")
+	ok = _t(not nx.is_empty() and not has_anim(nx, "hook") and is_same(nx.get("fmt", null), base)
+			and frame_index(nx["fmt"], 0, "hook", 2) == 6 + 2 and not bx.is_empty() and not has_anim(bx, "hook")
+			and extras_for("test_nox") == ["hook"], "extra: a missing or wrong x page falls back to the shot") and ok
+	ok = _t(card("test_ex") != null and card("test_ex").get_image().get_pixel(10, 10).is_equal_approx(Color(1, 0, 0, 1)),
+			"extra: the card is still the idle frame") and ok
 	for fn in DirAccess.get_files_at(dir + PALETTE_SUBDIR):
 		DirAccess.remove_absolute(dir + PALETTE_SUBDIR + fn)
 	for fn in DirAccess.get_files_at(dir):

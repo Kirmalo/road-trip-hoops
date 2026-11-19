@@ -14,7 +14,9 @@ extends Node
 #   --anim-shots              write the images headless too (they are made on the CPU, no renderer needed)
 #   --anim-fake-v2            also builds a small v2 sheet set in user://anim_test_v2/ (blocks for bodies, the approved
 #                             sample's hand and ball points) and runs the v2 checks and images on it (test of the
-#                             v2 path before the real v2 sheets exist)
+#                             v2 path before the real v2 sheets exist); P9-04c: with one extra animation ("hook", on
+#                             x pages) on fake_v2, and two broken listed sheets (no x page, a blank x page) that must
+#                             each be reported (checked, then not counted)
 #
 # Checks, per sheet (v1: assets/players/<id>.png if any, v2: assets/players2/):
 #   - the format: every animation inside the columns, no two overlapping, frame counts and fps sane, pages within
@@ -29,6 +31,11 @@ extends Node
 #     (Sheets.load_sheet()'s "palette", index 0 clear) before the checks and images, so an empty frame is one with only
 #     index 0 (or indexes the palette leaves clear), and the images show the real colors. A recolor (a palette only,
 #     drawn on its base sheet's pages) is checked and drawn too; pixels whose index the palette leaves clear are a note.
+#   - P9-04c extra animations (format.json "extra", e.g. the legends' hook): the section itself (frames, columns, no
+#     overlaps in the extra space, no clash with a normal name, a "sheets" list); on every sheet the format lists for
+#     an extra, the extra must load (its x pages <pages id>_x<N>.png present and of the right size, else a problem),
+#     and its frames are checked like any animation (pixels, hand and ball points, a ball point on frame 0); a sheet
+#     with x pages that the format lists for nothing is a note. Sheets that list no extra are checked as before.
 #   Also Sheets.self_test() (SHEETS lines).
 # Images (CPU-made, the frames 2x on a plain court color like the game, the ball drawn in the hand):
 #   <out>/hoops_anim_<sheet>_<anim>.png        every frame (columns) in 8 directions (rows E, SE, S, SW, W, NW, N, NE);
@@ -60,7 +67,10 @@ const BALL_UNTIL := {"shoot": 0.75, "layup": 0.5, "dunk": 0.55, "dunk_one": 0.55
 	"dunk_tomahawk": 0.55, "dunk_windmill": 0.55, "pass": 0.5, "pass_chest": 0.5, "pass_bounce": 0.5, "pass_lob": 0.5}
 # v2: these animations must have a ball point on frame 0 (where the points exist)
 const V2_BALL_ANIMS := ["dribble", "run_dribble", "cross", "hold", "catch", "shoot", "layup", "dunk_one", "dunk_two",
-	"dunk_tomahawk", "dunk_windmill", "pass_chest", "pass_bounce", "pass_lob"]
+	"dunk_tomahawk", "dunk_windmill", "pass_chest", "pass_bounce", "pass_lob", "hook"]
+const FAKE_EXTRA := "hook"        # --anim-fake-v2: the extra animation of the fake set
+const FAKE_EXTRA_FRAMES := 6
+const FAKE_BROKEN := ["fake_v2_nox", "fake_v2_blank"]   # --anim-fake-v2: listed for the extra, no x page / a blank one
 # 8 screen directions as player.gd draws them: [sheet row, mirrored, name]
 const OCTANTS := [[2, false, "E"], [1, false, "SE"], [0, false, "S"], [1, true, "SW"], [2, true, "W"],
 	[3, true, "NW"], [4, false, "N"], [3, false, "NE"]]
@@ -121,6 +131,7 @@ func _run() -> void:
 		_images.clear()
 		_painted.clear()
 		_check_set(["fake_v2"])
+		_check_fake_broken()
 		Sheets.v2_dir = Sheets.V2_DIR
 		Sheets.clear_cache()
 	for n in _notes:
@@ -168,18 +179,58 @@ func _check_set(only: Array) -> void:
 		_check_sheet(sh)
 		_draw_sheet(sh, only.has(id) or (only.is_empty() and DEFAULT_DETAIL.has(id)))
 	for id in v2_ids:
-		var sh2: Dictionary = Sheets._load_v2(id)
-		if sh2.is_empty():
-			_problems.append("v2 %s: missing pages, a page of the wrong size%s" % [id,
-					" or no usable palette (indexed)" if Sheets.indexed(Sheets.v2_format()) else ""])
-			continue
-		_check_sheet(sh2)
-		if int(_clear_ix.get(id, 0)) > 0:
-			_notes.append("v2 %s: %d pixels have an index the palette leaves clear" % [id, int(_clear_ix[id])])
-		if not FileAccess.file_exists(Sheets.v2_dir + Sheets.CARD_SUBDIR + id + ".png") \
-				and not ResourceLoader.exists(Sheets.v2_dir + Sheets.CARD_SUBDIR + id + ".png"):
-			_notes.append("v2 %s: no card (cut from the sheet instead)" % id)
-		_draw_sheet(sh2, only.is_empty() or only.has(id))
+		_check_v2_id(id, only.is_empty() or only.has(id))
+
+# one v2 sheet id: loads, its frames and points, its extras (P9-04c), its card; then its images
+func _check_v2_id(id: String, detail: bool) -> void:
+	var sh2: Dictionary = Sheets._load_v2(id)
+	if sh2.is_empty():
+		_problems.append("v2 %s: missing pages, a page of the wrong size%s" % [id,
+				" or no usable palette (indexed)" if Sheets.indexed(Sheets.v2_format()) else ""])
+		return
+	_check_extras(sh2)
+	_check_sheet(sh2)
+	if int(_clear_ix.get(id, 0)) > 0:
+		_notes.append("v2 %s: %d pixels have an index the palette leaves clear" % [id, int(_clear_ix[id])])
+	if not FileAccess.file_exists(Sheets.v2_dir + Sheets.CARD_SUBDIR + id + ".png") \
+			and not ResourceLoader.exists(Sheets.v2_dir + Sheets.CARD_SUBDIR + id + ".png"):
+		_notes.append("v2 %s: no card (cut from the sheet instead)" % id)
+	_draw_sheet(sh2, detail)
+
+# P9-04c: every extra the format lists for this sheet must have loaded (its x pages); x pages nobody lists are a note.
+# The extra's frames and points are then checked by _check_sheet() with the rest (they are in the sheet's format).
+func _check_extras(sh: Dictionary) -> void:
+	var id: String = str(sh["id"])
+	var base: String = str(sh.get("pages_id", id))
+	var want: Array = Sheets.extras_for(id)
+	for a in want:
+		if not Sheets.has_anim(sh, str(a)):
+			_problems.append("v2 %s: the format lists the extra %s for it, but its extra pages %s%s<N>.png are missing or the wrong size" % [
+					id, a, base, Sheets.EXTRA_PAGE_SUFFIX])
+	if want.is_empty() and base == id and _file_exists(Sheets.v2_dir + base + Sheets.EXTRA_PAGE_SUFFIX + "0.png"):
+		_notes.append("v2 %s: has extra pages but the format lists no extra for it (not drawn)" % id)
+	if not want.is_empty():
+		print("ANIM v2 %s: extras listed %s, loaded %s (%d pages in all)" % [id, ", ".join(PackedStringArray(want)),
+				", ".join(PackedStringArray(sh.get("extras", []))), (sh.get("pages", []) as Array).size()])
+
+func _file_exists(path: String) -> bool:
+	return FileAccess.file_exists(path) or ResourceLoader.exists(path)
+
+# --anim-fake-v2: the broken listed sheets must each be reported (a missing x page, a blank x page); their problems are
+# then dropped (expected), and a broken sheet that is not reported is a problem
+func _check_fake_broken() -> void:
+	for id in FAKE_BROKEN:
+		var before: int = _problems.size()
+		var saved := _write
+		_write = false
+		_check_v2_id(str(id), false)
+		_write = saved
+		var got: int = _problems.size() - before
+		if got == 0:
+			_problems.append("fake %s: a broken extra was not reported" % id)
+		else:
+			print("ANIM fake %s: reported as expected (%d problems, not counted): %s" % [id, got, _problems[before]])
+			_problems.resize(before)
 
 func _list_v1() -> Array:
 	var out: Array = []
@@ -201,9 +252,11 @@ func _list_v2() -> Array:
 		if not fn.ends_with(".png"):
 			continue
 		var id: String = fn.get_basename()
-		var at: int = id.rfind(Sheets.PAGE_SUFFIX)
-		if at > 0 and id.substr(at + Sheets.PAGE_SUFFIX.length()).is_valid_int():
-			id = id.substr(0, at)
+		for suffix in [Sheets.PAGE_SUFFIX, Sheets.EXTRA_PAGE_SUFFIX]:   # <id>_p<N>, and the extra pages <id>_x<N>
+			var at: int = id.rfind(suffix)
+			if at > 0 and id.substr(at + str(suffix).length()).is_valid_int():
+				id = id.substr(0, at)
+				break
 		if not out.has(id):
 			out.append(id)
 	# v2.1: a recolor has only a palette (palettes/<id>.png) drawn on its base sheet's pages
@@ -246,6 +299,46 @@ func _check_format(fmt: Dictionary, what: String) -> void:
 		elif r != a:
 			aliased.append("%s->%s" % [a, r])
 	print("ANIM %s: %d animations, %d columns; aliases: %s" % [what, anims.size(), c, ", ".join(aliased) if not aliased.is_empty() else "none"])
+	_check_extra_section(fmt, what)
+
+# P9-04c: format.json's "extra" section: each row usable, no overlaps in the extra column space, a sheets list
+func _check_extra_section(fmt: Dictionary, what: String) -> void:
+	var src = fmt.get(Sheets.EXTRA_SECTION, null)
+	if src == null:
+		return
+	if not (src is Dictionary):
+		_problems.append("%s: \"%s\" is not an object" % [what, Sheets.EXTRA_SECTION])
+		return
+	var anims: Dictionary = fmt.get("anims", {})
+	for a in src:
+		var e = src[a]
+		if anims.has(str(a)):
+			_problems.append("%s: the extra %s has the name of a normal animation" % [what, a])
+		elif not (e is Dictionary) or int((e as Dictionary).get("frames", 0)) <= 0:
+			_problems.append("%s: the extra %s has no frames" % [what, a])
+	var ex: Dictionary = Sheets.extra_anims(fmt)
+	var used := {}
+	var lines: PackedStringArray = []
+	for a in ex:
+		var e: Dictionary = ex[a]
+		var st: int = int(e["start"])
+		var n: int = int(e["frames"])
+		if float(e.get("fps", 0.0)) < 0.0:
+			_problems.append("%s: extra %s fps < 0" % [what, a])
+		var ms = e.get("ms", null)
+		if ms is Array and (ms as Array).size() != n:
+			_problems.append("%s: extra %s has %d ms for %d frames" % [what, a, (ms as Array).size(), n])
+		for k in range(st, st + n):
+			if used.has(k):
+				_problems.append("%s: extra %s overlaps %s at extra column %d" % [what, a, used[k], k])
+				break
+			used[k] = a
+		var list = e.get(Sheets.EXTRA_SHEETS, [])
+		if not (list is Array) or (list as Array).is_empty():
+			_notes.append("%s: the extra %s lists no sheets (nobody carries it)" % [what, a])
+			list = []
+		lines.append("%s (extra columns %d..%d, %d sheets)" % [a, st, st + n - 1, (list as Array).size()])
+	print("ANIM %s: extras: %s" % [what, ", ".join(lines) if not lines.is_empty() else "none"])
 
 # one sheet: every frame has pixels, the hand (and ball) points
 func _check_sheet(sh: Dictionary) -> void:
@@ -408,7 +501,10 @@ func _painted_page(sh: Dictionary, page_tex: Texture2D) -> Image:
 	var p: int = maxi(0, pages.find(page_tex))
 	var base: String = str(sh.get("pages_id", id))
 	var page_file: String = Sheets.v2_dir + base + Sheets.PAGE_SUFFIX + str(p) + ".png"
-	if pages.size() == 1 and not FileAccess.file_exists(page_file):
+	var files: Array = sh.get("page_files", [])
+	if p < files.size():
+		page_file = str(files[p])   # the file each page came from (P9-04c: the x pages after the normal ones)
+	elif pages.size() == 1 and not FileAccess.file_exists(page_file):
 		page_file = Sheets.v2_dir + base + ".png"
 	var src: Image = _raw_image(page_tex, page_file)
 	var pal: Image = _raw_image(pal_tex, Sheets.v2_dir + Sheets.PALETTE_SUBDIR + id + ".png")
@@ -594,7 +690,10 @@ func _build_fake_v2() -> void:
 			"run": {"start": 6, "frames": 12, "fps": 20, "loop": true},
 			"dribble": {"start": 18, "frames": 8, "fps": 13.3, "loop": true},
 			"run_dribble": {"start": 26, "frames": 10, "fps": 16.7, "loop": true},
-			"dunk_two": {"start": 36, "frames": 10, "fps": 0, "loop": false}}}
+			"dunk_two": {"start": 36, "frames": 10, "fps": 0, "loop": false}},
+		# P9-04c: one extra animation, on fake_v2 only (and the two broken sheets that must be reported)
+		"extra": {FAKE_EXTRA: {"start": 0, "frames": FAKE_EXTRA_FRAMES, "fps": 0, "loop": false, "release": 3,
+			"sheets": ["fake_v2"] + FAKE_BROKEN}}}
 	Sheets._write_text(FAKE_DIR + Sheets.FORMAT_FILE, JSON.stringify(fmt))
 	var pts = Sheets._read_json(Sheets.SAMPLE_POINTS)
 	var body := {}
@@ -602,15 +701,37 @@ func _build_fake_v2() -> void:
 		for a in (pts as Dictionary).get("anims", {}):
 			body[str(Sheets.SAMPLE_ANIM_NAMES.get(a, a))] = pts["anims"][a]
 	body["idle"] = {}
+	# the extra's points: the ball rises in the right hand over the head, released at frame 3
+	var hook := {}
+	for dn in Sheets.DIR_NAMES:
+		var list: Array = []
+		for k in FAKE_EXTRA_FRAMES:
+			var hy: int = 50 - k * 6
+			list.append({"hands": {"L": [26, 52], "R": [38, hy]}, "ball": [38, hy - 4, 1] if k <= 3 else null,
+				"ball_h": 0})
+		hook[dn] = list
+	body[FAKE_EXTRA] = hook
+	var sheet_map := {"fake_v2": "lanky", "fake_v2_crew": "lanky"}
+	for id in FAKE_BROKEN:
+		sheet_map[id] = "lanky"
 	Sheets._write_text(FAKE_DIR + Sheets.HANDS_FILE, JSON.stringify({"frame": [64, 96], "feet_row": 88,
-			"bodies": {"lanky": body}, "sheets": {"fake_v2": "lanky", "fake_v2_crew": "lanky"}}))
-	for pi in 2:
-		var w: int = 32 if pi == 0 else 46 - 32
-		var img := Image.create(w * 64, 5 * 96, false, Image.FORMAT_RGBA8)
-		for row in 5:
-			for c in w:
-				var col: int = pi * 32 + c
-				var top: int = 40 + (col * 7 + row * 3) % 12
-				img.fill_rect(Rect2i(c * 64 + 24, row * 96 + top, 16, 88 - top), Color(0.2, 0.3, 0.8))
-				img.fill_rect(Rect2i(c * 64 + 26, row * 96 + top - 10, 12, 10), Color(0.55, 0.36, 0.25))
-		img.save_png(FAKE_DIR + "fake_v2" + Sheets.PAGE_SUFFIX + str(pi) + ".png")
+			"bodies": {"lanky": body}, "sheets": sheet_map}))
+	for id in ["fake_v2"] + FAKE_BROKEN:
+		for pi in 2:
+			var w: int = 32 if pi == 0 else 46 - 32
+			_fake_page(w, pi * 32, Color(0.2, 0.3, 0.8)).save_png(FAKE_DIR + id + Sheets.PAGE_SUFFIX + str(pi) + ".png")
+	# the extra page: the hook in red so it stands out; fake_v2_blank's is empty, fake_v2_nox has none
+	_fake_page(FAKE_EXTRA_FRAMES, 100, Color(0.8, 0.2, 0.2)).save_png(FAKE_DIR + "fake_v2" + Sheets.EXTRA_PAGE_SUFFIX + "0.png")
+	Image.create(FAKE_EXTRA_FRAMES * 64, 5 * 96, false, Image.FORMAT_RGBA8).save_png(
+			FAKE_DIR + "fake_v2_blank" + Sheets.EXTRA_PAGE_SUFFIX + "0.png")
+
+# a fake page of w columns: a block body per frame whose height follows its column (first_col + c)
+func _fake_page(w: int, first_col: int, body_color: Color) -> Image:
+	var img := Image.create(w * 64, 5 * 96, false, Image.FORMAT_RGBA8)
+	for row in 5:
+		for c in w:
+			var col: int = first_col + c
+			var top: int = 40 + (col * 7 + row * 3) % 12
+			img.fill_rect(Rect2i(c * 64 + 24, row * 96 + top, 16, 88 - top), body_color)
+			img.fill_rect(Rect2i(c * 64 + 26, row * 96 + top - 10, 12, 10), Color(0.55, 0.36, 0.25))
+	return img
