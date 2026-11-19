@@ -1850,6 +1850,10 @@ static func self_test(load_only: bool = false) -> bool:
 	for id in Cities.built_route():
 		rc.append("%s: %s" % [id, ", ".join(PackedStringArray(Cities.recruits(id)))])
 	print("TRIPDATA recruits %s" % " | ".join(PackedStringArray(rc)))
+	# the checks below expect no unlocked legend unless they set one: a legends_test.json left by an earlier
+	# --legends-test run must not change them
+	var lg_was: String = _legends_override
+	_legends_override = "none"
 	ok = _check_city_data() and ok
 	ok = _check_expected_rosters() and ok
 	ok = _check_best_rosters() and ok
@@ -1858,9 +1862,11 @@ static func self_test(load_only: bool = false) -> bool:
 	ok = _check_draft() and ok
 	ok = _check_boss_rule() and ok
 	ok = _check_legends() and ok
+	_legends_override = "none"
 	ok = _check_replays() and ok
 	ok = _check_v1_fixtures() and ok
 	ok = _check_save_files() and ok
+	_legends_override = lg_was
 	# the round trip: the scripted trip saved for the --load process
 	_scripted_trip(true)
 	var wrote: bool = Save.write(to_dict())
