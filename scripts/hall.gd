@@ -16,10 +16,20 @@ extends CanvasLayer
 # window), then to the silhouette; a missing frame is a drawn box. So new art just drops in.
 # Optional args: "pick" (a legend id or "ch:<chapter>": the plaque picked when the screen opens), "back_args" (a
 # Dictionary handed to args.back, e.g. {"chapter": "grand"} so the tour reopens on the chapter view).
-# Mentors (P9-27) hook in at _mentor_hook(): it gets the picked legend and the free strip MENTOR_RECT of the detail
-# panel (between the perk line and REPLAY STORY); it builds nothing yet.
-# Desktop: Escape = BACK (main.gd turns the Android back into one), Left / Right = the plaque before / after, Enter =
-# REPLAY STORY. auto_step() (test drivers): BACK.
+# Mentors (P9-27, owner L8 a): on an unlocked plaque the detail panel says who he trains ("TRAINS: JOJO") and that
+#   perks work in Road Trip games only; TRAIN (SWITCH once he trains someone) opens the mentor picker: your players
+#   (this trip's roster, loaded the way the tour loads it, never written; without a trip the underdogs,
+#   Cities.START_CREW) as tiles with their card, YOU / STARTER / BENCH, and each one's mentor ("HIS PUPIL", "TRAINED
+#   BY GATE", "NO MENTOR"). A tap on a free player with a free legend trains him at once; anything that breaks a pair
+#   (the legend's old pupil, the player's old mentor) opens the SWITCH confirm first (NOT YET / YES, SWITCH). STOP
+#   TRAINING (confirmed too) frees the legend. Everything goes through legends.gd's mentor API (mentor_of, pupil_of,
+#   can_mentor, assign, release); the perk in play is P9-24's. The tiles scroll (drag, the bar, the wheel).
+# Desktop: Escape = BACK (main.gd turns the Android back into one; it closes the confirm, then the picker, first),
+# Left / Right = the plaque before / after, Enter = REPLAY STORY. auto_step() (test drivers): closes the picker, then
+# BACK; asked to train (args "train": true, auto_train = true or --hall-train) it first assigns one pupil: the first
+# legend who can train and trains nobody on this list, on the first listed player without a mentor (YOU first).
+# train(legend, player) assigns as a confirmed tap would; open_picker(legend) / close_picker() and var _picker for the
+# back test.
 
 const UI = preload("res://scripts/ui_kit.gd")
 const Flow = preload("res://scripts/flow.gd")
@@ -27,6 +37,8 @@ const LegendsData = preload("res://scripts/legends_data.gd")
 const Legends = preload("res://scripts/legends.gd")
 const Sheets = preload("res://scripts/sheets.gd")
 const StoryText = preload("res://scripts/story_text.gd")
+const Trip = preload("res://scripts/trip.gd")       # P9-27: your players (the roster, its starters, the human)
+const Cities = preload("res://scripts/cities.gd")   # P9-27: the underdogs without a trip, a pupil's name
 
 # ---------------------------------------------------------------------------------------------------- tuning
 const ARM_T := 0.4                       # s the taps are ignored after the screen opens
@@ -79,9 +91,42 @@ const SHAPE_MAX := 25.0                  # an offset of this fills half the bar
 const SHAPE_BAR_H := 10.0
 const SIG_Y := 290.0                     # SIGNATURE MOVE under the plaque
 const PERK_Y := 380.0                    # MENTOR PERK
-const MENTOR_RECT := Rect2(14, 434, 444, 20)    # P9-27: the strip for "TRAINS: ..." (free for now)
-const REPLAY_RECT := Rect2(14, 456, 444, 110)   # REPLAY STORY (>= UI.MIN_BUTTON)
+const MENTOR_RECT := Rect2(14, 434, 444, 20)    # P9-27: the strip for "TRAINS: ..."
+const REPLAY_RECT := Rect2(14, 456, 444, 110)   # REPLAY STORY and TRAIN share it (each >= UI.MIN_BUTTON)
 const REPLAY_FONT := 40
+# P9-27: the mentor panel
+const TRAIN_GAP := 8.0                   # px between REPLAY STORY and TRAIN (REPLAY_RECT split in two)
+const HALF_BTN_FONT := 30                # their font (shrinks to fit, down to HALF_BTN_MIN)
+const HALF_BTN_MIN := 18
+const MENTOR_FONT := 18
+const RT_ONLY_TEXT := "ROAD TRIP GAMES ONLY"   # right on the MENTOR PERK line (owner L8 a)
+const PICKER_ARM_T := 0.3                # s the picker ignores taps after it opens (the TRAIN tap can't pick)
+const CONFIRM_ARM_T := 0.3               # s YES stays off once the confirm is up (the tile tap can't confirm)
+const PICKER_RECT := Rect2(40, 14, 1200, 692)       # the picker panel (frame px)
+const PICKER_TITLE_FONT := 40
+const PICKER_LINE_FONT := 22
+const PICK_LIST_RECT := Rect2(64, 160, 1152, 388)   # the player tiles (scrolls)
+const PICK_COLS := 4
+const TILE_SIZE := Vector2(270, 120)     # one player tile: the tap target (>= UI.MIN_BUTTON)
+const TILE_GAP := 10
+const TILE_PAD := 8.0
+const TILE_SPRITE_SCALE := 1.5           # his card in a 40 x 64 box at this scale
+const TILE_SHEET_BOX := Vector2(40, 64)
+const TILE_NAME_FONT := 24
+const TILE_TEXT_FONT := 16
+const TILE_FILL := Color(0.13, 0.16, 0.24)
+const TILE_PUPIL_FILL := Color(0.3, 0.24, 0.08)
+const TILE_BORDER_W := 3
+const TILE_PUPIL_BORDER_W := 6
+const FALLBACK_SHEET := "ud_jojo"        # a tile whose player has no card of his own
+const PICKER_BTN_Y := 570.0              # CLOSE and STOP TRAINING (frame px)
+const CLOSE_SIZE := Vector2(240, 110)
+const STOP_SIZE := Vector2(340, 110)
+const CONFIRM_BOX := Vector2(860, 420)
+const CONFIRM_BTN := Vector2(300, 120)
+const CONFIRM_FONT := 24
+const MENTOR_COLOR := Color(0.55, 0.78, 1.0)   # "TRAINED BY ..." (another legend)
+const AUTO_TRAIN_FLAG := "--hall-train"  # test only: auto_step() assigns one pupil before BACK
 const LOCK_LINE_Y := 300.0               # a locked plaque: how to unlock him
 # colors
 const GOLD := Color(1.0, 0.82, 0.25)
@@ -141,6 +186,21 @@ var _rows: Array = []        # the list layout: {"ch", "built", "rect", "plaques
 var _order: Array = []       # every pick in list order (Left / Right)
 var _scroll_frames := 0      # frames until the list scrolls the picked plaque into view (after layout)
 var _ui := {}                # ui.json
+# P9-27: the mentor panel
+var _train: Button = null    # TRAIN / SWITCH on an unlocked plaque
+var _picker: Control = null  # the mentor picker (null = closed)
+var _picker_for := ""        # the legend the picker is for
+var _picker_scroll: ScrollContainer = null
+var _picker_arm_t := 0.0
+var _tiles: Array = []       # the picker's PlayerTile nodes
+var _confirm: Control = null # the SWITCH / STOP confirm (null = closed)
+var _yes: Button = null
+var _confirm_t := 0.0
+var _confirm_pair: Array = []   # [legend id, player id] to assign, or [legend id, ""] to stop training
+var _players: Array = []     # your players: {"id", "name", "number", "role", "sheet", "tag"}, YOU first
+var _has_trip := false       # a trip is loaded (else _players are the underdogs)
+var auto_train := false      # test drivers: auto_step() assigns one pupil first (args "train", --hall-train)
+var _auto_trained := false
 var _tex := {}               # path -> Texture2D (null = missing)
 var _cards := {}             # legend id -> {"tex", "src"} (empty = silhouette)
 
@@ -152,6 +212,8 @@ func _ready() -> void:
 	var ba = a.get("back_args", {})
 	_back_args = (ba as Dictionary).duplicate(true) if ba is Dictionary else {}
 	_ui = _read_ui()
+	auto_train = bool(a.get("train", false)) or OS.get_cmdline_user_args().has(AUTO_TRAIN_FLAG)
+	_load_players()
 	_root = UI.screen_root(self)
 	_frame = Control.new()
 	_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -171,6 +233,8 @@ func _ready() -> void:
 			Legends.unlocked_ids().size(), LegendsData.legend_ids().size(), str(Legends.unlocked_ids()),
 			Legends.tokens_total(), LegendsData.max_tokens(), _pick, _back,
 			(" " + JSON.stringify(_back_args)) if not _back_args.is_empty() else ""])
+	print("HALL mentors | %s %d players %s | pairs %s" % ["trip" if _has_trip else "no trip (underdogs)",
+			_players.size(), str(player_ids()), JSON.stringify(Legends.mentors)])
 
 func _center() -> void:
 	_frame.position = ((_root.size - FRAME_SIZE) / 2.0).floor()
@@ -178,6 +242,12 @@ func _center() -> void:
 func _process(delta: float) -> void:
 	if _arm_t > 0.0:
 		_arm_t -= delta
+	if _picker_arm_t > 0.0:
+		_picker_arm_t -= delta
+	if _confirm_t > 0.0:
+		_confirm_t -= delta
+		if _confirm_t <= 0.0 and _yes != null:
+			UI.set_enabled(_yes, true)
 	if _hint_t > 0.0:
 		_hint_t -= delta
 		if _hint_t <= 0.0:
@@ -193,7 +263,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	if k.keycode == KEY_ESCAPE:
 		get_viewport().set_input_as_handled()
-		_on_back()
+		if _confirm != null:
+			_close_confirm()
+		elif _picker != null:
+			close_picker()
+		else:
+			_on_back()
+	elif _picker != null:
+		return   # the picker is up: the plaque keys wait
 	elif k.keycode == KEY_LEFT or k.keycode == KEY_RIGHT:
 		var i: int = _order.find(_pick)
 		if i >= 0 and not _order.is_empty():
@@ -380,6 +457,7 @@ func _show_pick() -> void:
 		_detail.remove_child(c)
 		c.queue_free()
 	_replay = null
+	_train = null
 	_art = DetailArt.new()
 	_art.screen = self
 	_art.pick = _pick
@@ -431,20 +509,58 @@ func _detail_open(id: String) -> void:
 			true)
 	var perk: Dictionary = LegendsData.perk_of(id)
 	_text("MENTOR PERK", Rect2(DETAIL_PAD, PERK_Y, full_w, 22), DETAIL_HEAD_FONT, GOLD)
+	if not perk.is_empty():
+		_text(RT_ONLY_TEXT, Rect2(DETAIL_PAD, PERK_Y, full_w, 22), DETAIL_HEAD_FONT, DIM_TEXT, false,
+				HORIZONTAL_ALIGNMENT_RIGHT)
 	_text(str(perk.get("text", "none")), Rect2(DETAIL_PAD, PERK_Y + 22.0, full_w, 30), DETAIL_TEXT_FONT,
 			UI.TEXT_COLOR)
-	_mentor_hook(id, MENTOR_RECT)
-	_replay = UI.button(_detail, "REPLAY STORY", _on_replay, UI.KIND_MAIN, REPLAY_RECT.size)
-	_replay.position = REPLAY_RECT.position
-	_replay.add_theme_font_size_override("font_size", REPLAY_FONT)
+	var mentor: bool = _mentor_hook(id, MENTOR_RECT)
+	var rr: Rect2 = REPLAY_RECT
+	if mentor:
+		rr.size.x = (REPLAY_RECT.size.x - TRAIN_GAP) / 2.0
+	_replay = UI.button(_detail, "REPLAY STORY", _on_replay, UI.KIND_MAIN, rr.size)
+	_replay.position = rr.position
+	_replay.add_theme_font_size_override("font_size", REPLAY_FONT if not mentor else HALF_BTN_FONT)
 	if replay_scene(id) == "":
 		UI.set_enabled(_replay, false)
-		_replay.text = "STORY COMING SOON"
+		_replay.text = "STORY COMING SOON" if not mentor else "STORY SOON"
+	if mentor:
+		_fit_button(_replay, rr.size.x)
+		_train.reset_size()
+	_replay.reset_size()   # back to its minimum: UI.button sized it for its first font
 
-# P9-27 (the mentor panel) builds here: "TRAINS: <player>" in box and a TRAIN button (the detail panel has room if
-# REPLAY STORY gets half of REPLAY_RECT). It must only read and write mentors through legends.gd's mentor API.
-func _mentor_hook(_id: String, _box: Rect2) -> void:
-	pass
+# P9-27: "TRAINS: <player>" in box and the TRAIN / SWITCH button (the right half of REPLAY_RECT). Reads and writes
+# mentors only through legends.gd's mentor API. False when this legend can't train (no perk): no button.
+func _mentor_hook(id: String, box: Rect2) -> bool:
+	_train = null
+	if not Legends.can_mentor(id):
+		return false
+	var pupil: String = Legends.pupil_of(id)
+	var txt: String = "TRAINS: NOBODY YET  -  tap TRAIN"
+	var col: Color = DIM_TEXT
+	if pupil != "":
+		txt = "TRAINS: " + player_name(pupil).to_upper()
+		col = GOLD
+		if not has_player(pupil):
+			txt += "  (NOT ON %s)" % ("THIS TRIP" if _has_trip else "YOUR CREW")
+			col = WARN_COLOR
+	var l: Label = _text(txt, box, MENTOR_FONT, col)
+	l.clip_text = true
+	var w: float = (REPLAY_RECT.size.x - TRAIN_GAP) / 2.0
+	_train = UI.button(_detail, "SWITCH" if pupil != "" else "TRAIN", _on_train, UI.KIND_LIT,
+			Vector2(w, REPLAY_RECT.size.y))
+	_train.position = REPLAY_RECT.position + Vector2(w + TRAIN_GAP, 0.0)
+	_train.add_theme_font_size_override("font_size", HALF_BTN_FONT)
+	_fit_button(_train, w)
+	return true
+
+# shrinks a button's font (down to HALF_BTN_MIN) until its text fits w
+static func _fit_button(b: Button, w: float) -> void:
+	var font: Font = ThemeDB.fallback_font
+	var fs: int = b.get_theme_font_size("font_size")
+	while fs > HALF_BTN_MIN and font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w - 28.0:
+		fs -= 2
+	b.add_theme_font_size_override("font_size", fs)
 
 func _detail_locked(id: String) -> void:
 	var p: Dictionary = LegendsData.legend(id)
@@ -491,9 +607,374 @@ func _set_hint(text: String, col: Color) -> void:
 	_hint.text = text
 	_hint.label_settings.font_color = col
 
-func _flash(text: String) -> void:
-	_set_hint(text, WARN_COLOR)
+func _flash(text: String, col := WARN_COLOR) -> void:
+	_set_hint(text, col)
 	_hint_t = HINT_T
+
+# ---------------------------------------------------------------------------------------------------- mentors (P9-27)
+
+# Your players: the loaded trip's roster (Legends loads the saved trip the way the tour does, saving off: the Hall
+# never writes the trip), YOU first, then the starters, then the bench in roster order. Without a trip: the underdogs
+# (Cities.START_CREW, who start every new trip; the first is YOU by default).
+func _load_players() -> void:
+	_has_trip = Trip.active or Legends._trip_loaded()
+	_players = []
+	var ids: Array = []
+	if _has_trip:
+		var roster: Array = Trip.roster_ids()
+		if roster.has(Trip.human):
+			ids.append(Trip.human)
+		for id in Trip.starters:
+			if roster.has(str(id)) and not ids.has(str(id)):
+				ids.append(str(id))
+		for id in roster:
+			if not ids.has(str(id)):
+				ids.append(str(id))
+	else:
+		for id in Cities.START_CREW:
+			ids.append(str(id))
+	for id in ids:
+		var sid: String = str(id)
+		var tag: String = "BENCH"
+		if _has_trip:
+			if sid == Trip.human:
+				tag = "YOU"
+			elif Trip.starters.has(sid):
+				tag = "STARTER"
+		else:
+			tag = "YOU" if sid == str(Cities.START_CREW[0]) else "STARTER"
+		var pd: Dictionary = Cities.player(sid)
+		_players.append({"id": sid, "name": str(pd.get("name", sid)), "number": int(pd.get("number", 0)),
+			"role": str(pd.get("role", "")), "sheet": Cities.crew_sheet(sid, true), "tag": tag,
+			"legend": Trip.is_legend(sid)})
+
+func player_ids() -> Array:
+	var out: Array = []
+	for p in _players:
+		out.append(str(p["id"]))
+	return out
+
+func has_player(id: String) -> bool:
+	return id != "" and player_ids().has(id)
+
+# a player's short name (one of yours, else his data row, else the id)
+func player_name(id: String) -> String:
+	for p in _players:
+		if str(p["id"]) == id:
+			return str(p["name"])
+	var pd: Dictionary = Cities.player(id)
+	return str(pd.get("name", id)) if not pd.is_empty() else id
+
+static func legend_name(id: String) -> String:
+	return str(LegendsData.legend(id).get("name", id))
+
+func _on_train() -> void:
+	if _busy or _arm_t > 0.0 or _picker != null:
+		return
+	open_picker(_pick)
+
+# Opens the mentor picker for this legend (default: the picked plaque); false when he can't train or it is open.
+func open_picker(legend_id := "") -> bool:
+	var lid: String = legend_id if legend_id != "" else _pick
+	if _busy or _picker != null or not Legends.can_mentor(lid):
+		return false
+	if lid != _pick:
+		pick(lid)
+	_picker_for = lid
+	_tiles = []
+	var dim := ColorRect.new()
+	dim.color = UI.DIM_COLOR
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_root.add_child(dim)
+	_picker = dim
+	var fr: Control = _centred_frame(dim)
+	var box: PanelContainer = UI.panel(fr, PICKER_RECT.size)
+	box.add_theme_stylebox_override("panel", UI.style_box(Color(UI.PANEL_COLOR, 1.0), UI.PANEL_BORDER, UI.BORDER))
+	box.position = PICKER_RECT.position
+	box.size = PICKER_RECT.size
+	var x: float = PICKER_RECT.position.x
+	var w: float = PICKER_RECT.size.x
+	var y: float = PICKER_RECT.position.y
+	_label(fr, "WHO DOES %s TRAIN?" % legend_name(lid).to_upper(), Rect2(x, y + 4.0, w, 54), PICKER_TITLE_FONT,
+			GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	_label(fr, "MENTOR PERK: " + str(LegendsData.perk_of(lid).get("text", "")), Rect2(x, y + 54.0, w, 30),
+			PICKER_LINE_FONT + 2, UI.TEXT_COLOR, HORIZONTAL_ALIGNMENT_CENTER)
+	_label(fr, "Perks work in Road Trip games only (not in Quick Game or a Legends challenge).",
+			Rect2(x, y + 86.0, w, 28), PICKER_LINE_FONT - 2, DIM_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	var note: String = "One mentor per player, one pupil per legend. Switch any time."
+	if not _has_trip:
+		note = "NO TRIP YET: THE UNDERDOGS. The perk counts once you play the Road Trip."
+	_label(fr, note, Rect2(x, y + 112.0, w, 28), PICKER_LINE_FONT - 2, WARN_COLOR if not _has_trip else DIM_TEXT,
+			HORIZONTAL_ALIGNMENT_CENTER)
+	_picker_scroll = ScrollContainer.new()
+	_picker_scroll.position = PICK_LIST_RECT.position
+	_picker_scroll.size = PICK_LIST_RECT.size
+	_picker_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_picker_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	var bar: VScrollBar = _picker_scroll.get_v_scroll_bar()
+	bar.custom_minimum_size = Vector2(SCROLL_BAR_W, 0)
+	bar.add_theme_stylebox_override("scroll", UI.style_box(UI.OPT_COLOR, UI.OPT_BORDER, 2))
+	for k in ["grabber", "grabber_highlight", "grabber_pressed"]:
+		bar.add_theme_stylebox_override(k, UI.style_box(UI.LIT_COLOR, UI.LIT_BORDER, 2))
+	fr.add_child(_picker_scroll)
+	var grid := GridContainer.new()
+	grid.columns = PICK_COLS
+	grid.add_theme_constant_override("h_separation", TILE_GAP)
+	grid.add_theme_constant_override("v_separation", TILE_GAP)
+	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_picker_scroll.add_child(grid)
+	for p in _players:
+		if str(p["id"]) == lid:
+			continue   # a drafted legend can't train himself
+		var t := PlayerTile.new()
+		t.screen = self
+		t.p = p
+		t.card = _tile_card(str(p["sheet"]))
+		t.custom_minimum_size = TILE_SIZE
+		t.mouse_filter = Control.MOUSE_FILTER_STOP
+		grid.add_child(t)
+		_tiles.append(t)
+	var close: Button = UI.button(fr, "CLOSE", close_picker, UI.KIND_OPT, CLOSE_SIZE)
+	close.position = Vector2(PICK_LIST_RECT.position.x, PICKER_BTN_Y)
+	var gap: float = 20.0
+	var hx: float = PICK_LIST_RECT.position.x + CLOSE_SIZE.x + gap
+	var hw: float = PICK_LIST_RECT.size.x - CLOSE_SIZE.x - STOP_SIZE.x - 2.0 * gap
+	var pupil: String = Legends.pupil_of(lid)
+	var line: String = "Tap a player to train him."
+	if pupil != "":
+		line = "Now: %s. Tap another player to switch." % player_name(pupil).to_upper()
+	var l: Label = _label(fr, line, Rect2(hx, PICKER_BTN_Y, hw, CLOSE_SIZE.y), PICKER_LINE_FONT, HINT_COLOR,
+			HORIZONTAL_ALIGNMENT_CENTER)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.clip_text = false
+	if pupil != "":
+		var stop: Button = UI.button(fr, "STOP TRAINING", _on_stop, UI.KIND_MAIN, STOP_SIZE)
+		stop.position = Vector2(PICK_LIST_RECT.end.x - STOP_SIZE.x, PICKER_BTN_Y)
+		stop.add_theme_font_size_override("font_size", HALF_BTN_FONT)
+	_picker_arm_t = PICKER_ARM_T
+	_sfx("bounce", -6.0)
+	_stat("hall_picker")
+	print("HALL picker %s | trains %s | %d players %s" % [lid, pupil if pupil != "" else "-", _tiles.size(),
+			str(player_ids())])
+	return true
+
+# closes the picker (and its confirm); false when it was not open
+func close_picker() -> bool:
+	if _picker == null:
+		return false
+	_close_confirm()
+	_picker.queue_free()
+	_picker = null
+	_picker_scroll = null
+	_picker_for = ""
+	_tiles = []
+	_sfx("bounce", -10.0)
+	return true
+
+# a 1280 x 720 box centred in parent (an overlay's layout frame, like _frame)
+func _centred_frame(parent: Control) -> Control:
+	var fr := Control.new()
+	fr.set_anchors_preset(Control.PRESET_CENTER)
+	fr.offset_left = -FRAME_SIZE.x / 2.0
+	fr.offset_top = -FRAME_SIZE.y / 2.0
+	fr.offset_right = FRAME_SIZE.x / 2.0
+	fr.offset_bottom = FRAME_SIZE.y / 2.0
+	fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(fr)
+	return fr
+
+# a one-line label at rect in parent (clipped)
+func _label(parent: Control, text: String, rect: Rect2, fs: int, col: Color,
+		align := HORIZONTAL_ALIGNMENT_LEFT) -> Label:
+	var l: Label = UI.label(null, text, fs, col)
+	l.horizontal_alignment = align
+	l.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	l.clip_text = true
+	(l.label_settings as LabelSettings).outline_size = 6
+	parent.add_child(l)
+	l.position = rect.position
+	l.size = rect.size
+	l.set_deferred("size", rect.size)
+	return l
+
+func _tile_card(sheet: String) -> Dictionary:
+	var tries: Array = Sheets.with_base(sheet) if sheet != "" else []
+	tries.append(FALLBACK_SHEET)
+	return Sheets.card_first(tries)
+
+# a tile tapped: a free player with a free legend trains at once; anything that breaks a pair asks first
+func tile_tapped(pid: String) -> void:
+	if _busy or _picker == null or _confirm != null or _picker_arm_t > 0.0:
+		return
+	var lid: String = _picker_for
+	if Legends.pupil_of(lid) == pid:
+		_flash("%s already trains %s." % [legend_name(lid), player_name(pid)], GOLD)
+		return
+	if Legends.pupil_of(lid) == "" and Legends.mentor_of(pid) == "":
+		_do_assign(lid, pid)
+		return
+	_open_confirm([lid, pid])
+
+func _on_stop() -> void:
+	if _busy or _picker == null or _confirm != null or _picker_arm_t > 0.0:
+		return
+	if Legends.pupil_of(_picker_for) == "":
+		return
+	_open_confirm([_picker_for, ""])
+
+# the confirm lines for a pair: [title, [lines], yes text]
+func confirm_text(pair: Array) -> Array:
+	var lid: String = str(pair[0])
+	var pid: String = str(pair[1])
+	var ln: String = legend_name(lid)
+	var perk: String = str(LegendsData.perk_of(lid).get("text", ""))
+	var old: String = Legends.pupil_of(lid)
+	if pid == "":
+		return ["STOP TRAINING?", ["%s stops training %s." % [ln, player_name(old)],
+				"%s loses: %s." % [player_name(old), perk]], "YES, STOP"]
+	var lines: Array = []
+	if old != "" and old != pid:
+		lines.append("%s stops training %s." % [ln, player_name(old)])
+	var om: String = Legends.mentor_of(pid)
+	if om != "" and om != lid:
+		lines.append("%s leaves %s (%s then trains nobody)." % [player_name(pid), legend_name(om), legend_name(om)])
+	lines.append("%s trains %s: %s." % [ln, player_name(pid), perk])
+	return ["SWITCH?", lines, "YES, SWITCH"]
+
+func _open_confirm(pair: Array) -> void:
+	_confirm_pair = pair.duplicate()
+	var ct: Array = confirm_text(pair)
+	var dim := ColorRect.new()
+	dim.color = UI.DIM_COLOR
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_root.add_child(dim)
+	_confirm = dim
+	var fr: Control = _centred_frame(dim)
+	var box: PanelContainer = UI.panel(fr, CONFIRM_BOX)
+	var sb: StyleBoxFlat = UI.style_box(Color(UI.PANEL_COLOR, 1.0), UI.LIT_COLOR, UI.BORDER)
+	sb.set_content_margin_all(UI.PANEL_PAD)
+	box.add_theme_stylebox_override("panel", sb)
+	box.position = (FRAME_SIZE - CONFIRM_BOX) / 2.0
+	box.size = CONFIRM_BOX
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", 14)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(col)
+	UI.label(col, str(ct[0]), UI.OPT_FONT + 6, UI.LIT_COLOR)
+	for line in ct[1]:
+		var l: Label = UI.label(col, str(line), CONFIRM_FONT, UI.TEXT_COLOR)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UI.label(col, "Perks work in Road Trip games only.", CONFIRM_FONT - 4, DIM_TEXT)
+	var row: HBoxContainer = UI.hbox(col)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	UI.button(row, "NOT YET", _close_confirm, UI.KIND_OPT, CONFIRM_BTN)
+	_yes = UI.button(row, str(ct[2]), _on_yes, UI.KIND_LIT, CONFIRM_BTN)
+	UI.set_enabled(_yes, false)
+	_confirm_t = CONFIRM_ARM_T
+	_sfx("bounce", -8.0)
+	print("HALL confirm %s | %s" % [str(ct[0]), " ".join(PackedStringArray(ct[1]))])
+
+func _close_confirm() -> void:
+	if _confirm == null:
+		return
+	_confirm.queue_free()
+	_confirm = null
+	_yes = null
+	_confirm_t = 0.0
+	_confirm_pair = []
+
+func _on_yes() -> void:
+	if _busy or _confirm == null or _confirm_t > 0.0 or _confirm_pair.size() != 2:
+		return
+	var pair: Array = _confirm_pair.duplicate()
+	_close_confirm()
+	if str(pair[1]) == "":
+		var lid: String = str(pair[0])
+		var old: String = Legends.pupil_of(lid)
+		if Legends.release(lid):
+			_stat("hall_mentor_stop")
+			_sfx("bounce", -4.0)
+			print("HALL mentor stop %s (was %s) | pairs %s" % [lid, old, JSON.stringify(Legends.mentors)])
+			close_picker()
+			_show_pick()
+			_flash("%s trains nobody now." % legend_name(lid), HINT_COLOR)
+		return
+	_do_assign(str(pair[0]), str(pair[1]))
+
+# Legends.assign (saved), then the picker closes and the detail shows the new pair
+func _do_assign(lid: String, pid: String) -> bool:
+	if not Legends.assign(lid, pid):
+		push_warning("Hall: Legends.assign('%s', '%s') refused" % [lid, pid])
+		_flash("%s can't train %s." % [legend_name(lid), player_name(pid)])
+		return false
+	_stat("hall_mentor_assign")
+	_sfx("stat_up", -4.0)
+	print("HALL mentor %s -> %s | perk %s | pairs %s" % [lid, pid, str(Legends.perks_for(pid).get("id", "")),
+			JSON.stringify(Legends.mentors)])
+	close_picker()
+	if _pick != lid:
+		pick(lid)
+	else:
+		_show_pick()
+	_flash("%s now trains %s." % [legend_name(lid), player_name(pid)], GOLD)
+	return true
+
+# test drivers: train this pair as a confirmed tap would (no picker, no confirm)
+func train(legend_id: String, player_id: String) -> bool:
+	if _busy:
+		return false
+	_close_confirm()
+	close_picker()
+	return _do_assign(legend_id, player_id)
+
+# the pair auto_step() assigns: the first legend who can train and trains nobody on this list, on the first listed
+# player without a mentor; [] = none
+func auto_pair() -> Array:
+	for lid in Legends.unlocked_ids():
+		var l: String = str(lid)
+		if not Legends.can_mentor(l) or has_player(Legends.pupil_of(l)):
+			continue
+		for p in _players:
+			var pid: String = str(p["id"])
+			if pid != l and Legends.mentor_of(pid) == "":
+				return [l, pid]
+	return []
+
+# the picker's tiles: a tap trains (tile_tapped), a drag scrolls
+func tile_input(ctl: Control, event: InputEvent, st: Dictionary) -> bool:
+	var mb := event as InputEventMouseButton
+	if mb != null and mb.button_index == MOUSE_BUTTON_LEFT:
+		var tapped := false
+		if mb.pressed:
+			st["down"] = true
+			st["drag"] = false
+			st["press"] = mb.global_position
+			st["last"] = mb.global_position
+		elif bool(st.get("down", false)):
+			st["down"] = false
+			var press: Vector2 = st.get("press", mb.global_position)
+			tapped = not bool(st.get("drag", false)) and mb.global_position.distance_to(press) <= TAP_SLOP
+		ctl.accept_event()
+		return tapped
+	var mm := event as InputEventMouseMotion
+	if mm != null and bool(st.get("down", false)):
+		var g: Vector2 = mm.global_position
+		var last: Vector2 = st.get("last", g)
+		var step: Vector2 = g - last
+		st["last"] = g
+		var press: Vector2 = st.get("press", g)
+		if step.length() > JUMP_PX:
+			st["press"] = g   # the emulated mouse jumping, not a finger moving
+		elif g.distance_to(press) > TAP_SLOP:
+			st["drag"] = true
+		if bool(st.get("drag", false)) and step.length() <= JUMP_PX and _picker_scroll != null:
+			_picker_scroll.scroll_vertical -= int(step.y)
+		ctl.accept_event()
+	return false   # the wheel goes on to the scroll container
 
 # ---------------------------------------------------------------------------------------------------- actions
 
@@ -533,10 +1014,21 @@ func _go(to: String, to_args := {}) -> void:
 	_busy = true
 	Flow.go(to, to_args)
 
-# test drivers: leave the Hall (BACK)
+# test drivers: leave the Hall (BACK); the picker and its confirm close first. Asked to train (auto_train), the
+# first step assigns one pupil (auto_pair()) and the next one goes BACK.
 func auto_step() -> bool:
 	if _busy:
 		return false
+	_arm_t = 0.0
+	if _picker != null:
+		close_picker()
+	if auto_train and not _auto_trained:
+		_auto_trained = true
+		var pair: Array = auto_pair()
+		if not pair.is_empty() and train(str(pair[0]), str(pair[1])):
+			print("HALL auto train %s -> %s" % [str(pair[0]), str(pair[1])])
+			return true
+		print("HALL auto train: no free legend or player")
 	_on_back()
 	return _busy
 
@@ -825,6 +1317,71 @@ class DetailArt extends Control:
 					s.SHAPE_UP if v > 0 else (s.SHAPE_DOWN if v < 0 else s.DIM_TEXT), HORIZONTAL_ALIGNMENT_RIGHT,
 					s.SHAPE_NUM_W - 4.0)
 			y += s.SHAPE_ROW
+
+
+# P9-27: one of your players in the mentor picker (drawn; tap = train him, drag = scroll): his card, name, number and
+# role, YOU / STARTER / BENCH, and his mentor.
+class PlayerTile extends Control:
+	var screen
+	var p := {}
+	var card: Dictionary = {}
+	var _st := {}
+
+	func _gui_input(event: InputEvent) -> void:
+		if screen.tile_input(self, event, _st):
+			screen.tile_tapped(str(p.get("id", "")))
+
+	func _draw() -> void:
+		var s = screen
+		var id: String = str(p.get("id", ""))
+		var lid: String = s._picker_for
+		var mentor: String = s.Legends.mentor_of(id)
+		var pupil: bool = mentor != "" and mentor == lid
+		draw_style_box(s.UI.style_box(s.TILE_PUPIL_FILL if pupil else s.TILE_FILL,
+				s.GOLD if pupil else s.UI.OFF_BORDER, s.TILE_PUPIL_BORDER_W if pupil else s.TILE_BORDER_W),
+				Rect2(Vector2.ZERO, size))
+		var pad: float = s.TILE_PAD
+		var sc: float = s.TILE_SPRITE_SCALE
+		var box: Vector2 = s.TILE_SHEET_BOX * sc
+		var sp := Vector2(pad + 2.0, (size.y - box.y) / 2.0)
+		var tex: Texture2D = card.get("texture", null)
+		if tex != null:
+			draw_texture_rect(tex, s.Sheets.card_rect(card, sp, sc), false)
+		else:
+			draw_circle(sp + Vector2(box.x / 2.0, box.y * 0.2), box.x * 0.22, s.SILHOUETTE_COLOR)
+			draw_rect(Rect2(sp + Vector2(box.x * 0.22, box.y * 0.34), Vector2(box.x * 0.56, box.y * 0.6)),
+					s.SILHOUETTE_COLOR)
+		var x: float = sp.x + box.x + 10.0
+		var w: float = size.x - x - pad
+		var font: Font = ThemeDB.fallback_font
+		var nm: String = str(p.get("name", id)).to_upper()
+		var fs: int = s.TILE_NAME_FONT
+		while fs > 14 and font.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w:
+			fs -= 2
+		s.draw_text(self, Vector2(x, 32.0), nm, fs, s.GOLD if pupil else s.UI.TEXT_COLOR)
+		var num: int = int(p.get("number", 0))
+		var sub: String = (("#%d  " % num) if num > 0 else "") + str(p.get("role", "")).to_upper()
+		var sfs: int = s.TILE_TEXT_FONT
+		while sfs > 11 and font.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs).x > w:
+			sfs -= 1
+		s.draw_text(self, Vector2(x, 54.0), sub, sfs, s.DIM_TEXT)
+		var tag: String = str(p.get("tag", ""))
+		if bool(p.get("legend", false)):
+			tag += "  LEGEND"
+		s.draw_text(self, Vector2(x, 78.0), tag, s.TILE_TEXT_FONT, s.GOLD if tag.begins_with("YOU")
+				else s.UI.TEXT_COLOR)
+		var st: String = "NO MENTOR"
+		var col: Color = s.DIM_TEXT
+		if pupil:
+			st = "HIS PUPIL"
+			col = s.GOLD
+		elif mentor != "":
+			st = "TRAINED BY " + s.legend_name(mentor).to_upper()
+			col = s.MENTOR_COLOR
+		var mfs: int = s.MENTOR_FONT
+		while mfs > 12 and font.get_string_size(st, HORIZONTAL_ALIGNMENT_LEFT, -1, mfs).x > w:
+			mfs -= 1
+		s.draw_text(self, Vector2(x, 106.0), st, mfs, col)
 
 
 # Top-right: the legends in the Hall and the tokens.
