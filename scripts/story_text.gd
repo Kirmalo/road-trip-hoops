@@ -20,6 +20,14 @@ extends RefCounted
 #   - Deuce's knee (trip_start, Memphis, Seattle -> ending)
 #   - The Biscuit breaks down once, climbing to Denver (Denver arrive -> final_before, ending)
 #   - Tank's grandpa sayings and the cup holder (trip_start, first_loss, Seattle -> ending)
+#
+# Legends, Chapter 1 (P9-14): legends_data.gd names the scenes: the chapter's "intro_scene" (the first time the
+# chapter opens), each legend's "unlock_scene" (after his challenge is won; he speaks, like a recruit's line) and the
+# "finale_scenes" before / after. A legend's "who" is his legends_data.gd id (lg_<id>): his portrait is
+# assets/portraits/lg_<id>.png (moods: "happy" only). The legends stand right, your crew left. No {city} in these
+# scenes (they are not about a trip city). Grandfathers-and-grandkids banter; Tank's grandpa is in the crowd.
+# Name check cautions (docs/legends-namecheck.md): Steeple is STEEPLE, Ezekiel or "the big fella", never by a
+# short form of Ezekiel; his move is the "hook shot", nothing else.
 
 const SCENES := {
 	# the title's NEW TRIP, before the map
@@ -241,6 +249,137 @@ const SCENES := {
 			"text": "Final napkin math: three underdogs, one van, a thousand miles... equals CHAMPIONS. I'm framing this napkin."},
 		{"who": "narrator", "side": "left",
 			"text": "And so the {crew} drove home to Indiana, the trophy in Tank's cup holder. THE END... for now."},
+	],
+
+	# ---------------- Legends, Chapter 1: the Grandfathers (P9-14) ----------------
+	# the first time the chapter opens: the old gym, the six, the deal, a hint of the OLD SCHOOL rules
+	"legends_grand_intro": [
+		{"who": "narrator", "side": "left",
+			"text": "Back home, behind the feed store, there's an old wood gym nobody has opened in years. Tonight the lights are on."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math says this place closed before my dad was born. So who's paying the electric bill?"},
+		{"who": "lg_quarterback", "side": "right",
+			"text": "We are, son. Otis Brannigan. Folks call me Quarterback. Heard you kids have been making noise out on the road."},
+		{"who": "lg_steeple", "side": "right",
+			"text": "Ezekiel Oakhurst. Steeple, to friends. Six of us played here, back when shorts were short and socks were tall."},
+		{"who": "ud_tank", "side": "left",
+			"text": "My grandpa talks about a gym like this. He says the floor creaked so loud you could hear a pump fake."},
+		{"who": "lg_steeple", "side": "right", "mood": "happy",
+			"text": "Smart man. Here's the deal: beat each of us at his own game, and we'll teach you. Then our best three take you on."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "Old school, huh? Slower legs, long shots that won't fall, close ones that will. My knee's going to love it here."},
+	],
+
+	# Steeple's challenge won (hold him under 6, to 15)
+	"lg_steeple_unlock": [
+		{"who": "lg_steeple", "side": "right",
+			"text": "Under six. Nobody's held me that low since the rims were nailed to barn walls."},
+		{"who": "ud_jojo", "side": "left", "mood": "happy",
+			"text": "Napkin math says you're about seven feet tall. How did we even... Tank sat on your arm, didn't he."},
+		{"who": "ud_tank", "side": "left",
+			"text": "I only leaned. Grandpa says lean on a fence post long enough and it leans back."},
+		{"who": "lg_steeple", "side": "right", "mood": "happy",
+			"text": "Ha! All right, you earned the big fella. Find me in the Hall, and I'll teach your bigs some touch at the rim."},
+	],
+
+	# Gate's challenge won (reach 11 before his crew gets 7)
+	"lg_gate_unlock": [
+		{"who": "lg_gate", "side": "right",
+			"text": "Eleven before seven. Forty years I kept this lane shut, and you ran right past the gate."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "We didn't try to go through you, Mr. Fenwick. We went around. Fast."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Also, you never jumped! Not once! Is that the trick? Just... not jumping?"},
+		{"who": "lg_gate", "side": "right", "mood": "happy",
+			"text": "The trick is jumping once, at the right time. Call me Gate. Come see me in the Hall and I'll show you when."},
+	],
+
+	# Set Shot's challenge won (he starts on fire, win to 15)
+	"lg_set_shot_unlock": [
+		{"who": "lg_set_shot", "side": "right",
+			"text": "I was on fire, son. Both hands, feet planted. And you still won. That does not happen."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Sir, you were shooting from the parking lot. A car honked at you."},
+		{"who": "lg_set_shot", "side": "right", "mood": "happy",
+			"text": "That was my wife. She honks when I make one. Come by the Hall and I'll give your shooters some range."},
+		{"who": "lg_set_shot", "side": "right",
+			"text": "One condition: no more dunking in my gym. The dunk is a fad."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "Mr. Vickery, with respect, it's been a fad for a real long time."},
+	],
+
+	# Boxcar's challenge won (3 blocks or steals on him, and win, to 15)
+	"lg_boxcar_unlock": [
+		{"who": "lg_boxcar", "side": "right",
+			"text": "Three times you took it off me. Thirty years in the rail yard, and nothing ever moved me."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "We didn't move you, sir. We just delayed you."},
+		{"who": "lg_boxcar", "side": "right", "mood": "happy",
+			"text": "Ha! That's MY line, big man. Fine. Find me in the Hall and I'll teach your crew to dunk from a step further out."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Do we bring anything? Like a gift? A wrench?"},
+		{"who": "lg_boxcar", "side": "right",
+			"text": "Bring snacks. Old men run on snacks."},
+	],
+
+	# Velvet's challenge won (hold him under 5, to 11)
+	"lg_velvet_unlock": [
+		{"who": "lg_velvet", "side": "right",
+			"text": "Under five. On my finger roll. You made me sweat, children, and on my good shirt."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Mr. Ashby, it's a tank top."},
+		{"who": "lg_velvet", "side": "right", "mood": "happy",
+			"text": "It's a SILK tank top, young man. Come by the Hall, and I'll teach your guards to slip a layup past a hand."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "Only if you teach me to glide like you. My knee's about done running."},
+		{"who": "lg_velvet", "side": "right", "mood": "happy",
+			"text": "Gliding is just running with good manners. You'll get there."},
+	],
+
+	# Quarterback's challenge won (start down 0-6, come back, to 15)
+	"lg_quarterback_unlock": [
+		{"who": "lg_quarterback", "side": "right",
+			"text": "Down six before the tip, and you came back anyway. I gave you a head start the wrong way!"},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "We've been the underdogs since Indiana, sir. Down six felt like home."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Can you teach me the no-look pass? And what's the whistle for? You never blow it."},
+		{"who": "lg_quarterback", "side": "right", "mood": "happy",
+			"text": "The whistle's for emergencies. Haven't had one yet. Find me in the Hall and I'll make your passes quicker."},
+		{"who": "lg_quarterback", "side": "right",
+			"text": "The no-look pass? I just threw you one. You didn't see it. That's the lesson."},
+	],
+
+	# before the Grandfathers finale (the Kings against Steeple, Velvet and Quarterback, to 21)
+	"legends_grand_finale_before": [
+		{"who": "narrator", "side": "left",
+			"text": "Every banner in the old gym is lit. Half the town squeezed into the bleachers, and most of them are grandparents."},
+		{"who": "lg_steeple", "side": "right",
+			"text": "The six of us picked our three. Me, Velvet and Otis. Old school, to twenty-one, the way we always played it."},
+		{"who": "lg_velvet", "side": "right", "mood": "happy",
+			"text": "Don't worry, children. We'll go easy on you. ...That was a joke. We have never gone easy on anybody."},
+		{"who": "ud_tank", "side": "left",
+			"text": "Grandpa's in the third row. He says he's rooting for both teams. And for the popcorn."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math: add up their ages and you get older than most towns in Indiana. Somehow that makes it scarier."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "They taught us what they know. Now we show them what we did with it. {crew}, ball up."},
+	],
+
+	# the finale won: the end of Chapter 1
+	"legends_grand_finale_after": [
+		{"who": "lg_quarterback", "side": "right", "mood": "happy",
+			"text": "Well, that's the game. A bunch of kids beat the grandfathers, in our own gym."},
+		{"who": "lg_steeple", "side": "right", "mood": "happy",
+			"text": "Don't look so sad, Otis. That's how it's supposed to go. We just didn't think it'd be this soon."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "You never stopped playing. Bad knees and all. That's what I'll remember."},
+		{"who": "lg_velvet", "side": "right", "mood": "happy",
+			"text": "Our names are on those banners. Yours go up right next to them. Hang them straight, now."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "Grandpa's crying. He says it's the popcorn. It's not the popcorn."},
+		{"who": "narrator", "side": "left",
+			"text": "And so the Grandfathers gave the {crew} the keys to the old gym, and kept a spare. CHAPTER 1: DONE."},
 	],
 }
 
