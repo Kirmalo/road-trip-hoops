@@ -17,6 +17,7 @@ const Flow = preload("res://scripts/flow.gd")
 const Cities = preload("res://scripts/cities.gd")
 const Trip = preload("res://scripts/trip.gd")
 const StoryText = preload("res://scripts/story_text.gd")
+const LegendsData = preload("res://scripts/legends_data.gd")   # P9-14: a legend's name plate (lg_ ids)
 
 const PORTRAIT_DIR := "res://assets/portraits/"
 const PORTRAIT_SRC := Vector2(96, 112)     # source px of a portrait
@@ -292,6 +293,8 @@ func _next_line() -> void:
 		for s in 2:
 			_speak(_por[s], s == side)
 		var p: Dictionary = Cities.player(who)
+		if p.is_empty() and LegendsData.is_legend_id(who):
+			p = LegendsData.legend(who)
 		_plate_label.text = str(p.get("name", who.to_upper()))
 		_plate.visible = true
 		if side == 0:
