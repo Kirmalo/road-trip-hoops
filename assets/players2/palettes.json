@@ -301,6 +301,96 @@
   "la_g2_crew_j3": {
    "pages": "la_g2"
   },
+  "lg_boxcar": {
+   "pages": "lg_boxcar"
+  },
+  "lg_boxcar_crew": {
+   "pages": "lg_boxcar"
+  },
+  "lg_boxcar_crew_j1": {
+   "pages": "lg_boxcar"
+  },
+  "lg_boxcar_crew_j2": {
+   "pages": "lg_boxcar"
+  },
+  "lg_boxcar_crew_j3": {
+   "pages": "lg_boxcar"
+  },
+  "lg_gate": {
+   "pages": "lg_gate"
+  },
+  "lg_gate_crew": {
+   "pages": "lg_gate"
+  },
+  "lg_gate_crew_j1": {
+   "pages": "lg_gate"
+  },
+  "lg_gate_crew_j2": {
+   "pages": "lg_gate"
+  },
+  "lg_gate_crew_j3": {
+   "pages": "lg_gate"
+  },
+  "lg_quarterback": {
+   "pages": "lg_quarterback"
+  },
+  "lg_quarterback_crew": {
+   "pages": "lg_quarterback"
+  },
+  "lg_quarterback_crew_j1": {
+   "pages": "lg_quarterback"
+  },
+  "lg_quarterback_crew_j2": {
+   "pages": "lg_quarterback"
+  },
+  "lg_quarterback_crew_j3": {
+   "pages": "lg_quarterback"
+  },
+  "lg_set_shot": {
+   "pages": "lg_set_shot"
+  },
+  "lg_set_shot_crew": {
+   "pages": "lg_set_shot"
+  },
+  "lg_set_shot_crew_j1": {
+   "pages": "lg_set_shot"
+  },
+  "lg_set_shot_crew_j2": {
+   "pages": "lg_set_shot"
+  },
+  "lg_set_shot_crew_j3": {
+   "pages": "lg_set_shot"
+  },
+  "lg_steeple": {
+   "pages": "lg_steeple"
+  },
+  "lg_steeple_crew": {
+   "pages": "lg_steeple"
+  },
+  "lg_steeple_crew_j1": {
+   "pages": "lg_steeple"
+  },
+  "lg_steeple_crew_j2": {
+   "pages": "lg_steeple"
+  },
+  "lg_steeple_crew_j3": {
+   "pages": "lg_steeple"
+  },
+  "lg_velvet": {
+   "pages": "lg_velvet"
+  },
+  "lg_velvet_crew": {
+   "pages": "lg_velvet"
+  },
+  "lg_velvet_crew_j1": {
+   "pages": "lg_velvet"
+  },
+  "lg_velvet_crew_j2": {
+   "pages": "lg_velvet"
+  },
+  "lg_velvet_crew_j3": {
+   "pages": "lg_velvet"
+  },
   "mem_a1": {
    "pages": "mem_a1"
   },
@@ -779,6 +869,30 @@
   "la_g2_crew_j1": "la_g2",
   "la_g2_crew_j2": "la_g2",
   "la_g2_crew_j3": "la_g2",
+  "lg_boxcar_crew": "lg_boxcar",
+  "lg_boxcar_crew_j1": "lg_boxcar",
+  "lg_boxcar_crew_j2": "lg_boxcar",
+  "lg_boxcar_crew_j3": "lg_boxcar",
+  "lg_gate_crew": "lg_gate",
+  "lg_gate_crew_j1": "lg_gate",
+  "lg_gate_crew_j2": "lg_gate",
+  "lg_gate_crew_j3": "lg_gate",
+  "lg_quarterback_crew": "lg_quarterback",
+  "lg_quarterback_crew_j1": "lg_quarterback",
+  "lg_quarterback_crew_j2": "lg_quarterback",
+  "lg_quarterback_crew_j3": "lg_quarterback",
+  "lg_set_shot_crew": "lg_set_shot",
+  "lg_set_shot_crew_j1": "lg_set_shot",
+  "lg_set_shot_crew_j2": "lg_set_shot",
+  "lg_set_shot_crew_j3": "lg_set_shot",
+  "lg_steeple_crew": "lg_steeple",
+  "lg_steeple_crew_j1": "lg_steeple",
+  "lg_steeple_crew_j2": "lg_steeple",
+  "lg_steeple_crew_j3": "lg_steeple",
+  "lg_velvet_crew": "lg_velvet",
+  "lg_velvet_crew_j1": "lg_velvet",
+  "lg_velvet_crew_j2": "lg_velvet",
+  "lg_velvet_crew_j3": "lg_velvet",
   "mem_a1_crew": "mem_a1",
   "mem_a1_crew_j1": "mem_a1",
   "mem_a1_crew_j2": "mem_a1",
