@@ -273,7 +273,7 @@ const SCENES := {
 	# Steeple's challenge won (hold him under 6, to 15)
 	"lg_steeple_unlock": [
 		{"who": "lg_steeple", "side": "right",
-			"text": "Under six. Nobody's held me that low since the rims were nailed to barn walls."},
+			"text": "Under seven. Nobody's held me that low since the rims were nailed to barn walls."},
 		{"who": "ud_jojo", "side": "left", "mood": "happy",
 			"text": "Napkin math says you're about seven feet tall. How did we even... Tank sat on your arm, didn't he."},
 		{"who": "ud_tank", "side": "left",
@@ -285,7 +285,7 @@ const SCENES := {
 	# Gate's challenge won (reach 11 before his crew gets 7)
 	"lg_gate_unlock": [
 		{"who": "lg_gate", "side": "right",
-			"text": "Eleven before seven. Forty years I kept this lane shut, and you ran right past the gate."},
+			"text": "Eleven before ten. Forty years I kept this lane shut, and you ran right past the gate."},
 		{"who": "ud_deuce", "side": "left", "mood": "happy",
 			"text": "We didn't try to go through you, Mr. Fenwick. We went around. Fast."},
 		{"who": "ud_jojo", "side": "left",
@@ -311,7 +311,7 @@ const SCENES := {
 	# Boxcar's challenge won (3 blocks or steals on him, and win, to 15)
 	"lg_boxcar_unlock": [
 		{"who": "lg_boxcar", "side": "right",
-			"text": "Three times you took it off me. Thirty years in the rail yard, and nothing ever moved me."},
+			"text": "Twice you took it off me. Thirty years in the rail yard, and nothing ever moved me."},
 		{"who": "ud_tank", "side": "left", "mood": "happy",
 			"text": "We didn't move you, sir. We just delayed you."},
 		{"who": "lg_boxcar", "side": "right", "mood": "happy",
@@ -325,7 +325,7 @@ const SCENES := {
 	# Velvet's challenge won (hold him under 5, to 11)
 	"lg_velvet_unlock": [
 		{"who": "lg_velvet", "side": "right",
-			"text": "Under five. On my finger roll. You made me sweat, children, and on my good shirt."},
+			"text": "Under six. On my finger roll. You made me sweat, children, and on my good shirt."},
 		{"who": "ud_jojo", "side": "left",
 			"text": "Mr. Ashby, it's a tank top."},
 		{"who": "lg_velvet", "side": "right", "mood": "happy",
@@ -339,9 +339,9 @@ const SCENES := {
 	# Quarterback's challenge won (start down 0-6, come back, to 15)
 	"lg_quarterback_unlock": [
 		{"who": "lg_quarterback", "side": "right",
-			"text": "Down six before the tip, and you came back anyway. I gave you a head start the wrong way!"},
+			"text": "Down two before the tip, and you came back anyway. I gave you a head start the wrong way!"},
 		{"who": "ud_deuce", "side": "left", "mood": "happy",
-			"text": "We've been the underdogs since Indiana, sir. Down six felt like home."},
+			"text": "We've been the underdogs since Indiana, sir. Down two felt like home."},
 		{"who": "ud_jojo", "side": "left",
 			"text": "Can you teach me the no-look pass? And what's the whistle for? You never blow it."},
 		{"who": "lg_quarterback", "side": "right", "mood": "happy",

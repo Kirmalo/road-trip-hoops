@@ -109,6 +109,7 @@ tablet with a joystick and two buttons.
 | Phase 9 mentors and era tuning | Mentors coach your regular players only: a drafted legend has no mentor (owner). A first pairing happens on the tap; only a switch or STOP TRAINING asks to confirm (owner). OLD SCHOOL long shots tuned 0.88 -> 0.80 after P9-17 found the 12% hard to notice (docs/qa/phase9-era.md) |
 | Replay level (owner bug report) | Replays get a level picker in the map's replay picker (EASY / NORMAL / HARD, LEGEND once open), opening on the trip's level; a replay plays and records its stars at the picked level; the trip's own level never changes |
 | Mentor perk size (after P9-30) | Shrunk to about 2 stat points each (owner): shot perks +1.5% (close shots, threes, contested layups), blocks / dunk reach / pass speed 5% |
+| Challenge goals tuned (P9-26) | To keep every challenge winnable with the end-of-trip crew: Steeple hold under 7 (to 15), Gate race to 11 before his crew gets 10, Boxcar 2 stops, Velvet hold under 6 (to 11), Quarterback comeback from 0-2; legends rated lower (challenge average 66, finale 72 + shape). Results per level in docs/qa/phase9-challenges.md. Shown to the owner at the Phase 9 check-in |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints

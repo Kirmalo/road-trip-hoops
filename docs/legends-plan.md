@@ -50,6 +50,8 @@ one pin per era). Each chapter has its own court, music, era rules and 6 legends
 
 | Type | Goal | Example |
 |---|---|---|
+(Shipped Chapter 1 goal numbers: see `scripts/legends_data.gd` and docs/qa/phase9-challenges.md, P9-26.)
+
 | Hold him | Win while the legend scores fewer than N points | Hold the hook-shot center under 6 |
 | Beat the fire | He starts on fire and cools down only on two misses in a row; win | The deep shooter |
 | One on one | 1-on-1 to 11, you against him | The crossover artist |
