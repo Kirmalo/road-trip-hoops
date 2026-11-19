@@ -142,6 +142,8 @@ REPLAY STORY plays his unlock scene again (portraits, like `story.gd`).
 
 **Mentors.** An unlocked legend can train one of your players: a small permanent perk tied to his skill. Draft list:
 
+(Shipped Chapter 1 values: shot perks +1.5%, the others 5%, owner after P9-30; see `scripts/legends_data.gd` PERKS.)
+
 | Legend | Perk (on one of your players) |
 |---|---|
 | Steeple (hook shot) | +4% on close shots and layups |

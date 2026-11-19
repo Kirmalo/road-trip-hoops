@@ -231,12 +231,13 @@ const LEGENDS := {
 # L8 a: one perk per player, about 2 stat points' worth, Road Trip games only. P9-24 reads p.perk(key, default);
 # QA (P9-30) may tune the values.
 const PERKS := {
-	"close_touch": {"key": "close_shot_bonus", "value": 0.04, "text": "Close shots and layups +4%"},
-	"block_timing": {"key": "block_window_mult", "value": 1.10, "text": "Block timing window 10% wider"},
-	"deep_range": {"key": "three_bonus", "value": 0.03, "text": "Shots beyond the arc +3%"},
-	"long_dunk": {"key": "dunk_reach_mult", "value": 1.10, "text": "Dunks from a little further out"},
-	"soft_layup": {"key": "contested_layup_bonus", "value": 0.03, "text": "Contested layups +3%"},
-	"quick_pass": {"key": "pass_speed_mult", "value": 1.10, "text": "Passes 10% faster"},
+	# owner (after P9-30): about 2 stat points each, so shot perks +1.5%, the others 5% (docs/qa/phase9-ramp.md)
+	"close_touch": {"key": "close_shot_bonus", "value": 0.015, "text": "Close shots and layups +1.5%"},
+	"block_timing": {"key": "block_window_mult", "value": 1.05, "text": "Block timing window 5% wider"},
+	"deep_range": {"key": "three_bonus", "value": 0.015, "text": "Shots beyond the arc +1.5%"},
+	"long_dunk": {"key": "dunk_reach_mult", "value": 1.05, "text": "Dunks from a little further out"},
+	"soft_layup": {"key": "contested_layup_bonus", "value": 0.015, "text": "Contested layups +1.5%"},
+	"quick_pass": {"key": "pass_speed_mult", "value": 1.05, "text": "Passes 5% faster"},
 }
 
 # ---------------------------------------------------------------------------------------------------- name check
