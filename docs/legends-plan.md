@@ -277,8 +277,13 @@ Answered (VISION "Legends plan answers"): Q1 a, Q2 a, Q3 a, Q4 a, Q5 b, Q6 a.
 
 ## Phase 9 open questions (lead-producer, 2026-11-19; answer with the letter, (a) is the recommendation)
 
-Phase 9 builds Chapter 1 end to end (`docs/BOARD.md`). These are the decisions the owner still has to make. Wave 1
-(P9-01..P9-06) needs none of them.
+Phase 9 builds Chapter 1 end to end (`docs/BOARD.md`).
+
+**Answered (VISION "Phase 9 answers L1-L8", 2026-11-19): L1 a, L2 a, L3 b, L4 a, L5 a, L6 b, L7 a, L8 a.** All eight
+are closed. L3 b and L6 b changed the board (challenges with your Road Trip crew; the hook-shot animation, P9-04b and
+P9-04c). Technical choices for L3 b, shown to the owner at the check-in: without a trip save the Kings play at even
+ratings; the level is picked on the chapter view and opens on the trip's level; a drafted legend never plays against
+himself (he sits for that game).
 
 **L1. The six Grandfathers legends** (blocks P9-07 data, P9-09 sheets, P9-10 portraits, P9-14 story; P9-04's look
 sample uses one of them)
