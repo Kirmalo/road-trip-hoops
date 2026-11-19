@@ -13,12 +13,14 @@ his sprite in tools/art/crews.json (skin, hair, headwear, outfit, colors).
 
 Usage:  python3 tools/art/make_portraits_v2.py              every portrait + the full preview
         python3 tools/art/make_portraits_v2.py --sample     also redraw the approved sample sheet
+        python3 tools/art/make_portraits_v2.py --legends    only the Grandfathers (LG below) + their contact sheet
         python3 tools/art/make_portraits_v2.py ht_g1 ...    a quick row of those characters (ROW_OUT), writes nothing
 Output: assets/portraits/<id>.png           288 x 336 (the 96 x 112 contract at 3x), base portrait
         assets/portraits/<id>_<mood>.png    the moods story_text.gd uses (happy; bosses also smug)
         docs/art/portraits_full_v2.png      two story mock-ups and every portrait, labeled (Phase 5 cast)
         docs/art/portraits_p6.png           the same for the Phase 6 cast (P6-A4: the five new city crews and the
                                             New York crews, specs in P6 below)
+        docs/art/legends_portraits.png      the six Grandfathers of Legends Chapter 1 (P9-10, specs in LG below)
 Needs:  Pillow, numpy
 """
 import json
@@ -1426,6 +1428,73 @@ def flannel(cv, M, top, line):
         cv.rgb[thin & t[k]] = line["sh"] if k in ("sh", "dp") else line["base"]
 
 
+# era parts (Phase 9, P9-10) ----------------------------------------------------
+# The Grandfathers' portrait parts, drawn once for the era (like the sheets' P9-04 era parts): a thick ribbed
+# terry headband, mutton chops and a full mustache. Original shapes in head-local px, same lighting as the kit.
+
+def _interp(pts, x):
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    return float(np.interp(x, xs, ys))
+
+
+def terry_band(cv, T, pal, low=0.0):
+    """A thick ribbed terry-cloth headband (wider than headband()); low moves it down the forehead (px)."""
+    top = [(-63, -44 + low), (-38, -54 + low), (0, -62 + low), (36, -60 + low), (60, -52 + low), (68, -47 + low)]
+    bot = [(-63, -18 + low), (-36, -26 + low), (0, -32 + low), (40, -30 + low), (68, -26 + low)]
+    bm = cv.poly(T(top + [(69, -36 + low)] + bot[::-1]))
+    sh = cv.crescent(bm, 5) | cv.poly(T([(-64, -46 + low), (-40, -52 + low), (-40, -24 + low), (-64, -16 + low)]))
+    cv.cel(bm, pal, shadow=sh, hi=cv.sheen(bm, 2, 3), ink=2.2, dots=True, dot_sp=2.8)
+    # terry ribs: short vertical strokes across the band, closer together toward the back (wrapping round)
+    for x in list(range(-58, -30, 4)) + list(range(-30, 66, 5)):
+        y0, y1 = _interp(top, x) + 2.5, _interp(bot, x) - 2.5
+        m = cv.line(T([(x, y0), (x + 0.6, (y0 + y1) / 2), (x, y1)]), 1.1, taper=(0.3, 0.3)) & bm & ~cv.k
+        cv.rgb[m & ~sh] = pal["sh"]
+        cv.rgb[m & sh] = pal["dp"]
+    # a fuzzy top edge: little loops of terry poking out
+    for x in range(-54, 64, 7):
+        y = _interp(top, x)
+        loop = cv.ellipse(*T([(x, y + 0.5)])[0], 1.8 * T.scale(), 1.4 * T.scale())
+        cv.paint(loop & ~bm & cv.a, pal["base"])
+    cv.ink(cv.band(bm, 1.2, 0.6, 1.4, dirs=24) & ~cv.samp(bm, 0, 3, fill=False))
+    return bm
+
+
+def mutton_chops(cv, T, hair, head, expr):
+    """Mutton chops: thick sideburns from the temple down the cheek to the jaw, widest low, the chin shaven."""
+    lift = -2.0 if expr == "happy" else 0.0
+    pts = [(-12, -24, 0), (1, -24), (3, -6), (8, 12), (18, 27 + lift), (30, 37 + lift), (35, 47 + lift),
+           (33, 58), (25, 70), (10, 70), (-4, 62), (-15, 52), (-24, 40, 0), (-14, 30), (-11, 14), (-11, -6)]
+    cm = cv.poly(T(pts))
+    sh = cv.crescent(cm, 8) | cv.poly(T([(-26, 40), (-12, 50), (8, 64), (26, 68), (10, 72), (-18, 56)]))
+    hi = cv.poly(T([(-6, -16), (-3, -4), (2, 10), (7, 18), (2, 15), (-4, 2)]))
+    cv.cel(cm, hair, shadow=sh, hi=hi, ink=2.0, dots=True, dot_sp=3.0)
+    rng = np.random.default_rng(19)
+    for _ in range(40):
+        x, y = rng.uniform(-16, 32), rng.uniform(-20, 66)
+        m = cv.line(T([(x, y), (x + 1.2, y + 4), (x + 0.6, y + 8)]), 1.0, taper=(0.5, 0.5)) & cm & ~cv.k
+        cv.rgb[m] = hair["dp"] if rng.random() < 0.65 else hair["lt"]
+    # a soft fade where the chop meets the shaven chin
+    edge = cv.band(cm, 2.5, 1.0, 1.0, dirs=24) & head & ~cv.k
+    cv.rgb[edge & cv.dots(np.full(cm.shape, 0.4, np.float32), 2.2, 0.6, 25)] = hair["sh"]
+    return cm
+
+
+def era_mustache(cv, T, hair, expr):
+    """A full, thick mustache over the mouth (wider and heavier than the goatee's)."""
+    dy = -3.5 if expr == "happy" else 0.0
+    lift = 2.5 if expr == "happy" else 0.0
+    mo = cv.poly(T([(30, 51 + dy - lift, 0), (34, 42 + dy), (44, 35.5 + dy), (54, 34 + dy), (63, 34.5 + dy),
+                    (72, 38 + dy), (76, 47 + dy - lift, 0), (68, 44.5 + dy), (58, 44 + dy), (48, 45 + dy),
+                    (38, 48 + dy)]))
+    cv.cel(mo, hair, shadow=cv.crescent(mo, 3) | cv.poly(T([(36, 44 + dy), (56, 40 + dy), (72, 42 + dy),
+                                                              (72, 46 + dy), (34, 48 + dy)])),
+           hi=cv.sheen(mo, 0.8, 1.4), ink=1.8, dots=False)
+    for x0 in (39, 45, 51, 57, 63, 69):
+        m = cv.line(T([(x0, 37 + dy), (x0 - 1.2, 40.5 + dy), (x0 - 2.4, 44 + dy)]), 1.0, taper=(0.4, 0.4)) & mo
+        cv.rgb[m] = hair["dp"]
+    return mo
+
+
 # characters (Phase 6) ------------------------------------------------------------
 
 def cast_member(s):
@@ -1486,6 +1555,10 @@ def cast_member(s):
             gold_grin(cv, T, P(ex["gold_grin"]), expr)
         if beard:
             beard_and_hair(cv, T, P(beard), skin, expr, grey=True)
+        if "chops" in ex:
+            mutton_chops(cv, T, P(ex["chops"]), head, expr)
+        if "mustache" in ex:
+            era_mustache(cv, T, P(ex["mustache"]), expr)
         if style == "bald":
             bald_shine(cv, T)
             cv.ink(cv.line(T([(14, -62), (30, -64), (44, -58)]), 1.0, taper=(0.5, 0.5)))
@@ -1526,6 +1599,8 @@ def cast_member(s):
             draw_mouth(cv, T, skin, expr, beard=True)
         if s.get("headband"):
             headband(cv, T, P(s["headband"]))
+        if "terry" in ex:
+            terry_band(cv, T, P(ex["terry"]), low=ex.get("terry_low", 0.0))
         if "shades_up" in ex:
             shades(cv, Shift(T, -40), rim_col=P(ex["shades_up"])["lt"])
         if "shades" in ex:
@@ -1703,6 +1778,47 @@ CREW_CARD = {"U": (64, 150, 255), "HT": (60, 160, 80), "CHI": (124, 68, 208), "N
              "LA": (108, 188, 240), "NYQ": (216, 40, 58), "NYS": (110, 70, 130), "NYF": (190, 150, 40)}
 P6_SHEET = os.path.join(ROOT, "docs", "art", "portraits_p6.png")
 
+# Phase 9 (P9-10): the six Grandfathers (Legends Chapter 1, docs/legends-plan.md part 3; L1 a). Original characters
+# made from the kit's parts; their looks follow the plan's look notes and the approved look sample
+# (docs/art/legends_sample_v1.png: Steeple's terry headband and mutton chops, the ERA_* colors of crews.json), so
+# they match the in-game sheets (P9-09). Base mood neutral, plus happy.
+LG = {
+    # hook-shot center: very tall and wiry, mutton chops, a terry headband (the approved sample's look)
+    "lg_steeple": dict(name="STEEPLE", skin="umber", top="tank", top_pal="ERA_RUST", trim_pal="ERA_CREAM",
+                       broad=0.9, sx=0.88, sy=1.1, sxn=0.94, cy=138, jaw=-2, chin=3, crown=2, nose=1.0, wide=0.8,
+                       lips=True, tilt=2.0, hair="buzz", hair_pal="HAIR_BLACK", brow=(16, 8, 10), brow_w=1.1,
+                       extras={"chops": "HAIR_BLACK", "terry": "ERA_MUSTARD", "terry_low": 4.0}),
+    # shot-blocking wall: broad big, a flat-top
+    "lg_gate": dict(name="GATE", skin="light", top="tank", top_pal="ERA_OLIVE", trim_pal="ERA_CREAM", broad=1.2,
+                    sx=1.1, sxn=1.2, cy=134, jaw=6, chin=2, crown=-2, nose=0.5, wide=0.8, tilt=0.0, hair="flattop",
+                    hair_pal="HAIR_BROWN", flat_top=-104, fade=True, seed=7, brow_w=1.5, iris=(80, 100, 120)),
+    # deep shooter: lean, a side part
+    "lg_set_shot": dict(name="SET SHOT", skin="tan", top="tank", top_pal="ERA_POWDER", trim_pal="ERA_BROWN",
+                        broad=0.9, sx=0.9, sy=1.04, cy=136, jaw=-3, chin=2, nose=1.5, wide=0.3, tilt=3.0,
+                        hair="part", hair_pal="HAIR_DARK", brow=(22, 14, 16)),
+    # bruising power forward: heavy, bald
+    "lg_boxcar": dict(name="BOXCAR", skin="deep", top="tank", top_pal="ERA_BROWN", trim_pal="ERA_MUSTARD",
+                      broad=1.22, sx=1.12, sxn=1.22, cy=132, jaw=7, chin=2, crown=-3, wide=1.3, lips=True, tilt=0.0,
+                      hair="bald", brow=(14, 8, 10), brow_w=1.5),
+    # smooth slasher: long, an afro with a terry headband
+    "lg_velvet": dict(name="VELVET", skin="brown", top="tank", top_pal="ERA_MUSTARD", trim_pal="ERA_BROWN",
+                      broad=0.92, sx=0.9, sy=1.06, sxn=0.96, cy=140, jaw=-2, chin=2, wide=0.7, lips=True, tilt=3.0,
+                      hair="afro", hair_pal="HAIR_BLACK", seed=23, brow=(16, 8, 10),
+                      extras={"terry": "ERA_CREAM", "terry_low": 7.0}),
+    # no-look floor general: short, a mustache
+    "lg_quarterback": dict(name="QUARTERBACK", skin="light", top="tank", top_pal="ERA_CREAM", trim_pal="ERA_RUST",
+                           broad=1.0, sx=1.0, sy=0.96, cy=138, jaw=1, chin=-1, nose=-0.5, wide=0.4, tilt=2.0,
+                           hair="curls", hair_pal="HAIR_RUST", curl_rx=60.0, curl_ry=48.0, seed=35,
+                           iris=(70, 110, 80), extras={"mustache": "HAIR_RUST", "freckles": 13}),
+}
+LG_RIM = (255, 214, 138)
+LG_SHEET = os.path.join(ROOT, "docs", "art", "legends_portraits.png")
+LG_ANCHOR = {"afro": 110}
+for _pid, _s in LG.items():
+    CAST[_pid] = (_s["name"], cast_member(_s), LG_RIM, [("neutral", ""), ("happy", "_happy")],
+                  LG_ANCHOR.get(_s["hair"], P6_ANCHOR.get(_s["hair"], 250)))
+CREW_CARD["LG"] = (196, 88, 42)
+
 
 # ----------------------------------------------------------------------------- the sample sheet
 
@@ -1773,6 +1889,7 @@ def main():
     pal, skins, players = load()
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     sample = "--sample" in sys.argv
+    legends_only = "--legends" in sys.argv
     if args:
         # quick look at some characters: a row of their moods, nothing written to assets/
         made = [portrait(pid, e, pal, skins) for pid in args for e, _ in CAST[pid][3]]
@@ -1785,6 +1902,8 @@ def main():
     made = {}
     total = 0
     for pid, (name, _, _, moods, _) in CAST.items():
+        if legends_only and pid not in LG:
+            continue
         for expr, suf in moods:
             img = portrait(pid, expr, pal, skins)
             path = os.path.join(OUT_DIR, pid + suf + ".png")
@@ -1793,6 +1912,9 @@ def main():
             total += os.path.getsize(path)
             print("wrote", pid + suf + ".png", os.path.getsize(path))
     print("total bytes", total)
+    legends_sheet(made, pal, skins)
+    if legends_only:
+        return
     if sample:
         sample_sheet(made, players)
     full_sheet(made)
@@ -1806,6 +1928,21 @@ def main():
                        "Welcome to the bayou, cornfield boys.", "Hope y'all brought your running shoes."),
                       (("ud_tank", "focus"), ("la_a2", "happy"), "right", "DUKE",
                        "Three pairs. One for every quarter.", "...We play to 21, man. There are no quarters.")])
+
+
+def legends_sheet(made, pal, skins):
+    """docs/art/legends_portraits.png (P9-10): the six Grandfathers, two story mock-ups and every mood.
+    The mock-ups' crew portraits are drawn here when --legends did not make them (nothing more is written)."""
+    for key in (("ud_deuce", "focus"), ("ud_jojo", "happy")):
+        if key not in made:
+            made[key] = portrait(key[0], key[1], pal, skins)
+    full_sheet(made, crews=[("LEGENDS CHAPTER 1: THE GRANDFATHERS", "LG", list(LG))], path=LG_SHEET,
+               heading="Story portraits, the Grandfathers (P9-10) - drawn comic style v2, 288 x 336 (shown 1:1); "
+                       "the first of each legend is the base portrait",
+               mocks=[(("ud_deuce", "focus"), ("lg_steeple", "neutral"), "right", "STEEPLE",
+                       "Lean in, young man. Watch the elbow.", "Nobody blocks what they cannot reach."),
+                      (("ud_jojo", "happy"), ("lg_quarterback", "happy"), "right", "QUARTERBACK",
+                       "Pass first, kid. Then pass again.", "Shooting is for folks who can't find a teammate.")])
 
 
 def full_sheet(made, crews=None, mocks=None, path=FULL_SHEET,
