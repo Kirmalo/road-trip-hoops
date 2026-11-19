@@ -86,7 +86,7 @@ const TWISTS := {
 		"name": "OLD SCHOOL", "banner": "Old school: slower, more inside, fewer threes and fouls",
 		"icon": "era_grand",
 		"speed_mult": 0.94,           # everyone 6% slower
-		"long_shot_mult": 0.88,       # shots beyond the arc go in 12% less often
+		"long_shot_mult": 0.80,       # shots beyond the arc go in 20% less often (P9-17: at 0.88 nobody noticed)
 		"inside_mult": 1.08,          # close jumpers, layups and dunks go in 8% more often
 		"foul_mult": 0.6,             # fouls are called 60% as often as today (rougher defense)
 	},

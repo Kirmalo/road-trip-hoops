@@ -161,7 +161,8 @@ static func can_mentor(legend_id: String) -> bool:
 # is). True also when the pair was already in place.
 static func assign(legend_id: String, player_id: String) -> bool:
 	load_state()
-	if not can_mentor(legend_id) or player_id == "" or player_id == legend_id \
+	# owner: a legend coaches regular players only, never another legend (so never himself either)
+	if not can_mentor(legend_id) or player_id == "" or LegendsData.is_legend_id(player_id) \
 			or player_id.length() > LegendsSave.MAX_ID_LEN:
 		return false
 	if str(mentors.get(legend_id, "")) == player_id:
@@ -187,7 +188,7 @@ static func release(legend_id: String) -> bool:
 # roster players on a loaded trip.
 static func perks_for(player_id: String) -> Dictionary:
 	var lid: String = mentor_of(player_id)
-	if lid == "" or not can_mentor(lid):
+	if lid == "" or not can_mentor(lid) or LegendsData.is_legend_id(player_id):
 		return {}
 	var row: Dictionary = LegendsData.perk_of(lid)
 	return {"id": str(LegendsData.legend(lid).get("perk", "")), "key": str(row.get("key", "")),
@@ -218,18 +219,15 @@ static func token_best(key: String) -> int:
 static func tokens_total() -> int:
 	if force_tokens >= 0:
 		return force_tokens
-	load_state()
-	var t: int = 0
-	for k in tokens:
-		t += int(tokens[k])
-	return t
+	return real_tokens_total()
 
-# the stored total (never --tokens)
+# the stored total (never --tokens). P9-B2: only the chapters this build has (a newer build's or a hand-edited file
+# keeps its other keys, but they never count here, so the total never passes max_tokens())
 static func real_tokens_total() -> int:
 	load_state()
 	var t: int = 0
-	for k in tokens:
-		t += int(tokens[k])
+	for ch in LegendsData.built_chapters():
+		t += chapter_tokens(str(ch))
 	return t
 
 # a chapter's tokens and its most (6 challenges + the finale, x3)

@@ -588,10 +588,13 @@ static func _roster_boss() -> String:
 			return str(id)
 	return ""
 
+static var _draft_chance := false   # P9-B1: set once a lineup offered a draft (a finished trip resumed never does)
+
 # the first draft of the run (as in Phase 8), then in a legend run one more legend per open slot (LEGEND_DRAFTS)
 static func _draft_due() -> bool:
 	if Trip.replaying() or Trip.open_slots() <= 0 or Trip.draft_pool().is_empty() or _draft_wait:
 		return false
+	_draft_chance = true   # P9-B1: a lineup gave the driver its chance to draft
 	if not _drafted:
 		return true
 	return _lg_mode and _lg_drafts < LEGEND_DRAFTS and not _legend_pool().is_empty()
@@ -806,7 +809,7 @@ func _end_checks() -> bool:
 		return false
 	print("TRIP draft at the end | slots %d | drafted %s | %s" % [Trip.slot_count(), str(Trip.drafted_ids()),
 			"ok" if Trip.slot_count() == 0 or Trip.drafted_ids().size() > 0 else "NO DRAFT"])
-	if DRAFT_TEST and Trip.slot_count() > 0 and Trip.drafted_ids().is_empty():
+	if DRAFT_TEST and _draft_chance and Trip.slot_count() > 0 and Trip.drafted_ids().is_empty():
 		_fail("star slots were open but no one was drafted")
 		return false
 	if _replay_state == 1 or _replay_state == 2 or _replay_snap != "":

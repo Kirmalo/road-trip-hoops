@@ -635,6 +635,8 @@ func _load_players() -> void:
 			ids.append(str(id))
 	for id in ids:
 		var sid: String = str(id)
+		if LegendsData.is_legend_id(sid):
+			continue   # owner: legends coach your regular players only (a drafted legend has no mentor)
 		var tag: String = "BENCH"
 		if _has_trip:
 			if sid == Trip.human:
