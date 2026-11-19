@@ -72,7 +72,11 @@
     "ERA_OLIVE": ["#a8b070", "#6e7a3a", "#4a5226", "#282e12"],
     "ERA_POWDER": ["#d6ecff", "#9cc4e8", "#6a8eb8", "#3e587c"],
     "ERA_PAD": ["#f4f0e6", "#cfc8b8", "#968e7e", "#5c5648"],
-    "ERA_GUM": ["#e6c48c", "#c09a5c", "#8a6a3a", "#54401e"]
+    "ERA_GUM": ["#e6c48c", "#c09a5c", "#8a6a3a", "#54401e"],
+    "ERA_CRIMSON": ["#ff8a84", "#d02a36", "#8e1828", "#520c1a"],
+    "ERA_LEMON": ["#fff8b0", "#ffd83a", "#c89c18", "#7a5a0c"],
+    "ERA_NAVY": ["#6474b0", "#2e3a70", "#1c244a", "#0e122a"],
+    "ERA_WHITE": ["#ffffff", "#f6f4ee", "#d0cabe", "#8c8678"]
   },
   "skins": {
     "deep": ["#a86e4c", "#7e4c32", "#573024", "#381c1e"],
@@ -123,9 +127,10 @@
     "NYS": {"PLUM": "BLUE", "GREYW": "WHITE", "_fields": {"trim_pal": "GOLD", "shorts_trim": "GOLD"}},
     "NYF": {"BLACK": "BLUE", "_fields": {"trim_pal": "GOLD", "shorts_trim": "GOLD"}},
     "NY": {"BLACK": "BLUE", "SILVER": "GOLD", "_fields": {"trim_pal": "GOLD", "shorts_trim": "GOLD"}},
-    "GR": {"_note": "P9-09: every era kit color to one of your colors (rust, olive and powder BLUE, brown NAVY, mustard GOLD, cream WHITE); pads and gum soles stay",
-           "ERA_RUST": "BLUE", "ERA_OLIVE": "BLUE", "ERA_POWDER": "BLUE",
-           "ERA_BROWN": "NAVY", "ERA_MUSTARD": "GOLD", "ERA_CREAM": "WHITE"}
+    "GR": {"_note": "P9-09: every era kit color to one of your colors (rust, crimson, olive and powder BLUE, brown and navy NAVY, mustard and lemon GOLD, cream and white WHITE); pads and gum soles stay",
+           "ERA_RUST": "BLUE", "ERA_OLIVE": "BLUE", "ERA_POWDER": "BLUE", "ERA_CRIMSON": "BLUE",
+           "ERA_BROWN": "NAVY", "ERA_NAVY": "NAVY", "ERA_MUSTARD": "GOLD", "ERA_LEMON": "GOLD",
+           "ERA_CREAM": "WHITE", "ERA_WHITE": "WHITE"}
   },
   "jerseys": {
     "_help": ["P8-09: the 3 alternate jerseys (star rewards jersey_1..3, Cosmetics.ITEMS). Palette only: every sheet that",
@@ -691,13 +696,13 @@
     },
     {
       "id": "lg_steeple", "crew": "GR", "phase": 9, "number": 18, "role": "hook-shot center", "name": "Steeple",
-      "draft": true, "desc": "P9-09 legend (original): very tall and wiry, umber skin, black buzz cut, mutton chops, mustard terry headband; rust tank, cream trim, short shorts, striped tube socks (the approved sample)",
+      "draft": true, "desc": "P9-09 legend (original): very tall and wiry, umber skin, black buzz cut, mutton chops, mustard terry headband; deep red tank, cream trim, short shorts, striped tube socks (the sample's look, brighter kit)",
       "body": "wiry_center", "body_tweak": {"leg": 0.05, "torso": 0.02, "width": -0.05, "mass": -0.1}, "skin": "umber",
       "hair": "buzz", "hair_pal": "HAIR_BLACK", "chops": true, "terry": true, "band_pal": "ERA_MUSTARD", "top": "tank",
-      "top_pal": "ERA_RUST", "trim_pal": "ERA_CREAM", "shorts_pal": "ERA_RUST", "shorts_trim": "ERA_CREAM",
+      "top_pal": "ERA_CRIMSON", "trim_pal": "ERA_CREAM", "shorts_pal": "ERA_CRIMSON", "shorts_trim": "ERA_CREAM",
       "shorts_len": 0.46, "era_shorts": true, "sleeve": null, "tight": null, "sock_pal": "ERA_CREAM", "sock_len": 0.9,
-      "socks": "striped", "stripe_pal": "ERA_RUST", "stripe2_pal": "ERA_MUSTARD", "shoe_pal": "ERA_CREAM",
-      "shoe_acc": "ERA_RUST", "sole_pal": "ERA_GUM", "action": ["dunk", 3]
+      "socks": "striped", "stripe_pal": "ERA_CRIMSON", "stripe2_pal": "ERA_MUSTARD", "shoe_pal": "ERA_CREAM",
+      "shoe_acc": "ERA_CRIMSON", "sole_pal": "ERA_GUM", "action": ["dunk", 3]
     },
     {
       "id": "lg_gate", "crew": "GR", "phase": 9, "number": 54, "role": "shot-blocking wall", "name": "Gate",
@@ -719,22 +724,22 @@
     },
     {
       "id": "lg_boxcar", "crew": "GR", "phase": 9, "number": 46, "role": "power forward", "name": "Boxcar",
-      "draft": true, "desc": "P9-09 legend (original): heavy, deep skin, bald, cream wristbands; brown tank, mustard trim, short shorts, striped tube socks",
+      "draft": true, "desc": "P9-09 legend (original): heavy, deep skin, bald, cream wristbands; white tank, mustard trim, short shorts, striped tube socks",
       "body": "power_forward", "body_tweak": {"mass": 0.15}, "skin": "deep", "hair": "bald", "hair_pal": "HAIR_BLACK",
-      "wrist": true, "wrist_pal": "ERA_CREAM", "top": "tank", "top_pal": "ERA_BROWN", "trim_pal": "ERA_MUSTARD",
-      "shorts_pal": "ERA_BROWN", "shorts_trim": "ERA_MUSTARD", "shorts_len": 0.46, "era_shorts": true, "sleeve": null,
-      "tight": null, "sock_pal": "ERA_CREAM", "sock_len": 0.9, "socks": "striped", "stripe_pal": "ERA_BROWN",
-      "stripe2_pal": "ERA_MUSTARD", "shoe_pal": "ERA_CREAM", "shoe_acc": "ERA_MUSTARD", "sole_pal": "ERA_GUM",
+      "wrist": true, "wrist_pal": "ERA_CREAM", "top": "tank", "top_pal": "ERA_WHITE", "trim_pal": "ERA_MUSTARD",
+      "shorts_pal": "ERA_WHITE", "shorts_trim": "ERA_MUSTARD", "shorts_len": 0.46, "era_shorts": true, "sleeve": null,
+      "tight": null, "sock_pal": "ERA_CREAM", "sock_len": 0.9, "socks": "striped", "stripe_pal": "ERA_MUSTARD",
+      "stripe2_pal": "ERA_BROWN", "shoe_pal": "ERA_CREAM", "shoe_acc": "ERA_MUSTARD", "sole_pal": "ERA_GUM",
       "action": ["dunk_two", 4]
     },
     {
       "id": "lg_velvet", "crew": "GR", "phase": 9, "number": 19, "role": "smooth slasher", "name": "Velvet",
-      "draft": true, "desc": "P9-09 legend (original): long, brown skin, black afro under a cream terry headband; mustard tank, brown trim, short shorts, striped tube socks",
+      "draft": true, "desc": "P9-09 legend (original): long, brown skin, black afro under a cream terry headband; bright lemon-gold tank, navy trim, short shorts, striped tube socks",
       "body": "lanky_wing", "skin": "brown", "hair": "afro", "hair_pal": "HAIR_BLACK", "terry": true, "band_pal": "ERA_CREAM",
-      "top": "tank", "top_pal": "ERA_MUSTARD", "trim_pal": "ERA_BROWN", "shorts_pal": "ERA_MUSTARD", "shorts_trim": "ERA_BROWN",
+      "top": "tank", "top_pal": "ERA_LEMON", "trim_pal": "ERA_NAVY", "shorts_pal": "ERA_LEMON", "shorts_trim": "ERA_NAVY",
       "shorts_len": 0.46, "era_shorts": true, "sleeve": null, "tight": null, "sock_pal": "ERA_CREAM", "sock_len": 0.9,
-      "socks": "striped", "stripe_pal": "ERA_BROWN", "stripe2_pal": "ERA_MUSTARD", "shoe_pal": "ERA_CREAM",
-      "shoe_acc": "ERA_BROWN", "sole_pal": "ERA_GUM", "action": ["layup", 3]
+      "socks": "striped", "stripe_pal": "ERA_NAVY", "stripe2_pal": "ERA_LEMON", "shoe_pal": "ERA_CREAM",
+      "shoe_acc": "ERA_NAVY", "sole_pal": "ERA_GUM", "action": ["layup", 3]
     },
     {
       "id": "lg_quarterback", "crew": "GR", "phase": 9, "number": 12, "role": "floor general", "name": "Quarterback",
