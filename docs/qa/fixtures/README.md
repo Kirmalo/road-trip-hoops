@@ -32,3 +32,43 @@ Checked in the 1.0.0 build:
 - Each fixture as `user://trip_test.json`, then `-- --trip-test --target 3 --trip-resume`: resumes on the screen above
   and plays on to TRIP END (exit 0, no errors): chicago 32 games, points 31, bosses 27 (the first game resumed with the
   3 bosses starting), ny 2, done 0 (straight to the CHAMPIONS title).
+
+# Phase 8 save fixtures (P9-01)
+
+Saves written by the Phase 8 build (commit `0dc6c22`), so Phase 9 can test that every Phase 8 save loads (`trip.json`
+version 2 with drafts, each player's own points and the replay marker; `settings.cfg` with stars and LOCKER picks).
+Same rules as above: the exact bytes `save.gd` and `ConfigFile` wrote, don't edit them by hand.
+
+| File | State | How it was made |
+|---|---|---|
+| `trip_v2_mid.json` | Normal. Hometown (one loss) and Chicago beaten, `ht_g1` and `chi_g1` recruited, MAYOR (`ht_boss`) drafted into star slot 1 (12 stars) and starting with Deuce (you) and `chi_g1`; Memphis game 1 won: on the map before Memphis game 2, every roster player with 1 point of his own unspent (6), crew points 0, record 7-1, paid 7. CONTINUE -> map | scripted trip A |
+| `trip_v2_done.json` | Hard. The whole trip (record 24-1, paid 24, phase `done`), 4 star slots filled by drafts (`ht_boss`, `chi_a1`, `mem_boss`, `sea_a1`: two bosses on the roster, one starting: Jojo (you), `mem_boss`, `nol_g1`, each with the 6 New York points unspent, 19 in all), 7 recruits; then a replay of Chicago game 2 started from the picker and won, so the marker is cleared (`replay {}`) and the trip did not move. CONTINUE -> map (replay mode) | scripted trip C |
+| `settings_v2_24.cfg` | The owner's `settings.cfg` after a whole Easy trip: 24 stars (every game 1), 2 slots, LOCKER picks `jersey_1` / `ball_1` / `van_1`; level normal, music on, sfx 0.8, music 0.6, full screen, left-handed, court `rooftop`, Kings vs `lakeshore_gusts`, all 8 courts and the 9 crews unlocked | scripted trip B |
+| `settings_v2_72.cfg` | The owner's `settings.cfg` after a whole Hard trip (the one in `trip_v2_done.json`): 72 stars (every game 3), 4 slots, LEGEND open and picked as the level, LOCKER picks `jersey_3` / `ball_3` / `van_3`, court `gold_hall`, `bayou_brass` vs `concrete_crowns`, music off, sfx 0.7, music 0.5, windowed, right-handed, all 8 courts and the 9 crews unlocked | scripted trip C |
+
+How they were made (2026-11-19, Godot 4.3 stable):
+- A copy of the Phase 8 build: `git archive 0dc6c22` (its `scripts/` are the current branch's minus the new
+  `legends_save.gd`), with only `config/name` in `project.godot` changed ("RTH P901 Fixtures") and its own
+  `XDG_DATA_HOME`, so it has its own `user://` folder.
+- `make_fixtures_v2.gd.txt` (rename to `.gd`, put it in that copy's root), run
+  `FIXTURE_OUT=<dir> godot --headless --path <copy> -s res://make_fixtures_v2.gd`. It drives `trip.gd` with the calls
+  the screens make (`match_for`, `record_result` + `after_result` after each game, the points screen's `spend` /
+  `finish_points` after every win, `recruit`, `draft` (OPEN SLOT -> DRAFT), `set_starters`, `mark_seen`,
+  `start_replay` then `record_result` for the replay) and the LOCKER's `Cosmetics.pick`, and copies the files at each
+  stop. No user arguments, so the build writes `user://trip.json` and the stars, unlocks and picks into
+  `user://settings.cfg`, as on the tablet. Each trip starts on a fresh `settings.cfg`, so its stars are its own (trip A
+  ends at 14 stars; its settings are not a fixture).
+
+Checked in the Phase 8 build:
+- `check_fixtures_v2.gd.txt` (same way, `FIXTURE_DIR=<dir>`): each trip fixture loads (`Trip.continue_trip()`), the
+  loaded state equals the file (minus `version` / `serial`), version 2, CONTINUE -> map, the drafts, the starters' own
+  points, the phase, no replay marker and no boss repair; each settings fixture gives its stars, slots, LEGEND, the 3
+  picks, the level and the 8 courts (72: MIDNIGHT and GOLD HALL open). CHECK OK.
+- Each trip fixture as `user://trip_test.json`, then `-- --trip-test --target 3 --trip-resume` (exit 0, no `ERROR` or
+  `WARNING` lines). The trip test checks every won game's stars at TRIP END, so `user://settings_test.cfg` must hold
+  the stars the fixture's trip already won: for `trip_v2_mid.json` a `[stars]` section with the 7 paid games at 2
+  (Hometown 1-3, Chicago 1-3, Memphis 1; without it the run ends "TRIP ERROR: ... did not pay all 24 games or record
+  their stars", only those 7 missing), for `trip_v2_done.json` `settings_v2_72.cfg` itself.
+  - mid: resumes on the map before Memphis game 2 with `ht_boss` (drafted) starting, plays 39 games (a Memphis 1
+    replay, a second draft `ht_g2` once the stars reach 24) to TRIP END, record 24-22, 48 stars, paid 24/24.
+  - done: map in replay mode -> title, 0 games; TRIP END with 72 stars, slots 4, the 4 drafts kept, paid 24/24.
