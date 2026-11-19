@@ -46,6 +46,7 @@ var last_touch_team := -1  # team that touched the ball last (P3-07): the other 
 var loose_cause := ""      # why the ball is loose: "steal", "block", "rebound", "pass" (out-of-bounds stats)
 var lob_drift := Vector2.ZERO   # wind (P6-04): where the lob lands, off its receiver (sim px), set at the throw
 var shot_curve := Vector2.ZERO  # wind (P6-04): how far a long jump shot bows downwind mid-flight (drawn only)
+var outlet := false        # P9-20: the current PASS is an outlet (faster, harder to pick off)
 
 # ---- dunk and layup flight (tuning) ----
 const DUNK_FLIGHT := 0.12      # seconds from the hand to the rim on a dunk (a quick slam)
@@ -107,6 +108,9 @@ const RIM_WIDE_SPEED_MIN := 430.0 # px/s
 const RIM_WIDE_SPEED_MAX := 540.0
 
 const PASS_SPEED := 720.0
+# P9-20 outlet (Quarterback): a pass of player.OUTLET_MIN_FT or more by a passer whose signature is "outlet"
+const OUTLET_SPEED_MULT := 1.35   # flies this much faster than PASS_SPEED (a full-court strike)
+const OUTLET_PICK_MULT := 0.35    # interception chance x this along its way (thrown over the defense)
 const GRAVITY := 900.0
 
 func setup(g) -> void:
@@ -120,6 +124,11 @@ func setup(g) -> void:
 		_build_view()
 
 func hold(p) -> void:
+	if outlet and state == PASS and p == receiver and passer != null and passer.has_method("sig_log"):
+		game.stat("sig_outlet_catches_t%d" % p.team)
+		passer.sig_log("outlet", "outlet caught by %s %.0f ft from the rim" % [p.pname if p.pname != "" else p.pid,
+				p.position.distance_to(game.attack_hoop(p.team)) / game.FT])
+	outlet = false
 	state = HELD
 	holder = p
 	last_touch_team = p.team
@@ -142,8 +151,14 @@ func pass_to(from_p, to_p, lob_mode := -1) -> void:
 	intercept_checked = {}
 	z = 18.0
 	lob = false
+	outlet = false
 	if make_lob and to_p != null:
 		throw_lob(from_p, to_p)
+	elif to_p != null and from_p != null and "signature" in from_p and from_p.signature == from_p.SIG_OUTLET \
+			and from_p.position.distance_to(to_p.position) >= from_p.OUTLET_MIN_FT * game.FT:
+		outlet = true   # P9-20: the long outlet pass
+		from_p.sig_log(from_p.SIG_OUTLET, "outlet pass %.0f ft to %s" % [from_p.position.distance_to(to_p.position) / game.FT,
+				to_p.pname if to_p.pname != "" else to_p.pid])
 
 # The alley-oop rule (board "Touch gestures"): the receiver is cutting (alley_cut, or running at the rim at
 # ALLEY_CUT_SPEED of top speed), within ALLEY_FT of the rim he attacks, on the floor, with no defender in front of
@@ -260,6 +275,7 @@ func make_loose(from: Vector2, v: Vector2, height := 20.0, up := 150.0) -> void:
 	holder = null
 	receiver = null
 	lob = false
+	outlet = false
 	position = from
 	vel = v
 	z = height
@@ -270,6 +286,7 @@ func make_dead() -> void:
 	holder = null
 	receiver = null
 	lob = false
+	outlet = false
 
 func update(delta: float) -> void:
 	anim_time += delta
@@ -298,7 +315,7 @@ func update(delta: float) -> void:
 				make_loose(position, Vector2.ZERO)
 				return
 			var to: Vector2 = receiver.position - position
-			var step := PASS_SPEED * delta
+			var step := PASS_SPEED * delta * (OUTLET_SPEED_MULT if outlet else 1.0)
 			var lobbed := lob
 			if lobbed:
 				_update_lob(delta)   # its own catch and pick-off rules
@@ -313,7 +330,7 @@ func update(delta: float) -> void:
 					continue
 				if p.position.distance_to(position) < 20.0 and passer.position.distance_to(position) > 60.0:
 					intercept_checked[p] = true
-					if game.rng.randf() < 0.15:
+					if game.rng.randf() < 0.15 * (OUTLET_PICK_MULT if outlet else 1.0):
 						game.show_message("PICKED OFF!")
 						game.stat("intercepts")
 						hold(p)

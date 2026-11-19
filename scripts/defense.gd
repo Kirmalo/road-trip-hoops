@@ -87,6 +87,10 @@ const CPU_JUMP_RATING_SPAN := 0.3 # jump chance x(1 -/+ this) across block ratin
 const CPU_FAKE_BITE := 0.35       # chance he jumps at a pump fake (bites; at block rating 50; P2-11: was 0.45, P2-13: 0.4)
 const CPU_JUMP_CHARGE := 0.65     # human shooter: he waits until the shot meter is this full (the shooter's rhythm)
 
+# ---- P9-20 keep_block (Gate): his block is tipped to a teammate or to himself instead of swatted away ----
+const KEEP_TIP_MAX_FT := 22.0     # a teammate this close to the ball can get the tip ...
+const KEEP_TIP_OPEN_FT := 5.0     # ... if he is at least this open (else Gate keeps it himself)
+
 var p        # the player this brain belongs to
 var game
 
@@ -320,9 +324,12 @@ static func rim_blocker(g, shooter, kind: String):
 		var good := tim == "good"
 		_count_try(g, d, good)
 		var chance: float = d.block_chance(good) * (DUNK_BLOCK_MULT if dunk else 1.0)
-		if g.rng.randf() < chance:
+		var roll: float = g.rng.randf()
+		if roll < chance * shooter.sig_block_mult(kind):   # P9-20 hook: x1.0 for everyone else
 			clear_pending_fouls(g, shooter)   # blocked: no foul on this shot
 			return d
+		if roll < chance:
+			_sig_escape(g, shooter, d)   # his layup went over a block that would have been
 		if not good:
 			# a bad jump into him at the release (late: still rising; early: coming down): maybe a foul, called once
 			# the shot is in the air (player.release_rim_shot -> call_pending_fouls)
@@ -330,6 +337,42 @@ static func rim_blocker(g, shooter, kind: String):
 			if _foul_roll(g, d, shooter, g.shot_serial + 1, why):
 				d.def.foul_pending = why
 	return null
+
+# ---------------- signature moves (P9-20) ----------------
+# Only for a player whose "signature" (player.gd) is the move; everyone else plays today's rules.
+
+# the hook man's shot got past a block try that would have stopped anyone else (counted, logged)
+static func _sig_escape(g, shooter, d) -> void:
+	g.stat("sig_hook_escapes_t%d" % shooter.team)
+	shooter.sig_log(shooter.SIG_HOOK, "over the block try of %s" % (d.pname if d.pname != "" else d.pid))
+
+# Gate's blocks stay in play: right after main.block_shot knocked the ball loose (away from him, often out of
+# bounds), a keep_block blocker tips it instead to the most open teammate within KEEP_TIP_MAX_FT (at least
+# KEEP_TIP_OPEN_FT open; a tip flies like a pass, so it can still be picked off), or keeps it himself (he catches his
+# own block). Nobody else's block changes.
+static func keep_block(g, d) -> void:
+	if d == null or str(d.signature) != d.SIG_KEEP_BLOCK:
+		return
+	var ball = g.ball
+	if ball.state != ball.LOOSE:
+		return
+	var to = null
+	var best_open: float = KEEP_TIP_OPEN_FT
+	for mate in g.teams[d.team]:
+		if mate == d or mate.is_airborne() or mate.position.distance_to(ball.position) > KEEP_TIP_MAX_FT * g.FT:
+			continue
+		var o: float = g.openness(mate)
+		if o >= best_open:
+			best_open = o
+			to = mate
+	if to != null:
+		ball.pass_to(d, to, 0)   # the tip (never a lob)
+		g.stat("sig_keep_block_tips_t%d" % d.team)
+		d.sig_log(d.SIG_KEEP_BLOCK, "block tipped to %s" % (to.pname if to.pname != "" else to.pid))
+	else:
+		ball.hold(d)
+		g.stat("sig_keep_block_keeps_t%d" % d.team)
+		d.sig_log(d.SIG_KEEP_BLOCK, "block kept: he caught his own swat")
 
 # ---------------- fouls (P3-06) ----------------
 
@@ -481,10 +524,15 @@ static func check_jump_shot_block(g) -> void:
 		d.def.rolled_shot = g.shot_serial
 		var good := tim == "good"
 		_count_try(g, d, good)
-		if g.rng.randf() < d.block_chance(good) * (LAYUP_AIR_BLOCK_MULT if layup else 1.0):
+		var c: float = d.block_chance(good) * (LAYUP_AIR_BLOCK_MULT if layup else 1.0)
+		var roll: float = g.rng.randf()
+		if roll < c * ball.shooter.sig_block_mult(ball.shot_kind):   # P9-20 hook: x1.0 for everyone else
 			g.stat("layup_air_blocks" if layup else "jumper_blocks")
 			g.block_shot(d)
+			keep_block(g, d)   # P9-20: a keep_block blocker's swat stays in play
 			return
+		if roll < c:
+			_sig_escape(g, ball.shooter, d)   # the hook went over a block that would have been
 		var why: String = _early_reason(d, ball.shooter)
 		if not good and _foul_roll(g, d, ball.shooter, g.shot_serial, why):
 			commit_foul(g, d, ball.shooter, "shooting", why)   # came down on him
