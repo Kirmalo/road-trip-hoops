@@ -107,6 +107,7 @@ tablet with a joystick and two buttons.
 | Phase 9 look check and era music | Legend look sample v1 (docs/art/legends_sample_v1.*, Steeple) and the hook shot (docs/art/hook_shot_v1.gif) approved as shown (owner, 2026-11-19); kit colors may still change per legend. Grandfathers era music: D, "Bebop (Chiptune)" by Pro Sensory, CC0 (opengameart.org/content/bebop-chiptune), brought down to the game loudness |
 | Phase 9 names and numbers | The six Grandfathers names pass the real-name check, no swap (owner confirmed). Jersey numbers: Steeple 18, Gate 54, Set Shot 9, Boxcar 46, Velvet 19, Quarterback 12 (owner). Legend sheets: the three dark kits (Steeple rust, Velvet mustard, Boxcar brown) get brighter colors that stand out on the OLD GYM wood; portraits follow (owner) |
 | Phase 9 mentors and era tuning | Mentors coach your regular players only: a drafted legend has no mentor (owner). A first pairing happens on the tap; only a switch or STOP TRAINING asks to confirm (owner). OLD SCHOOL long shots tuned 0.88 -> 0.80 after P9-17 found the 12% hard to notice (docs/qa/phase9-era.md) |
+| Replay level (owner bug report) | Replays get a level picker in the map's replay picker (EASY / NORMAL / HARD, LEGEND once open), opening on the trip's level; a replay plays and records its stars at the picked level; the trip's own level never changes |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 
 ## Technical constraints
