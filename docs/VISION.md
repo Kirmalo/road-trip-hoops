@@ -180,3 +180,7 @@ level), replays of beaten city games from the map, the ramp retuned, 1.0.0 saves
   maximum roster size, which players a slot can draft (this trip's beaten crews or any ever beaten; releasing),
   where jerseys, balls and van paints are picked (a LOCKER screen, Settings, or where each is used), and the version
   number of the first public release (answered: keep 1.0.0).
+- Phase 9 (Legends, Chapter 1), before and during the build: `docs/legends-plan.md` "Phase 9 open questions" L1-L8:
+  the six Grandfathers legends, the challenge per legend, who plays the challenge games and how hard, where the mode
+  is entered and what opens it, the OLD SCHOOL era rules, signature moves, a drafted legend's strength, mentor details.
+  Each names the board tasks it blocks.

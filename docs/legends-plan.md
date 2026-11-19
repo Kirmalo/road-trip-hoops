@@ -272,3 +272,72 @@ Ways to cut it:
   **(recommended)**
 - b) Tiny: about 1 stat point's worth, a flavor reward
 - c) None: the Hall and the playable legends are reward enough
+
+Answered (VISION "Legends plan answers"): Q1 a, Q2 a, Q3 a, Q4 a, Q5 b, Q6 a.
+
+## Phase 9 open questions (lead-producer, 2026-11-19; answer with the letter, (a) is the recommendation)
+
+Phase 9 builds Chapter 1 end to end (`docs/BOARD.md`). These are the decisions the owner still has to make. Wave 1
+(P9-01..P9-06) needs none of them.
+
+**L1. The six Grandfathers legends** (blocks P9-07 data, P9-09 sheets, P9-10 portraits, P9-14 story; P9-04's look
+sample uses one of them)
+- a) The six of part 3 as written: Ezekiel "Steeple" Oakhurst (hook-shot center), Augustus "Gate" Fenwick
+  (shot-blocking wall), Harlan "Set Shot" Vickery (deep shooter), Cornelius "Boxcar" Dunmore (bruising power forward),
+  Desmond "Velvet" Ashby (smooth slasher), Otis "Quarterback" Brannigan (no-look floor general), with the looks and
+  rating shapes of part 3; any name the name check flags is swapped and shown to you **(recommended)**
+- b) The same six archetypes, but the team proposes two new name sets for you to pick from
+- c) You change some of them (tell us which names, archetypes or looks)
+
+**L2. Which challenge each legend gives** (blocks P9-07, P9-13 challenge goals, P9-26 balance)
+- a) Steeple: hold him under 6 (game to 15); Gate: race (reach 11 before his crew gets 7); Set Shot: beat the fire
+  (to 15); Boxcar: stop the move (3 blocks or steals on him, and win, to 15); Velvet: hold him under 5 (to 11);
+  Quarterback: comeback (start down 0-6, to 15); the finale a normal game to 21 **(recommended)**
+- b) Every Chapter 1 legend a "hold him" game (one goal type to build and tune first; the others in Phase 10)
+- c) A normal game against his crew for all six in Phase 9, the special goals later
+
+**L3. Who plays the challenge games, and how hard are they?** (blocks P9-07, P9-12 matches, P9-13, P9-26)
+- a) You play the Cornfield Kings at even ratings (every stat averaging 50, like Quick Game; no trip needed, the same
+  every time); the legend plays with 2 other Grandfathers legends as teammates (no new art); the finale is the Kings
+  against the era's three best; the level picks the CPU as in Quick Game, and a challenge on Normal should be won
+  about as often as a New York game on Normal **(recommended)**
+- b) You play your current Road Trip crew and starters (needs a trip save; challenges get easier as your trip grows)
+- c) Like a), but the legend's teammates are plain era role players (2 more sheets per era)
+
+**L4. Where is the mode entered, and what exactly opens Chapter 1?** (blocks P9-07 gate data, P9-12, P9-15 title)
+- a) A LEGENDS button on the title (shown locked with "24 STARS" until then); Chapter 1 opens at 24 stars from any
+  mix of games; the Hall opens from the Legends screen and from CREW & CREDITS **(recommended)**
+- b) The same button, but Chapter 1 opens only once a trip is finished (the New York final won), whatever the stars
+- c) Inside the ROAD TRIP panel (no new title button), at 24 stars
+
+**L5. The Grandfathers era rules ("OLD SCHOOL")** (blocks P9-08 era twist, P9-17)
+- a) As in part 4: everyone 6% slower, long shots go in 12% less, fewer fouls called (60% of today), close shots go in
+  8% more **(recommended)**
+- b) Only slower and fewer long shots (no new rules in the sim)
+- c) As a), plus every basket counts 1 (no 2-pointers in that era)
+- d) No era rules in Phase 9 (the era is its court, music and legends only)
+
+**L6. Signature moves in Phase 9** (blocks P9-09 sheets, P9-20 signature moves)
+- a) Each legend's move is an existing animation with a small play difference only he has (Steeple's close shots are
+  harder to block, Gate's blocks stay in play, Set Shot's long range starts further out, Boxcar dunks from further out,
+  Velvet's layups slip past contests, Quarterback throws long outlet passes); no new animation frames
+  **(recommended)**
+- b) As a), plus one truly new animation (the hook shot) on the legend sheets only (a new "extra pages" rule; more art
+  and test time)
+- c) No signature moves yet: a legend is his rating shape and his looks
+
+**L7. How strong is a drafted legend on the Road Trip?** (blocks P9-21 draft, P9-30 ramp)
+- a) Like a boss drafted at the stage reached (stage average + 20, shaped by his rating shape, every stat at most 95);
+  QA checks that your best lineup (one legend + one boss + a perk) still loses some New York games on Hard, and tunes
+  the number down if not **(recommended)**
+- b) A bit under a boss: stage average + 12 (like a good player in every stat), so a legend and a boss together can't
+  break the ramp
+- c) Fixed ratings from his data, the same at every stage (strong early, average late)
+
+**L8. Mentor details** (blocks P9-23, P9-24, P9-27; c drops them)
+- a) In Phase 9: each Grandfathers legend teaches one perk (Steeple: close shots +4%; Gate: block timing window 10%
+  wider; Set Shot: shots beyond the arc +3%; Boxcar: dunks from a little further out; Velvet: contested layups +3%;
+  Quarterback: passes 10% faster); assigned and switched any time from the Hall; works in Road Trip games only (not
+  Quick Game or challenges) **(recommended)**
+- b) The same perks, but a switch only takes effect at a NEW TRIP
+- c) Mentors move to Phase 10 with the other eras
