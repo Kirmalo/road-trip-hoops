@@ -1,0 +1,843 @@
+extends CanvasLayer
+# HALL OF LEGENDS (P9-19, board Phase 9; Flow screen "hall", args {"back": "legends" | "crew"}).
+#   Left: the era rows (legends_data.gd CHAPTERS, timeline order) in a list that scrolls (drag or wheel). A built
+#   chapter is a row of its 6 plaques in plaque order: an unlocked legend is his card in the era frame with his name
+#   on the plate and his best tokens under it; a locked one is the locked frame with the silhouette and "?". A chapter
+#   that is not built (Chapters 2-4) is a locked row: 6 small empty locked frames, COMING LATER and its gate.
+#   Right: the picked plaque in detail. Unlocked: the plaque at 3x, name, full name, archetype, number, best tokens,
+#   the rating shape (five bars around his level), the signature move, the mentor perk and REPLAY STORY (his unlock
+#   scene in story.gd, back here on the same plaque). Locked: the silhouette, his challenge line and how to get it.
+#   A locked row: its chapter, COMING LATER, the feel line and the gate.
+#   Header: BACK (top-left, to args.back), HALL OF LEGENDS, a hint line, the legends unlocked and the tokens.
+# The layout is a 1280 x 720 box centred on wider or taller screens (like lineup.gd). Nothing mirrors for the
+# left-handed layout (a menu screen has no joystick). Taps are ignored for ARM_T s after the screen opens.
+# Art: assets/legends/ui.json and its frames / silhouette (P9-11); the cards are Sheets.card_info() of the legend's
+# sheet (P9-09). A missing card falls back to his portrait (assets/portraits/<portrait>.png, cropped into the frame's
+# window), then to the silhouette; a missing frame is a drawn box. So new art just drops in.
+# Optional args: "pick" (a legend id or "ch:<chapter>": the plaque picked when the screen opens), "back_args" (a
+# Dictionary handed to args.back, e.g. {"chapter": "grand"} so the tour reopens on the chapter view).
+# Mentors (P9-27) hook in at _mentor_hook(): it gets the picked legend and the free strip MENTOR_RECT of the detail
+# panel (between the perk line and REPLAY STORY); it builds nothing yet.
+# Desktop: Escape = BACK (main.gd turns the Android back into one), Left / Right = the plaque before / after, Enter =
+# REPLAY STORY. auto_step() (test drivers): BACK.
+
+const UI = preload("res://scripts/ui_kit.gd")
+const Flow = preload("res://scripts/flow.gd")
+const LegendsData = preload("res://scripts/legends_data.gd")
+const Legends = preload("res://scripts/legends.gd")
+const Sheets = preload("res://scripts/sheets.gd")
+const StoryText = preload("res://scripts/story_text.gd")
+
+# ---------------------------------------------------------------------------------------------------- tuning
+const ARM_T := 0.4                       # s the taps are ignored after the screen opens
+const FRAME_SIZE := Vector2(1280, 720)   # the layout box, centred on wider / taller screens
+const BACK_POS := Vector2(16, 8)         # BACK, top-left (UI.SMALL_SIZE)
+const TITLE_RECT := Rect2(232, 2, 760, 72)
+const HINT_RECT := Rect2(232, 74, 760, 40)
+const HINT_FONT := 22
+const HINT_T := 2.4                      # s a tap message stays on the hint line
+const COUNT_RECT := Rect2(1004, 14, 260, 100)   # legends unlocked and tokens, top-right
+const COUNT_FONT := 36
+const COUNT_SUB_FONT := 22
+const LIST_RECT := Rect2(16, 126, 762, 580)     # the era rows (scrolls)
+const SCROLL_BAR_W := 36                 # wide enough to drag with a thumb
+const LIST_W := 718.0                    # px of row content (LIST_RECT minus the scroll bar and a gap)
+const DETAIL_RECT := Rect2(792, 126, 472, 580)  # the picked plaque in detail
+# rows
+const ROW_HEAD_H := 40.0                 # px: "CHAPTER 1  THE GRANDFATHERS" over a row
+const ROW_HEAD_FONT := 26
+const ROW_SUB_FONT := 20
+const ROW_GAP := 18.0                    # px between rows
+const PLAQUE_SCALE := 2.0                # a built row's plaques: 56 x 88 texels drawn at 2x (112 x 176)
+const PLAQUE_GAP := 6.0                  # px between plaques in a row
+const PIPS_H := 22.0                     # px under a plaque: his best tokens
+const PIP_R := 6.0
+const LOCKED_ROW_SCALE := 1.0            # a chapter that is not built: small empty frames (56 x 88)
+const LOCKED_ROW_GAP := 6.0
+const LOCKED_TEXT_X := 384.0             # px: COMING LATER and the gate, right of the small frames
+const ROW_FILL := Color(0.1, 0.12, 0.18, 0.92)
+const ROW_LOCKED_FILL := Color(0.07, 0.08, 0.11, 0.9)
+const ROW_PAD := 8.0
+const PICK_BORDER_W := 4.0               # the gold outline around the picked plaque
+const PICK_OUT := 3.0                    # px the outline sits outside the plaque
+const TAP_SLOP := 14.0                   # px a finger may move and still tap (more = a scroll drag)
+const JUMP_PX := 80.0                    # px: one motion longer than this is the emulated mouse jumping, not a drag
+# the detail panel (px inside DETAIL_RECT)
+const DETAIL_PAD := 14.0
+const DETAIL_SCALE := 3.0                # the picked plaque at 3x (168 x 264)
+const DETAIL_COL_X := 196.0              # the column right of the plaque
+const DETAIL_NAME_FONT := 36
+const DETAIL_FULL_FONT := 19
+const DETAIL_FULL_MIN := 14              # the full name shrinks down to this to fit one line
+const DETAIL_TEXT_FONT := 20
+const DETAIL_HEAD_FONT := 18             # "SIGNATURE MOVE", "MENTOR PERK"
+const SHAPE_Y := 188.0                   # the rating shape bars in the right column
+const SHAPE_ROW := 18.0
+const SHAPE_LABEL_W := 44.0
+const SHAPE_NUM_W := 40.0
+const SHAPE_MAX := 25.0                  # an offset of this fills half the bar
+const SHAPE_BAR_H := 10.0
+const SIG_Y := 290.0                     # SIGNATURE MOVE under the plaque
+const PERK_Y := 380.0                    # MENTOR PERK
+const MENTOR_RECT := Rect2(14, 434, 444, 20)    # P9-27: the strip for "TRAINS: ..." (free for now)
+const REPLAY_RECT := Rect2(14, 456, 444, 110)   # REPLAY STORY (>= UI.MIN_BUTTON)
+const REPLAY_FONT := 40
+const LOCK_LINE_Y := 300.0               # a locked plaque: how to unlock him
+# colors
+const GOLD := Color(1.0, 0.82, 0.25)
+const DIM_TEXT := Color(0.7, 0.72, 0.78)
+const LOCKED_TEXT := Color(0.55, 0.57, 0.63)
+const HINT_COLOR := Color(0.85, 0.87, 0.92)
+const WARN_COLOR := Color(1.0, 0.6, 0.35)
+const PIP_ON := Color(1.0, 0.82, 0.25)
+const PIP_OFF := Color(0.3, 0.31, 0.37)
+const SHAPE_BG := Color(0.25, 0.27, 0.33)
+const SHAPE_UP := Color(1.0, 0.82, 0.25)
+const SHAPE_DOWN := Color(0.45, 0.65, 1.0)
+const PLATE_TEXT := Color(0.16, 0.1, 0.04)     # the name on the era frame's gold plate
+const PLATE_LOCKED_TEXT := Color(0.82, 0.82, 0.88)
+const PLATE_FONT_MAX := 12               # texel-scaled: the plate font is this x the plaque scale at most
+const PLATE_FONT_MIN := 7
+const FALLBACK_FRAME := Color(0.42, 0.3, 0.16)  # a frame file is missing: a drawn box in this color
+const FALLBACK_LOCKED := Color(0.25, 0.26, 0.3)
+const SILHOUETTE_COLOR := Color(0.05, 0.05, 0.08)
+# art (assets/legends/ui.json; these are its values, used while the file is missing)
+const UI_DIR := "res://assets/legends/"
+const UI_JSON := "res://assets/legends/ui.json"
+const PORTRAIT_DIR := "res://assets/portraits/"
+const DEF_FRAME := Vector2(56, 88)
+const DEF_WINDOW := Rect2(8, 8, 40, 60)
+const DEF_CARD_CROP := Rect2(12, 34, 40, 60)
+const DEF_PLATE := Rect2(6, 72, 44, 11)
+const DEF_FRAMES := {"grand": "frame_grand.png", "locked": "frame_locked.png"}
+const DEF_SILHOUETTE := "silhouette.png"
+const V2_CARD := Vector2(64, 96)         # a v2 card frame (card_crop is inside it)
+const STAT_NAMES := [["speed", "SPD"], ["shooting", "SHT"], ["finishing", "FIN"], ["defense", "DEF"],
+		["stamina", "STA"]]
+const CH_PICK := "ch:"                   # a pick of a locked row: "ch:<chapter id>"
+const HINT_TEXT := "Tap a plaque. Beat a legend on the LEGENDS tour to hang him here."
+const STORY_SCREEN := "story"
+const SELF_SCREEN := "hall"
+
+var main                     # main.gd (set by Flow.build_screen)
+var audio                    # this screen's audio.gd
+var music := "menu"
+
+var _root: Control
+var _frame: Control
+var _scroll: ScrollContainer
+var _list: HallList
+var _detail: Control
+var _art: DetailArt
+var _hint: Label
+var _hint_t := 0.0
+var _replay: Button = null
+var _back := "legends"
+var _back_args := {}
+var _arm_t := ARM_T
+var _busy := false
+var _pick := ""              # the picked plaque: a legend id or "ch:<chapter id>"
+var _rows: Array = []        # the list layout: {"ch", "built", "rect", "plaques": [{"id", "rect"}]}
+var _order: Array = []       # every pick in list order (Left / Right)
+var _scroll_frames := 0      # frames until the list scrolls the picked plaque into view (after layout)
+var _ui := {}                # ui.json
+var _tex := {}               # path -> Texture2D (null = missing)
+var _cards := {}             # legend id -> {"tex", "src"} (empty = silhouette)
+
+func _ready() -> void:
+	Legends.load_state()
+	var a: Dictionary = Flow.args if str(Flow.screen) == SELF_SCREEN else {}
+	var b: String = str(a.get("back", "legends"))
+	_back = b if Flow.HALL_BACKS.has(b) else "legends"
+	var ba = a.get("back_args", {})
+	_back_args = (ba as Dictionary).duplicate(true) if ba is Dictionary else {}
+	_ui = _read_ui()
+	_root = UI.screen_root(self)
+	_frame = Control.new()
+	_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_frame.size = FRAME_SIZE
+	_root.add_child(_frame)
+	_root.resized.connect(_center)
+	_center()
+	_layout()
+	_pick = _first_pick(str(a.get("pick", "")))
+	_build_head()
+	_build_list()
+	_build_detail()
+	_show_pick()
+	_scroll_frames = 2
+	_stat("hall_screen")
+	print("HALL screen | unlocked %d/%d %s | tokens %d/%d | pick %s | back %s%s" % [
+			Legends.unlocked_ids().size(), LegendsData.legend_ids().size(), str(Legends.unlocked_ids()),
+			Legends.tokens_total(), LegendsData.max_tokens(), _pick, _back,
+			(" " + JSON.stringify(_back_args)) if not _back_args.is_empty() else ""])
+
+func _center() -> void:
+	_frame.position = ((_root.size - FRAME_SIZE) / 2.0).floor()
+
+func _process(delta: float) -> void:
+	if _arm_t > 0.0:
+		_arm_t -= delta
+	if _hint_t > 0.0:
+		_hint_t -= delta
+		if _hint_t <= 0.0:
+			_set_hint(HINT_TEXT, HINT_COLOR)
+	if _scroll_frames > 0:
+		_scroll_frames -= 1
+		if _scroll_frames == 0:
+			_scroll_to_pick()
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	var k := event as InputEventKey
+	if k == null or not k.pressed or k.echo:
+		return
+	if k.keycode == KEY_ESCAPE:
+		get_viewport().set_input_as_handled()
+		_on_back()
+	elif k.keycode == KEY_LEFT or k.keycode == KEY_RIGHT:
+		var i: int = _order.find(_pick)
+		if i >= 0 and not _order.is_empty():
+			i = clampi(i + (1 if k.keycode == KEY_RIGHT else -1), 0, _order.size() - 1)
+			pick(str(_order[i]))
+			_scroll_to_pick()
+	elif k.keycode == KEY_ENTER:
+		_on_replay()
+
+func _stat(key: String) -> void:
+	if main != null and main.has_method("stat"):
+		main.stat(key)
+
+func _sfx(sfx_name: String, db := 0.0) -> void:
+	if audio != null:
+		audio.play(sfx_name, db)
+
+# ---------------------------------------------------------------------------------------------------- state
+
+# the plaque picked when the screen opens: args.pick if it is on the list, else the first unlocked legend, else the
+# first plaque
+func _first_pick(want: String) -> String:
+	if want != "" and _order.has(want):
+		return want
+	for id in Legends.unlocked_ids():
+		if _order.has(str(id)):
+			return str(id)
+	return str(_order[0]) if not _order.is_empty() else ""
+
+# picks a plaque (a tap, Left / Right, the test drivers); false for something not on the list
+func pick(what: String) -> bool:
+	if not _order.has(what):
+		return false
+	if what != _pick:
+		_pick = what
+		_sfx("bounce", -6.0)
+		_stat("hall_pick")
+		_show_pick()
+	return true
+
+func picked() -> String:
+	return _pick
+
+# a legend's plaque state: "open" (unlocked), "locked"
+static func plaque_state(id: String) -> String:
+	return "open" if Legends.is_unlocked(id) else "locked"
+
+# the unlock scene REPLAY STORY plays ("" when he is locked or story_text.gd has no such scene)
+static func replay_scene(id: String) -> String:
+	if not LegendsData.is_legend_id(id) or not Legends.is_unlocked(id):
+		return ""
+	var sc: String = str(LegendsData.legend(id).get("unlock_scene", ""))
+	return sc if sc != "" and StoryText.has_scene(sc) else ""
+
+# ---------------------------------------------------------------------------------------------------- layout
+
+# the rows, their plaques and the pick order, in list coordinates
+func _layout() -> void:
+	_rows = []
+	_order = []
+	var fs: Vector2 = _frame_size()
+	var y: float = 0.0
+	var n: int = 0
+	for row in LegendsData.CHAPTERS:
+		n += 1
+		var ch: String = str(row.get("id", ""))
+		var built: bool = bool(row.get("built", false)) and not (row.get("legends", []) as Array).is_empty()
+		var r := {"ch": ch, "num": n, "built": built, "plaques": []}
+		var top: float = y
+		var py: float = top + ROW_HEAD_H
+		if built:
+			var sz: Vector2 = fs * PLAQUE_SCALE
+			var ids: Array = row.get("legends", [])
+			var w: float = ids.size() * sz.x + maxf(0.0, ids.size() - 1.0) * PLAQUE_GAP
+			var x: float = floorf((LIST_W - w) / 2.0)
+			for id in ids:
+				(r["plaques"] as Array).append({"id": str(id), "rect": Rect2(Vector2(x, py), sz)})
+				_order.append(str(id))
+				x += sz.x + PLAQUE_GAP
+			y = py + sz.y + PIPS_H + ROW_PAD
+		else:
+			var sz: Vector2 = fs * LOCKED_ROW_SCALE
+			var x: float = ROW_PAD + 6.0
+			for i in 6:
+				(r["plaques"] as Array).append({"id": "", "rect": Rect2(Vector2(x, py + 2.0), sz)})
+				x += sz.x + LOCKED_ROW_GAP
+			_order.append(CH_PICK + ch)
+			y = py + sz.y + ROW_PAD + 6.0
+		r["rect"] = Rect2(0.0, top, LIST_W, y - top)
+		_rows.append(r)
+		y += ROW_GAP
+	if _list != null:
+		_list.custom_minimum_size = Vector2(LIST_W, maxf(0.0, y - ROW_GAP))
+
+# what is under a point of the list ("" = nothing): a plaque's legend id, or "ch:<id>" anywhere on a locked row
+func pick_at(p: Vector2) -> String:
+	for r in _rows:
+		if not (r["rect"] as Rect2).has_point(p):
+			continue
+		if not bool(r["built"]):
+			return CH_PICK + str(r["ch"])
+		for q in r["plaques"]:
+			if (q["rect"] as Rect2).grow(PLAQUE_GAP / 2.0).has_point(p):
+				return str(q["id"])
+	return ""
+
+# the picked plaque's rect in list coordinates (the whole row for a locked row)
+func _pick_rect() -> Rect2:
+	for r in _rows:
+		if _pick == CH_PICK + str(r["ch"]):
+			return r["rect"]
+		for q in r["plaques"]:
+			if str(q["id"]) == _pick and _pick != "":
+				return q["rect"]
+	return Rect2()
+
+func _scroll_to_pick() -> void:
+	if _scroll == null:
+		return
+	var r: Rect2 = _pick_rect()
+	var top: float = r.position.y - ROW_HEAD_H
+	var bottom: float = r.end.y + PIPS_H
+	var view_h: float = LIST_RECT.size.y
+	var s: float = float(_scroll.scroll_vertical)
+	if top < s:
+		_scroll.scroll_vertical = int(maxf(0.0, top))
+	elif bottom > s + view_h:
+		_scroll.scroll_vertical = int(bottom - view_h)
+
+# ---------------------------------------------------------------------------------------------------- building
+
+func _build_head() -> void:
+	var back: Button = UI.button(_frame, "BACK", _on_back, UI.KIND_OPT, UI.SMALL_SIZE)
+	back.position = BACK_POS
+	var head: Label = UI.title(_frame, "HALL OF LEGENDS", GOLD)
+	head.position = TITLE_RECT.position
+	head.size = TITLE_RECT.size
+	_hint = UI.label(_frame, HINT_TEXT, HINT_FONT, HINT_COLOR)
+	_hint.position = HINT_RECT.position
+	_hint.size = HINT_RECT.size
+	_hint.clip_text = true
+	var count := CountBox.new()
+	count.screen = self
+	count.position = COUNT_RECT.position
+	count.size = COUNT_RECT.size
+	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_frame.add_child(count)
+
+func _build_list() -> void:
+	_scroll = ScrollContainer.new()
+	_scroll.position = LIST_RECT.position
+	_scroll.size = LIST_RECT.size
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	var bar: VScrollBar = _scroll.get_v_scroll_bar()
+	bar.custom_minimum_size = Vector2(SCROLL_BAR_W, 0)
+	bar.add_theme_stylebox_override("scroll", UI.style_box(UI.OPT_COLOR, UI.OPT_BORDER, 2))
+	for k in ["grabber", "grabber_highlight", "grabber_pressed"]:
+		bar.add_theme_stylebox_override(k, UI.style_box(UI.LIT_COLOR, UI.LIT_BORDER, 2))
+	_frame.add_child(_scroll)
+	_list = HallList.new()
+	_list.screen = self
+	_list.mouse_filter = Control.MOUSE_FILTER_STOP
+	_scroll.add_child(_list)
+	_layout()   # again: sets the list's height now that it exists
+
+func _build_detail() -> void:
+	var p: PanelContainer = UI.panel(_frame, DETAIL_RECT.size)
+	p.position = DETAIL_RECT.position
+	p.size = DETAIL_RECT.size
+	_detail = Control.new()
+	_detail.position = DETAIL_RECT.position
+	_detail.size = DETAIL_RECT.size
+	_detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_frame.add_child(_detail)
+
+# fills the detail panel for the picked plaque
+func _show_pick() -> void:
+	if _list != null:
+		_list.queue_redraw()
+	if _detail == null:
+		return
+	for c in _detail.get_children():
+		_detail.remove_child(c)
+		c.queue_free()
+	_replay = null
+	_art = DetailArt.new()
+	_art.screen = self
+	_art.pick = _pick
+	_art.size = DETAIL_RECT.size
+	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_detail.add_child(_art)
+	if _pick.begins_with(CH_PICK):
+		_detail_chapter(_pick.substr(CH_PICK.length()))
+	elif _pick != "" and plaque_state(_pick) == "open":
+		_detail_open(_pick)
+	elif _pick != "":
+		_detail_locked(_pick)
+
+# a text label in the detail panel (wraps when h > one line)
+func _text(text: String, rect: Rect2, fs: int, col: Color, wrap := false,
+		align := HORIZONTAL_ALIGNMENT_LEFT) -> Label:
+	var l: Label = UI.label(null, text, fs, col)
+	l.horizontal_alignment = align
+	l.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	if wrap:
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # before the size: else the label grows to one line
+	else:
+		l.clip_text = true
+	(l.label_settings as LabelSettings).outline_size = 6
+	_detail.add_child(l)
+	l.position = rect.position
+	l.size = rect.size
+	l.set_deferred("size", rect.size)
+	return l
+
+func _detail_open(id: String) -> void:
+	var p: Dictionary = LegendsData.legend(id)
+	var ch: Dictionary = LegendsData.chapter(str(p.get("chapter", "")))
+	var x: float = DETAIL_COL_X
+	var w: float = DETAIL_RECT.size.x - x - DETAIL_PAD
+	var nm: Label = _text(str(p.get("name", id)), Rect2(x, 10, w, 44), DETAIL_NAME_FONT, GOLD)
+	_fit_font(nm, w)
+	var full: Label = _text(str(p.get("full", "")), Rect2(x, 60, w, 30), DETAIL_FULL_FONT, UI.TEXT_COLOR)
+	_fit_font(full, w, DETAIL_FULL_MIN)
+	_text(str(p.get("archetype", "")).to_upper(), Rect2(x, 108, w, 26), DETAIL_TEXT_FONT - 2, UI.TEXT_COLOR)
+	var num: int = int(p.get("number", 0))
+	_text(("#%d  " % num if num > 0 else "") + str(ch.get("name", "")), Rect2(x, 134, w, 24), DETAIL_HEAD_FONT,
+			DIM_TEXT)
+	_text("BEST", Rect2(x, 158, 70, 24), DETAIL_HEAD_FONT, DIM_TEXT)   # the pips are drawn by DetailArt
+	var full_w: float = DETAIL_RECT.size.x - 2.0 * DETAIL_PAD
+	var sig: Dictionary = p.get("signature", {})
+	_text("SIGNATURE MOVE", Rect2(DETAIL_PAD, SIG_Y, full_w, 22), DETAIL_HEAD_FONT, GOLD)
+	_text(str(sig.get("text", "")), Rect2(DETAIL_PAD, SIG_Y + 22.0, full_w, 58), DETAIL_TEXT_FONT, UI.TEXT_COLOR,
+			true)
+	var perk: Dictionary = LegendsData.perk_of(id)
+	_text("MENTOR PERK", Rect2(DETAIL_PAD, PERK_Y, full_w, 22), DETAIL_HEAD_FONT, GOLD)
+	_text(str(perk.get("text", "none")), Rect2(DETAIL_PAD, PERK_Y + 22.0, full_w, 30), DETAIL_TEXT_FONT,
+			UI.TEXT_COLOR)
+	_mentor_hook(id, MENTOR_RECT)
+	_replay = UI.button(_detail, "REPLAY STORY", _on_replay, UI.KIND_MAIN, REPLAY_RECT.size)
+	_replay.position = REPLAY_RECT.position
+	_replay.add_theme_font_size_override("font_size", REPLAY_FONT)
+	if replay_scene(id) == "":
+		UI.set_enabled(_replay, false)
+		_replay.text = "STORY COMING SOON"
+
+# P9-27 (the mentor panel) builds here: "TRAINS: <player>" in box and a TRAIN button (the detail panel has room if
+# REPLAY STORY gets half of REPLAY_RECT). It must only read and write mentors through legends.gd's mentor API.
+func _mentor_hook(_id: String, _box: Rect2) -> void:
+	pass
+
+func _detail_locked(id: String) -> void:
+	var p: Dictionary = LegendsData.legend(id)
+	var chid: String = str(p.get("chapter", ""))
+	var c: Dictionary = LegendsData.challenge(id)
+	var x: float = DETAIL_COL_X
+	var w: float = DETAIL_RECT.size.x - x - DETAIL_PAD
+	_text("?", Rect2(x, 10, w, 44), DETAIL_NAME_FONT, LOCKED_TEXT)
+	_text("LEGEND LOCKED", Rect2(x, 58, w, 26), DETAIL_TEXT_FONT, LOCKED_TEXT)
+	_text("HIS CHALLENGE", Rect2(x, 100, w, 22), DETAIL_HEAD_FONT, GOLD)
+	_text(str(c.get("line", "")), Rect2(x, 124, w, 140), DETAIL_TEXT_FONT, UI.TEXT_COLOR, true)
+	var full_w: float = DETAIL_RECT.size.x - 2.0 * DETAIL_PAD
+	var how: String = "Win this challenge on the LEGENDS tour and he joins the Hall: his card, his story and the perk he teaches."
+	_text(how, Rect2(DETAIL_PAD, LOCK_LINE_Y, full_w, 100), DETAIL_TEXT_FONT, DIM_TEXT, true)
+	if not Legends.chapter_open(chid):
+		_text("CHAPTER OPENS AT %s" % Legends.gate_text(chid), Rect2(DETAIL_PAD, LOCK_LINE_Y + 110.0, full_w, 30),
+				DETAIL_TEXT_FONT, WARN_COLOR)
+
+func _detail_chapter(chid: String) -> void:
+	var row: Dictionary = LegendsData.chapter(chid)
+	var x: float = DETAIL_COL_X
+	var w: float = DETAIL_RECT.size.x - x - DETAIL_PAD
+	_text("CHAPTER %d" % (LegendsData.chapter_ids().find(chid) + 1), Rect2(x, 14, w, 26), DETAIL_HEAD_FONT + 2,
+			DIM_TEXT)
+	_text(str(row.get("name", chid)), Rect2(x, 40, w, 90), DETAIL_NAME_FONT - 6, LOCKED_TEXT, true)
+	_text("COMING LATER", Rect2(x, 136, w, 28), DETAIL_TEXT_FONT + 2, GOLD)
+	_text(str(row.get("feel", "")), Rect2(x, 170, w, 90), DETAIL_TEXT_FONT, UI.TEXT_COLOR, true)
+	var full_w: float = DETAIL_RECT.size.x - 2.0 * DETAIL_PAD
+	var gate: String = Legends.gate_text(chid)
+	if gate != "":
+		_text("OPENS AT " + gate, Rect2(DETAIL_PAD, LOCK_LINE_Y, full_w, 30), DETAIL_TEXT_FONT, WARN_COLOR)
+	_text("Six more legends wait in this era. Their plaques go up here when the chapter is built.",
+			Rect2(DETAIL_PAD, LOCK_LINE_Y + 40.0, full_w, 100), DETAIL_TEXT_FONT, DIM_TEXT, true)
+
+# shrinks a one-line label's font (down to min_size) until its text fits max_w
+static func _fit_font(lbl: Label, max_w: float, min_size := 16) -> void:
+	var ls: LabelSettings = lbl.label_settings
+	var font: Font = ls.font if ls.font != null else ThemeDB.fallback_font
+	while ls.font_size > min_size and font.get_string_size(lbl.text, HORIZONTAL_ALIGNMENT_LEFT, -1, ls.font_size).x \
+			+ 2.0 * ls.outline_size > max_w:
+		ls.font_size -= 2
+
+func _set_hint(text: String, col: Color) -> void:
+	_hint.text = text
+	_hint.label_settings.font_color = col
+
+func _flash(text: String) -> void:
+	_set_hint(text, WARN_COLOR)
+	_hint_t = HINT_T
+
+# ---------------------------------------------------------------------------------------------------- actions
+
+# a tap in the list (HallList), at = list coordinates
+func _on_list_tap(at: Vector2) -> void:
+	if _busy or _arm_t > 0.0:
+		return
+	var what: String = pick_at(at)
+	if what == "":
+		return
+	pick(what)
+	if what.begins_with(CH_PICK):
+		_flash("%s: COMING LATER" % str(LegendsData.chapter(what.substr(CH_PICK.length())).get("name", "")))
+	elif plaque_state(what) == "locked":
+		_flash("Locked: win his challenge on the LEGENDS tour.")
+
+# REPLAY STORY: the picked legend's unlock scene, then back here on the same plaque
+func _on_replay() -> void:
+	if _busy or _arm_t > 0.0:
+		return
+	var sc: String = replay_scene(_pick)
+	if sc == "":
+		return
+	_stat("hall_replay_story")
+	_sfx("bounce", -4.0)
+	print("HALL replay story %s (%s)" % [sc, _pick])
+	_go(STORY_SCREEN, {"scene": sc, "then": SELF_SCREEN,
+			"then_args": {"back": _back, "back_args": _back_args.duplicate(true), "pick": _pick}})
+
+func _on_back() -> void:
+	if _busy:
+		return
+	_stat("hall_back")
+	_go(_back, _back_args)
+
+func _go(to: String, to_args := {}) -> void:
+	_busy = true
+	Flow.go(to, to_args)
+
+# test drivers: leave the Hall (BACK)
+func auto_step() -> bool:
+	if _busy:
+		return false
+	_on_back()
+	return _busy
+
+# ---------------------------------------------------------------------------------------------------- art
+
+func _read_ui() -> Dictionary:
+	if not FileAccess.file_exists(UI_JSON):
+		return {}
+	var f: FileAccess = FileAccess.open(UI_JSON, FileAccess.READ)
+	if f == null:
+		return {}
+	var d = JSON.parse_string(f.get_as_text())
+	return d if d is Dictionary else {}
+
+func _ui_rect(key: String, def: Rect2) -> Rect2:
+	var v = _ui.get(key, null)
+	if v is Array and (v as Array).size() == 4:
+		return Rect2(float(v[0]), float(v[1]), float(v[2]), float(v[3]))
+	return def
+
+func _frame_size() -> Vector2:
+	var v = _ui.get("frame_size", null)
+	if v is Array and (v as Array).size() == 2:
+		return Vector2(float(v[0]), float(v[1]))
+	return DEF_FRAME
+
+func _texture(path: String) -> Texture2D:
+	if _tex.has(path):
+		return _tex[path]
+	var t: Texture2D = load(path) as Texture2D if ResourceLoader.exists(path) else null
+	_tex[path] = t
+	return t
+
+# the era frame of a chapter ("locked": the locked plaque); null when the file is missing (a drawn box instead)
+func frame_tex(kind: String) -> Texture2D:
+	var frames = _ui.get("frames", DEF_FRAMES)
+	if not (frames is Dictionary):
+		frames = DEF_FRAMES
+	var file: String = str((frames as Dictionary).get(kind, (frames as Dictionary).get("grand", "")))
+	return _texture(UI_DIR + file) if file != "" else null
+
+func silhouette_tex() -> Texture2D:
+	return _texture(UI_DIR + str(_ui.get("silhouette", DEF_SILHOUETTE)))
+
+# a legend's picture for the window: {"tex", "src"} (src = the part of tex to draw), {} = the silhouette.
+# Sheets' chain first (his sheet's card, then the idle frame of his sheet), then his portrait.
+func card_for(id: String) -> Dictionary:
+	if _cards.has(id):
+		return _cards[id]
+	var p: Dictionary = LegendsData.legend(id)
+	var out := {}
+	var sheet: String = str(p.get("sheet", id))
+	var info: Dictionary = Sheets.card_first(Sheets.with_base(sheet)) if sheet != "" else {}
+	var tex: Texture2D = info.get("texture", null)
+	if tex != null:
+		var fr: Vector2 = info.get("frame", tex.get_size())
+		var src := Rect2(Vector2.ZERO, fr)
+		if fr == V2_CARD:
+			src = _ui_rect("card_crop", DEF_CARD_CROP)
+		out = {"tex": tex, "src": src, "kind": "card"}
+	else:
+		var pt: Texture2D = _texture(PORTRAIT_DIR + str(p.get("portrait", id)) + ".png")
+		if pt != null:
+			out = {"tex": pt, "src": _portrait_crop(pt.get_size()), "kind": "portrait"}
+	_cards[id] = out
+	return out
+
+# the part of a portrait that fills the window (its shape, from the top, centred)
+func _portrait_crop(sz: Vector2) -> Rect2:
+	var win: Rect2 = _ui_rect("window", DEF_WINDOW)
+	var aspect: float = win.size.x / maxf(1.0, win.size.y)
+	var w: float = minf(sz.x, sz.y * aspect)
+	var h: float = w / aspect
+	return Rect2((sz.x - w) / 2.0, 0.0, w, h)
+
+# A plaque at pos, scale sc, on canvas c: the frame, then the card / portrait / silhouette in its window, the name
+# on the plate. state "open", "locked" (silhouette, "?") or "empty" (a locked row: no silhouette, no text).
+func draw_plaque(c: CanvasItem, pos: Vector2, sc: float, id: String, state: String) -> void:
+	var fs: Vector2 = _frame_size()
+	var win: Rect2 = _ui_rect("window", DEF_WINDOW)
+	var plate: Rect2 = _ui_rect("name_plate", DEF_PLATE)
+	var open: bool = state == "open"
+	var kind: String = LegendsData.chapter_of(id) if open else "locked"
+	var ft: Texture2D = frame_tex(kind)
+	var dest := Rect2(pos, fs * sc)
+	if ft != null:
+		c.draw_texture_rect(ft, dest, false)
+	else:
+		c.draw_style_box(UI.style_box(FALLBACK_FRAME if open else FALLBACK_LOCKED, UI.OPT_BORDER, 2), dest)
+	var wr := Rect2(pos + win.position * sc, win.size * sc)
+	if open:
+		var card: Dictionary = card_for(id)
+		if not card.is_empty():
+			_draw_fit(c, card["tex"], card["src"], wr, str(card.get("kind", "")) == "card")
+		else:
+			_draw_silhouette(c, wr)
+	elif state == "locked":
+		_draw_silhouette(c, wr)
+	if state == "empty":
+		return
+	var pr := Rect2(pos + plate.position * sc, plate.size * sc)
+	var txt: String = str(LegendsData.legend(id).get("name", "?")) if open else "?"
+	_plate_text(c, pr, txt, sc, PLATE_TEXT if open else PLATE_LOCKED_TEXT)
+
+# tex's src drawn into r, keeping its shape (centred; a card stands on r's bottom)
+func _draw_fit(c: CanvasItem, tex: Texture2D, src: Rect2, r: Rect2, stand: bool) -> void:
+	var k: float = minf(r.size.x / maxf(1.0, src.size.x), r.size.y / maxf(1.0, src.size.y))
+	var sz: Vector2 = src.size * k
+	var at := Vector2(r.position.x + (r.size.x - sz.x) / 2.0,
+			r.end.y - sz.y if stand else r.position.y + (r.size.y - sz.y) / 2.0)
+	c.draw_texture_rect_region(tex, Rect2(at, sz), src)
+
+func _draw_silhouette(c: CanvasItem, r: Rect2) -> void:
+	var st: Texture2D = silhouette_tex()
+	if st != null:
+		c.draw_texture_rect(st, r, false)
+		return
+	c.draw_circle(r.position + Vector2(r.size.x / 2.0, r.size.y * 0.24), r.size.x * 0.2, SILHOUETTE_COLOR)
+	c.draw_rect(Rect2(r.position + Vector2(r.size.x * 0.22, r.size.y * 0.38), Vector2(r.size.x * 0.56,
+			r.size.y * 0.56)), SILHOUETTE_COLOR)
+
+# one line centred on the plate, the font shrunk to fit
+func _plate_text(c: CanvasItem, r: Rect2, txt: String, sc: float, col: Color) -> void:
+	var font: Font = ThemeDB.fallback_font
+	var fs: int = int(PLATE_FONT_MAX * sc / 1.5)
+	var min_fs: int = int(PLATE_FONT_MIN * sc / 1.5)
+	while fs > min_fs and font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > r.size.x - 4.0:
+		fs -= 1
+	fs = mini(fs, int(r.size.y * 0.9))
+	c.draw_string(font, Vector2(r.position.x, r.get_center().y + fs * 0.36), txt, HORIZONTAL_ALIGNMENT_CENTER,
+			r.size.x, fs, col)
+
+# his best tokens: TOKEN_MAX pips centred at c
+func draw_pips(c: CanvasItem, center: Vector2, id: String, r := PIP_R) -> void:
+	var best: int = Legends.token_best(Legends.challenge_key(id))
+	var n: int = LegendsData.TOKEN_MAX
+	var step: float = r * 3.0
+	var x0: float = center.x - step * (n - 1) / 2.0
+	for i in n:
+		var p := Vector2(x0 + step * i, center.y)
+		c.draw_circle(p, r, PIP_ON if i < best else PIP_OFF)
+		c.draw_arc(p, r, 0.0, TAU, 16, UI.OUTLINE_COLOR, 2.0)
+
+static func draw_text(c: CanvasItem, pos: Vector2, text: String, fs: int, col: Color,
+		align := HORIZONTAL_ALIGNMENT_LEFT, w := -1.0) -> void:
+	var font: Font = ThemeDB.fallback_font
+	c.draw_string_outline(font, pos, text, align, w, fs, 6, UI.OUTLINE_COLOR)
+	c.draw_string(font, pos, text, align, w, fs, col)
+
+
+# The era rows: plaques drawn from the screen's layout; a tap picks, a drag scrolls (like lineup.gd's cards).
+class HallList extends Control:
+	var screen
+	var _down := false
+	var _drag := false
+	var _press := Vector2.ZERO        # where the finger went down (screen px)
+	var _press_local := Vector2.ZERO  # the same in the list
+	var _last := Vector2.ZERO
+
+	# Distances are measured from the press point, not summed from motion events: the web build can send one motion
+	# with a big jump (the emulated mouse catching up with a new finger), which is not a drag.
+	func _gui_input(event: InputEvent) -> void:
+		var mb := event as InputEventMouseButton
+		if mb != null and mb.button_index == MOUSE_BUTTON_LEFT:
+			if mb.pressed:
+				_down = true
+				_drag = false
+				_press = mb.global_position
+				_press_local = mb.position
+				_last = _press
+			elif _down:
+				_down = false
+				if not _drag and mb.global_position.distance_to(_press) <= screen.TAP_SLOP:
+					screen._on_list_tap(_press_local)
+			accept_event()
+			return
+		if mb != null and (mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+			return   # the wheel goes on to the scroll container
+		var mm := event as InputEventMouseMotion
+		if mm != null and _down:
+			var g: Vector2 = mm.global_position
+			var step: Vector2 = g - _last
+			_last = g
+			if step.length() > screen.JUMP_PX:
+				_press = g
+				_press_local = mm.position
+			elif g.distance_to(_press) > screen.TAP_SLOP:
+				_drag = true
+			if _drag and step.length() <= screen.JUMP_PX:
+				screen._scroll.scroll_vertical -= int(step.y)
+			accept_event()
+
+	func _draw() -> void:
+		var s = screen
+		for r in s._rows:
+			var rr: Rect2 = r["rect"]
+			var built: bool = bool(r["built"])
+			var chid: String = str(r["ch"])
+			var row: Dictionary = s.LegendsData.chapter(chid)
+			draw_style_box(s.UI.style_box(s.ROW_FILL if built else s.ROW_LOCKED_FILL,
+					s.UI.PANEL_BORDER if built else s.UI.OPT_BORDER.darkened(0.4), s.UI.BORDER), rr)
+			var head_y: float = rr.position.y + 29.0
+			s.draw_text(self, Vector2(rr.position.x + 14.0, head_y), "CHAPTER %d  %s" % [int(r["num"]),
+					str(row.get("name", chid))], s.ROW_HEAD_FONT, s.GOLD if built else s.LOCKED_TEXT)
+			var right: String = ""
+			var right_col: Color = s.DIM_TEXT
+			if not built:
+				right = s.Legends.gate_text(chid)
+				right_col = s.WARN_COLOR
+			elif s.Legends.chapter_done(chid):
+				right = "FINALE WON  %d/%d" % [s.Legends.chapter_tokens(chid), s.Legends.chapter_max_tokens(chid)]
+				right_col = s.GOLD
+			elif s.Legends.chapter_open(chid):
+				right = "TOKENS %d/%d" % [s.Legends.chapter_tokens(chid), s.Legends.chapter_max_tokens(chid)]
+			else:
+				right = "OPENS AT " + s.Legends.gate_text(chid)
+				right_col = s.WARN_COLOR
+			s.draw_text(self, Vector2(rr.position.x, head_y), right, s.ROW_SUB_FONT, right_col,
+					HORIZONTAL_ALIGNMENT_RIGHT, rr.size.x - 14.0)
+			for q in r["plaques"]:
+				var qr: Rect2 = q["rect"]
+				var id: String = str(q["id"])
+				if not built:
+					s.draw_plaque(self, qr.position, s.LOCKED_ROW_SCALE, "", "empty")
+					continue
+				var st: String = s.plaque_state(id)
+				s.draw_plaque(self, qr.position, s.PLAQUE_SCALE, id, st)
+				if st == "open":
+					s.draw_pips(self, Vector2(qr.get_center().x, qr.end.y + s.PIPS_H / 2.0 + 2.0), id)
+				if id == s._pick:
+					var o: Rect2 = qr.grow(s.PICK_OUT)
+					draw_rect(o, s.GOLD, false, s.PICK_BORDER_W)
+			if not built:
+				var tx: float = rr.position.x + s.LOCKED_TEXT_X
+				var tw: float = rr.size.x - s.LOCKED_TEXT_X - 14.0
+				var ty: float = rr.position.y + s.ROW_HEAD_H
+				s.draw_text(self, Vector2(tx, ty + 24.0), "COMING LATER", s.ROW_HEAD_FONT - 2, s.GOLD,
+						HORIZONTAL_ALIGNMENT_LEFT, tw)
+				var font: Font = ThemeDB.fallback_font
+				var fs: int = s.ROW_SUB_FONT - 2
+				var feel: String = str(row.get("feel", ""))
+				var at := Vector2(tx, ty + 54.0)
+				draw_multiline_string_outline(font, at, feel, HORIZONTAL_ALIGNMENT_LEFT, tw, fs, 2, 6, s.UI.OUTLINE_COLOR)
+				draw_multiline_string(font, at, feel, HORIZONTAL_ALIGNMENT_LEFT, tw, fs, 2, s.DIM_TEXT)
+				if s._pick == s.CH_PICK + chid:
+					draw_rect(rr.grow(-2.0), s.GOLD, false, s.PICK_BORDER_W)
+
+
+# The detail panel's drawn parts: the plaque at 3x, the best tokens and the rating shape (labels are children of the
+# detail panel).
+class DetailArt extends Control:
+	var screen
+	var pick := ""
+
+	func _draw() -> void:
+		var s = screen
+		var at := Vector2(s.DETAIL_PAD, s.DETAIL_PAD)
+		if pick.begins_with(s.CH_PICK) or pick == "":
+			s.draw_plaque(self, at, s.DETAIL_SCALE, "", "empty")
+			return
+		var st: String = s.plaque_state(pick)
+		s.draw_plaque(self, at, s.DETAIL_SCALE, pick, st)
+		if st != "open":
+			return
+		var x: float = s.DETAIL_COL_X
+		s.draw_pips(self, Vector2(x + 96.0, 170.0), pick, 8.0)
+		# the rating shape: five bars around his level (the centre line), up in gold, down in blue
+		var shape: Dictionary = s.LegendsData.legend(pick).get("shape", {})
+		var w: float = s.DETAIL_RECT.size.x - x - s.DETAIL_PAD
+		var bar_w: float = w - s.SHAPE_LABEL_W - s.SHAPE_NUM_W
+		var y: float = s.SHAPE_Y
+		for e in s.STAT_NAMES:
+			var v: int = int(shape.get(e[0], 0))
+			s.draw_text(self, Vector2(x, y + 14.0), str(e[1]), 16, s.UI.TEXT_COLOR)
+			var bx: float = x + s.SHAPE_LABEL_W
+			var by: float = y + (s.SHAPE_ROW - s.SHAPE_BAR_H) / 2.0
+			draw_rect(Rect2(bx, by, bar_w, s.SHAPE_BAR_H), s.SHAPE_BG)
+			var mid: float = bx + bar_w / 2.0
+			var ln: float = bar_w / 2.0 * clampf(absf(v) / s.SHAPE_MAX, 0.0, 1.0)
+			if v > 0:
+				draw_rect(Rect2(mid, by, ln, s.SHAPE_BAR_H), s.SHAPE_UP)
+			elif v < 0:
+				draw_rect(Rect2(mid - ln, by, ln, s.SHAPE_BAR_H), s.SHAPE_DOWN)
+			draw_rect(Rect2(mid - 1.0, by - 2.0, 2.0, s.SHAPE_BAR_H + 4.0), s.UI.TEXT_COLOR)
+			s.draw_text(self, Vector2(bx + bar_w + 4.0, y + 14.0), ("%+d" % v) if v != 0 else "0", 16,
+					s.SHAPE_UP if v > 0 else (s.SHAPE_DOWN if v < 0 else s.DIM_TEXT), HORIZONTAL_ALIGNMENT_RIGHT,
+					s.SHAPE_NUM_W - 4.0)
+			y += s.SHAPE_ROW
+
+
+# Top-right: the legends in the Hall and the tokens.
+class CountBox extends Control:
+	var screen
+
+	func _draw() -> void:
+		var s = screen
+		draw_style_box(s.UI.style_box(s.UI.PANEL_COLOR, s.UI.PANEL_BORDER, s.UI.BORDER), Rect2(Vector2.ZERO, size))
+		var n: int = s.Legends.unlocked_ids().size()
+		var all: int = s.LegendsData.legend_ids().size()
+		s.draw_text(self, Vector2(0, 44), "%d/%d" % [n, all], s.COUNT_FONT, s.GOLD, HORIZONTAL_ALIGNMENT_CENTER,
+				size.x)
+		s.draw_text(self, Vector2(0, 80), "LEGENDS  -  %d/%d TOKENS" % [s.Legends.tokens_total(),
+				s.LegendsData.max_tokens()], s.COUNT_SUB_FONT - 4, s.UI.TEXT_COLOR, HORIZONTAL_ALIGNMENT_CENTER,
+				size.x)
