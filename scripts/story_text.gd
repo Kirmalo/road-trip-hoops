@@ -416,6 +416,13 @@ const RECRUIT_LINES := {
 	"la_g1": "My board fits under the seat. If {van} breaks down again, I'll skate us to New York.",
 	"la_g2": "No waves in New York, huh? That's cool. I'll ride the crowd noise all the way to the rim.",
 	"la_boss": "Lifeguard's on duty, {crew}. Nobody goes under on my watch. Not in the sand, not in the big city.",
+	# Legends, the Grandfathers (P9-B3: drafted into a star slot; never "Zeke", never "sky hook")
+	"lg_steeple": "Knees are sixty years old, elbow's still twenty. Feed me the ball low and step out of the way.",
+	"lg_gate": "Nobody gets to the rim on my watch. Not in my gym, not in yours. I'll bring my own knee pads.",
+	"lg_set_shot": "Two hands, feet set, follow through. And nobody touches the radio in the van but me.",
+	"lg_boxcar": "Thirty years in the rail yard. A van ride across the country? That's a nap with a view.",
+	"lg_velvet": "I pack light: one silk tank top, one headband, and a finger roll you'll be telling grandkids about.",
+	"lg_quarterback": "I'll see the open man before he does. Somebody save me the front seat. I call the plays.",
 }
 
 # a recruit's joining line ("" for a player without one)

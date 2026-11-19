@@ -94,6 +94,8 @@ func start(root: Control) -> void:
 	game.stat("challenge_" + type)
 	if root != null:
 		_build_line(root)
+	if game != null and game.twist_fx != null:
+		game.twist_fx.set("banner_y", LINE_TOP + LINE_H + 6.0)   # P9-B4: the era banner slides in under the goal line
 	_refresh()
 
 func _build_line(root: Control) -> void:
@@ -158,9 +160,7 @@ func _process(delta: float) -> void:
 		_label.modulate = LINE_MET_COLOR if _final_met else LINE_FAIL_COLOR
 	else:
 		_label.modulate = LINE_FLASH_COLOR if _flash > 0.0 else LINE_COLOR
-	# the twist's banner slides in over this spot for its first seconds (twist_fx.gd): the line waits under it
-	var banner = game.twist_fx.get("_banner_t") if game.twist_fx != null else null
-	_bg.visible = not (banner != null and float(banner) >= 0.0) or _final != ""
+	_bg.visible = true   # P9-B4: the twist banner now slides in below the line (banner_y), so it always shows
 
 # ---------------------------------------------------------------------------------------------------- main.gd hooks
 

@@ -26,6 +26,7 @@ const FT := 12.0
 const BANNER_TIME := 4.5          # seconds on screen (slide in, hold, slide out)
 const BANNER_SLIDE := 0.35        # seconds of the slide in and out
 const BANNER_Y := 62.0            # screen px: top of the banner (under the 54 px HUD bar)
+var banner_y: float = BANNER_Y     # P9-B4: a challenge game moves it under its goal line (challenge.gd)
 const BANNER_W := 660.0
 const BANNER_H := 76.0
 const BANNER_NAME_SIZE := 32
@@ -635,24 +636,24 @@ func _draw_hud() -> void:
 	elif _banner_t > BANNER_TIME - BANNER_SLIDE:
 		x_in = _ease((BANNER_TIME - _banner_t) / BANNER_SLIDE)
 	var x: float = lerpf(-BANNER_W, (sw - BANNER_W) / 2.0, x_in)
-	var r := Rect2(x, BANNER_Y, BANNER_W, BANNER_H)
+	var r := Rect2(x, banner_y, BANNER_W, BANNER_H)
 	n.draw_rect(r, BANNER_BG)
 	n.draw_rect(Rect2(r.position, Vector2(r.size.x, 3)), BANNER_EDGE)
 	n.draw_rect(Rect2(r.position + Vector2(0, r.size.y - 3), Vector2(r.size.x, 3)), BANNER_EDGE)
-	var icon_c := Vector2(x + 44.0, BANNER_Y + BANNER_H / 2.0)
+	var icon_c := Vector2(x + 44.0, banner_y + BANNER_H / 2.0)
 	n.draw_circle(icon_c, 28.0, Color(0.16, 0.2, 0.32))
 	n.draw_arc(icon_c, 28.0, 0.0, TAU, 32, BANNER_EDGE, 2.0)
 	_draw_icon(n, str(_banner_info.get("icon", "")), icon_c, 20.0)
 	var tx: float = x + 88.0
 	var name_s: String = str(_banner_info.get("name", ""))
 	var line_s: String = str(_banner_info.get("banner", ""))
-	n.draw_string_outline(_font, Vector2(tx, BANNER_Y + 36.0), name_s, HORIZONTAL_ALIGNMENT_LEFT, BANNER_W - 100.0,
+	n.draw_string_outline(_font, Vector2(tx, banner_y + 36.0), name_s, HORIZONTAL_ALIGNMENT_LEFT, BANNER_W - 100.0,
 			BANNER_NAME_SIZE, 5, Color(0, 0, 0, 0.85))
-	n.draw_string(_font, Vector2(tx, BANNER_Y + 36.0), name_s, HORIZONTAL_ALIGNMENT_LEFT, BANNER_W - 100.0,
+	n.draw_string(_font, Vector2(tx, banner_y + 36.0), name_s, HORIZONTAL_ALIGNMENT_LEFT, BANNER_W - 100.0,
 			BANNER_NAME_SIZE, BANNER_NAME_COLOR)
-	n.draw_string_outline(_font, Vector2(tx, BANNER_Y + 63.0), line_s, HORIZONTAL_ALIGNMENT_LEFT, BANNER_W - 100.0,
+	n.draw_string_outline(_font, Vector2(tx, banner_y + 63.0), line_s, HORIZONTAL_ALIGNMENT_LEFT, BANNER_W - 100.0,
 			BANNER_LINE_SIZE, 4, Color(0, 0, 0, 0.85))
-	n.draw_string(_font, Vector2(tx, BANNER_Y + 63.0), line_s, HORIZONTAL_ALIGNMENT_LEFT, BANNER_W - 100.0,
+	n.draw_string(_font, Vector2(tx, banner_y + 63.0), line_s, HORIZONTAL_ALIGNMENT_LEFT, BANNER_W - 100.0,
 			BANNER_LINE_SIZE, BANNER_LINE_COLOR)
 
 func _ease(f: float) -> float:

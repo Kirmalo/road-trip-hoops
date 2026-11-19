@@ -573,7 +573,9 @@ func _show_pick() -> void:
 		_text("CHALLENGE %d" % (LegendsData.legend_ids(_chapter).find(_pick) + 1) + (
 				"  -  " + str(p.get("archetype", "")).to_upper() if open else ""), Rect2(pad, 10, w, 24), HEAD_FONT,
 				DIM_TEXT)
-		var nm: Label = _text(str(p.get("name", _pick)) if open else "? ? ?", Rect2(pad, 32, w, 42), NAME_FONT,
+		# P9-B6: his name shows even before he is beaten (the challenge line below names him anyway); the plaque
+		# keeps its silhouette until then
+		var nm: Label = _text(str(p.get("name", _pick)), Rect2(pad, 32, w, 42), NAME_FONT,
 				GOLD if open else LOCKED_TEXT)
 		_fit_font(nm, w, 20)
 		_text(str(LegendsData.challenge(_pick).get("line", "")), Rect2(pad, 80, w, 96), TEXT_FONT, UI.TEXT_COLOR,

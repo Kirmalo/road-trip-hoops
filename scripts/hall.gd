@@ -644,7 +644,7 @@ func _load_players() -> void:
 			elif Trip.starters.has(sid):
 				tag = "STARTER"
 		else:
-			tag = "YOU" if sid == str(Cities.START_CREW[0]) else "STARTER"
+			tag = "UNDERDOG"   # P9-B5: no trip yet, so nobody is YOU (the tour's Kings order differs)
 		var pd: Dictionary = Cities.player(sid)
 		_players.append({"id": sid, "name": str(pd.get("name", sid)), "number": int(pd.get("number", 0)),
 			"role": str(pd.get("role", "")), "sheet": Cities.crew_sheet(sid, true), "tag": tag,
