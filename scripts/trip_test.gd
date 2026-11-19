@@ -33,6 +33,21 @@ extends Node
 #     test and the draft never run on a replay's lineup), so they are part of the check. A real player may change
 #     them in a replay's lineup (P8-20 allows it); this test does not cover that.
 #   With --mapshot the map drives its own replay: the driver then skips its replay but still checks the one played.
+# Phase 9 checks (P9-29), only in a run whose first draft finds a legend in the pool (--legends-unlock-all, or legends
+# unlocked in user://legends_test.json); without one every step above is exactly the Phase 8 driver:
+#   - LEGEND DRAFT: that first open slot drafts the first legend of the DRAFT screen's LEGENDS row by its taps (his
+#     card, whose hint must say Trip.LEGEND_RULE, then SIGN and YES, SIGN); back on the lineup he is on the roster as
+#     drafted, the starters and Trip.human (the underdog you play) did not change. A second open slot (--stars 24)
+#     drafts a second legend the same way (LEGEND_DRAFTS).
+#   - ONE LEGEND: with two legends on the roster, the lineup's taps [you, legend 1] then legend 2 must be refused
+#     (legend_in_the_way(), the LEGEND_RULE flash, Trip.starters_ok() says LEGEND_RULE); the picks are put back.
+#     Also in a --trip-resume run that loads two legends.
+#   - LEGEND + BOSS: the first recruit screen with a legend on the roster and no boss signs the city's boss (the card
+#     tap); the next lineup after the pick test's game taps [Cities.START_CREW[0], legend, boss] and PLAYs: the game
+#     and the save must start them, you play the underdog. They stay the starters from then on (the lineup's
+#     auto_step keeps the picks). The driver never makes a legend YOU (checked at every tip-off).
+#   - TRIP END fails when a legend run missed one of these (the refusal only with 2+ slots and 2+ legends open).
+#   The pick test's "newest recruit" is the newest roster player who joined as a recruit (never a drafted one).
 
 const Flow = preload("res://scripts/flow.gd")
 const Trip = preload("res://scripts/trip.gd")
@@ -56,6 +71,7 @@ const DRAFT_TEST := true          # P8-23: draft one player through the lineup's
 const REPLAY_AFTER := "memphis"   # P8-23: replay this city's first won game from the map once it is beaten ("" = off)
 const ALL_GAMES := 24             # games that pay at TRIP END (Stars.all_keys(): 8 cities x 3)
 const MAPSHOT_FLAG := "--mapshot" # trip_map.gd's test: it drives its own replay on the first map
+const LEGEND_DRAFTS := 2          # P9-29: legends a legend run drafts (one per open slot; the 2nd tests the refusal)
 
 # --- the run (static: survives reload_current_scene) ---
 static var _started := false
@@ -86,6 +102,14 @@ static var _game_replay := false
 static var _star_before := 0      # that game's best stars before it
 static var _paid_before := 0      # Trip.paid.size() before it
 static var _star_checks := 0      # result screens checked
+# P9-29: a drafted legend
+static var _lg_mode := false      # the first draft of this run found a legend in the pool: the legend checks run
+static var _lg_drafts := 0        # legends drafted by the driver in this run
+static var _draft_pick := ""      # the legend the driver signs on the draft screen ("" = auto_step's first card)
+static var _lg_keep := {}         # before a legend draft: {"human", "starters"} (they must not change)
+static var _lg_refused := false   # ONE LEGEND checked
+static var _lg_boss_recruit := "" # the boss the recruit screen signed for LEGEND + BOSS ("" = not yet, "-" = none)
+static var _lg_boss_state := 0    # 0 not yet, 1 picked by taps (the next game checks), 2 played and checked
 
 var main                          # main.gd (Flow sets it)
 var _screen := ""
@@ -181,13 +205,23 @@ func _process(_delta: float) -> void:
 		return
 	_frames = 0
 	if _screen == "lineup" and PICK_TEST and not _picked and not Trip.replaying() \
-			and Trip.roster_ids().size() > Trip.STARTERS:
+			and _newest_recruit() != "":
 		_pick_test()
 		return
-	if _screen == "lineup" and DRAFT_TEST and not _drafted and not Trip.replaying() and Trip.open_slots() > 0 \
-			and Trip.draft_pool().size() > 0:
+	if _screen == "lineup" and DRAFT_TEST and _draft_due():
 		_draft_test()
 		return
+	if _screen == "lineup" and _refusal_due():
+		_legend_refusal_test()
+		return
+	if _screen == "lineup" and _legend_boss_due():
+		_legend_boss_test()
+		return
+	if _screen == "draft" and _draft_pick != "" and not Trip.roster_ids().has(_draft_pick):
+		_draft_pick_step()
+		return
+	if _screen == "recruit" and _boss_recruit_due():
+		_boss_recruit_step()   # then auto_step below signs him
 	if _screen == "title" and LOCKER_TEST and _locker_state == 0 and not Trip.is_done():
 		_locker_test()
 		return
@@ -237,6 +271,13 @@ func _start_game() -> void:
 			_fail("the picked lineup is not the game's or the save's")
 			return
 		_pick_want = []
+		if _lg_boss_state == 1:
+			_lg_boss_state = 2
+			print("TRIP legend + boss start: ok | %s (you), legend %s, boss %s" % [str(mine[0]), str(mine[1]),
+					str(mine[2])])
+	if mine.size() > 0 and Trip.is_legend(str(mine[0])):
+		_fail("the driver made a legend YOU (%s): a legend run keeps you on a player you picked" % str(mine[0]))
+		return
 	if mine.size() != Trip.STARTERS or theirs.size() != Trip.STARTERS:
 		_fail("the match does not have 3 players a side")
 		return
@@ -351,12 +392,20 @@ static func _lowest_stat(id: String) -> String:
 			best = s
 	return best
 
+# the newest roster player who joined as a recruit ("" = none yet; a drafted player never counts, P9-29)
+static func _newest_recruit() -> String:
+	var out := ""
+	for e in Trip.roster_data:
+		if str((e as Dictionary).get("via", "")) == "recruit":
+			out = str(e["id"])
+	return out
+
 # the lineup's tap path: bench everyone, then pick the newest recruit first (you play him), then two underdogs
 func _pick_test() -> void:
 	_picked = true
 	var node: Node = Flow.current_screen()
 	var ids: Array = Trip.roster_ids()
-	var want: Array = [str(ids[ids.size() - 1]), str(ids[1]), str(ids[0])]
+	var want: Array = [_newest_recruit(), str(ids[1]), str(ids[0])]
 	if node == null or not node.has_method("tap_player"):
 		print("TRIP lineup pick test skipped (no lineup screen)")
 		Trip.set_starters(want, want[0])
@@ -459,12 +508,20 @@ func _locker_test() -> void:
 
 # the lineup's OPEN SLOT card -> the draft screen (its auto_step signs the first card) -> back to the lineup
 func _draft_test() -> void:
+	if not _drafted:
+		_lg_mode = not _legend_pool().is_empty()   # P9-29: legends in the first draft's pool = a legend run
 	_drafted = true
 	var node: Node = Flow.current_screen()
 	if node == null or not node.has_method("tap_open_slot"):
 		_fail("the lineup has no OPEN SLOT tap (tap_open_slot)")
 		return
 	_draft_before = Trip.drafted_ids()
+	_draft_pick = ""
+	if _lg_mode:
+		_draft_pick = str(_legend_pool()[0])
+		_lg_keep = {"human": Trip.human, "starters": Trip.starters.duplicate()}
+		print("TRIP legend draft %d: %s from the LEGENDS row | you play %s | starters %s" % [_lg_drafts + 1,
+				_draft_pick, Trip.human, str(Trip.starters)])
 	print("TRIP draft: OPEN SLOT tapped | slots %d, open %d | pool %d players | drafted before %s" % [
 			Trip.slot_count(), Trip.open_slots(), Trip.draft_pool().size(), str(_draft_before)])
 	_draft_wait = true
@@ -488,6 +545,180 @@ func _check_draft() -> void:
 			str(Trip.roster_ids()), Trip.open_slots(), saved, "ok" if ok else "WRONG"])
 	if not ok:
 		_fail("the draft did not add exactly one player (saved) and come back to the lineup")
+		return
+	if _draft_pick == "":
+		return
+	# P9-29: the legend, drafted to the bench; nobody starts or plays differently because of it
+	var want: String = _draft_pick
+	_draft_pick = ""
+	var lg_ok: bool = added[0] == want and Trip.is_legend(want) and not Trip.is_boss(want) \
+			and Trip.human == str(_lg_keep.get("human", "")) and Trip.starters == _lg_keep.get("starters", []) \
+			and not Trip.is_legend(Trip.human) and str(Save.read().get("human", "")) == Trip.human
+	print("TRIP legend drafted %s | legend %s, boss %s | you still play %s | starters %s | %s" % [str(added[0]),
+			str(Trip.is_legend(str(added[0]))), str(Trip.is_boss(str(added[0]))), Trip.human, str(Trip.starters),
+			"ok" if lg_ok else "WRONG (wanted %s, you %s, starters %s)" % [want, str(_lg_keep.get("human", "")),
+			str(_lg_keep.get("starters", []))]])
+	if not lg_ok:
+		_fail("the legend draft did not sign %s to the bench (or it changed the starters or who you play)" % want)
+		return
+	_lg_drafts += 1
+
+# ---------------- Phase 9 checks (P9-29): a drafted legend ----------------
+
+# the legends the draft offers now (pool order)
+static func _legend_pool() -> Array:
+	var out: Array = []
+	for p in Trip.draft_pool():
+		if bool((p as Dictionary).get("legend", false)):
+			out.append(str((p as Dictionary).get("id", "")))
+	return out
+
+# the legends on the roster (roster order)
+static func _roster_legends() -> Array:
+	var out: Array = []
+	for id in Trip.roster_ids():
+		if Trip.is_legend(str(id)):
+			out.append(str(id))
+	return out
+
+# a boss on the roster ("" = none)
+static func _roster_boss() -> String:
+	for id in Trip.roster_ids():
+		if Trip.is_boss(str(id)):
+			return str(id)
+	return ""
+
+# the first draft of the run (as in Phase 8), then in a legend run one more legend per open slot (LEGEND_DRAFTS)
+static func _draft_due() -> bool:
+	if Trip.replaying() or Trip.open_slots() <= 0 or Trip.draft_pool().is_empty() or _draft_wait:
+		return false
+	if not _drafted:
+		return true
+	return _lg_mode and _lg_drafts < LEGEND_DRAFTS and not _legend_pool().is_empty()
+
+# the draft screen while the driver signs a legend: his card (the hint must say the one-legend rule), SIGN, YES, SIGN
+func _draft_pick_step() -> void:
+	var node: Node = Flow.current_screen()
+	if node == null or not node.has_method("tap_player"):
+		_fail("the draft screen has no tap_player")
+		return
+	if bool(node.get("_busy")):
+		return
+	if not bool(node.call("tap_player", _draft_pick)):
+		_fail("the draft screen has no card for %s (the LEGENDS row)" % _draft_pick)
+		return
+	var hl = node.get("_hint")
+	var hint: String = (hl as Label).text if hl is Label else ""
+	var says: bool = hint.contains(Trip.LEGEND_RULE)
+	print("TRIP draft card %s tapped | hint \"%s\" | %s" % [_draft_pick, hint,
+			"ok, the one-legend rule" if says else "WRONG (no %s)" % Trip.LEGEND_RULE])
+	if not says:
+		_fail("picking legend %s on the draft did not say %s" % [_draft_pick, Trip.LEGEND_RULE])
+		return
+	node.set("_sign_arm_t", 0.0)
+	node.call("_on_sign")
+	if node.get("_confirm") == null:
+		_fail("SIGN on legend %s did not open the confirm panel" % _draft_pick)
+		return
+	node.set("_confirm_t", 0.0)
+	node.call("_on_yes")
+	if not Trip.roster_ids().has(_draft_pick):
+		_fail("YES, SIGN did not draft legend %s (%s)" % [_draft_pick, Trip.draft_refusal(_draft_pick)])
+		return
+	print("TRIP draft signed %s by SIGN and YES, SIGN" % _draft_pick)
+
+# ONE LEGEND: with 2 legends on the roster (between games, once; also in a --trip-resume run that loaded them)
+func _refusal_due() -> bool:
+	return not _lg_refused and not Trip.replaying() and _pick_want.is_empty() \
+			and _roster_legends().size() >= 2
+
+func _legend_refusal_test() -> void:
+	_lg_refused = true
+	var node: Node = Flow.current_screen()
+	if node == null or not node.has_method("legend_in_the_way"):
+		_fail("the lineup has no legend_in_the_way (P9-22)")
+		return
+	var lgs: Array = _roster_legends()
+	var l1: String = str(lgs[0])
+	var l2: String = str(lgs[1])
+	var orig: Array = (node.get("_picks") as Array).duplicate()
+	if orig.size() != Trip.STARTERS or Trip.is_legend(str(orig[0])):
+		_fail("the lineup's picks %s are not 3 with a non-legend YOU" % str(orig))
+		return
+	var me: String = str(orig[0])
+	for id in orig:
+		if str(id) != me:
+			node.call("tap_player", str(id))   # bench the other two
+	node.call("tap_player", l1)
+	var before: Array = (node.get("_picks") as Array).duplicate()
+	node.call("tap_player", l2)            # must be refused
+	var after: Array = (node.get("_picks") as Array).duplicate()
+	var hl = node.get("_hint")
+	var hint: String = (hl as Label).text if hl is Label else ""
+	var why: String = Trip.starters_ok([me, l1, l2])
+	var ok: bool = before == [me, l1] and after == before and str(node.call("legend_in_the_way", l2)) == l1 \
+			and hint.contains(Trip.LEGEND_RULE) and why == Trip.LEGEND_RULE
+	# put the picks back: bench legend 1, pick the other two again
+	node.call("tap_player", l1)
+	for id in orig:
+		if str(id) != me:
+			node.call("tap_player", str(id))
+	var back: Array = (node.get("_picks") as Array).duplicate()
+	ok = ok and back == orig
+	print("TRIP one legend: picks %s, tap %s -> %s | hint \"%s\" | starters_ok %s | picks back %s | %s" % [
+			str(before), l2, "refused" if after == before else "TAKEN " + str(after), hint,
+			why if why != "" else "\"\" (allowed)", str(back), "ok" if ok else "WRONG"])
+	if not ok:
+		_fail("the lineup did not refuse a second legend (%s next to %s)" % [l2, l1])
+
+# LEGEND + BOSS: the first recruit screen with a legend on the roster and no boss signs the city's boss
+func _boss_recruit_due() -> bool:
+	return _lg_boss_recruit == "" and not _roster_legends().is_empty() and _roster_boss() == ""
+
+func _boss_recruit_step() -> void:
+	var node: Node = Flow.current_screen()
+	if node == null or bool(node.get("_busy")):
+		return
+	var cands = node.get("_cands")
+	if not (cands is Array):
+		return
+	for i in (cands as Array).size():
+		var id: String = str(((cands as Array)[i] as Dictionary).get("id", ""))
+		if Trip.is_boss(id):
+			node.set("_arm_t", 0.0)
+			node.call("_on_card", i)   # the card's tap
+			_lg_boss_recruit = id
+			print("TRIP recruit: tapped the boss %s (for the legend + boss lineup)" % id)
+			return
+	_lg_boss_recruit = "-"   # no boss on this recruit screen: auto_step's first card, no second try
+	print("TRIP recruit: no boss among %d candidates" % (cands as Array).size())
+
+# the lineup after the pick test's game, with a legend and a boss on the roster (once, between games)
+func _legend_boss_due() -> bool:
+	return _lg_boss_state == 0 and not Trip.replaying() and _pick_want.is_empty() and (_picked or not PICK_TEST) \
+			and not _roster_legends().is_empty() and _roster_boss() != "" \
+			and Trip.roster_ids().has(str(Cities.START_CREW[0]))
+
+func _legend_boss_test() -> void:
+	var node: Node = Flow.current_screen()
+	if node == null or not node.has_method("tap_player"):
+		_fail("no lineup screen for the legend + boss lineup")
+		return
+	var want: Array = [str(Cities.START_CREW[0]), str(_roster_legends()[0]), _roster_boss()]
+	for id in (node.get("_picks") as Array).duplicate():
+		node.call("tap_player", str(id))   # bench everyone
+	for id in want:
+		node.call("tap_player", id)
+	var got: Array = (node.get("_picks") as Array).duplicate()
+	var why: String = Trip.starters_ok(want)
+	var ok: bool = got == want and bool(node.call("lineup_ok")) and why == ""
+	print("TRIP legend + boss picked by taps %s (you play %s) | starters_ok \"%s\" | %s" % [str(got),
+			str(got[0]) if got.size() > 0 else "-", why, "ok" if ok else "WRONG (wanted %s)" % str(want)])
+	if not ok:
+		_fail("the lineup did not accept a legend and a boss together (%s)" % str(want))
+		return
+	_lg_boss_state = 1
+	_pick_want = want   # PLAY saves them; the next game must start them (checked in _start_game)
 
 # the map: replay REPLAY_AFTER's first won game once, between games (not when --mapshot drives the map)
 func _replay_wanted() -> bool:
@@ -581,9 +812,37 @@ func _end_checks() -> bool:
 	if _replay_state == 1 or _replay_state == 2 or _replay_snap != "":
 		_fail("a replay was started but never checked back on the map")
 		return false
+	if not _legend_end_checks():
+		return false
 	print("TRIP checks | replays %d | locker %s | draft %s" % [_replays,
 			"ok" if _locker_state == 2 else "not visited (no fresh title in this run)",
 			"done in this run" if _drafted else "not in this run"])
+	return true
+
+# P9-29: a legend run drafted its legend(s), refused a second starting legend (with 2+ slots and 2+ legends open) and
+# started a legend next to a boss. A run without legends in its first draft checks nothing here.
+func _legend_end_checks() -> bool:
+	var open_legends := 0
+	for id in Trip.LegendsData.legend_ids():
+		if Trip.legend_available(str(id)):
+			open_legends += 1
+	var need_refusal: bool = Trip.slot_count() >= 2 and open_legends >= 2
+	var miss: String = "NOT CHECKED" if _lg_mode else "-"
+	print("TRIP legends at the end | %s | open legends %d | drafted by the driver %d | roster legends %s | one legend %s | legend + boss %s" % [
+			"legend run" if _lg_mode else "no legend drafted in this run", open_legends, _lg_drafts,
+			str(_roster_legends()), "ok" if _lg_refused else (miss if need_refusal else "- (needs 2 slots and 2 legends)"),
+			"ok" if _lg_boss_state == 2 else miss])
+	if not _lg_mode:
+		return true
+	if _lg_drafts == 0:
+		_fail("a legend run drafted no legend")
+		return false
+	if need_refusal and not _lg_refused:
+		_fail("2 slots and 2 legends were open but the lineup's one-legend refusal was never checked")
+		return false
+	if _lg_boss_state != 2:
+		_fail("a legend run never started a legend next to a boss")
+		return false
 	return true
 
 # ---------------- prints ----------------
