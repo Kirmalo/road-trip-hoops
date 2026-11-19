@@ -20,7 +20,12 @@
     "with a shaved part); braids: true (short braids at the nape). Extras: flannel (checked top), no_number, patch (cross",
     "patch on the left chest, patch_pal), towel L/R (over that shoulder, towel_pal), waist_jacket (jacket_pal), whistle",
     "(on the chain, whistle_pal), glasses_up / glasses_collar (spare shades, glasses_pal, collar_pal), goggle_tan, hand_pal (chalk or",
-    "tape on the hands), kneepads L | R | both (pad_pal). Drawn in make_players.py 'Phase 6 parts'."
+    "tape on the hands), kneepads L | R | both (pad_pal). Drawn in make_players.py 'Phase 6 parts'.",
+    "Phase 9 (P9-04) era parts for the Grandfathers (Legends Chapter 1), drawn in make_players.py 'Phase 9 era parts':",
+    "era_shorts: true (short snug shorts), socks: 'striped' (tall tube socks with two bands at the top, stripe_pal and",
+    "stripe2_pal), terry: true (a thick ribbed headband over any hair, an afro too; band_pal), chops: true (mutton",
+    "chops), mustache: true, hair flattop, and the kneepads above in an era pad_pal. Era colors are the ERA_* palettes",
+    "(made up, no real team's colors); legend sheets are added by P9-09. Look sample: make_players.py --legends-sample."
   ],
   "palettes": {
     "BLUE": ["#78b8ff", "#2f74e0", "#1f479e", "#172a66"],
@@ -56,7 +61,15 @@
     "TAPE": ["#ffffff", "#f0f0ec", "#c8c8c4", "#8e8e8a"],
     "HAIR_SUN": ["#fff2c0", "#e8cc84", "#b8945a", "#7a5c36"],
     "HAIR_FLECK": ["#b4b0b0", "#5a5456", "#2e2a2c", "#141012"],
-    "HAIR_SANDY": ["#f4dc9c", "#c8a466", "#94703e", "#5c4224"]
+    "HAIR_SANDY": ["#f4dc9c", "#c8a466", "#94703e", "#5c4224"],
+    "ERA_CREAM": ["#fff8e6", "#efe2c2", "#c4b08a", "#86704e"],
+    "ERA_RUST": ["#f09a62", "#c4582a", "#8a361c", "#521c10"],
+    "ERA_MUSTARD": ["#ffe08a", "#dcae3c", "#a07a22", "#5e4410"],
+    "ERA_BROWN": ["#a8785a", "#6e4630", "#4a2c1e", "#2a160e"],
+    "ERA_OLIVE": ["#a8b070", "#6e7a3a", "#4a5226", "#282e12"],
+    "ERA_POWDER": ["#d6ecff", "#9cc4e8", "#6a8eb8", "#3e587c"],
+    "ERA_PAD": ["#f4f0e6", "#cfc8b8", "#968e7e", "#5c5648"],
+    "ERA_GUM": ["#e6c48c", "#c09a5c", "#8a6a3a", "#54401e"]
   },
   "skins": {
     "deep": ["#a86e4c", "#7e4c32", "#573024", "#381c1e"],
