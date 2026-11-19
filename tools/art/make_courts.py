@@ -2298,8 +2298,9 @@ REWARD_MAKERS = {"midnight": (midnight_floor, midnight_backdrop), "gold_hall": (
 # twist (the era twist comes from the match, legends.gd) and it never joins the Quick Game COURT list in Phase 9.
 #   era_grand  OLD GYM  wide old boards under amber varnish (nail heads, worn patches); a plaster wall with tall
 #                       arched windows of late-day light, felt banners of old years, a round wall clock and a
-#                       hand-flipped score board; a wooden running-track balcony with an iron rail; folding wooden
-#                       bleachers, half full of a crowd in hats and muted colours; a wooden kick board
+#                       hand-flipped score board (blank cards, so it never reads as the score); a wooden running-track
+#                       balcony with an iron rail; folding wooden bleachers, half full of a crowd in hats and muted
+#                       colours; a wooden kick board
 
 # --- era_grand floor
 AGEWOOD = pal("#d8a861", "#cc9a55", "#bf8c4a", "#b07f42")     # aged maple, yellowed by old varnish
@@ -2526,11 +2527,11 @@ def era_grand_backdrop(seed=52):
     px.rect(sx0, sy0, sx0, sy1, WAINSCOT[1])
     px.rect(sx1, sy0, sx1, sy1, WAINSCOT[3])
     px.rect(sx0, sy1, sx1, sy1, WAINSCOT[3])
-    for (cx0, s) in ((sx0 + 3, "14"), (sx1 - 13, "12")):       # cream flip cards
-        px.rect(cx0, sy0 + 2, cx0 + 10, sy0 + 8, H("#f0e6cc"))
+    for cx0 in (sx0 + 3, sx1 - 13):                             # blank cream flip cards (no digits: never
+        px.rect(cx0, sy0 + 2, cx0 + 10, sy0 + 8, H("#f0e6cc"))  # read as the live score under the HUD)
         px.rect(cx0 + 5, sy0 + 2, cx0 + 5, sy0 + 8, H("#b4a688"))
+        px.rect(cx0, sy0 + 5, cx0 + 10, sy0 + 5, H("#d8ccb0"))  # the flip fold across each card
         px.rect(cx0, sy0 + 9, cx0 + 10, sy0 + 9, WAINSCOT[3])
-        number(px, s, cx0 + 2, sy0 + 3, H("#2a1a10"))
     px.rect(sx0 + 16, sy0 + 4, sx0 + 20, sy0 + 6, FELT[0][0])  # possession lamp
     # dark wood dado behind the top of the bleachers
     px.rect(0, wall_bot, BD_W - 1, BD_H - 1, WAINSCOT[2])

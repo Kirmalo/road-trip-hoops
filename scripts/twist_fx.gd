@@ -733,6 +733,20 @@ func _draw_icon(n: CanvasItem, icon: String, c: Vector2, s: float) -> void:
 				var f3: float = float(i + 1) / 5.0
 				n.draw_line(Vector2(r.position.x + r.size.x * f3, r.position.y), Vector2(r.position.x, r.position.y + r.size.y * f3), white, 1.5)
 				n.draw_line(Vector2(r.position.x + r.size.x * f3, r.end.y), Vector2(r.end.x, r.position.y + r.size.y * f3), white, 1.5)
+		"era_grand":
+			# an old laced leather ball: brown panels, two curved seams and the laced slit across the top
+			var br: float = s * 0.8
+			n.draw_circle(c, br + 2.0, Color(0.16, 0.09, 0.05))
+			n.draw_circle(c, br, Color(0.62, 0.38, 0.2))
+			n.draw_circle(c + Vector2(-br * 0.3, -br * 0.3), br * 0.35, Color(0.74, 0.5, 0.3))
+			var seam := Color(0.22, 0.12, 0.06)
+			n.draw_arc(c + Vector2(-br * 1.35, 0.0), br * 1.05, -0.85, 0.85, 12, seam, 2.0)
+			n.draw_arc(c + Vector2(br * 1.35, 0.0), br * 1.05, PI - 0.85, PI + 0.85, 12, seam, 2.0)
+			var ly: float = c.y - br * 0.45
+			n.draw_line(Vector2(c.x - br * 0.45, ly), Vector2(c.x + br * 0.45, ly), seam, 3.0)
+			for i in 4:
+				var lx: float = c.x - br * 0.36 + br * 0.24 * float(i)
+				n.draw_line(Vector2(lx - 2.0, ly - 3.0), Vector2(lx + 2.0, ly + 3.0), Color(0.96, 0.92, 0.8), 1.5)
 		_:
 			n.draw_circle(c, s * 0.4, white)
 
