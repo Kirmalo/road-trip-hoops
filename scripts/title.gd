@@ -6,6 +6,10 @@ extends CanvasLayer
 #             QUICK GAME -> today's game (its start panel picks the level and court, as before)
 #             LOCKER (P8-13, owner Q3 a: Flow screen "locker", args {"back": "title"}; the star ladder and the
 #             jersey / ball / van picks, P8-15), with a "STARS n/72" tab on the ROAD TRIP button (Stars.total())
+#             LEGENDS (P9-15, owner L4 a: Flow screen "legends", the era tour) last on the top row; until
+#             Chapter 1's gate (24 stars from any games) it shows locked with the gate on a tab ("24 STARS") and a
+#             tap shows a line saying so. Read through legends.gd's mode_open() / gate_text() (P9-12), with a safe
+#             fallback while legends.gd is missing (the gate from legends_data.gd, else 24, against Stars.total())
 #             SETTINGS, CREW & CREDITS (their own Flow screens), HOW TO PLAY (Flow screen "howto", P7-H3)
 #             and the version ("v1.0.0", from project.godot application/config/version) bottom-right (P7-04)
 #             The level pickers (new trip, Settings) add LEGEND once Stars.legend_open() and difficulty.gd knows the
@@ -14,7 +18,9 @@ extends CanvasLayer
 #             FULL SCREEN on/off (P6-T2) and LEFT-HANDED on/off (P7-04: Difficulty.set_left_handed, from the next game)
 #   crew      the version, your crew (from the trip save if there is one: each player's unspent stat points, a
 #             DRAFTED tag, the crew points; P8-13), the art and music credits (every CC-BY item
-#             with title, author, license, source and changes) and the Godot license notice, in a scrolling list
+#             with title, author, license, source and changes) and the Godot license notice, in a scrolling list;
+#             a HALL OF LEGENDS button top-right (Flow screen "hall", args {"back": "crew"}) once one legend is
+#             unlocked (Legends.unlocked_ids(), else the Legends save's list; P9-15)
 # The Road Trip sub-panels swap in place (no reload); every other move is Flow.go(). Each panel ignores taps for
 # PANEL_ARM s, so a quick double tap can't fall through onto the next panel's button in the same spot.
 # trip.gd / save.gd (P5-05) and audio.set_sfx_volume (P5-07) are called only if they exist, so this runs alone:
@@ -23,7 +29,8 @@ extends CanvasLayer
 # real window mode every frame (the browser's Esc / back gesture). The first tap of a run puts a saved ON back
 # (Difficulty.restore_fullscreen(), from _input here and in pause.gd).
 # Desktop testing: Escape = BACK. Test: -- --titletest walks every screen and button (LOCKER and back too; checks the
-# STARS tab and the level pickers; add --stars 72 for LEGEND; screenshots with xvfb), puts every
+# STARS tab and the level pickers; add --stars 72 for LEGEND; LEGENDS locked or open, e.g. --stars 0 / --stars 24,
+# and CREW's HALL OF LEGENDS with --legends-unlock-all; screenshots with xvfb), puts every
 # setting back and restores settings.cfg byte for byte at the end.
 
 const UI = preload("res://scripts/ui_kit.gd")
@@ -49,7 +56,6 @@ const NAME_COLOR := Color(1.0, 0.82, 0.25)     # gold, like the lit button
 const CREW_FONT := 36                          # "THE CORNFIELD KINGS"
 const VAN_FONT := 24                           # "on the road in The Biscuit"
 const MAIN_BTN := Vector2(400, 130)            # CONTINUE / NEW TRIP, START OVER / KEEP MY TRIP
-const TOP_BTN := Vector2(360, 130)             # ROAD TRIP / QUICK GAME / LOCKER (P8-13: over the three side buttons)
 const STAR_FONT := 24                          # "STARS 41/72" on the ROAD TRIP button's tab
 const STAR_TAB_RISE := 24.0                    # px the stars tab sits above the ROAD TRIP button's top edge
 const STAR_TAB_PAD := Vector2(14, 2)           # px inside the stars tab
@@ -58,6 +64,25 @@ const LOCKER_SCREEN := "locker"                # Flow screen (scripts/locker.gd,
 const LEGEND_NAME := "legend"                  # the 4th level's name in Difficulty.NAMES (P8-19)
 const TRIP_LEVEL_BTN4 := Vector2(260, 140)     # the new-trip level buttons when LEGEND makes four
 const SIDE_BTN := Vector2(360, 110)            # SETTINGS / HOW TO PLAY / CREW & CREDITS (three fit 1280 px)
+# P9-15 (owner L4 a): LEGENDS joins the top row, so the four top buttons share 1280 px
+const TOP_BTN4 := Vector2(270, 130)            # ROAD TRIP / QUICK GAME / LOCKER / LEGENDS (4 x 270 + 3 gaps = 1200 px)
+const TOP_FONT4 := 38                          # their text ("QUICK GAME" fits 270 px)
+const LEGENDS_SCREEN := "legends"              # Flow screen (scripts/legends_tour.gd, P9-18; "not built yet" until then)
+const HALL_SCREEN := "hall"                    # Flow screen (scripts/hall.gd, P9-19), args {"back": "crew"} from CREW
+const LEGENDS_PATH := "res://scripts/legends.gd"           # P9-12: mode_open(), gate_text(), unlocked_ids() (optional)
+const LEGENDS_DATA_PATH := "res://scripts/legends_data.gd" # P9-07: CHAPTERS[0].gate.stars, the fallback gate
+const LEGENDS_SAVE_PATH := "res://scripts/legends_save.gd" # P9-02: read().unlocked, the fallback unlock count
+const LEGENDS_GATE_STARS := 24                 # Chapter 1's gate when legends_data.gd isn't there (L4 a: 24 stars)
+const LEGENDS_LOCK_FILL := Color(0.22, 0.18, 0.26)   # the locked LEGENDS button: dark purple-grey
+const LEGENDS_LOCK_TEXT := Color(0.72, 0.66, 0.78)
+const LEGENDS_TAB_FILL := Color(0.30, 0.10, 0.28)    # the gate tab ("24 STARS") on the locked button
+const LEGENDS_MSG_TIME := 3.0                  # s the "LEGENDS OPEN AT 24 STARS" line stays after a tap on the lock
+const LEGENDS_MSG_FONT := 26
+const LEGENDS_MSG_Y := 522.0                   # px: the line's top, under the button rows, above the road
+const LEGENDS_MSG_PAD := Vector2(18, 4)        # px inside its plate
+const HALL_BTN := Vector2(330, 110)            # HALL OF LEGENDS, top-right on CREW & CREDITS (clear of the title)
+const HALL_FONT := 30
+const HALL_MARGIN := 24                        # px from the top-right corner (BACK is BACK_POS top-left)
 const LEVEL_BTN := Vector2(240, 110)           # EASY / NORMAL / HARD in Settings
 const LEVEL_BTN4 := Vector2(200, 110)          # ... and LEGEND: four fit next to the row label (1180 px)
 const LEVEL_FONT4 := 34                        # their text then (NORMAL / LEGEND fit 200 px)
@@ -197,6 +222,8 @@ var _music_slider: HSlider   # the music volume (Settings, P7-04)
 var _music_dirty_t := -1.0
 var _scroll: ScrollContainer
 var _art: Control
+var _legends_msg: Label      # the line a tap on the locked LEGENDS button shows (P9-15)
+var _legends_msg_t := 0.0
 
 # --titletest driver (survives the reloads between screens)
 static var _test_step := 0
@@ -237,6 +264,10 @@ func _process(delta: float) -> void:
 			_save_music_volume()
 	if _art != null:
 		_art.queue_redraw()
+	if _legends_msg_t > 0.0:
+		_legends_msg_t -= delta
+		if _legends_msg_t <= 0.0 and is_instance_valid(_legends_msg):
+			_legends_msg.visible = false
 	if _fs_btn != null and Difficulty.is_fullscreen() != _fs_shown:
 		_refresh_settings()   # left (or entered) full screen through the browser
 	if _test_on:
@@ -291,6 +322,10 @@ func _show_panel(which: String) -> void:
 	_panel = which
 	if _content != null:
 		_content.queue_free()
+	if is_instance_valid(_legends_msg):
+		_legends_msg.queue_free()
+	_legends_msg = null
+	_legends_msg_t = 0.0
 	_buttons.clear()
 	var box := UI.vbox(_root, PANEL_GAP)
 	box.alignment = BoxContainer.ALIGNMENT_BEGIN
@@ -326,28 +361,86 @@ func _show_panel(which: String) -> void:
 			_btn(UI.hbox(box), "BACK", _show_panel.bind("trip"), UI.KIND_OPT, UI.SMALL_SIZE)
 		_:
 			var r1 := UI.hbox(box)
-			var road: Button = _btn(r1, "ROAD TRIP", _show_panel.bind("trip"), UI.KIND_LIT, TOP_BTN)
+			var road: Button = _top_btn(r1, "ROAD TRIP", _show_panel.bind("trip"), UI.KIND_LIT)
 			_star_tab(road)
-			_btn(r1, "QUICK GAME", _on_quick_game, UI.KIND_MAIN, TOP_BTN)
-			_btn(r1, "LOCKER", _on_locker, UI.KIND_MAIN, TOP_BTN)
+			_top_btn(r1, "QUICK GAME", _on_quick_game, UI.KIND_MAIN)
+			_top_btn(r1, "LOCKER", _on_locker, UI.KIND_MAIN)
+			_legends_button(r1)   # last: its gate tab stays clear of the "on the road" line above the middle
 			var r2 := UI.hbox(box)
 			_btn(r2, "SETTINGS", _go.bind("settings"), UI.KIND_OPT, SIDE_BTN)
 			_btn(r2, "HOW TO PLAY", _on_how_to_play, UI.KIND_OPT, SIDE_BTN)
 			_btn(r2, "CREW & CREDITS", _go.bind("crew"), UI.KIND_OPT, SIDE_BTN)
+	if which == "main":
+		# on a dark plate like the tabs, so it reads over the cornfield and the road sign at any width
+		_legends_msg = UI.label(_root, "", LEGENDS_MSG_FONT, NAME_COLOR)
+		var sb := UI.style_box(STAR_TAB_FILL, NAME_COLOR, UI.BORDER)
+		sb.content_margin_left = LEGENDS_MSG_PAD.x
+		sb.content_margin_right = LEGENDS_MSG_PAD.x
+		sb.content_margin_top = LEGENDS_MSG_PAD.y
+		sb.content_margin_bottom = LEGENDS_MSG_PAD.y
+		_legends_msg.add_theme_stylebox_override("normal", sb)
+		_legends_msg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_legends_msg.anchor_left = 0.5
+		_legends_msg.anchor_right = 0.5
+		_legends_msg.offset_left = 0.0
+		_legends_msg.offset_right = 0.0
+		_legends_msg.offset_top = LEGENDS_MSG_Y
+		_legends_msg.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_legends_msg.visible = false
 	_arm(PANEL_ARM)
+
+# a top-row button: four share the row since LEGENDS (P9-15)
+func _top_btn(parent: Control, text: String, on_tap: Callable, kind: String) -> Button:
+	var b: Button = _btn(parent, text, on_tap, kind, TOP_BTN4)
+	b.add_theme_font_size_override("font_size", TOP_FONT4)
+	return b
+
+# LEGENDS (P9-15, owner L4 a): open = purple, opens the era tour; locked = dark with the gate on a tab ("24 STARS"),
+# and a tap says what opens it (it stays tappable)
+func _legends_button(parent: Control) -> Button:
+	var open: bool = legends_open()
+	var b: Button = _top_btn(parent, "LEGENDS", _on_legends, UI.KIND_LEGEND if open else UI.KIND_OPT)
+	b.name = "LegendsButton"
+	if not open:
+		var sb := UI.style_box(LEGENDS_LOCK_FILL, UI.LEGEND_BORDER.darkened(0.4), UI.BORDER)
+		b.add_theme_stylebox_override("normal", sb)
+		b.add_theme_stylebox_override("hover", sb)
+		b.add_theme_stylebox_override("disabled", sb)
+		UI.set_text_color(b, LEGENDS_LOCK_TEXT)
+		_tab(b, legends_gate_text(), LEGENDS_TAB_FILL, "GateTab")
+	return b
+
+func _on_legends() -> void:
+	if legends_open():
+		_stat("title_legends")
+		_go(LEGENDS_SCREEN)
+		return
+	_stat("title_legends_locked")
+	if is_instance_valid(_legends_msg):
+		_legends_msg.text = legends_locked_text()
+		_legends_msg.visible = true
+		_legends_msg_t = LEGENDS_MSG_TIME
+
+# "LEGENDS OPEN AT 24 STARS. YOU HAVE 9: WIN TRIP GAMES!" (the line under the buttons after a tap on the locked button)
+static func legends_locked_text() -> String:
+	return "LEGENDS OPEN AT %s. YOU HAVE %d: WIN TRIP GAMES!" % [legends_gate_text(), Stars.total()]
 
 # "STARS 41/72": a small tab on the top edge of the ROAD TRIP button (the stars come from trip games); taps go through
 func _star_tab(b: Button) -> void:
+	_tab(b, stars_text(), STAR_TAB_FILL, "StarTab")
+
+# a small tab on a button's top edge (the STARS count, the LEGENDS gate); taps go through to the button
+func _tab(b: Button, text: String, fill: Color, tab_name: String) -> void:
 	var tab := PanelContainer.new()
-	var sb := UI.style_box(STAR_TAB_FILL, NAME_COLOR, UI.BORDER)
+	var sb := UI.style_box(fill, NAME_COLOR, UI.BORDER)
 	sb.content_margin_left = STAR_TAB_PAD.x
 	sb.content_margin_right = STAR_TAB_PAD.x
 	sb.content_margin_top = STAR_TAB_PAD.y
 	sb.content_margin_bottom = STAR_TAB_PAD.y
 	tab.add_theme_stylebox_override("panel", sb)
 	tab.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tab.name = "StarTab"
-	UI.label(tab, stars_text(), STAR_FONT, NAME_COLOR)
+	tab.name = tab_name
+	UI.label(tab, text, STAR_FONT, NAME_COLOR)
 	b.add_child(tab)
 	tab.anchor_left = 0.5
 	tab.anchor_right = 0.5
@@ -593,6 +686,7 @@ func _build_crew() -> void:
 	t.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	t.offset_top = 30
 	t.offset_bottom = 130
+	_hall_button()
 	_scroll = ScrollContainer.new()
 	_scroll.position = Vector2((1280.0 - SCROLL_SIZE.x) / 2.0, 145)
 	_scroll.size = SCROLL_SIZE
@@ -638,6 +732,24 @@ func _build_crew() -> void:
 	_left(list, Engine.get_license_text(), LICENSE_FONT, STUB_COLOR)
 	_spacer(list, 20)
 	_arm(PANEL_ARM)
+
+# HALL OF LEGENDS (P9-15): top-right on CREW & CREDITS once one legend is unlocked; opens "hall" with back "crew"
+func _hall_button() -> void:
+	if legends_unlocked_count() <= 0:
+		return
+	var b: Button = UI.button(_root, "HALL OF LEGENDS", _tap.bind(_on_hall), UI.KIND_LEGEND, HALL_BTN)
+	b.add_theme_font_size_override("font_size", HALL_FONT)
+	b.name = "HallButton"
+	b.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	b.offset_left = -HALL_MARGIN - HALL_BTN.x
+	b.offset_right = -HALL_MARGIN
+	b.offset_top = BACK_POS.y
+	b.offset_bottom = BACK_POS.y + HALL_BTN.y
+	_buttons.append(b)
+
+func _on_hall() -> void:
+	_stat("crew_hall")
+	_go(HALL_SCREEN, {"back": "crew"})
 
 func _crew_section(list: Control) -> void:
 	_section(list, "THE " + Cities.CREW_NAME)
@@ -785,6 +897,79 @@ static func _level_arg(s: GDScript, fn: String, lv: int):
 				return String(Difficulty.NAMES[lv])
 	return lv
 
+# ---------------- legends.gd (P9-12), guarded ----------------
+# legends.gd may not exist yet: its contract functions are called when it has them, else a safe fallback (the gate
+# from legends_data.gd or LEGENDS_GATE_STARS against Stars.total(); the unlocked legends from the Legends save file,
+# with --legends-unlock-all / --legends-unlock-none). All loaded at run time, like cities.gd loads cosmetics.gd.
+
+const UNLOCK_ALL_FLAG := "--legends-unlock-all"
+const UNLOCK_NONE_FLAG := "--legends-unlock-none"
+static var _legends_loaded := false   # Legends.load_state() asked once this run
+
+static func _legends() -> GDScript:
+	var lg: GDScript = _script(LEGENDS_PATH)
+	if lg != null and not _legends_loaded and lg.has_method("load_state"):
+		_legends_loaded = true
+		lg.call("load_state")
+	return lg
+
+# Chapter 1 is open: Legends.mode_open(), else Stars.total() >= the gate
+static func legends_open() -> bool:
+	var lg: GDScript = _legends()
+	if lg != null and lg.has_method("mode_open"):
+		return bool(lg.call("mode_open"))
+	return Stars.total() >= _fallback_gate_stars()
+
+# "24 STARS": Legends.gate_text(<chapter 1>), else from the fallback gate
+static func legends_gate_text() -> String:
+	var lg: GDScript = _legends()
+	if lg != null and lg.has_method("gate_text"):
+		var t: String = str(lg.call("gate_text", _first_chapter_id()))
+		if t != "":
+			return t
+	return "%d STARS" % _fallback_gate_stars()
+
+# how many legends are unlocked for good: Legends.unlocked_ids(), else the Legends save's "unlocked" list
+static func legends_unlocked_count() -> int:
+	var lg: GDScript = _legends()
+	if lg != null and lg.has_method("unlocked_ids"):
+		var ids = lg.call("unlocked_ids")
+		return (ids as Array).size() if ids is Array else 0
+	var cmd: PackedStringArray = OS.get_cmdline_user_args()
+	if cmd.has(UNLOCK_NONE_FLAG):
+		return 0
+	if cmd.has(UNLOCK_ALL_FLAG):
+		return 1
+	var sv: GDScript = _script(LEGENDS_SAVE_PATH)
+	if sv == null or not sv.has_method("read"):
+		return 0
+	var d = sv.call("read")
+	if not (d is Dictionary):
+		return 0
+	var u = (d as Dictionary).get("unlocked", null)
+	return (u as Array).size() if u is Array else 0
+
+# Chapter 1's id from legends_data.gd ("grand" when it isn't there)
+static func _first_chapter_id() -> String:
+	return str(_first_chapter().get("id", "grand"))
+
+static func _first_chapter() -> Dictionary:
+	var data: GDScript = _script(LEGENDS_DATA_PATH)
+	if data == null:
+		return {}
+	var rows = data.get("CHAPTERS")
+	if rows is Array and (rows as Array).size() > 0 and (rows as Array)[0] is Dictionary:
+		return (rows as Array)[0]
+	return {}
+
+static func _fallback_gate_stars() -> int:
+	var g = _first_chapter().get("gate", {})
+	if g is Dictionary:
+		var st = (g as Dictionary).get("stars", null)
+		if st is int or st is float:
+			return int(st)
+	return LEGENDS_GATE_STARS
+
 # ---------------- trip test (P5-15) ----------------
 
 # The default choice: continue a saved trip, else a new trip on the remembered level; settings/crew go back.
@@ -807,6 +992,7 @@ const TEST_WAIT := 30          # frames between test steps
 const TEST_HOWTO_WAIT := 1.0   # s on the How to Play screen before paging (its PANEL_ARM has passed)
 const TEST_HOWTO_PAGE := 0.5   # s on the next page before BACK
 const TEST_MUSIC_VOL := 0.3    # where the test moves the MUSIC slider (and back)
+const TEST_SHOT_DELAY := 0.2   # s after the locked LEGENDS tap before its screenshot (the line is drawn by then)
 
 static var _test_errors := 0
 
@@ -879,16 +1065,32 @@ func _test_tick() -> void:
 		11:
 			_shot("crew")
 			_test_check_credits()
+			_test_check_hall_button()
 			_scroll.scroll_vertical = 100000
 		12:
 			_shot("crew_end")
 			print("TITLE TEST crew list scrolled to %d" % _scroll.scroll_vertical)
-			_press("BACK")
+			if _find_named(_root, "HallButton") != null:
+				_test_hall(get_tree())   # HALL OF LEGENDS, then its BACK lands on CREW again (step 13)
+				_press("HALL OF LEGENDS")
+			else:
+				_press("BACK")
 		13:
+			if scr == "crew":
+				_check(_test_hall_done, "came back to CREW without visiting the Hall")
+				_press("BACK")
+			else:
+				_check(not _test_hall_done, "the hall's BACK went to '%s', not CREW" % scr)
+				_check(scr == "title", "CREW BACK did not come back to the title")
+		14:
+			_check(scr == "title", "not on the title before LOCKER")
 			_test_locker(get_tree())
 			_press("LOCKER")
-		14:
+		15:
 			_check(scr == "title", "LOCKER BACK did not come back to the title")
+			_test_legends_button()
+		16:
+			_check(scr == "title", "LEGENDS did not come back to the title")
 			_test_quick_game(get_tree())
 			_press("QUICK GAME")
 
@@ -951,6 +1153,105 @@ static func _test_locker(tree: SceneTree) -> void:
 			if str(Flow.screen) == LOCKER_SCREEN:
 				_check(false, "the locker's BACK did not leave the screen")
 				Flow.go("title")))
+
+# P9-15: the title's buttons all lie inside the window (four on the top row since LEGENDS), the LEGENDS button shows
+# the gate tab exactly when Chapter 1 is locked; open: it opens "legends" and that screen's BACK lands on the title
+# (step 16); locked: a tap stays on the title and shows the gate line
+func _test_legends_button() -> void:
+	var view: Rect2 = get_viewport().get_visible_rect()
+	for b in _buttons:
+		if is_instance_valid(b):
+			var r: Rect2 = (b as Button).get_global_rect()
+			_check(view.encloses(r), "title button '%s' at %s is outside the window %s" % [b.text, r, view])
+	var lb: Node = _find_named(_root, "LegendsButton")
+	_check(lb != null, "no LEGENDS button on the title")
+	if lb == null:
+		return
+	var open: bool = legends_open()
+	var tab: Node = lb.get_node_or_null("GateTab")
+	var tab_text: String = (tab.get_child(0) as Label).text if tab != null and tab.get_child_count() > 0 else "(none)"
+	print("TITLE TEST legends: open %s (stars %d, gate %s), tab %s, legends.gd %s" % [open, Stars.total(),
+			legends_gate_text(), tab_text, ResourceLoader.exists(LEGENDS_PATH)])
+	_check((tab != null) == (not open), "the LEGENDS gate tab is %s on a %s mode" % [
+			"shown" if tab != null else "missing", "open" if open else "locked"])
+	if tab != null:
+		_check(tab_text == legends_gate_text(), "the LEGENDS tab reads '%s'" % tab_text)
+	if open:
+		_test_legends_screen(get_tree())
+		_press("LEGENDS")
+		return
+	_press("LEGENDS")
+	var shown: bool = is_instance_valid(_legends_msg) and _legends_msg.visible
+	print("TITLE TEST legends locked tap: screen %s, line '%s'" % [str(Flow.screen),
+			_legends_msg.text if shown else "(none)"])
+	_check(not _busy and str(Flow.screen) == "title", "the locked LEGENDS button left the title")
+	_check(shown and _legends_msg.text == legends_locked_text(), "the locked LEGENDS tap showed no gate line")
+	get_tree().create_timer(TEST_SHOT_DELAY).timeout.connect(func(): _shot("title_legends_locked"))
+
+static func _test_legends_screen(tree: SceneTree) -> void:
+	tree.create_timer(TEST_HOWTO_WAIT).timeout.connect(func():
+		var node: Node = Flow.current_screen()
+		print("TITLE TEST legends screen: screen=%s node=%s" % [str(Flow.screen),
+				node.get_script().resource_path if node != null and node.get_script() != null else "none"])
+		_check(str(Flow.screen) == LEGENDS_SCREEN, "LEGENDS did not open the legends screen")
+		_shot("legends")
+		var back: Button = _find_back(node)
+		if back != null:
+			print("TITLE TEST legends screen: BACK")
+			back.emit_signal("pressed")
+		else:
+			print("TITLE TEST legends screen: Escape")
+			var k := InputEventKey.new()
+			k.keycode = KEY_ESCAPE
+			k.pressed = true
+			Input.parse_input_event(k)
+		tree.create_timer(TEST_HOWTO_WAIT).timeout.connect(func():
+			if str(Flow.screen) == LEGENDS_SCREEN:
+				_check(false, "the legends screen's BACK did not leave it")
+				Flow.go("title")))
+
+static var _test_hall_done := false
+
+# CREW & CREDITS shows HALL OF LEGENDS exactly when a legend is unlocked
+func _test_check_hall_button() -> void:
+	var n: int = legends_unlocked_count()
+	var hb: Node = _find_named(_root, "HallButton")
+	print("TITLE TEST crew: legends unlocked %d, HALL OF LEGENDS %s" % [n, "shown" if hb != null else "not shown"])
+	_check((hb != null) == (n > 0), "HALL OF LEGENDS is %s with %d legends unlocked" % [
+			"shown" if hb != null else "missing", n])
+	if hb != null:
+		_check(get_viewport().get_visible_rect().encloses((hb as Button).get_global_rect()),
+				"HALL OF LEGENDS is outside the window")
+
+# HALL OF LEGENDS opens "hall" with back = crew, and its BACK (Escape if none) lands on CREW & CREDITS again
+static func _test_hall(tree: SceneTree) -> void:
+	tree.create_timer(TEST_HOWTO_WAIT).timeout.connect(func():
+		var node: Node = Flow.current_screen()
+		print("TITLE TEST hall: screen=%s back=%s node=%s" % [str(Flow.screen), str(Flow.args.get("back", "")),
+				node.get_script().resource_path if node != null and node.get_script() != null else "none"])
+		_check(str(Flow.screen) == HALL_SCREEN, "HALL OF LEGENDS did not open the hall screen")
+		_check(str(Flow.args.get("back", "")) == "crew", "HALL OF LEGENDS did not pass back = crew")
+		_shot("hall")
+		_test_hall_done = true
+		var back: Button = _find_back(node)
+		if back != null:
+			print("TITLE TEST hall: BACK")
+			back.emit_signal("pressed")
+		else:
+			print("TITLE TEST hall: Escape")
+			var k := InputEventKey.new()
+			k.keycode = KEY_ESCAPE
+			k.pressed = true
+			Input.parse_input_event(k)
+		tree.create_timer(TEST_HOWTO_WAIT).timeout.connect(func():
+			if str(Flow.screen) == HALL_SCREEN:   # where it landed is checked on CREW (step 13)
+				_check(false, "the hall's BACK did not leave it")
+				Flow.go("title")))
+
+static func _find_named(node: Node, n: String) -> Node:
+	if node == null:
+		return null
+	return node.find_child(n, true, false)
 
 func _press(text: String) -> void:
 	for b in _buttons:
