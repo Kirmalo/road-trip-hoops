@@ -1,0 +1,119 @@
+{
+ "_help": [
+  "Texel numbers (draw everything at 2 canvas px per texel, like the trip map). timeline.png is",
+  "640 x 360 with rows 0..header_h-1 kept for the header; pin_points are where each chapter's pin",
+  "tip goes (pin_anchor inside the 32 x 40 pin), left to right in chapter order; label_y is a good",
+  "first row for the chapter name under the rail. On 1280 x 800 centre the backdrop (y + 40) and",
+  "fill the bars with bar_bg. Frames are 56 x 88: draw the frame, then the card's card_crop (a",
+  "64 x 96 v2 card) or silhouette.png at window's x, y; the name plate rect is free for text."
+ ],
+ "size": [
+  640,
+  360
+ ],
+ "header_h": 36,
+ "bar_bg": "#12101e",
+ "chapters": [
+  "grand",
+  "fathers",
+  "present",
+  "next"
+ ],
+ "panels": [
+  [
+   7,
+   44,
+   152,
+   309
+  ],
+  [
+   165,
+   44,
+   152,
+   309
+  ],
+  [
+   323,
+   44,
+   152,
+   309
+  ],
+  [
+   481,
+   44,
+   152,
+   309
+  ]
+ ],
+ "rail_y": 226,
+ "label_y": 240,
+ "pin_points": [
+  [
+   83,
+   226
+  ],
+  [
+   241,
+   226
+  ],
+  [
+   399,
+   226
+  ],
+  [
+   557,
+   226
+  ]
+ ],
+ "pin_size": [
+  32,
+  40
+ ],
+ "pin_anchor": [
+  16,
+  37
+ ],
+ "pins": {
+  "grand": {
+   "open": "pin_grand.png",
+   "done": "pin_grand_done.png",
+   "locked": "pin_grand_locked.png"
+  },
+  "fathers": {
+   "locked": "pin_fathers_locked.png"
+  },
+  "present": {
+   "locked": "pin_present_locked.png"
+  },
+  "next": {
+   "locked": "pin_next_locked.png"
+  }
+ },
+ "frame_size": [
+  56,
+  88
+ ],
+ "frames": {
+  "grand": "frame_grand.png",
+  "locked": "frame_locked.png"
+ },
+ "window": [
+  8,
+  8,
+  40,
+  60
+ ],
+ "card_crop": [
+  12,
+  34,
+  40,
+  60
+ ],
+ "name_plate": [
+  6,
+  72,
+  44,
+  11
+ ],
+ "silhouette": "silhouette.png"
+}
