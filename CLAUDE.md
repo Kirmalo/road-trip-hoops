@@ -446,8 +446,8 @@ godot --headless --path . --fixed-fps 60 --quit-after 2000000 -- --legends-test 
 
 After gameplay changes, run several `--autoplay` games and check the stats look sane. A typical game to 21 is about
 55-90 shots at about 50% (P7-T1: was 75-120 at about 35%) and 7-11 minutes of game time (`GAME LENGTH`), ends 21-x
-(the loser usually 12-20), has about 1-5 fouls and 1-2 out of bounds, one side switch, and few interceptions or
-shot-clock violations.
+(the loser usually 12-20), has about 1-5 fouls and 1-2 out of bounds, one side switch, offensive rebounds on about 25% of missed shots
+(the `REBOUNDS` line; owner, was 56%), and few interceptions or shot-clock violations.
 Look at a screenshot after visual changes.
 Judge team balance on 200+ `--autoplay` games: 40-game batches swing up to about 65/35 by chance
 (docs/qa/phase3-length.md). `--autoplay` picks the first ball at random.
