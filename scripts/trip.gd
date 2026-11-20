@@ -487,6 +487,23 @@ static func _tournament_id() -> String:
 
 # Game n's opponents in a city (PLAYERS ids): 1 = 1 good + 2 average, 2 = 2 good + 1 average, 3 = 2 good + boss.
 # In the tournament, n is the round (1..3) and the round's 3 players.
+# P9-B9: the game's crew, but a player you signed (a recruit or a draft, so only in a replay) is swapped for another
+# of that crew who is not yours; with nobody left he plays for them as before
+static func _crew_without_yours(city_id: String, n: int) -> Array:
+	var ids: Array = crew_for_game(city_id, n)
+	if not active:
+		return ids
+	var mine: Array = roster_ids()
+	var spare: Array = []
+	var crew: Dictionary = Cities.city(city_id).get("crew", {})
+	for id in (crew.get("good", []) as Array) + (crew.get("avg", []) as Array):
+		if not mine.has(str(id)) and not ids.has(id):
+			spare.append(id)
+	for i in ids.size():
+		if mine.has(str(ids[i])) and not spare.is_empty():
+			ids[i] = spare.pop_front()
+	return ids
+
 static func crew_for_game(city_id: String, n: int) -> Array:
 	var c: Dictionary = Cities.city(city_id)
 	if c.get("tournament", false):
@@ -705,7 +722,7 @@ static func match_for(city_id: String = "", n: int = 0) -> Dictionary:
 	for id in lineup:
 		mine.append(roster_player(str(id)))
 	var theirs: Array = []
-	for id in crew_for_game(city_id, n):
+	for id in _crew_without_yours(city_id, n):
 		theirs.append(player_dict(str(id), city_ratings(str(id), stage, lv), false))
 	var m := {
 		"mode": "trip",
@@ -2298,9 +2315,10 @@ static func _check_replays() -> bool:
 			"replay: start sets the marker and Flow.match, CONTINUE = lineup") and ok
 	var m: Dictionary = match_for()
 	var raised := true
-	var ids: Array = crew_for_game("hometown", 1)
+	var ids: Array = _crew_without_yours("hometown", 1)   # P9-B9: your recruit is swapped for another of the crew
 	for i in ids.size():
 		raised = raised and str(m.teams[1].players[i].id) == str(ids[i]) \
+				and not roster_ids().has(str(ids[i])) \
 				and _same_stats(m.teams[1].players[i].ratings, city_ratings(str(ids[i]), 2))
 	ok = _check(raised and int(m.stage) == 2 and int(m.game) == 1 and int(m.target) == 11 and str(m.twist) == "none"
 			and str(m.label) == REPLAY_LABEL + "HOMETOWN - GAME 1 OF 3" and str(m.look) == look_for("hometown")
