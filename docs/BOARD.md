@@ -425,13 +425,13 @@ Every task row below up to P9-33 is merged on `ccr-f5c087b2-3ojk5f` (commit afte
   | gameplay-programmer C | `CLAUDE.md`, `README.txt`, `CREDITS.md` (check), `scripts/title.gd` (`CREDITS_LIST`: the
   era music and the new art rows), `scripts/howto.gd` (one line on the trip page: legends in the draft)
   | every new script, screen, flag and file documented; credits in step | P9-26..P9-32
-- **P9-34** | Final Phase 9 QA
+- **P9-34** | DONE | Final Phase 9 QA
   | qa-balance-tester | `docs/qa/phase9.md`
   | `--legends-test` on every level, `--trip-test` on every level, resume, backtest, titletest, legendtest, startest,
   cosmetictest, twisttest, anim-test (the legend sheets' hook pages too), triptest-data, 10+ `--autoplay` games (Phase 8 reference), the P9-26/30/31
   results, a web build in Playwright (touch) through an unlock, the Hall and a legend draft; release-ready or bugs |
   P9-33
-- **P9-35** | Phase summary and check-in
+- **P9-35** | DONE | Phase summary and check-in
   | lead-producer, then the coordinator | `docs/phase9-summary.md`; publish the web build | the summary with 2-4
   questions, the owner plays | P9-34
 
