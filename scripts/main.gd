@@ -67,7 +67,8 @@ const SHOT_MIN := 0.02               # odds never go under this (or over SHOT_CA
 const SHOT_CAP := 0.92
 const CONTEST_TIGHT_FT := 3.0        # nearest defender inside this: a full contest ...
 const CONTEST_NEAR_FT := 6.0         # ... inside this: a light one
-const CONTEST_TIGHT_MULT := 0.55     # jumper: odds x this with a full contest
+const CONTEST_TIGHT_MULT := 0.68     # jumper: odds x this with a full contest (rebounding round: 0.55 -> 0.68, games
+                                     # ran a minute longer with fewer offensive rebounds)
 const CONTEST_NEAR_MULT := 0.8       # jumper: odds x this with a light one
 const RIM_CONTEST_TIGHT_MULT := 0.85 # dunk/layup with a full contest (P7-T1: was the jumper's 0.55; nearly every rim
                                      # move has a defender within 3 ft, so this set most rim misses)
@@ -204,7 +205,7 @@ const PUTBACK_SECS := 3.0
 # player.gd rebound_ai() does the moves (box-outs, crashers, getting back); these set when they apply.
 const REB_BOX_T := 0.35              # a field goal in the air: after this fraction of its flight the rebound is on
 const REB_SCRAMBLE_SECS := 1.5       # a missed field goal's loose ball: the box-out rules hold this long, then anyone
-const REB_SHOOTER_CRASH := 0.2       # a jump shooter follows his own shot with this chance, else he gets back (a
+const REB_SHOOTER_CRASH := 0.15      # a jump shooter follows his own shot with this chance, else he gets back (a
                                      # dunk or layup shooter is under the rim: he always may)
 const TOP_BAR_FONT_TRIP := 24       # top bar font in a trip game (crew names are longer than BLUE / RED; Quick Game 30)
 # --city <id> --cgame N without trip.gd: this hand-built match (your 3 underdogs vs a Hometown-like crew; ratings
@@ -304,6 +305,7 @@ var _reb_block := false             # ... that miss was a block
 var _reb_shooter = null             # ... its shooter and shot kind (dunk, layup, jumper, block)
 var _reb_kind := ""
 var _reb_t := 0.0                   # ... and rules.play_time at the miss
+var _reb_serial := -1               # ... and its shot_serial
 var _putback_team := -1             # the team of the last offensive rebound and its play_time (putback window)
 var _putback_t := -100.0
 var _putback_serial := -1           # shot_serial of a putback in the air
@@ -1452,6 +1454,7 @@ func on_shot_missed(shooter) -> void:
 		_reb_block = ball.loose_cause == "block"
 		_reb_shooter = shooter
 		_reb_t = rules.play_time
+		_reb_serial = shot_serial
 		_reb_kind = "block" if _reb_block else (ball.shot_kind if ball.shot_kind != "" else "jumper")
 	shooter.make_streak = 0
 	if shooter.on_fire:
@@ -1469,6 +1472,8 @@ func _rebound_end(kind: String, team: int, who = null) -> void:
 	if who != null:   # who got it: the shooter himself, his team's chaser, someone else
 		stat("rebx_%s_%s" % [kind, "self" if who == _reb_shooter else ("chaser" if chasers.has(who) else "other")])
 	stat("rebx_%s_after_%s" % [kind, _reb_kind])
+	if humantest and t != HUMAN_TEAM:
+		stat("humantest_reb_%s_%s" % [kind, "handsoff" if _reb_serial % 2 == 0 else "steer"])   # RED's misses
 	stat("reb_misses_t%d" % t)
 	stat("reb_%s_t%d" % [kind, t])   # keyed by the SHOOTING team: reb_off_t0 = BLUE's offensive rebounds
 	if _reb_block:
@@ -2039,6 +2044,18 @@ func _process(delta: float) -> void:
 # defense) turning at most HT_STEER_RATE, and while the human holds the ball it injects gestures: 120-degree snaps
 # (flicks), smooth 180-degree turns and radial turbo pulls (not flicks), and short A taps.
 func _humantest_thumb(delta: float) -> void:
+	# a CPU field goal's rebound, every other shot: the thumb lets go, so the box-out assist (player.human_boxout)
+	# takes the human's player; on the others it keeps steering at the ball as before
+	var reb_serial: int = shot_serial if ball.state == ball.SHOT else _reb_serial
+	if rebound_phase() != "" and rebound_team() != HUMAN_TEAM and reb_serial % 2 == 0:
+		if controls.joy_index >= 0:
+			var up := InputEventScreenTouch.new()
+			up.index = controls.joy_index
+			up.pressed = false
+			up.position = controls.joy_finger
+			controls._input(up)
+		stat("humantest_handsoff_frames")
+		return
 	if controls.joy_index < 0:
 		var down := InputEventScreenTouch.new()
 		down.index = 0
@@ -2266,14 +2283,19 @@ func _ht_summary() -> String:
 		return "%d/%d" % [stats.get(a, 0), stats.get(b, 0)]
 	var gf: int = stats.get("humantest_guard_frames", 0)
 	var front_pct: float = 100.0 * float(stats.get("humantest_guard_front_frames", 0)) / float(maxi(gf, 1))
-	return "HUMANTEST steals timed %s random %s | blocks timed %s early %s | in front %.0f%% beaten %d in %d spells | assist %d frames, %d while pulling away, crossovers beat him %s | free throws good %s early %s | countdown presses ignored %s" % [
+	return "HUMANTEST steals timed %s random %s | blocks timed %s early %s | in front %.0f%% beaten %d in %d spells | assist %d frames, %d while pulling away, crossovers beat him %s | free throws good %s early %s | countdown presses ignored %s | box-out assist %d rebounds (%d frames), RED misses hands off: def %s, steering: def %s" % [
 		f.call("humantest_timed_steals", "humantest_timed_pokes"), f.call("humantest_random_steals", "humantest_random_pokes"),
 		f.call("humantest_timed_blocks", "humantest_timed_jumps"), f.call("humantest_early_blocks", "humantest_early_jumps"),
 		front_pct, stats.get("humantest_guard_beaten", 0), stats.get("humantest_guard_spells", 0),
 		stats.get("human_assist_frames", 0), stats.get("humantest_away_assist_frames", 0),
 		f.call("human_cross_beaten", "human_cross_faced"),
 		f.call("humantest_ft_good_makes", "humantest_ft_good"), f.call("humantest_ft_early_makes", "humantest_ft_early"),
-		f.call("humantest_countdown_presses_ignored", "humantest_countdown_presses")]
+		f.call("humantest_countdown_presses_ignored", "humantest_countdown_presses"),
+		stats.get("human_boxout_assists", 0), stats.get("human_boxout_frames", 0),
+		"%d/%d" % [stats.get("humantest_reb_def_handsoff", 0), stats.get("humantest_reb_def_handsoff", 0)
+				+ stats.get("humantest_reb_off_handsoff", 0) + stats.get("humantest_reb_oob_handsoff", 0)],
+		"%d/%d" % [stats.get("humantest_reb_def_steer", 0), stats.get("humantest_reb_def_steer", 0)
+				+ stats.get("humantest_reb_off_steer", 0) + stats.get("humantest_reb_oob_steer", 0)]]
 
 # during 3-2-1 (P8-31): the scripted thumb presses A and B once on HT_COUNTDOWN_PRESS_FRAME; nothing may happen
 # (no shot, no pass, no switch). Counted as humantest_countdown_presses / _ignored

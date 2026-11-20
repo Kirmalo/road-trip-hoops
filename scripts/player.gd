@@ -233,7 +233,7 @@ const DUNK_RELEASE := 0.55        # fraction of the jump when the ball leaves th
 const LAYUP_RELEASE := 0.5
 const RIM_GLIDE := 0.45           # fraction of top speed the jumper keeps drifting toward the rim
 const DUNK_OPEN_PCT := 0.92       # make chance of an open dunk (P1-09: 0.85 -> 0.92; P2-11: 0.82, scores ran high with better jumpers; P7-T1: 0.82 -> 0.92)
-const LAYUP_OPEN_PCT := 0.72      # make chance of an open layup (P1-09: 0.65 -> 0.75; P2-11: back to 0.65, scores ran high; P7-T1: 0.65 -> 0.72)
+const LAYUP_OPEN_PCT := 0.79      # make chance of an open layup (P1-09: 0.65 -> 0.75; P2-11: back to 0.65, scores ran high; P7-T1: 0.65 -> 0.72; rebounding round: 0.72 -> 0.79)
 const CONTEST_FT := 3.0           # nearest defender inside this contests the take-off (P2-11: was 4.0; only a defender in the play counts, see contests_me)
 # (rim block chances live in defense.gd: DUNK_BLOCK_CHANCE, LAYUP_BLOCK_CHANCE, RIM_CONTEST_FT)
 const CONTEST_MAKE_MULT := 1.0    # extra make-odds multiplier with a defender right on you (eases off with distance). P1-09: was 0.9; shot_probability() already applies the openness penalty, so 1.0 avoids counting it twice
@@ -341,10 +341,17 @@ const REB_BOX_RANGE_FT := 20.0    # he boxes out his man only if the man is this
 const REB_BOX_SPEED := 1.0        # speed multiplier while boxing out on a field goal
 const REB_SEAL_FT := 3.0          # a CPU crasher with a grounded defender this close in front of him ...
 const REB_SEAL_CONE := 0.4        # ... ("in front": cos of the angle off his way to the ball at least this) ...
-const REB_SEALED_MULT := 0.55     # ... moves at this fraction of his speed, no turbo
+const REB_SEALED_MULT := 0.45     # ... moves at this fraction of his speed, no turbo (0.55 before the make-rate nudge)
 const REB_BACK_FT := 4.0          # a jump shooter who gets back heads this far past half court
 
+# the human defender's box-out assist (owner): on a field goal's rebound, with no stick input at all, your player
+# drifts to box out the attacker nearest him (or takes a loose ball that comes near), like the CPU defenders. Any
+# stick input takes over at once; never on offense; the buttons are unchanged.
+const HUMAN_BOXOUT_ASSIST := true
+const HUMAN_BOXOUT_SPEED := 0.8   # the drift: this fraction of his speed (no turbo)
+
 var reb_follow := true            # main.release_shot: this shooter follows his shot (rolled per shot)
+var _boxout_logged := -1          # game.shot_serial of the last rebound the box-out assist fired on (log once)
 
 static var ft_box_serial := -1    # game.shot_serial of the last free throw of a trip, in the air (everyone released)
 var ft_wait := -1.0               # CPU at the line: seconds until he shoots (< 0 = not counting)
@@ -511,6 +518,11 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		if desired.length() < 1.0 and ball.state == ball.PASS and ball.receiver == self:
 			desired = seek(alley_spot() if ball.lob else ball.position, 1.0)
 		want_turbo = human_turbo_input() and desired.length() > 1.0
+		if input_vec == Vector2.ZERO:
+			var box = human_boxout()
+			if box != null:
+				desired = box
+				want_turbo = false
 		if fake_t > 0.0:
 			desired *= PUMP_MOVE_MULT     # pump fake: ball up, only a slow shuffle
 			want_turbo = false
@@ -1441,6 +1453,35 @@ func rebound_ai(phase: String, delta: float) -> bool:
 		target = Vector2(game.COURT_W / 2.0 + out.x * REB_BACK_FT * game.FT, lerpf(position.y, game.COURT_H / 2.0, 0.5))
 		return true
 	return false   # the others stay on their spots (offball_ai)
+
+# The human's box-out assist (no stick input; update() checks that): his velocity toward the box-out spot on the
+# attacker nearest him, or toward a loose ball within REB_HELP_FT; null when it doesn't apply.
+func human_boxout():
+	if not HUMAN_BOXOUT_ASSIST or has_ball() or is_airborne() or stumble_t > 0.0 or poke_t > 0.0:
+		return null
+	var phase: String = game.rebound_phase()
+	if phase == "" or team == game.rebound_team():
+		return null   # no field-goal rebound on, or my team shot it (never on offense)
+	var ball = game.ball
+	var goal: Vector2
+	var what: String
+	if phase == "loose" and position.distance_to(ball.position) < REB_HELP_FT * game.FT:
+		goal = ball.position
+		what = "take the loose ball"
+	else:
+		var o = game.nearest_opponent(self)
+		if o == null:
+			return null
+		goal = boxout_of(o, ball.shot_hoop)
+		what = "box out %s" % (o.pname if o.pname != "" else ("attacker %d" % o.index))
+	game.stat("human_boxout_frames")
+	if _boxout_logged != game.shot_serial:
+		_boxout_logged = game.shot_serial
+		game.stat("human_boxout_assists")
+		if game.humantest:
+			print("BOXOUT ASSIST shot %d (%s): %s drifts to %s, %.1f ft away" % [game.shot_serial, phase,
+					pname if pname != "" else ("player %d" % index), what, position.distance_to(goal) / game.FT])
+	return seek(goal, HUMAN_BOXOUT_SPEED)
 
 # a grounded opponent close in front of me on my way to goal: he has the inside position
 func _reb_sealed(goal: Vector2) -> bool:
