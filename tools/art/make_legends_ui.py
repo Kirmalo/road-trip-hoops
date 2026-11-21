@@ -3,13 +3,14 @@
 
 Original pixel art made here, nothing downloaded or traced. The Grandfathers art uses the P9-05 OLD GYM palette
 (make_courts.py: aged maple, dark wainscot wood, felt banners, late-day window light) and its court textures; the
-locked chapters (2-4) show only a dimmed, colourless hint of a court, a padlock and their gate (drawn by the game).
+Fathers panel shows its NIGHT PARK court (era_fathers) in colour too; the later chapters (3-4) show only a dimmed,
+colourless hint of a court, a padlock and their gate (drawn by the game).
 No names, letters, years of real seasons, teams, leagues, arenas or marks.
 
 Usage:  python3 tools/art/make_legends_ui.py
 Output (assets/legends/; texel = one pixel of these images, drawn at 2 canvas px per texel like the map):
   timeline.png            640 x 360 era tour backdrop (2x = 1280 x 720): rows 0..HEADER_H-1 kept for the screen
-                          header, four era panels left to right (1 Grandfathers in colour, 2-4 dimmed), a timeline
+                          header, four era panels left to right (1 Grandfathers and 2 Fathers in colour, 3-4 dimmed), a timeline
                           rail across them; no labels or pins baked in. On 1280 x 800 centre it (y + 40) and fill
                           the bars with "bar_bg".
   pin_grand.png           32 x 40 chapter pin, Chapter 1 open (brass medallion, an old laced ball)
@@ -63,10 +64,8 @@ INK = (22, 14, 26)
 # the four chapters, left to right; "court" = the textures shown in the panel (a hint for the locked ones)
 CHAPTERS = [
     {"id": "grand", "court": "era_grand", "open": True},
-    # P10-06: the Fathers panel keeps today's dim blacktop hint, so timeline.png stays byte for byte. Once P10-05's
-    # assets/courts/era_fathers_floor.png / _backdrop.png exist, set "court": "era_fathers" (and "open": True to show
-    # it in colour, plus an x0 for it in court_scene()); that rewrites timeline.png, so check the tour after.
-    {"id": "fathers", "court": "blacktop", "open": False},
+    # Chapter 2 shows P10-05's NIGHT PARK (era_fathers) in colour like Chapter 1's OLD GYM; its x0 in court_scene()
+    {"id": "fathers", "court": "era_fathers", "open": True},
     {"id": "present", "court": "gold_hall", "open": False},
     {"id": "next", "court": "midnight", "open": False},
 ]
@@ -200,7 +199,7 @@ def court_scene(look, w, h):
     out = np.zeros((h, w, 3), np.uint8)
     top = BD_Y - PANEL_Y0
     bh = bd.shape[0]
-    x0 = {"era_grand": 150, "blacktop": 40, "gold_hall": 200, "midnight": 60}.get(look, 0)  # a busy part of each
+    x0 = {"era_grand": 150, "era_fathers": 92, "blacktop": 40, "gold_hall": 200, "midnight": 60}.get(look, 0)  # a busy part of each
     cols = [(x0 + x) % bd.shape[1] for x in range(w)]
     out[:top, :] = bd[0, cols][None, :, :]
     out[top:top + bh, :] = bd[:, cols][: max(0, min(bh, h - top))]
@@ -778,11 +777,11 @@ def preview(tl, pins, frames, sil):
         nm.text((cxp, cyp), s, font=font(8 * sc), fill=(255, 250, 230), anchor="mm", stroke_width=2,
                 stroke_fill=(0, 0, 0))
     # Chapter 2, the Fathers (P10-06): the frame alone and with a stand-in card at 2x and 4x, and the open pin on
-    # today's dim Chapter 2 panel (the timeline keeps its dim hint until era_fathers court art exists)
+    # the Chapter 2 panel (NIGHT PARK, era_fathers, in colour)
     y = 1170
     d2.rectangle([0, y - 34, 1279, y - 8], fill=(16, 14, 26))
     d2.text((12, y - 21), "Chapter 2, the Fathers (P10-06, first guess of the era colours): frame_fathers, a stand-in "
-                          "card (the Fathers cards come in P10-14), the open pin on today's Chapter 2 panel",
+                          "card (the Fathers cards come in P10-14), the open pin on the NIGHT PARK panel",
              font=font(16), fill=(235, 235, 245), anchor="lm")
     stand2 = card_crop(Image.open(os.path.join(CARDS, "chi_g1.png")).convert("RGBA"))
     fr2 = frames["fathers"].copy()
