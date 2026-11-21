@@ -230,3 +230,85 @@ Elsewhere:
 
 The logs, the job lists and the tally scripts (`run.py`, `tally.py`, `final.py`) are in my scratch folder
 `p1023/w`, which is not in the repo.
+
+## After the owner's answers
+
+**Build tested:** `ccr-f5c087b2-3ojk5f` at `970f1b2` (owner: Lockbox `min` 6, Chapter 1 `FINALE_STAGE_AVG` 52 -> 55; the
+Fathers finale keeps its own 56). No number changed in this pass. Same method as above: two fresh project copies,
+a fresh `XDG_DATA_HOME` per game, at most 2 Godot processes at once, `--autoplay --challenge <id> --difficulty <level>
+--expected-roster --no-countdown`. Import clean, `LEGENDTEST OK` (the same `legends_fathers.ogg` NOTE).
+
+**Games:** 146 (140 `--autoplay`, 6 `--humantest`). All reached `FINAL`, printed the `CHALLENGE` line and exited 0;
+0 `SCRIPT ERROR` / `ERROR` lines, 0 shot-clock violations, exactly one side switch in each. Per game: 48.0 shots, FG
+54.4%, 1.93 interceptions, 1.21 fouls, 8.3 steals, 6.3 blocks.
+
+### 1. Chapter 1 finale at `FINALE_STAGE_AVG` 55 (expected crew, to 21)
+
+| Level | BLUE met | Before (at 52) | Game time | Loser's score |
+|---|---|---|---|---|
+| Normal | **67.5% (27/40)** | 60 (P10-23, 20), 80 (P10-08, 20) | 9.8 min (7.0-12.5) | 16.6 (9-20) |
+| Hard | **45.0% (18/40)** | 50% pooled (40/80: 45, 30, 62.5) | 10.0 min (7.7-13.1) | 16.5 (10-20) |
+
+- PASS: Hard 45% is inside the 35-50 band (SE about 8). Normal is above Hard (67.5 vs 45, about 2 SE apart).
+- Every failure was a plain loss.
+
+### 2. Lockbox at `min` 6 (expected crew, to 11)
+
+| Cell | Goal met | Won the game | "You" scored (mean) | "You" got 6+ |
+|---|---|---|---|---|
+| Easy (20) | **15% (3/20)** | 60% (12/20) | 3.8 of 9.7 | 3 |
+| Normal (20) | **5% (1/20)** | 70% (14/20) | 2.8 of 9.9 | 1 |
+| Hard (20) | **25% (5/20)** | 60% (12/20) | 4.0 of 9.8 | 5 |
+| `--humantest`, Normal (6) | **17% (1/6)** | 100% (6/6) | 2.5 of 11.2 | 1 |
+
+- With the P10-23 games re-judged at 6 (the goal never changes play): Easy 15.6% (5/32), Normal 2.5% (1/40), Hard
+  15.0% (6/40); humantests on Normal 11% (2/18).
+- This matches the owner's intent ("the hardest, met about 17% or less"). Hard over Easy over Normal is noise. The
+  share depends on how often player 0 happens to score 6, not on the level (RED's level changes only the plain win,
+  60-70% on every level).
+- Every Lockbox failure is either "YOU SCORED n OF 6" (29 of 51) or a plain loss (22). The HUD line reads "SCORE 6 ON
+  LOCKBOX: n".
+
+### Chapter 2 pooled with Lockbox at 6 (expected crew)
+
+The other five challenges are the T2 games above (unchanged numbers), and Lockbox is this pass's 20 games per level:
+
+| | Easy | Normal | Hard |
+|---|---|---|---|
+| Pooled, 6 challenges | **53.8% (43/80)** | **55.8% (67/120)** | **40.8% (49/120)** |
+| Before (Lockbox at 3, P10-23) | 63.9 (72) | 63.3 (120) | 44.2 (120) |
+| Proposed band | 60-75 | 55-70 (aim 60-65) | 33-47 (aim 40) |
+| The five without Lockbox | 66.7 (40/60) | 66.0 (66/100) | 44.0 (44/100) |
+
+- Hard 40.8%: PASS, at the aim. Normal 55.8%: at the bottom edge of the band, under the 60-65 aim, all of it from
+  Lockbox. Easy 53.8%: under its band (only 12 games per cell for the five, SE about 5.6 pooled). Easy and Normal
+  still can't be told apart, as before.
+- No change suggested: the owner chose a hard Lockbox on purpose. If the lead wants the pooled Normal back at 60+,
+  the lever is in the other five, not Lockbox (and that needs asking).
+
+### 3. Chapter 1 finale legends at 55 (stage 55 + `DRAFT_TIER` 20 = 75 plus shape)
+
+The same on Normal and Hard (the level changes the CPU, not these ratings):
+
+| Legend | Speed / Shooting / Finishing / Defense / Stamina | At 52 |
+|---|---|---|
+| Steeple | 60 / 75 / **95** / 80 / 65 | 57 / 72 / 92 / 77 / 62 |
+| Velvet | 85 / 70 / 90 / 65 / 65 | 82 / 67 / 87 / 62 / 62 |
+| Quarterback | 80 / 80 / 65 / 75 / 75 | 77 / 77 / 62 / 72 / 72 |
+
+PASS: every shape holds in full. One stat reaches 95 (Steeple's finishing: 75 + 20 lands exactly on the cap, nothing is
+cut off). No stat is clipped, so the base could go up to 55 without losing a shape, but not further for Steeple.
+
+### Story and doc text, stale again for P10-29
+
+The Lockbox lines are **right again** with `min` 6: `scripts/story_text.gd` line 477 (comment "score 6 points
+yourself") and line 480 ("Six points. You, yourself, on me. ... you still got six."), `docs/legends-plan.md` line 384
+("at least 6") and `docs/BOARD.md` line 87 ("SCORE 6 ON LOCKBOX: 2"). Drop them from the list above.
+
+Still stale (Eyes Closed starts 0-1):
+- `scripts/story_text.gd` line 463 (comment "start down 0-2"), line 466 ("Down two before the tip, and you came
+  back."), line 468 ("Down two is how we start every morning, Mr. Pemberton.").
+- `docs/legends-plan.md` line 384 (Eyes Closed "start down 0-2").
+- The comment-only Chapter 1 lines from P9-26 (278, 290, 316, 330, 344), the "ANKLES'S" text (bug 1) and the
+  `CLAUDE.md` `--best-roster` note, all as listed above.
+- The `CLAUDE.md` Legends paragraph names `FINALE_STAGE_AVG` 52 ("finale legends at 52 + 20"); it is 55 now.
