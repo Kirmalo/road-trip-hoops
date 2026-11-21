@@ -14,7 +14,11 @@ extends CanvasLayer
 #   The first time a chapter opens its intro scene plays (story.gd, back to the chapter view); the first PLAY of a
 #   finale plays its "before" scene, then the game. PLAY sets Flow.match (Legends.match_for_challenge() /
 #   match_for_finale()) and goes to "game". Nothing here writes the trip; only Legends.mark_seen() writes (scenes).
-# The layout is a 1280 x 720 box centred on wider or taller screens (like hall.gd). Nothing mirrors for the
+# Several chapters (P10-03): each panel and view reads its chapter's row and its art from ui.json (pins, frames,
+# optional colors; a missing one is Chapter 1's, ART_BASE_CHAPTER). Enter / auto_step() open the first open chapter
+# whose finale is not won (else the first open one).
+# The layout is a 1280 x 720 box centred on wider or taller screens (like hall.gd); the backdrop fills the screen
+# (P9-B7: the art's edge columns stretched to the sides of a wider one). Nothing mirrors for the
 # left-handed layout (a menu screen has no joystick). Every button is at least UI.MIN_BUTTON (200 x 110). Taps are
 # ignored for ARM_T s after the screen opens.
 # Desktop: Escape = BACK (main.gd turns the Android back into one), Left / Right = the game before / after, Enter =
@@ -122,6 +126,12 @@ const DEF_CARD_CROP := Rect2(12, 34, 40, 60)
 const DEF_PLATE := Rect2(6, 72, 44, 11)
 const DEF_FRAMES := {"grand": "frame_grand.png", "locked": "frame_locked.png"}
 const DEF_SILHOUETTE := "silhouette.png"
+# P10-03: per-chapter art. A chapter's frame or pin that ui.json doesn't list (or whose file is missing) is this
+# chapter's (Chapter 1's). ui.json's optional "colors": {"<chapter>": {"title": "#rrggbb", "plate_text": "#rrggbb"}}
+# tint the chapter view's name and the plaques' name plates (not listed = GOLD / PLATE_TEXT, as in Phase 9).
+const ART_BASE_CHAPTER := "grand"
+const EDGE_TEXELS := 1.0                 # P9-B7: the timeline art's edge column, stretched to a wide screen's sides
+const FALLBACK_DARKEN := 0.35            # a missing era frame is drawn in its crew's ui_color, this much darker
 const V2_CARD := Vector2(64, 96)
 const CREW_FALLBACK_SHEET := "ud_jojo"           # a crew player without a sheet (lineup.gd's fallback for your side)
 const LEVEL_NAMES := {"easy": "EASY", "normal": "NORMAL", "hard": "HARD", "legend": "LEGEND"}
@@ -138,6 +148,7 @@ var music := "menu"          # the chapter view plays its era's music (Legends.m
 
 var _root: Control
 var _frame: Control
+var _backdrop: Control = null  # full screen, under the frame (P9-B7)
 var _hint: Label
 var _hint_t := 0.0
 var _hint_text := ""
@@ -176,14 +187,16 @@ func _ready() -> void:
 	_frame = Control.new()
 	_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_frame.size = FRAME_SIZE
+	# P9-B7: the backdrop fills the whole screen (the art at the frame, its edge columns stretched to the sides); the
+	# buttons and panels stay in the 1280 x 720 frame
+	_backdrop = Backdrop.new()
+	_backdrop.screen = self
+	_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_backdrop)
+	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(_frame)
 	_root.resized.connect(_center)
 	_center()
-	var bd := Backdrop.new()
-	bd.screen = self
-	bd.size = FRAME_SIZE
-	bd.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_frame.add_child(bd)
 	if _chapter == "":
 		_build_timeline()
 		if _redirect != "":
@@ -206,6 +219,8 @@ func _ready() -> void:
 
 func _center() -> void:
 	_frame.position = ((_root.size - FRAME_SIZE) / 2.0).floor()
+	if _backdrop != null:
+		_backdrop.queue_redraw()
 
 func _process(delta: float) -> void:
 	if _arm_t > 0.0:
@@ -232,9 +247,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		if _chapter != "":
 			_on_play()
 		else:
-			var open: Array = _open_chapters()
-			if not open.is_empty():
-				_open_chapter(str(open[0]))
+			var nxt: String = _next_chapter()
+			if nxt != "":
+				_open_chapter(nxt)
 
 func _stat(key: String) -> void:
 	if main != null and main.has_method("stat"):
@@ -415,7 +430,7 @@ func _build_timeline() -> void:
 	hall.position = TL_HALL_POS
 	var back: Button = UI.button(_frame, "BACK", _on_back, UI.KIND_OPT, UI.SMALL_SIZE)
 	back.position = TL_BACK_POS
-	_hint_text = TL_HINT if not open.is_empty() else _locked_line(str(ids[0]))
+	_hint_text = TL_HINT if not open.is_empty() else _locked_line(_first_locked(ids))
 	_hint = _hint_label(TL_HINT_RECT, TL_HINT_FONT)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = TL_HINT_BG
@@ -429,6 +444,21 @@ func _hint_label(r: Rect2, fs: int) -> Label:
 	l.size = r.size
 	l.clip_text = true
 	return l
+
+# the first built chapter whose gate is not met (the one the hint names), else the first chapter
+static func _first_locked(ids: Array) -> String:
+	for ch in ids:
+		if chapter_state(str(ch)) == "locked":
+			return str(ch)
+	return str(ids[0]) if not ids.is_empty() else ""
+
+# the chapter Enter and auto_step() open: the first open one whose finale is not won, else the first open one
+static func _next_chapter() -> String:
+	var open: Array = _open_chapters()
+	for ch in open:
+		if not Legends.chapter_done(str(ch)):
+			return str(ch)
+	return str(open[0]) if not open.is_empty() else ""
 
 # a tap on a timeline panel
 func _on_panel_tap(ch: String) -> void:
@@ -471,7 +501,8 @@ func _build_chapter() -> void:
 	back.position = CV_BACK_POS
 	var hall: Button = UI.button(_frame, "HALL", _on_hall, UI.KIND_MAIN, UI.SMALL_SIZE)
 	hall.position = CV_HALL_POS
-	var head: Label = UI.label(_frame, str(row.get("name", _chapter)), CV_TITLE_FONT, GOLD)
+	var head: Label = UI.label(_frame, str(row.get("name", _chapter)), CV_TITLE_FONT,
+			chapter_color(_chapter, "title", GOLD))
 	head.position = CV_TITLE_RECT.position
 	head.size = CV_TITLE_RECT.size
 	_fit_font(head, CV_TITLE_RECT.size.x, 28)
@@ -694,10 +725,10 @@ func auto_step() -> bool:
 		return false
 	_arm_t = 0.0
 	if _chapter == "":
-		var open: Array = _open_chapters()
-		if open.is_empty():
+		var nxt: String = _next_chapter()
+		if nxt == "":
 			return false
-		_open_chapter(str(open[0]))
+		_open_chapter(nxt)
 		return _busy
 	pick(first_open_pick())
 	_on_play()
@@ -754,19 +785,37 @@ func bar_color() -> Color:
 func header_px() -> float:
 	return float(_ui.get("header_h", DEF_HEADER_H)) * ART_SCALE
 
-# a chapter's pin texture for its state (null = a drawn pin)
+# a chapter's pin texture for its state (null = a drawn pin). P10-03, the first file that exists of: the chapter's own
+# pin for the state (a "done" it lacks = its "open"), pin_<ch>_<state>.png, ART_BASE_CHAPTER's pin for the state, the
+# chapter's own locked pin.
 func pin_tex(ch: String, st: String) -> Texture2D:
 	var pins = _ui.get("pins", {})
-	var row: Dictionary = (pins as Dictionary).get(ch, {}) if pins is Dictionary else {}
+	var all: Dictionary = pins if pins is Dictionary else {}
 	var key: String = "locked"
 	if st == "open":
 		key = "open"
 	elif st == "done":
-		key = "done" if row.has("done") else "open"
-	var file: String = str(row.get(key, row.get("locked", "")))
-	if file == "":
-		file = "pin_%s_%s.png" % [ch, key]
-	return _texture(UI_DIR + file)
+		key = "done"
+	var own: Dictionary = _pin_row(all, ch)
+	var base: Dictionary = _pin_row(all, ART_BASE_CHAPTER)
+	var tries: Array = [own.get(key, "")]
+	if key == "done":
+		tries.append(own.get("open", ""))
+	tries.append("pin_%s_%s.png" % [ch, key])
+	tries.append(base.get(key, ""))
+	if key == "done":
+		tries.append(base.get("open", ""))
+	tries.append(own.get("locked", ""))
+	for f in tries:
+		var file: String = str(f)
+		var t: Texture2D = _texture(UI_DIR + file) if file != "" else null
+		if t != null:
+			return t
+	return null
+
+static func _pin_row(pins: Dictionary, ch: String) -> Dictionary:
+	var row = pins.get(ch, {})
+	return row if row is Dictionary else {}
 
 # where a chapter's pin is drawn (frame coordinates) and its size
 func pin_rect(i: int) -> Rect2:
@@ -782,12 +831,31 @@ func pin_rect(i: int) -> Rect2:
 func label_y_px() -> float:
 	return float(_ui.get("label_y", DEF_LABEL_Y)) * ART_SCALE
 
+# a chapter's era frame ("locked": the locked plaque): ui.json's file for it, else ART_BASE_CHAPTER's (P10-03: a
+# chapter whose frame is not listed, or whose file is missing, wears Chapter 1's); null = a drawn box
 func frame_tex(kind: String) -> Texture2D:
 	var frames = _ui.get("frames", DEF_FRAMES)
 	if not (frames is Dictionary):
 		frames = DEF_FRAMES
-	var file: String = str((frames as Dictionary).get(kind, (frames as Dictionary).get("grand", "")))
-	return _texture(UI_DIR + file) if file != "" else null
+	var keys: Array = [kind] if kind == "locked" else [kind, ART_BASE_CHAPTER]
+	for k in keys:
+		var file: String = str((frames as Dictionary).get(k, DEF_FRAMES.get(k, "")))
+		var t: Texture2D = _texture(UI_DIR + file) if file != "" else null
+		if t != null:
+			return t
+	return null
+
+# a chapter color from ui.json's optional "colors": {"<chapter>": {"<key>": "#rrggbb"}}, else def
+func chapter_color(ch: String, key: String, def: Color) -> Color:
+	var cols = _ui.get("colors", {})
+	var row = (cols as Dictionary).get(ch, {}) if cols is Dictionary else {}
+	var s: String = str((row as Dictionary).get(key, "")) if row is Dictionary else ""
+	return Color.from_string(s, def) if s != "" else def
+
+# the drawn frame of a chapter whose frame art is missing: its crew's ui_color (legends_data.gd), else FALLBACK_FRAME
+static func era_fill(ch: String) -> Color:
+	var c = (LegendsData.chapter(ch).get("crew", {}) as Dictionary).get("ui_color", null)
+	return (c as Color).darkened(FALLBACK_DARKEN) if c is Color else FALLBACK_FRAME
 
 func silhouette_tex() -> Texture2D:
 	return _texture(UI_DIR + str(_ui.get("silhouette", DEF_SILHOUETTE)))
@@ -837,12 +905,13 @@ func draw_plaque(c: CanvasItem, pos: Vector2, sc: float, id: String, state: Stri
 	var win: Rect2 = _ui_rect("window", DEF_WINDOW)
 	var plate: Rect2 = _ui_rect("name_plate", DEF_PLATE)
 	var open: bool = state == "open"
-	var ft: Texture2D = frame_tex(LegendsData.chapter_of(id) if open else "locked")
+	var era: String = LegendsData.chapter_of(id)
+	var ft: Texture2D = frame_tex(era if open else "locked")
 	var dest := Rect2(pos, fs * sc)
 	if ft != null:
 		c.draw_texture_rect(ft, dest, false)
 	else:
-		c.draw_style_box(UI.style_box(FALLBACK_FRAME if open else FALLBACK_LOCKED, UI.OPT_BORDER, 2), dest)
+		c.draw_style_box(UI.style_box(era_fill(era) if open else FALLBACK_LOCKED, UI.OPT_BORDER, 2), dest)
 	var wr := Rect2(pos + win.position * sc, win.size * sc)
 	var card: Dictionary = card_for(id) if open else {}
 	if not card.is_empty():
@@ -870,7 +939,7 @@ func draw_plaque(c: CanvasItem, pos: Vector2, sc: float, id: String, state: Stri
 		f -= 1
 	f = mini(f, int(pr.size.y * 0.9))
 	c.draw_string(font, Vector2(pr.position.x, pr.get_center().y + f * 0.36), txt, HORIZONTAL_ALIGNMENT_CENTER,
-			pr.size.x, f, PLATE_TEXT if open else PLATE_LOCKED_TEXT)
+			pr.size.x, f, chapter_color(era, "plate_text", PLATE_TEXT) if open else PLATE_LOCKED_TEXT)
 
 # TOKEN_MAX pips centred at center, the first `best` lit
 static func draw_pips(c: CanvasItem, center: Vector2, best: int, r := PIP_R) -> void:
@@ -908,17 +977,29 @@ static func draw_wrapped(c: CanvasItem, pos: Vector2, text: String, fs: int, col
 class Backdrop extends Control:
 	var screen
 
+	# P9-B7: the art sits at the 1280 x 720 frame; on a wider screen its edge columns are stretched to the sides (the
+	# rail and the frame's wood reach the screen edges). Above and below (a taller screen) stay bar_bg.
 	func _draw() -> void:
 		var s = screen
+		var o: Vector2 = s._frame.position
+		var band := Rect2(0.0, o.y, size.x, s.FRAME_SIZE.y)   # the frame's rows, the whole screen wide
 		var tex: Texture2D = s.timeline_tex()
 		if tex != null:
-			draw_texture_rect(tex, Rect2(Vector2.ZERO, tex.get_size() * s.ART_SCALE), false)
+			var ts: Vector2 = tex.get_size()
+			var art := Rect2(o, ts * s.ART_SCALE)
+			draw_texture_rect(tex, art, false)
+			var e: float = s.EDGE_TEXELS
+			if art.position.x > 0.0:
+				draw_texture_rect_region(tex, Rect2(0.0, o.y, art.position.x, art.size.y), Rect2(0.0, 0.0, e, ts.y))
+			if art.end.x < size.x:
+				draw_texture_rect_region(tex, Rect2(art.end.x, o.y, size.x - art.end.x, art.size.y),
+						Rect2(ts.x - e, 0.0, e, ts.y))
 		else:
-			draw_rect(Rect2(Vector2.ZERO, size), s.bar_color())
+			draw_rect(band, s.bar_color())
 		if s._chapter != "":
-			draw_rect(Rect2(Vector2.ZERO, size), s.CV_DIM)
+			draw_rect(band, s.CV_DIM)
 		else:
-			draw_rect(Rect2(0, 0, size.x, s.header_px()), Color(s.bar_color(), 0.6))
+			draw_rect(Rect2(0.0, o.y, size.x, s.header_px()), Color(s.bar_color(), 0.6))
 
 
 # One chapter on the timeline: its pin, its lines and (open) the PLAY button as a child. A tap opens or explains.
