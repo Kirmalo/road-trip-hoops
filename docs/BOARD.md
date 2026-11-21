@@ -340,7 +340,7 @@ Everything below (Tasks by wave).
   legendtest, startest, cosmetictest, twisttest, ratingtest, anim-test, triptest-data, 10+ `--autoplay` games against the
   Phase 9 reference, the P10-21/24/28/29 results; a web build in Playwright (touch) through a Chapter 2 unlock, the Hall,
   a Fathers draft; release-ready or bugs | P10-29
-- **P10-31** | Phase summary and check-in
+- **P10-31** | DONE (coordinator: `docs/phase10-summary.md`; web published, web ZIP and debug APK rebuilt) | Phase summary and check-in
   | lead-producer, then the coordinator | `docs/phase10-summary.md`; publish the web build | the summary with 2-4
   questions; the owner plays | P10-30
 
