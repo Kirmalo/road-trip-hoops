@@ -281,6 +281,7 @@ Everything below (Tasks by wave).
   share; each goal type met and failed in the logs; the Kings fallback and a mid-trip crew (36-star stage) reported;
   Chapter 1 re-run on Normal and Hard (expected crew) to show no change; any story line made stale is listed for P10-29 |
   P10-17, P10-18, P10-21 tuned, P10-13 (F3 a)
+- **P10-B1** (for P10-24, `scripts/trip_test.gd`, low, test only) | A resumed trip with an open slot and a legend in the pool runs the tap pick test and the first draft on the same lineup visit: `_draft_test()` snapshots `Trip.starters` before the lineup saves its tapped picks, so `_check_draft()` reports changed starters (TRIP ERROR) though the draft worked. Fix: snapshot after the picks are saved, or skip the pick test on the drafting visit. Until then resume the P10-01 fixtures with `--stars 24` (docs/qa/fixtures/README.md) |
 - **P10-24** | Trip test: a drafted Father
   | gameplay-programmer C | `scripts/trip_test.gd`
   | with `--legends-unlock-all --stars 24`: the first slot drafts a Grandfather, the second a Father (from his chapter's
