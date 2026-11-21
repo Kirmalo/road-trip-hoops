@@ -1,9 +1,13 @@
 extends Node
-# Legends test driver (P9-25). Flow adds one to every scene under -- --legends-test (Flow.attach_test: screens and
-# games, like trip_test.gd), so the driver lives in static vars across the reloads. It plays Chapter 1 headless:
+# Legends test driver (P9-25; every built chapter P10-09). Flow adds one to every scene under -- --legends-test
+# (Flow.attach_test: screens and games, like trip_test.gd), so the driver lives in static vars across the reloads. It
+# plays every built chapter headless, in data order:
 #   title -> LEGENDS -> timeline -> the chapter's intro scene -> chapter view -> 6 challenges (each unlock scene) ->
 #   the finale (its "before" and "after" scenes) -> one replay (best tokens kept) -> HALL and back -> BACK to the
-#   timeline (the chapter is done) -> BACK to the title -> LEGENDS END
+#   timeline (the chapter is done; the next chapter's gate is checked against the data: open by its stars or tokens,
+#   locked, or not built) -> the next chapter from its timeline panel while it is open -> ... -> BACK to the title ->
+#   LEGENDS END
+# On today's data (only Chapter 1 built) that is the Phase 9 run plus one "LEGENDS gate" line.
 # On a screen it calls the screen's auto_step() (the default choice) every STEP_WAIT frames; on the title it taps
 # LEGENDS, on the chapter view it picks the run's level first (set_level), and taps HALL / BACK at the end.
 # Every game is decided at once (FORCE_FRAMES after tip-off), so the run is fast and deterministic:
@@ -20,6 +24,12 @@ extends Node
 #   ... --difficulty easy|normal|hard (|legend with --stars 72)   the level picked on the chapter view (tokens 1/2/3)
 #   ... --legends-force-loss 2[,5]   those legends games of this run are lost (the retry must replay the same game)
 #   ... --legends-no-trip            erases the TEST trip save first (user://trip_test.json): the Kings play
+#   ... --legends-chapter <id>       plays only that built chapter (its gate forced open for this run: --tokens or
+#                                    --stars as its gate says, never saved; no next-chapter gate check)
+#   ... --legends-test-two           the stand-in second chapter (LegendsData.two_chapter_test_data(): "fathers", 6
+#                                    copies of Chapter 1's legends, gate 36 stars or 12 tokens) for the whole run
+# Per chapter: --legends-force-loss N counts that chapter's games (the Nth game of each chapter is lost), and the
+# GOAL_TESTS run once in each chapter. After every game the other chapters' tokens and finales must not move.
 # The crew: with a test trip save (e.g. after `--trip-test --target 3 --trip-stop-after chicago`) your trip's
 # starters, else the Kings at even ratings; the driver checks the match has the side Legends.your_side() promises.
 # Checks after every game (any broken one is a LEGENDS ERROR): the verdict in Flow.last_result.challenge, the outcome
@@ -54,12 +64,18 @@ const FINALE_PICK := "finale"     # = legends_tour.gd's pick id of the finale
 const FORCE_FLAG := "--legends-force-loss"
 const NO_TRIP_FLAG := "--legends-no-trip"
 const PLAY_FLAG := "--legends-play"
+const CHAPTER_FLAG := "--legends-chapter"   # P10-09: only this chapter (gate forced open, nothing saved)
+const TWO_FLAG := "--legends-test-two"      # P10-09: LegendsData.two_chapter_test_data() for the run
 
 # --- the run (static: survives reload_current_scene) ---
 static var _started := false
 static var _finished := false
 static var _phase := "title"      # title, chapter (the 6 + finale), replay, hall, hall_back, timeline, back, done
-static var _chapter := ""         # the chapter under test (the first built one)
+static var _chapter := ""         # the chapter under test now
+static var _only := ""            # --legends-chapter: the one chapter of this run ("" = every built chapter)
+static var _records: Array = []   # the finished chapters: _record() dicts, in play order
+static var _ch_games := 0         # games of the chapter under test (--legends-force-loss counts these)
+static var _gate_line := false    # the next chapter's gate was checked (or skipped) after the last chapter
 static var _level := ""           # the level this run plays ("" until the first chapter view without --difficulty)
 static var _games := 0
 static var _screens := 0
@@ -94,6 +110,7 @@ static var _g_unlock_scene_new := false   # his unlock scene exists and was not 
 static var _g_after_scene_new := false    # the finale's "after" scene exists and was not seen before
 static var _results := 0
 static var _finale_games := 0     # finale games started in the chapter phase
+static var _g_others := {}        # {chapter: [tokens, done]} of every other built chapter when the game started
 
 var main                          # main.gd (Flow sets it)
 var _screen := ""
@@ -131,6 +148,9 @@ func _begin() -> bool:
 			_force.append(int(part))
 	Save.use_test_file = true   # only ever the test trip save (Legends does the same in a test run)
 	LegendsSave.use_test_file = true
+	if cmd.has(TWO_FLAG):
+		LegendsData.set_test_data(LegendsData.two_chapter_test_data())
+		print("LEGENDS TEST two chapters (stand-in data) | built %s" % str(LegendsData.built_chapters()))
 	if cmd.has(NO_TRIP_FLAG):
 		Save.erase()
 	LegendsSave.erase()   # a fresh Legends progress every run (the test file only)
@@ -140,6 +160,13 @@ func _begin() -> bool:
 		_fail("legends_data.gd has no built chapter")
 		return false
 	_chapter = str(built[0])
+	_only = _arg_after(CHAPTER_FLAG, "").strip_edges().to_lower()
+	if _only != "":
+		if not built.has(_only):
+			_fail("%s %s is not a built chapter (built %s)" % [CHAPTER_FLAG, _only, str(built)])
+			return false
+		_chapter = _only
+		print("LEGENDS TEST chapter %s only | %s" % [_only, _force_gate(_only)])
 	_trip_had = FileAccess.file_exists(Save.path())
 	_trip_bytes = _bytes(Save.path())
 	_crew_want = Legends.CREW_TRIP if not Save.read().is_empty() else Legends.CREW_KINGS
@@ -148,7 +175,7 @@ func _begin() -> bool:
 		_level = want
 	print("LEGENDS TEST start | legends file %s | trip save %s (%s, %d bytes) -> crew %s | chapter %s | level %s | target %s | force loss %s | %s | stars %d, legend level %s | tokens max %d" % [
 			LegendsSave.path(), Save.path(), "there" if _trip_had else "none", _trip_bytes.size(), _crew_want,
-			_chapter, _level if _level != "" else "(the chapter view's)", _arg_after("--target", "-"), str(_force),
+			_chapter if _only != "" else ",".join(PackedStringArray(built)), _level if _level != "" else "(the chapter view's)", _arg_after("--target", "-"), str(_force),
 			"played out (--legends-play)" if _play else "decided at once", Stars.total(),
 			"open" if Stars.legend_open() else "closed", LegendsData.max_tokens()])
 	if not Legends.mode_open():
@@ -165,6 +192,18 @@ static func _arg_after(flag: String, def: String) -> String:
 		if cmd[i] == flag and i + 1 < cmd.size():
 			return cmd[i + 1]
 	return def
+
+# --legends-chapter: opens the chapter's gate for this run if it is not met (never saved): --tokens to its token gate
+# if it has one, else --stars to its star gate. Returns what it did.
+static func _force_gate(ch: String) -> String:
+	if Legends.chapter_open(ch):
+		return "gate %s already met (stars %d, tokens %d)" % [Legends.gate_text(ch), Stars.total(), Legends.tokens_total()]
+	var gate: Dictionary = LegendsData.chapter(ch).get("gate", {})
+	if int(gate.get("tokens", 0)) > 0:
+		Legends.force_tokens = int(gate.get("tokens", 0))
+		return "gate %s forced open: tokens %d this run" % [Legends.gate_text(ch), Legends.tokens_total()]
+	Stars.force_total = int(gate.get("stars", 0))
+	return "gate %s forced open: stars %d this run" % [Legends.gate_text(ch), Stars.total()]
 
 # --difficulty's level as the chapter view offers it ("" = none asked): LEGEND without the stars plays Hard
 static func _level_want() -> String:
@@ -244,13 +283,105 @@ func _timeline_step(node: Node) -> bool:
 		if st != "done":
 			_fail("the timeline does not show the finished chapter as done")
 			return false
+		var nxt: String = _gate_check(node)
+		if _finished:
+			return false
+		if nxt != "":
+			_records.append(_record())
+			_next_chapter(nxt)
+			print("LEGENDS next chapter %s: tap its timeline panel" % nxt)
+			node.set("_arm_t", 0.0)
+			node.call("_on_panel_tap", nxt)
+			return bool(node.get("_busy"))
 		_phase = "done"
+		node.set("_arm_t", 0.0)
 		node.call("_on_back")   # the timeline's BACK: the title
 		return true
 	if _phase != "chapter":
 		_fail("on the timeline during phase %s" % _phase)
 		return false
-	return Flow.auto_step()   # opens the first open chapter (its intro scene first, once)
+	var open: Array = node.call("_open_chapters")
+	if not open.is_empty() and str(open[0]) == _chapter:
+		return Flow.auto_step()   # opens the first open chapter (its intro scene first, once)
+	if not Legends.chapter_open(_chapter):
+		_fail("chapter %s is not open on the timeline (open %s)" % [_chapter, str(open)])
+		return false
+	node.set("_arm_t", 0.0)
+	node.call("_on_panel_tap", _chapter)   # a later chapter (or --legends-chapter): its panel, as a tap
+	return bool(node.get("_busy"))
+
+# after a finished chapter, on the timeline: the next chapter in data order, its gate as the data says (built and its
+# stars or tokens reached = open; built otherwise = locked; not built = later) against the timeline's state,
+# Legends.gate_met() and Legends.chapter_open(). A panel that isn't open must refuse a tap. Returns the next chapter
+# to play, or "".
+func _gate_check(node: Node) -> String:
+	_gate_line = true
+	if _only != "":
+		return ""   # --legends-chapter: this chapter only (its gate was forced)
+	var ids: Array = LegendsData.chapter_ids()
+	var i: int = ids.find(_chapter)
+	if i < 0 or i + 1 >= ids.size():
+		print("LEGENDS gate: %s is the last chapter" % _chapter)
+		return ""
+	var nxt: String = str(ids[i + 1])
+	var row: Dictionary = LegendsData.chapter(nxt)
+	var gate: Dictionary = row.get("gate", {})
+	var need_s: int = int(gate.get("stars", 0))
+	var need_t: int = int(gate.get("tokens", 0))
+	var stars: int = Stars.total()
+	var toks: int = Legends.tokens_total()
+	var by: Array = []
+	if need_s > 0 and stars >= need_s:
+		by.append("stars")
+	if need_t > 0 and toks >= need_t:
+		by.append("tokens")
+	var met: bool = not by.is_empty() or (need_s <= 0 and need_t <= 0)
+	var built: bool = bool(row.get("built", false))
+	var want: String = "later" if not built else ("open" if met else "locked")
+	var st: String = str(node.call("chapter_state", nxt))
+	var errs: Array = []
+	if st != want:
+		errs.append("the timeline shows %s, want %s" % [st, want])
+	if Legends.chapter_open(nxt) != (want == "open"):
+		errs.append("Legends.chapter_open %s" % str(Legends.chapter_open(nxt)))
+	if Legends.gate_met(nxt) != met:
+		errs.append("Legends.gate_met %s, want %s" % [str(Legends.gate_met(nxt)), str(met)])
+	if want != "open":
+		node.set("_arm_t", 0.0)
+		node.call("_on_panel_tap", nxt)
+		if bool(node.get("_busy")):
+			errs.append("a tap on the %s panel opened it" % want)
+	print("LEGENDS gate %s (after %s): %s | gate %s: stars %d, tokens %d -> %s | timeline %s | %s" % [nxt, _chapter,
+			"not built" if not built else want, Legends.gate_text(nxt), stars, toks,
+			("met by " + " and ".join(PackedStringArray(by))) if not by.is_empty() else ("met" if met else "not met"),
+			st, "ok" if errs.is_empty() else "WRONG: " + "; ".join(PackedStringArray(errs))])
+	if not errs.is_empty():
+		_fail("the gate of %s does not match the data" % nxt)
+		return ""
+	return nxt if want == "open" else ""
+
+# the finished chapter's numbers, for _end()
+static func _record() -> Dictionary:
+	return {"chapter": _chapter, "games": _ch_games, "losses_forced": _losses_forced, "goal_tests": _goal_tests,
+		"retries": _retries, "retry_key": _retry_key, "replay_key": _replay_key, "replay_level": _replay_level,
+		"replay_done": _replay_done, "hall_done": _hall_done}
+
+# a fresh chapter: the per-chapter counters start again (forced losses, goal tests, replay, Hall)
+static func _next_chapter(ch: String) -> void:
+	_chapter = ch
+	_phase = "chapter"
+	_ch_games = 0
+	_losses_forced = 0
+	_goal_tests = 0
+	_retries = 0
+	_retry_key = ""
+	_broke_hold = false
+	_short_stop = false
+	_replay_key = ""
+	_replay_level = ""
+	_replay_done = false
+	_hall_done = false
+	_finale_games = 0
 
 func _chapter_step(node: Node) -> bool:
 	if str(node.call("chapter")) != _chapter:
@@ -290,6 +421,7 @@ func _chapter_step(node: Node) -> bool:
 
 func _start_game() -> void:
 	_games += 1
+	_ch_games += 1
 	if main != null:
 		main.set("autoplay", true)   # both teams CPU (main.gd still sends the result to Flow under --legends-test)
 	if _games > MAX_GAMES:
@@ -305,6 +437,10 @@ func _start_game() -> void:
 	_g_type = str(c.get("type", "")) if _g_lid != "" else "finale"
 	_g_level = str(m.get("level", ""))
 	_g_before = Legends.token_best(_g_key)
+	_g_others = {}
+	for ch in LegendsData.built_chapters():
+		if str(ch) != _chapter:
+			_g_others[str(ch)] = [Legends.chapter_tokens(str(ch)), Legends.chapter_done(str(ch))]
 	_g_was_unlocked = _g_lid != "" and Legends.is_unlocked(_g_lid)
 	_g_unlock_scene_new = false
 	_g_after_scene_new = false
@@ -319,7 +455,7 @@ func _start_game() -> void:
 		_g_plan = "play"
 	elif _phase == "replay":
 		_g_plan = "win"
-	elif _force.has(_games):
+	elif _force.has(_ch_games):
 		_g_plan = "loss"
 	elif GOAL_TESTS and _g_type == "hold" and not _broke_hold:
 		_broke_hold = true
@@ -559,6 +695,14 @@ func _check_outcome() -> void:
 					str(o.get("chapter_done", "")), str(disk.get("finales", []))])
 	elif _g_lid == "" and Legends.chapter_done(_chapter):
 		errs.append("a lost finale closed the chapter")
+	# the other chapters: their tokens and finales did not move (a finale closes only its own chapter)
+	for ch in _g_others:
+		var was: Array = _g_others[ch]
+		if Legends.chapter_tokens(str(ch)) != int(was[0]) or Legends.chapter_done(str(ch)) != bool(was[1]):
+			errs.append("chapter %s moved: tokens %d -> %d, done %s -> %s" % [str(ch), int(was[0]),
+					Legends.chapter_tokens(str(ch)), str(was[1]), str(Legends.chapter_done(str(ch)))])
+		if bool(was[1]) != (disk.get("finales", []) as Array).has(str(ch)):
+			errs.append("chapter %s done %s, the file's finales %s" % [str(ch), str(was[1]), str(disk.get("finales", []))])
 	# the trip save, byte for byte
 	var trip_ok: String = _trip_check()
 	if trip_ok != "":
@@ -580,7 +724,7 @@ func _check_outcome() -> void:
 	print("LEGENDS tokens %s %s %s | level %s (%d a win) | best %d -> %d | unlocked %s (%d/%d) | chapter done %s | trip save %s | %s" % [
 			_g_key, _g_plan, "won" if want_won else "lost" if not game_won else "won, goal not met", _g_level, per,
 			_g_before, Legends.token_best(_g_key), str(o.get("unlocked", "")) if str(o.get("unlocked", "")) != "" else "-",
-			Legends.unlocked_ids().size(), LegendsData.legend_ids(_chapter).size(), str(Legends.chapter_done(_chapter)),
+			_unlocked_in(_chapter), LegendsData.legend_ids(_chapter).size(), str(Legends.chapter_done(_chapter)),
 			"unchanged" if trip_ok == "" else "CHANGED", "ok" if errs.is_empty() else "WRONG: " + "; ".join(PackedStringArray(errs))])
 	if not errs.is_empty():
 		_fail("the result of %s did not record right" % _g_key)
@@ -634,9 +778,21 @@ static func _bytes(p: String) -> PackedByteArray:
 
 # ---------------------------------------------------------------------------------------------------- the end
 
-func _end_checks() -> Array:
+# the legends of one chapter that are unlocked
+static func _unlocked_in(ch: String) -> int:
+	var n: int = 0
+	for id in LegendsData.legend_ids(ch):
+		if Legends.is_unlocked(str(id)):
+			n += 1
+	return n
+
+# one finished chapter (a _record()): every legend unlocked, every token as won (in memory and in the file), the
+# chapter done, its scenes once, the Hall, the replay, that chapter's forced losses and goal tests. Puts the
+# chapter's wanted token sum in rec["want"].
+func _chapter_checks(rec: Dictionary) -> Array:
 	var errs: Array = []
-	var ids: Array = LegendsData.legend_ids(_chapter)
+	var ch: String = str(rec["chapter"])
+	var ids: Array = LegendsData.legend_ids(ch)
 	var per: int = LegendsData.tokens_for(_level)
 	var disk: Dictionary = LegendsSave.read()
 	var dt: Dictionary = disk.get("tokens", {})
@@ -644,8 +800,8 @@ func _end_checks() -> Array:
 	for id in ids:
 		var k: String = Legends.challenge_key(str(id))
 		var want: int = per
-		if k == _replay_key and _replay_done:
-			want = maxi(per, LegendsData.tokens_for(_replay_level))
+		if k == str(rec["replay_key"]) and bool(rec["replay_done"]):
+			want = maxi(per, LegendsData.tokens_for(str(rec["replay_level"])))
 		if not Legends.is_unlocked(str(id)) or not (disk.get("unlocked", []) as Array).has(str(id)):
 			errs.append("%s not unlocked" % id)
 		if Legends.token_best(k) != want or int(dt.get(k, 0)) != want:
@@ -654,15 +810,16 @@ func _end_checks() -> Array:
 		var us: String = str(LegendsData.legend(str(id)).get("unlock_scene", ""))
 		if us != "" and StoryText.has_scene(us) and _scenes.count(us) != 1:
 			errs.append("unlock scene %s shown %d times" % [us, _scenes.count(us)])
-	var fk: String = Legends.finale_key(_chapter)
+	var fk: String = Legends.finale_key(ch)
 	if Legends.token_best(fk) != per or int(dt.get(fk, 0)) != per:
 		errs.append("%s tokens %d, want %d" % [fk, Legends.token_best(fk), per])
 	sum += per
-	if Legends.real_tokens_total() != sum:
-		errs.append("token total %d, want %d" % [Legends.real_tokens_total(), sum])
-	if not Legends.chapter_done(_chapter):
+	rec["want"] = sum
+	if Legends.chapter_tokens(ch) != sum:
+		errs.append("chapter tokens %d, want %d" % [Legends.chapter_tokens(ch), sum])
+	if not Legends.chapter_done(ch) or not (disk.get("finales", []) as Array).has(ch):
 		errs.append("the chapter is not done")
-	var row: Dictionary = LegendsData.chapter(_chapter)
+	var row: Dictionary = LegendsData.chapter(ch)
 	var scenes: Array = [str(row.get("intro_scene", ""))]
 	var fs: Dictionary = row.get("finale_scenes", {})
 	scenes.append(str(fs.get("before", "")))
@@ -670,38 +827,85 @@ func _end_checks() -> Array:
 	for sc in scenes:
 		if sc != "" and StoryText.has_scene(sc) and _scenes.count(sc) != 1:
 			errs.append("scene %s shown %d times" % [sc, _scenes.count(sc)])
-	if HALL_TEST and not _hall_done:
+	if HALL_TEST and not bool(rec["hall_done"]):
 		errs.append("the Hall was not visited")
-	if REPLAY_TEST and not _replay_done:
+	if REPLAY_TEST and not bool(rec["replay_done"]):
 		errs.append("the replay did not run")
 	var forced_due: int = 0
 	for n in _force:
-		if int(n) <= _games:
+		if int(n) <= int(rec["games"]):
 			forced_due += 1
-	if _losses_forced != forced_due:
-		errs.append("forced losses %d of %d" % [_losses_forced, forced_due])
-	if not _play and GOAL_TESTS and _goal_tests != 2:
-		errs.append("goal tests %d of 2" % _goal_tests)
-	if _retry_key != "":
-		errs.append("%s was never retried" % _retry_key)
-	var t: String = _trip_check()
-	if t != "":
-		errs.append(t)
+	if int(rec["losses_forced"]) != forced_due:
+		errs.append("forced losses %d of %d" % [int(rec["losses_forced"]), forced_due])
+	if not _play and GOAL_TESTS and int(rec["goal_tests"]) != 2:
+		errs.append("goal tests %d of 2" % int(rec["goal_tests"]))
+	if str(rec["retry_key"]) != "":
+		errs.append("%s was never retried" % str(rec["retry_key"]))
 	return errs
 
 func _end() -> void:
-	var errs: Array = _end_checks()
-	print("LEGENDS checks | level %s | tokens %d/%d | unlocked %d/%d | chapter done %s | scenes %d | goal tests %d | forced losses %d | retries %d | replay %s | hall %s | trip save %s | %s" % [
-			_level, Legends.real_tokens_total(), LegendsData.max_tokens(), Legends.unlocked_ids().size(),
-			LegendsData.legend_ids(_chapter).size(), str(Legends.chapter_done(_chapter)), _scenes.size(), _goal_tests,
-			_losses_forced, _retries, ("%s at %s -> %d" % [_replay_key, _replay_level, Legends.token_best(_replay_key)])
-			if _replay_done else "-", "ok" if _hall_done else "-", "unchanged" if _trip_check() == "" else "CHANGED",
-			"ok" if errs.is_empty() else "WRONG: " + "; ".join(PackedStringArray(errs))])
-	if not errs.is_empty():
-		_fail("the finished chapter does not check out")
+	_records.append(_record())
+	var many: bool = _records.size() > 1
+	var bad: bool = false
+	var total_want: int = 0
+	var t_losses: int = 0
+	var t_goals: int = 0
+	var t_retries: int = 0
+	var parts: Array = []
+	for rec in _records:
+		var ch: String = str(rec["chapter"])
+		var errs: Array = _chapter_checks(rec)
+		if not many:
+			# one chapter: the whole run's checks on this line (as in Phase 9)
+			if Legends.real_tokens_total() != int(rec["want"]):
+				errs.append("token total %d, want %d" % [Legends.real_tokens_total(), int(rec["want"])])
+			if not _gate_line:
+				errs.append("the next chapter's gate was not checked")
+			var t1: String = _trip_check()
+			if t1 != "":
+				errs.append(t1)
+		total_want += int(rec["want"])
+		t_losses += int(rec["losses_forced"])
+		t_goals += int(rec["goal_tests"])
+		t_retries += int(rec["retries"])
+		parts.append("%s %d/%d" % [ch, Legends.chapter_tokens(ch), Legends.chapter_max_tokens(ch)])
+		var rk: String = str(rec["replay_key"])
+		print("LEGENDS checks%s | level %s | tokens %d/%d | unlocked %d/%d | chapter done %s | scenes %d | goal tests %d | forced losses %d | retries %d | replay %s | hall %s | trip save %s | %s" % [
+				(" " + ch) if many else "", _level, Legends.chapter_tokens(ch), Legends.chapter_max_tokens(ch),
+				_unlocked_in(ch), LegendsData.legend_ids(ch).size(), str(Legends.chapter_done(ch)), _scenes.size(),
+				int(rec["goal_tests"]), int(rec["losses_forced"]), int(rec["retries"]),
+				("%s at %s -> %d" % [rk, str(rec["replay_level"]), Legends.token_best(rk)]) if bool(rec["replay_done"])
+				else "-", "ok" if bool(rec["hall_done"]) else "-", "unchanged" if _trip_check() == "" else "CHANGED",
+				"ok" if errs.is_empty() else "WRONG: " + "; ".join(PackedStringArray(errs))])
+		if not errs.is_empty():
+			bad = true
+	if many:
+		var errs2: Array = []
+		if Legends.real_tokens_total() != total_want:
+			errs2.append("token total %d, want %d" % [Legends.real_tokens_total(), total_want])
+		if not _gate_line:
+			errs2.append("the next chapter's gate was not checked")
+		for ch in LegendsData.built_chapters():
+			var played: bool = false
+			for rec in _records:
+				played = played or str(rec["chapter"]) == str(ch)
+			if Legends.chapter_done(str(ch)) != played:
+				errs2.append("chapter %s done %s, played %s" % [str(ch), str(Legends.chapter_done(str(ch))), str(played)])
+		var t2: String = _trip_check()
+		if t2 != "":
+			errs2.append(t2)
+		print("LEGENDS checks total | chapters %d | tokens %d/%d (%s) | trip save %s | %s" % [_records.size(),
+				Legends.real_tokens_total(), LegendsData.max_tokens(), ", ".join(PackedStringArray(parts)),
+				"unchanged" if t2 == "" else "CHANGED",
+				"ok" if errs2.is_empty() else "WRONG: " + "; ".join(PackedStringArray(errs2))])
+		if not errs2.is_empty():
+			bad = true
+	if bad:
+		_fail("the finished chapter%s not check out" % ("s do" if many else " does"))
 		return
-	print("LEGENDS END | crew %s | level %s | games %d (forced losses %d, goal tests %d, retries %d) | screens %d | results checked %d" % [
-			_crew_want, _level, _games, _losses_forced, _goal_tests, _retries, _screens, _results])
+	print("LEGENDS END | crew %s | level %s | games %d (forced losses %d, goal tests %d, retries %d) | screens %d | results checked %d%s" % [
+			_crew_want, _level, _games, t_losses, t_goals, t_retries, _screens, _results,
+			(" | chapters " + ", ".join(PackedStringArray(parts))) if many else ""])
 	_quit(0)
 
 func _state() -> String:
