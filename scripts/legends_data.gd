@@ -54,6 +54,8 @@ extends RefCounted
 #                          stop      "count": block or steal on him that many times, and win
 #                          race      "their_target": reach target before his team reaches their_target
 #                          comeback  "start_score": [you, them] at tip-off; win
+#                          score     "min": you (the human, Trip.human) score at least min points yourself, and
+#                                    your team wins; checked at the end like stop (P10-13 builds it in challenge.gd)
 #                        target is the points to win the game; line is the goal sentence (locked plaque, chapter view)
 #   perk                 PERKS id he teaches as a mentor (P9-23 / P9-24; Road Trip games only, L8 a)
 #   look, bio            art notes (P9-09 / P9-10) and the Hall's short bio
@@ -61,7 +63,8 @@ extends RefCounted
 #   unlock_scene         story_text.gd scene played when he is unlocked (P9-14)
 #
 # PERKS rows: {"key", "value", "text"}. The sim reads p.perk(key, default) (P9-24); default = today's game, so the
-# value is a multiplier (default 1.0) for "_mult" keys and an added chance (default 0.0) for "_bonus" keys.
+# value is a multiplier (default 1.0) for "_mult" keys and an added chance (default 0.0) for "_bonus" keys. A "_mult"
+# value is within PERK_MULT_MAX of 1.0 either way (under 1.0: a chance the other side gets smaller, e.g. steals on him).
 
 # ---------------------------------------------------------------------------------------------------- tuning
 const TOKENS_BY_LEVEL := {"easy": 1, "normal": 2, "hard": 3, "legend": 3}   # best kept per challenge / finale
@@ -86,11 +89,16 @@ const CHALLENGE_TYPES := {          # each goal type and the numbers its row mus
 	"stop": ["count"],
 	"race": ["their_target"],
 	"comeback": ["start_score"],
+	"score": ["min"],               # P10-11 / P10-13 (F3 a): you score min points yourself and win
 }
 # jersey numbers we never give a legend: the most famous numbers in the game's history (an era kit is our own colors
 # anyway; this keeps a "his number" reading out entirely). The legends' numbers are placeholders until the owner
-# approves a list (docs/legends-plan.md part 1).
-const NUMBER_AVOID := [0, 1, 3, 6, 8, 13, 23, 24, 30, 32, 33, 34, 35, 45, 99]
+# approves a list (docs/legends-plan.md part 1). P10-11 added the 2000s era's famous numbers (2, 5, 10, 11, 15, 20, 21,
+# 22, 31, 41, 42, 44, 50, 55; docs/legends-namecheck.md "Chapter 2"); no Chapter 1 number is among them.
+const NUMBER_AVOID := [0, 1, 2, 3, 5, 6, 8, 10, 11, 13, 15, 20, 21, 22, 23, 24, 30, 31, 32, 33, 34, 35, 41, 42, 44,
+		45, 50, 55, 99]
+const PERK_MULT_MAX := 0.2          # a perk's "_mult" value is in 1.0 +- this, never 1.0 itself (small, L8 a)
+const PERK_BONUS_MAX := 0.06        # a perk's "_bonus" value is in (0, this]
 
 const SHEET_DIR := "res://assets/players2/"
 const CARD_DIR := "res://assets/players2/cards/"
@@ -118,11 +126,21 @@ const CHAPTERS := [
 		"finale_scenes": {"before": "legends_grand_finale_before", "after": "legends_grand_finale_after"},
 	},
 	{
-		"id": "fathers", "name": "THE FATHERS", "built": false,
-		"rules": "", "feel": "Baggy shorts, high flyers, isolation scorers",
-		"twist": "", "look": "", "music": "", "fallback_music": "",
-		"gate": {"stars": 36, "tokens": 12},
-		"crew": {}, "legends": [], "finale": {}, "intro_scene": "", "finale_scenes": {},
+		# P10-11 (owner F1 a, F3 a, F6 a, F7 a). Art, story, twist and music land in their own tasks; until then the
+		# chapter plays on the fallbacks (Sheets' chain, the silhouette, twist none, the gym, fallback_music)
+		"id": "fathers", "name": "THE FATHERS", "built": true,
+		"rules": "ISO BALL", "feel": "Baggy shorts, high flyers, isolation scorers",
+		"twist": "era_fathers", "look": "era_fathers", "music": "legends_fathers", "fallback_music": "newyork",
+		"gate": {"stars": 36, "tokens": 12},   # F7 a: 36 trip stars or 12 legend tokens, whichever comes first
+		"crew": {"name": "THE FATHERS", "style": "balanced", "colors": ["ERA2_CHARCOAL", "ERA2_SEAFOAM"],
+			"ui_color": Color(0.36, 0.78, 0.63)},
+		"legends": ["lg_rooftop", "lg_ankles", "lg_midrange", "lg_freight", "lg_eyes_closed", "lg_lockbox"],
+		"finale": {"target": 21, "legends": ["lg_rooftop", "lg_midrange", "lg_freight"], "label": "FATHERS FINALE"},
+		"intro_scene": "legends_fathers_intro",
+		"finale_scenes": {"before": "legends_fathers_finale_before", "after": "legends_fathers_finale_after"},
+		# F6 a: a step harder than Chapter 1 (CHALLENGE_AVG 66, MATE_DROP 14); the finale about as hard as Chapter 1's
+		# (FINALE_STAGE_AVG 52). Starting guesses: P10-23 tunes them (and the goal numbers, which matter more)
+		"challenge_avg": 69, "mate_drop": 13, "finale_stage_avg": 52,
 	},
 	{
 		"id": "present", "name": "THE PRESENT", "built": false,
@@ -233,6 +251,101 @@ const LEGENDS := {
 		"bio": "Throws the ball the length of the court without looking, then acts surprised you caught it. Has a whistle he never uses.",
 		"unlock_scene": "lg_quarterback_unlock",
 	},
+	# Chapter 2, the Fathers (F1 a, docs/legends-plan.md part 3; challenges F3 a, signatures F4 b, perks F5 a). Name
+	# check: docs/legends-namecheck.md "Chapter 2" (new surnames for Rooftop and Eyes Closed, a new first name for
+	# Lockbox; shown to the owner). The hard rule's look spread: Ankles (the small quick crossover guard) has twists
+	# and a headband, no cornrows and no arm sleeve; the cornrows go to Rooftop (left arm sleeve, no headband); the
+	# other arm sleeve to Lockbox (right arm, buzz cut, no headband). Numbers: placeholders until the owner approves.
+	"lg_rooftop": {
+		"name": "ROOFTOP", "full": "Dorian \"Rooftop\" Ashcombe", "first": "Dorian", "last": "Ashcombe",
+		"chapter": "fathers", "archetype": "high-flying shooting guard", "role": "high-flying shooting guard",
+		"tier": "legend", "sheet": "lg_rooftop", "portrait": "lg_rooftop", "number": 27,
+		"shape": {"speed": 10, "shooting": 0, "finishing": 15, "defense": -10, "stamina": -15},
+		"spec": ["finishing"], "steal_bias": 4, "block_bias": 4,
+		"signature": {"id": "cradle", "text": "Cradle dunk: he rocks the ball in his arm in the air, and his dunks slip past part of a contest"},
+		"challenge": {"type": "stop", "target": 15, "count": 2, "mates": ["lg_eyes_closed", "lg_freight"],
+			"line": "BLOCK OR STEAL ON ROOFTOP 2 TIMES AND WIN (TO 15)"},
+		"perk": "rise_up",
+		"colors": ["ERA2_SEAFOAM", "ERA2_CHARCOAL"],
+		"look": "tall and lanky wing, brown skin, black cornrows, charcoal left arm sleeve, no headband, seafoam tank with white trim, baggy seafoam shorts with charcoal side panels, white crew socks (the approved look sample)",
+		"bio": "Grew up dunking on the garage roof's gutter until his mother hid the ladder. Says the rim is just a step on the way up.",
+		"unlock_scene": "lg_rooftop_unlock",
+	},
+	"lg_ankles": {
+		"name": "ANKLES", "full": "Tremaine \"Ankles\" Pettaway", "first": "Tremaine", "last": "Pettaway",
+		"chapter": "fathers", "archetype": "crossover artist", "role": "crossover artist", "tier": "legend",
+		"sheet": "lg_ankles", "portrait": "lg_ankles", "number": 16,
+		"shape": {"speed": 15, "shooting": 5, "finishing": -5, "defense": -5, "stamina": -10},
+		"spec": ["speed"], "steal_bias": 10, "block_bias": -10,
+		"signature": {"id": "double_cross", "text": "Double crossover: he beats his man more often, and more defenders fall"},
+		"challenge": {"type": "race", "target": 11, "their_target": 10, "mates": ["lg_midrange", "lg_lockbox"],
+			"line": "REACH 11 BEFORE ANKLES' CREW GETS 10"},
+		"perk": "handle",
+		"colors": ["ERA2_CITRUS", "ERA2_CHARCOAL"],
+		"look": "small and quick, tan skin, short twists under a white headband, no arm sleeve, wristbands, citrus tank with charcoal trim, baggy citrus shorts, white crew socks",
+		"bio": "Counts the defenders he has sat down the way other folks count sheep. Keeps a list. It is a long list.",
+		"unlock_scene": "lg_ankles_unlock",
+	},
+	"lg_midrange": {
+		"name": "MIDRANGE", "full": "Darnell \"Midrange\" Kingsley", "first": "Darnell", "last": "Kingsley",
+		"chapter": "fathers", "archetype": "isolation scorer", "role": "isolation scorer", "tier": "legend",
+		"sheet": "lg_midrange", "portrait": "lg_midrange", "number": 28,
+		"shape": {"speed": 0, "shooting": 20, "finishing": 0, "defense": -10, "stamina": -10},
+		"spec": ["shooting"], "steal_bias": 0, "block_bias": -6,
+		"signature": {"id": "fadeaway", "text": "Turnaround fadeaway: his jumpers inside the arc lose less to a contest"},
+		"challenge": {"type": "fire", "target": 15, "cool_misses": 2, "mates": ["lg_eyes_closed", "lg_freight"],
+			"line": "MIDRANGE STARTS ON FIRE: WIN THE GAME TO 15"},
+		"perk": "pull_up",
+		"colors": ["ERA2_GRAPE", "ERA2_ICE"],
+		"look": "wiry wing, light brown skin, low fade haircut, grape tank with white trim, long baggy grape shorts, a white leg sleeve, white crew socks",
+		"bio": "Clears out one side of the floor, waves everybody away and takes the shot the coach told him not to. It goes in.",
+		"unlock_scene": "lg_midrange_unlock",
+	},
+	"lg_freight": {
+		"name": "FREIGHT", "full": "Bartholomew \"Freight\" Thackeray", "first": "Bartholomew", "last": "Thackeray",
+		"chapter": "fathers", "archetype": "low-post bulldozer center", "role": "low-post bulldozer center",
+		"tier": "legend", "sheet": "lg_freight", "portrait": "lg_freight", "number": 48,
+		"shape": {"speed": -15, "shooting": -15, "finishing": 25, "defense": 10, "stamina": -5},
+		"spec": ["finishing"], "steal_bias": -8, "block_bias": 12,
+		"signature": {"id": "shoulder", "text": "Shoulder-in power dunk: his close shots and dunks are harder to block"},
+		"challenge": {"type": "hold", "target": 15, "limit": 7, "mates": ["lg_rooftop", "lg_ankles"],
+			"line": "HOLD FREIGHT UNDER 7 POINTS AND WIN (TO 15)"},
+		"perk": "strong_hold",
+		"colors": ["ERA2_STEEL", "ERA2_CITRUS"],
+		"look": "huge and heavy, umber skin, shaved head, short goatee, steel headband, steel tank with citrus trim, baggy steel shorts, white crew socks",
+		"bio": "Backs his man under the rim one bump at a time and never asks for a foul. Calls the paint his driveway.",
+		"unlock_scene": "lg_freight_unlock",
+	},
+	"lg_eyes_closed": {
+		"name": "EYES CLOSED", "full": "Keon \"Eyes Closed\" Pemberton", "first": "Keon", "last": "Pemberton",
+		"chapter": "fathers", "archetype": "no-look passer", "role": "no-look passer", "tier": "legend",
+		"sheet": "lg_eyes_closed", "portrait": "lg_eyes_closed", "number": 14,
+		"shape": {"speed": 5, "shooting": 0, "finishing": -5, "defense": -5, "stamina": 5},
+		"spec": [], "steal_bias": 12, "block_bias": -12,
+		"signature": {"id": "no_look", "text": "No-look and behind-the-back passes: his passes are harder to intercept"},
+		"challenge": {"type": "comeback", "target": 15, "start_score": [0, 2], "mates": ["lg_lockbox", "lg_rooftop"],
+			"line": "START DOWN 0-2: COME BACK AND WIN (TO 15)"},
+		"perk": "blind_pass",
+		"colors": ["ERA2_BRICK", "ERA2_TANGERINE"],
+		"look": "slim guard, deep brown skin, tangerine durag, white wristbands, steel right leg sleeve, brick tank with tangerine trim, baggy brick shorts, white crew socks (the approved look sample)",
+		"bio": "Looks at the crowd, the clock, the hot dog stand, anywhere but the man he is passing to. The ball always finds him anyway.",
+		"unlock_scene": "lg_eyes_closed_unlock",
+	},
+	"lg_lockbox": {
+		"name": "LOCKBOX", "full": "Corwin \"Lockbox\" Hollister", "first": "Corwin", "last": "Hollister",
+		"chapter": "fathers", "archetype": "lockdown wing defender", "role": "lockdown wing defender", "tier": "legend",
+		"sheet": "lg_lockbox", "portrait": "lg_lockbox", "number": 36,
+		"shape": {"speed": 5, "shooting": -10, "finishing": -5, "defense": 20, "stamina": -10},
+		"spec": ["defense"], "steal_bias": 14, "block_bias": 10,
+		"signature": {"id": "chase_down", "text": "Chase-down block: his blocks from behind work more often"},
+		"challenge": {"type": "score", "target": 11, "min": 6, "mates": ["lg_ankles", "lg_midrange"],
+			"line": "SCORE 6 POINTS YOURSELF ON LOCKBOX AND WIN (TO 11)"},
+		"perk": "quick_hands",
+		"colors": ["ERA2_CHARCOAL", "ERA2_TANGERINE"],
+		"look": "rangy wing, light skin, brown buzz cut, no headband, charcoal right arm sleeve, charcoal tank with tangerine trim, baggy charcoal shorts, white crew socks",
+		"bio": "Picks up his man at the far free-throw line and walks him back the whole way. Has never once been in a hurry to shoot.",
+		"unlock_scene": "lg_lockbox_unlock",
+	},
 }
 
 # ---------------------------------------------------------------------------------------------------- perks
@@ -246,6 +359,14 @@ const PERKS := {
 	"long_dunk": {"key": "dunk_reach_mult", "value": 1.05, "text": "Dunks from a little further out"},
 	"soft_layup": {"key": "contested_layup_bonus", "value": 0.015, "text": "Contested layups +1.5%"},
 	"quick_pass": {"key": "pass_speed_mult", "value": 1.05, "text": "Passes 5% faster"},
+	# Chapter 2 (F5 a, the board's contract; data only here, P10-22 hooks them). The two "on him" keys make the other
+	# side's chance smaller, so their value is under 1.0 (default 1.0 = today's game)
+	"rise_up": {"key": "contested_dunk_bonus", "value": 0.015, "text": "Contested dunks +1.5%"},
+	"handle": {"key": "cross_win_mult", "value": 1.05, "text": "Crossovers beat the defender 5% more often"},
+	"pull_up": {"key": "mid_shot_bonus", "value": 0.015, "text": "Jumpers inside the arc +1.5%"},
+	"strong_hold": {"key": "strip_guard_mult", "value": 0.95, "text": "5% harder to strip"},
+	"blind_pass": {"key": "pass_safe_mult", "value": 0.95, "text": "Passes 5% harder to intercept"},
+	"quick_hands": {"key": "steal_window_mult", "value": 1.05, "text": "Steal timing window 5% wider"},
 }
 
 # ---------------------------------------------------------------------------------------------------- name check
@@ -277,6 +398,14 @@ const REAL_NICKNAMES := [
 	"mr triple double", "the stopper", "the general", "the hammer", "dr k", "mr basketball", "big red",
 	"air georgia", "sky", "j kidd", "mutombo", "sleepy floyd", "world b free", "world", "pops", "bobo", "smush",
 	"tmac", "t mac", "sweet pea", "rainman", "the dream team", "the jet", "mr fundamentals",
+	# P10-11: the 2000s era (players, and the streetball mixtape tour names of the time)
+	"sheed", "big ben", "rip", "franchise", "stevie franchise", "manu", "big z", "ak47", "ak 47", "captain jack",
+	"j rich", "candy man", "grindfather", "tru warrior", "hibachi", "krypto nate", "kryptonate", "j will", "big shot",
+	"baby shaq", "baby jordan", "bonzi", "peja", "stat", "big three", "main event", "bone collector", "escalade",
+	"sik wit it", "spyda", "go get it", "air up there", "black widow", "high octane", "headache", "dribbling machine",
+	"ao", "god shammgod", "shammgod", "killer crossover", "utep two step", "cat", "the mayor", "bubba chuck",
+	"human joystick", "jumpman", "big nasty", "boston strangler", "k mart", "kmart", "chosen one", "lob city",
+	"sky walker", "dr dunkenstein", "slim",
 ]
 const REAL_NAMES := [
 	"michael jordan", "magic johnson", "earvin johnson", "larry bird", "kareem abdul jabbar", "wilt chamberlain",
@@ -306,6 +435,26 @@ const REAL_NAMES := [
 	"maurice stokes", "bob davies", "max zaslofsky", "joe fulks", "jim pollard", "vern mikkelsen", "slater martin",
 	"cliff hagan", "ed macauley", "frank selvy", "tom gola", "guy rodgers", "walt bellamy",
 	"dick barnett", "cazzie russell", "lou hudson", "bob love", "jerry sloan", "norm van lier", "tiny archibald",
+	# P10-11: the 2000s era (and the two Phase 9 heads-up surnames, Vance and Riley; docs/legends-namecheck.md)
+	"gene vance", "larry nance", "pat riley", "eric riley",
+	"rasheed wallace", "chauncey billups", "richard hamilton", "tayshaun prince", "shane battier", "tony allen",
+	"bruce bowen", "ron artest", "metta world peace", "stephen jackson", "jason terry", "jason richardson",
+	"gilbert arenas", "stephon marbury", "steve francis", "baron davis", "jason williams", "antoine walker",
+	"shawn marion", "amare stoudemire", "elton brand", "jermaine oneal", "peja stojakovic", "mike bibby",
+	"andrei kirilenko", "zydrunas ilgauskas", "michael redd", "rashard lewis", "ben gordon", "gerald wallace",
+	"josh smith", "nate robinson", "jamal crawford", "lamar odom", "michael finley", "glenn robinson",
+	"latrell sprewell", "kenyon martin", "desmond mason", "cuttino mobley", "larry hughes", "jamaal tinsley",
+	"steve smith", "raja bell", "ricky davis", "corey maggette", "bonzi wells", "brad miller", "sam cassell",
+	"mike miller", "joe johnson", "chris bosh", "deron williams", "rajon rondo", "andre iguodala", "monta ellis",
+	"tyson chandler", "marcus camby", "theo ratliff", "tim hardaway", "mitch richmond", "glen rice",
+	"allan houston", "antawn jamison", "shareef abdur rahim", "darius miles", "quentin richardson",
+	"kirk hinrich", "andre miller", "mike dunleavy", "caron butler", "luol deng", "josh howard", "richard jefferson",
+	"vlade divac", "predrag stojakovic", "hedo turkoglu", "emeka okafor", "al jefferson", "kevin martin",
+	"jalen rose", "eddie jones", "keith van horn", "derek fisher", "robert horry", "bobby jackson", "mo williams",
+	"chucky atkins", "eric snow", "aaron mckie", "derrick coleman", "nick van exel", "damon stoudamire",
+	"jerry stackhouse", "rod strickland", "terrell brandon", "kenny anderson", "derek anderson", "brent barry",
+	"jason kapono", "fred jones", "dee brown", "harold miner", "god shammgod",
+	"grayson boucher", "philip champion", "aaron owens", "waliyy dixon", "troy jackson", "shane woney",
 ]
 
 # The test's own check that the name check works: these must fail it.
@@ -316,6 +465,12 @@ const NAMECHECK_PROBES := [
 	{"first": "Harlan", "last": "Malon", "name": "SET SHOT"},
 	{"first": "Otis", "last": "Brannigan", "name": "THE SKY HOOK"},
 	{"first": "Desmond", "last": "Ashby", "name": "MAGIC TOUCH"},
+	# P10-11: the 2000s list bites (a real surname, one letter from one, a 2000s nickname as a word)
+	{"first": "Dorian", "last": "Vance", "name": "ROOFTOP"},
+	{"first": "Keon", "last": "Ridley", "name": "EYES CLOSED"},
+	{"first": "Shane", "last": "Battier", "name": "LOCKBOX"},
+	{"first": "Tremaine", "last": "Pettaway", "name": "THE ANSWER"},
+	{"first": "Darnell", "last": "Kingsley", "name": "BIG SHOT"},
 ]
 
 static var notes: Array = []        # self_test(): things that fall back for now (art or story not merged yet)
@@ -754,7 +909,11 @@ static func _check_chapters() -> String:
 			if str(row[k]) == "":
 				return "chapter %s is built but has no %s" % [ch, k]
 		if looks == null or not (looks.get_script_constant_map().get("LOOKS", {}) as Dictionary).has(str(row.look)):
-			return "chapter %s: look %s is not in court_looks.gd" % [ch, row.look]
+			# the first built chapter's look must be there; a later chapter's court may land after its data (P10-11
+			# before P10-05): the game plays the gym (main.gd's look fallback)
+			if built_chapters().is_empty() or ch == str(built_chapters()[0]):
+				return "chapter %s: look %s is not in court_looks.gd" % [ch, row.look]
+			notes.append("chapter %s: look %s not in court_looks.gd yet; plays the gym" % [ch, row.look])
 		if twists == null or not (twists.get_script_constant_map().get("TWISTS", {}) as Dictionary).has(str(row.twist)):
 			notes.append("chapter %s: twist %s not in twists.gd yet (P9-08); plays twist none" % [ch, row.twist])
 		if not ResourceLoader.exists(MUSIC_DIR + str(row.fallback_music) + ".ogg"):
@@ -892,6 +1051,9 @@ static func _check_challenge_numbers(id: String, c: Dictionary) -> String:
 				return "%s: comeback start_score must be [you, them]" % id
 			if int(ss[0]) < 0 or int(ss[1]) <= int(ss[0]) or int(ss[1]) >= target:
 				return "%s: comeback must start behind and under the target" % id
+		"score":
+			if int(c.min) < 1 or int(c.min) > target:
+				return "%s: score min must be 1..target" % id
 	return ""
 
 static func _check_perks() -> String:
@@ -906,11 +1068,11 @@ static func _check_perks() -> String:
 		keys_seen.append(key)
 		var v: float = float(pk.value)
 		if key.ends_with("_mult"):
-			if v <= 1.0 or v > 1.2:
-				return "perk %s: a _mult value must be in (1.0, 1.2] (small, L8 a)" % pid
+			if is_equal_approx(v, 1.0) or absf(v - 1.0) > PERK_MULT_MAX + 0.0001:
+				return "perk %s: a _mult value must be 1.0 +- %.2f, not 1.0 (small, L8 a)" % [pid, PERK_MULT_MAX]
 		elif key.ends_with("_bonus"):
-			if v <= 0.0 or v > 0.06:
-				return "perk %s: a _bonus value must be in (0, 0.06] (small, L8 a)" % pid
+			if v <= 0.0 or v > PERK_BONUS_MAX:
+				return "perk %s: a _bonus value must be in (0, %.2f] (small, L8 a)" % [pid, PERK_BONUS_MAX]
 		else:
 			return "perk %s: key must end in _mult or _bonus" % pid
 		var taught: int = 0
