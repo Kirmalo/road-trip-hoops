@@ -145,7 +145,7 @@ const SIGN_POS := Vector2(1080, 518)   # below the three-button row (P7-04 made 
 #   [what, title, author, license, source, changes]   (changes: "" = none; every CC-BY item says what was changed)
 # --titletest checks that every CC-BY row of CREDITS.md has an entry here with its source URL and license.
 const CREDITS_LIST := [
-	["Players, legends, jerseys, courts, balls, portraits, trip map, van paints, Legends screens, icon, How to Play pictures",
+	["Players, legends (Grandfathers and Fathers), jerseys, courts, era courts, balls, portraits, trip map, van paints, Legends screens, icon, How to Play pictures",
 		"Original pixel art made for this project",
 		"Road Trip Hoops project", "Original",
 		"tools/art (make_players_v2.py, make_courts.py, make_portraits_v2.py, make_map.py, make_legends_ui.py, make_icon.py, make_howto.py)", ""],

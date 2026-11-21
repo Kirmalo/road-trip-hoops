@@ -77,7 +77,8 @@ Scope: a shippable Chapter 2 end to end, on the Phase 9 machinery (everything is
   "legends_fathers_finale_after"}`.
 - **Optional per-chapter rating keys (P10-02)** in a `CHAPTERS` row: `"challenge_avg"`, `"mate_drop"`,
   `"finale_stage_avg"`; a row without them uses today's constants (`CHALLENGE_AVG` 66, `MATE_DROP` 14,
-  `FINALE_STAGE_AVG` 52), so Chapter 1 is unchanged. The Fathers row sets them only if F6 asks for a step.
+  `FINALE_STAGE_AVG` 52, 55 after P10-23), so Chapter 1 is unchanged. The Fathers row sets them only if F6 asks for a
+  step (it does: 69 / 14 / 56).
 - Legend ids `lg_<nickname>` in lower case with `_` (the F1 answer fixes them; the plan's draft: `lg_rooftop`,
   `lg_ankles`, `lg_midrange`, `lg_freight`, `lg_eyes_closed`, `lg_lockbox`). Each row has every Chapter 1 key (`name`,
   `full`, `first`, `last`, `chapter: "fathers"`, `archetype`, `role`, `tier: "legend"`, `sheet`, `portrait`, `number`,
@@ -87,8 +88,8 @@ Scope: a shippable Chapter 2 end to end, on the Phase 9 machinery (everything is
   score at least `min` points yourself and your team wins; HUD "SCORE 6 ON LOCKBOX: 2"; checked at the end like `stop`.
 - New perks (F5 a; ids and keys distinct from Chapter 1's and from the twist keys): `"rise_up"` (`contested_dunk_bonus`
   +0.015, 0.025 after P10-26), `"handle"` (`cross_win_mult` 1.05, 1.15 after P10-26), `"pull_up"` (`mid_shot_bonus` +0.015), `"strong_hold"`
-  (`strip_guard_mult` 0.95: steal chance on him), `"blind_pass"` (`pass_safe_mult` 0.95: interception chance on his
-  passes), `"quick_hands"` (`steal_window_mult` 1.05). Defaults: 1.0 for `_mult`, 0.0 for `_bonus`.
+  (`strip_guard_mult` 0.95: steal chance on him), `"blind_pass"` (`pass_safe_mult` 0.95, 0.85 after P10-26: interception
+  chance on his passes), `"quick_hands"` (`steal_window_mult` 1.05). Defaults: 1.0 for `_mult`, 0.0 for `_bonus`.
 - Signature ids (F4 a): `cradle`, `double_cross`, `fadeaway`, `shoulder`, `no_look`, `chase_down` (one per legend; the
   `text` in plain words for the Hall).
 
@@ -273,7 +274,7 @@ Everything below (Tasks by wave).
   | each key one `p.perk(key, default)`, default = today; your side only, Road Trip games only; `--perk <id>` shows each
   working (PERK line, `perk_<id>_t0`); `--autoplay` unchanged with no perk; the Hall's perk text from the data | P10-17
   merged, P10-11, F5
-- **P10-23** | DONE (`docs/qa/phase10-challenges.md`: fathers 69 / 14 / 56, Eyes Closed 0-1, Lockbox min 3; expected crew Easy 64%, Normal 63%, Hard 44%; stale story lines listed for P10-29) | QA: Chapter 2 challenge balance
+- **P10-23** | DONE (`docs/qa/phase10-challenges.md`: fathers 69 / 14 / 56, Eyes Closed 0-1, Lockbox min 3 (owner: 6 kept, Chapter 1 `FINALE_STAGE_AVG` 52 -> 55; VISION "Phase 10 tuning"); expected crew Easy 64%, Normal 63%, Hard 44%; stale story lines listed for P10-29) | QA: Chapter 2 challenge balance
   | qa-balance-tester | `docs/qa/phase10-challenges.md`; may tune the Chapter 2 goal numbers and its per-chapter rating
   keys in `scripts/legends_data.gd`
   | `--challenge <id> --autoplay` with `--expected-roster` / `--best-roster` on every Father and the finale, Easy / Normal
@@ -321,7 +322,7 @@ Everything below (Tasks by wave).
   sheet (names and the look combination); bugs filed as P10-Bn | P10-03, P10-14, P10-15, P10-16, P10-18, P10-19, P10-20
 
 ### Wave 6
-- **P10-29** | Docs
+- **P10-29** | DONE (gameplay-programmer: CLAUDE.md Chapter 2, README.txt, CREDITS.md Fathers art rows and CREDITS_LIST, legends-plan.md part 3 as shipped and the shipped goal numbers, itch_page.md, story_text.gd goal numbers (Eyes Closed down one, the P9-26 comments), stale board numbers; import clean, `--legendtest` OK, `--titletest` OK, `--legends-test --stars 24 --target 3` LEGENDS END with both chapters) | Docs
   | gameplay-programmer C | `CLAUDE.md`, `README.txt`, `CREDITS.md` (check), `scripts/title.gd` (`CREDITS_LIST`),
   `docs/legends-plan.md` (part 3's Fathers table and the Chapter 1 goal numbers as shipped), `docs/release/itch_page.md`,
   `scripts/story_text.gd` (goal numbers in lines only, from P10-23's list)

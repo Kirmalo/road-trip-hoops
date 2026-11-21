@@ -73,9 +73,15 @@ Earn 24 stars and the Legends tour opens: a trip back through the eras of the ga
 six old-school legends of our own invention (a hook-shot center, a shot-blocking wall, a two-hand set shooter and
 more) in an old wood gym, under OLD SCHOOL rules: a slower game, big men rule, fewer threes and fewer whistles. Each
 one gives your road trip crew a challenge game: hold him under a few points, beat him while he's on fire, come back
-from behind. Win to unlock him for good and earn tokens, then take on the era finale. Unlocked legends hang in the
-Hall of Legends, coach your players with a small perk on the road trip, and one of them can join your starting
-three, right next to a boss.
+from behind. Win to unlock him for good and earn tokens, then take on the era finale.
+
+Chapter 2 is the Fathers (it opens at 36 stars or 12 tokens): six streetball legends of the baggy-shorts years, a
+high flyer, a crossover artist, a fadeaway scorer and more, on a blacktop under the lights with ISO BALL rules:
+crossovers shake defenders and dunks start further out. Their challenges are a step harder, and one asks you to
+score 6 points yourself on the best defender of the era.
+
+Unlocked legends hang in the Hall of Legends, coach your players with a small perk on the road trip, and one of
+them (from either era) can join your starting three, right next to a boss.
 
 ## Controls
 - Touch: drag anywhere on the left half of the screen to move (pull past the ring to sprint). Two buttons on the

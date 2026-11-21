@@ -275,7 +275,7 @@ const SCENES := {
 			"text": "Old school, huh? Slower legs, long shots that won't fall, close ones that will. My knee's going to love it here."},
 	],
 
-	# Steeple's challenge won (hold him under 6, to 15)
+	# Steeple's challenge won (hold him under 7, to 15)
 	"lg_steeple_unlock": [
 		{"who": "lg_steeple", "side": "right",
 			"text": "Under seven. Nobody's held me that low since the rims were nailed to barn walls."},
@@ -287,7 +287,7 @@ const SCENES := {
 			"text": "Ha! All right, you earned the big fella. Find me in the Hall, and I'll teach your bigs some touch at the rim."},
 	],
 
-	# Gate's challenge won (reach 11 before his crew gets 7)
+	# Gate's challenge won (reach 11 before his crew gets 10)
 	"lg_gate_unlock": [
 		{"who": "lg_gate", "side": "right",
 			"text": "Eleven before ten. Forty years I kept this lane shut, and you ran right past the gate."},
@@ -313,7 +313,7 @@ const SCENES := {
 			"text": "Mr. Vickery, with respect, it's been a fad for a real long time."},
 	],
 
-	# Boxcar's challenge won (3 blocks or steals on him, and win, to 15)
+	# Boxcar's challenge won (2 blocks or steals on him, and win, to 15)
 	"lg_boxcar_unlock": [
 		{"who": "lg_boxcar", "side": "right",
 			"text": "Twice you took it off me. Thirty years in the rail yard, and nothing ever moved me."},
@@ -327,7 +327,7 @@ const SCENES := {
 			"text": "Bring snacks. Old men run on snacks."},
 	],
 
-	# Velvet's challenge won (hold him under 5, to 11)
+	# Velvet's challenge won (hold him under 6, to 11)
 	"lg_velvet_unlock": [
 		{"who": "lg_velvet", "side": "right",
 			"text": "Under six. On my finger roll. You made me sweat, children, and on my good shirt."},
@@ -341,7 +341,7 @@ const SCENES := {
 			"text": "Gliding is just running with good manners. You'll get there."},
 	],
 
-	# Quarterback's challenge won (start down 0-6, come back, to 15)
+	# Quarterback's challenge won (start down 0-2, come back, to 15)
 	"lg_quarterback_unlock": [
 		{"who": "lg_quarterback", "side": "right",
 			"text": "Down two before the tip, and you came back anyway. I gave you a head start the wrong way!"},
@@ -460,12 +460,12 @@ const SCENES := {
 			"text": "Ha! Your van's got good taste. See me in the Hall, and I'll teach your bigs to keep the ball when hands come."},
 	],
 
-	# Eyes Closed's challenge won (start down 0-2, come back, to 15)
+	# Eyes Closed's challenge won (start down 0-1, come back, to 15)
 	"lg_eyes_closed_unlock": [
 		{"who": "lg_eyes_closed", "side": "right",
-			"text": "Down two before the tip, and you came back. I saw the whole thing. Well. I heard it."},
+			"text": "Down one before the tip, and you came back. I saw the whole thing. Well. I heard it."},
 		{"who": "ud_deuce", "side": "left", "mood": "happy",
-			"text": "Down two is how we start every morning, Mr. Pemberton. We're used to it."},
+			"text": "Down one is how we start every morning, Mr. Pemberton. We're used to it."},
 		{"who": "ud_jojo", "side": "left",
 			"text": "Who are you even talking to? You're looking at the hot dog stand."},
 		{"who": "lg_eyes_closed", "side": "right", "mood": "happy",

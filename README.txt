@@ -242,9 +242,11 @@ The Legends mode is a tour through the eras of the game. You beat old-time legen
 them for good. Every legend is a made-up character with his own name and looks, not a real player.
 - Opening it: the LEGENDS button on the title opens once you have 24 stars, from any trip games (a whole trip on
   EASY gives exactly 24).
-- The era tour: a timeline of four chapters. Chapter 1, THE GRANDFATHERS, is open; THE FATHERS, THE PRESENT and
-  THE NEW GENERATION show as COMING LATER, with what will open them. Tap the open chapter (or its PLAY button). The
-  first time, a story scene introduces the era. HALL opens the Hall of Legends; BACK goes to the title.
+- The era tour: a timeline of four chapters. Chapter 1, THE GRANDFATHERS, opens at 24 stars; Chapter 2, THE
+  FATHERS, at 36 stars or 12 legend tokens (whichever comes first; until then its panel is LOCKED with that line).
+  THE PRESENT and THE NEW GENERATION show as COMING LATER, with what will open them. Tap an open chapter (or its
+  PLAY button). The first time, a story scene introduces the era. A chapter whose finale you won shows FINALE WON.
+  HALL opens the Hall of Legends; BACK goes to the title.
 - The chapter view: the six legends' plaques (a locked one is a silhouette with "?" and his challenge), the finale
   card, YOUR CREW, the level buttons and PLAY. Tap a plaque to pick his game, pick the level (EASY / NORMAL / HARD,
   LEGEND once you have all 72 stars; it starts on your trip's level), then PLAY. BACK goes to the timeline.
@@ -252,8 +254,9 @@ them for good. Every legend is a made-up character with his own name and looks, 
   easier as your trip crew grows). With no saved trip, the Cornfield Kings play at even stats ("NO TRIP: THE KINGS
   PLAY"). If you drafted a legend and he is on the other side, he sits that game and your best bench player plays
   ("STEEPLE SITS: ... PLAYS"). A Legends game never changes your trip: no stat points, no stars, no record.
-- Each legend plays with two other Grandfathers as his teammates. The goal shows on a line under the score. If you
-  break it (he scores too much, or his crew reaches its number first), the game ends at once as a loss.
+- Each legend plays with two other legends of his era as his teammates. The goal shows on a line under the score.
+  If you break it (he scores too much, or his crew reaches its number first), the game ends at once as a loss.
+  The Grandfathers:
   - Steeple, the hook-shot center: hold him under 7 points and win (to 15).
   - Gate, the shot-blocking wall: reach 11 before his crew gets 10.
   - Set Shot, the deep shooter: he starts on fire and cools down only after 2 misses in a row; win (to 15).
@@ -261,34 +264,52 @@ them for good. Every legend is a made-up character with his own name and looks, 
     stops doesn't count.
   - Velvet, the smooth slasher: hold him under 6 points and win (to 11).
   - Quarterback, the no-look floor general: you start down 0-2; come back and win (to 15).
+  The Fathers (a step harder than the Grandfathers):
+  - Rooftop, the high-flying shooting guard: block or steal the ball on him 2 times and win (to 15).
+  - Ankles, the crossover artist: reach 11 before his crew gets 10.
+  - Midrange, the isolation scorer: he starts on fire and cools down only after 2 misses in a row; win (to 15).
+  - Freight, the low-post bulldozer center: hold him under 7 points and win (to 15).
+  - Eyes Closed, the no-look passer: you start down 0-1; come back and win (to 15).
+  - Lockbox, the lockdown wing defender: you yourself (YOU, your first starter) score at least 6 of your team's
+    points and win (to 11). The line shows your points so far ("SCORE 6 ON LOCKBOX: 2"). The hardest one.
 - Tokens: a won challenge gives 1 token on EASY, 2 on NORMAL, 3 on HARD or LEGEND. Only your best result for each
-  game counts, so play a game again on a higher level for more: 21 tokens in Chapter 1 (6 challenges and the finale,
-  3 each). Your first win against a legend unlocks him for good: he says a few words, and his plaque goes into the
+  game counts, so play a game again on a higher level for more: 21 tokens in each chapter (6 challenges and the
+  finale, 3 each), 42 in all. Your first win against a legend unlocks him for good: he says a few words, and his plaque goes into the
   Hall of Legends.
-- The finale: once all six are beaten, the GRANDFATHERS FINALE opens: your crew against Steeple, Velvet and
-  Quarterback, to 21, with no special goal. A story scene comes before and after it; winning it finishes the
-  chapter.
+- The finale: once all six of a chapter are beaten, its finale opens: the GRANDFATHERS FINALE (Steeple, Velvet and
+  Quarterback) or the FATHERS FINALE (Rooftop, Midrange and Freight), to 21, with no special goal. A story scene
+  comes before and after it; winning it finishes the chapter.
 - OLD SCHOOL rules: every Grandfathers game is played in the OLD GYM with the era's rules, the same for both teams
   (a banner shows them at the tip-off): everyone is 6% slower, shots beyond the arc go in 20% less often, close
   shots, layups and dunks go in 8% more often, and fouls are called a little over half as often (60%).
+- ISO BALL rules: every Fathers game is played in the NIGHT PARK (a blacktop under lights) with the era's rules,
+  the same for both teams: a crossover beats the defender in front about 20% more often, dunks take off from 10%
+  further out, and shots fly on a slightly higher arc. The Fathers' own music track is not in yet (the owner picks
+  it); until then their games play the New York music.
 - Signature moves: each legend has one small edge only he has. Steeple shoots hook shots close to the rim (hard to
   block), Gate's blocks stay in play (he keeps the ball or tips it to a teammate), Set Shot's long range starts
   further out, Boxcar dunks from further out, Velvet's finger rolls slip past defenders, and Quarterback throws
-  long outlet passes.
+  long outlet passes. Rooftop's cradle dunks slip past part of a contest, Ankles' double crossover beats his man
+  more often (and more defenders fall), Midrange's turnaround fadeaway (its own animation) loses less to a contest,
+  Freight's close shots and dunks are harder to block, Eyes Closed's no-look passes are harder to intercept, and
+  Lockbox's chase-down blocks from behind work more often.
 - The Hall of Legends: HALL on the tour, or HALL OF LEGENDS on CREW & CREDITS. One row of plaques per era. Tap an
   unlocked legend to see his card, name, archetype, number, tokens, his strengths (the rating shape), his signature
   move and his mentor perk; REPLAY STORY plays his unlock scene again.
 - Mentors: in the Hall, tap TRAIN on an unlocked legend and pick one of your players (your trip's crew; without a
   trip, Deuce, Jojo and Tank). The player gets a small perk, about 2 stat points' worth:
   Steeple: close shots and layups +1.5%; Gate: block timing window 5% wider; Set Shot: shots beyond the arc +1.5%;
-  Boxcar: dunks from a little further out; Velvet: contested layups +1.5%; Quarterback: passes 5% faster.
+  Boxcar: dunks from a little further out; Velvet: contested layups +1.5%; Quarterback: passes 5% faster;
+  Rooftop: contested dunks +2.5%; Ankles: crossovers beat the defender 15% more often; Midrange: jumpers inside the
+  arc +1.5%; Freight: 5% harder to strip; Eyes Closed: passes 15% harder to intercept; Lockbox: steal timing window
+  5% wider.
   Each player has one mentor at most and each legend trains one player at a time. SWITCH moves him to another
   player and STOP TRAINING ends it (both ask first). Mentors coach your regular players only (a drafted legend can't
   be trained). Perks work in Road Trip games only, not in Quick Game or Legends games, and they stay when you start
   a new trip.
-- Drafting a legend: every legend you have unlocked joins the DRAFT list for your open star roster slots (a LEGENDS
-  row at the end). He joins boss-level for the part of the trip you have reached, with his own strengths (no stat
-  above 95). Only one legend can start, but he may start next to one boss.
+- Drafting a legend: every legend you have unlocked joins the DRAFT list for your open star roster slots (one
+  LEGENDS row per era at the end, "UNLOCKED IN LEGENDS - THE FATHERS"). He joins boss-level for the part of the trip you have reached, with his own strengths (no stat
+  above 95). Only one legend can start (from any era), but he may start next to one boss.
 - Saving: the Legends progress (tokens, unlocked legends, scenes seen, mentors) is saved by itself, apart from the
   trip; a NEW TRIP keeps it.
 
@@ -418,18 +439,20 @@ scripts/twists.gd (the city twists):
 - TWISTS: one block per twist with its numbers, each with a comment, e.g. "speed_mult": 0.9 (sand: everyone 10%
   slower), "shot_clock": 18.0 (Memphis), "stamina_refill_mult": 0.7 (humid: 30% slower). The "banner" text is what
   the banner, the map card and the pause screen show. "era_grand" is the Grandfathers' OLD SCHOOL rules
-  ("inside_mult": close shots, "foul_mult": fouls called).
+  ("inside_mult": close shots, "foul_mult": fouls called), "era_fathers" the Fathers' ISO BALL rules
+  ("cross_beat_mult": crossovers that beat the man, "dunk_range_mult": how far out a dunk starts).
 scripts/legends_data.gd (the Legends mode, all plain data):
-- CHAPTERS: the four eras (only THE GRANDFATHERS is built): name, court, music, era rules, the stars that open it
-  ("gate"), its six legends and the finale
+- CHAPTERS: the four eras (THE GRANDFATHERS and THE FATHERS are built): name, court, music, era rules, the stars
+  or tokens that open it ("gate"), its six legends and the finale; a chapter may set its own "challenge_avg",
+  "mate_drop" and "finale_stage_avg" (the Fathers: 69, 14 and 56)
 - LEGENDS: one block per legend: names, number, "shape" (his five stats around his level; they add up to 0),
   "signature", "challenge" (the goal and its numbers, and "line", the text the game shows), "perk", "bio"
 - PERKS: the mentor perks and their sizes
 - TOKENS_BY_LEVEL: tokens for a win on each level (1 / 2 / 3, LEGEND 3)
 - CHALLENGE_AVG: the challenge legend's level before his shape (66); MATE_DROP: how much lower his 2 teammates play
-  (14)
+  (14) (both for a chapter without its own)
 - DRAFT_TIER: what a drafted legend adds to the stage's average player (20); FINALE_STAGE_AVG: the finale legends'
-  base before that (52)
+  base before that (55, for a chapter without its own)
 Any new legend must pass the real-name check (--legendtest; the list is docs/legends-namecheck.md).
 scripts/trip_map.gd: DRIVE_TIME: seconds the van drives to the next city (3.0)
 scripts/stars.gd: REWARDS: the reward list (at how many stars each one opens)
@@ -582,7 +605,7 @@ Legends:
 - challenge.gd: the challenge goal in a game (the line under the score, the win or loss)
 - legends_tour.gd: the era tour screen (the timeline and the chapter view)
 - hall.gd: the Hall of Legends and the mentor picker
-- legends_test.gd: a test that plays Chapter 1 by itself (for the team, not used in play)
+- legends_test.gd: a test that plays the Legends chapters by itself (for the team, not used in play)
 - anim_test.gd: a test that checks every player's pictures (for the team, not used in play)
 - howto_shots.gd: takes the game screenshots the How to Play pictures are made from (for the team, not used
   in play)
@@ -605,9 +628,10 @@ The pictures are drawn by scripts, not by hand, so they can be changed and made 
   8 city courts) and the ball in assets/ball.
 - python3 tools/art/make_portraits_v2.py   makes the story portraits in assets/portraits (comic style).
 - python3 tools/art/make_map.py       makes the trip map, pins, van and van paints in assets/map.
-- Legends: make_players_v2.py --only lg_steeple,... makes the legend players (with their hook-shot pages,
-  lg_<id>_x0.png); make_portraits_v2.py --legends their portraits; make_courts.py --era the OLD GYM;
-  python3 tools/art/make_legends_ui.py   the tour timeline, chapter pins and Hall frames in assets/legends.
+- Legends: make_players_v2.py --only lg_steeple,... makes the legend players (the Grandfathers with their
+  hook-shot pages, Midrange with his fadeaway pages, lg_<id>_x0.png); make_portraits_v2.py --legends (or --legends
+  fathers) their portraits; make_courts.py --era the OLD GYM and the NIGHT PARK (--era fathers: only the NIGHT
+  PARK); python3 tools/art/make_legends_ui.py   the tour timeline, chapter pins and Hall frames in assets/legends.
 - python3 tools/art/make_cosmetics_preview.py   puts every star reward (jerseys, balls, vans, courts) on one
   picture, docs/art/cosmetics_preview.png.
 - python3 tools/art/make_icon.py      makes the app icons in assets/icon and the itch.io cover

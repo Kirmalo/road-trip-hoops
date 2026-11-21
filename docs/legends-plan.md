@@ -50,14 +50,16 @@ one pin per era). Each chapter has its own court, music, era rules and 6 legends
 
 | Type | Goal | Example |
 |---|---|---|
-(Shipped Chapter 1 goal numbers: see `scripts/legends_data.gd` and docs/qa/phase9-challenges.md, P9-26.)
-
-| Hold him | Win while the legend scores fewer than N points | Hold the hook-shot center under 6 |
+| Hold him | Win while the legend scores fewer than N points | Hold the hook-shot center under 7 |
 | Beat the fire | He starts on fire and cools down only on two misses in a row; win | The deep shooter |
 | One on one | 1-on-1 to 11, you against him | The crossover artist |
-| Stop the move | Block or steal his signature move N times and win | The high flyer: 3 blocks |
-| Race | Reach N before his team reaches M | The speedster: 11 before he gets 7 |
-| Comeback | Start down 0-6 in a game to 15 | The no-look passer's crew |
+| Stop the move | Block or steal his signature move N times and win | The high flyer: 2 blocks |
+| Race | Reach N before his team reaches M | The speedster: 11 before he gets 10 |
+| Comeback | Start down 0-2 in a game to 15 | The no-look passer's crew |
+| Score on him | You yourself score at least N of your team's points and win (Phase 10) | The lockdown defender: 6 |
+
+The numbers in the examples are the shipped ones (one on one is not built; `scripts/legends_data.gd`; Chapter 1 tuned
+in P9-26, docs/qa/phase9-challenges.md; Chapter 2 in P10-23, docs/qa/phase10-challenges.md).
 
 Games are short: to 11 or 15 (finales to 21). With retries a chapter is about 7 games and 45-60 minutes, so **the
 whole tour is about 3-4 hours**, about as long as the Road Trip, and longer for a player who chases 3 tokens
@@ -79,14 +81,18 @@ add up to 0). The level itself depends on where he plays (part 5), so a shape ne
 | Otis "Quarterback" Brannigan | No-look floor general | Short, mustache, high socks | Full-court outlet pass for a lay-in | +5 / +5 / -10 / 0 / 0 |
 
 ### Chapter 2: Fathers
-| Legend | Archetype | Look notes | Signature move | Shape |
-|---|---|---|---|---|
-| Dorian "Rooftop" Vance | High-flying shooting guard | Lanky, cornrows, arm sleeve, baggy shorts | Cradle dunk (ball rocked in the arm in the air) | +10 / 0 / +15 / -10 / -15 |
-| Tremaine "Ankles" Pettaway | Crossover artist | Small and quick, braids, headband | Double crossover (more ankle-breaker falls) | +15 / +5 / -5 / -5 / -10 |
-| Darnell "Midrange" Kingsley | Isolation scorer | Wiry wing, fade haircut, long shorts | Turnaround fadeaway | 0 / +20 / 0 / -10 / -10 |
-| Bartholomew "Freight" Thackeray | Low-post bulldozer center | Huge, goatee, headband | Shoulder-in power dunk | -15 / -15 / +25 / +10 / -5 |
-| Keon "Eyes Closed" Ridley | No-look passer | Slim, durag, wristbands | No-look and behind-the-back passes | +5 / 0 / -5 / -5 / +5 |
-| Shane "Lockbox" Hollister | Lockdown wing defender | Rangy, buzz cut, arm sleeve | Chase-down block from behind | +5 / -10 / -5 / +20 / -10 |
+As shipped in Phase 10 (owner, VISION "Phase 10 names and numbers"; the draft names Vance, Ridley and Shane were changed
+by the name check; looks spread so no legend copies one famous player; challenges as tuned by P10-23 and the owner):
+| Legend | # | Archetype | Look notes | Signature move | Challenge | Shape (spd/sht/fin/def/sta) |
+|---|---|---|---|---|---|---|
+| Dorian "Rooftop" Ashcombe | 27 | High-flying shooting guard | Lanky, cornrows, left arm sleeve, baggy shorts | Cradle dunk (slips part of a contest) | 2 blocks or steals on him and win (to 15) | +10 / 0 / +15 / -10 / -15 |
+| Tremaine "Ankles" Pettaway | 16 | Crossover artist | Small and quick, short twists, headband, wristbands | Double crossover (more ankle-breaker falls) | Race: 11 before his crew gets 10 | +15 / +5 / -5 / -5 / -10 |
+| Darnell "Midrange" Kingsley | 28 | Isolation scorer | Wiry wing, low fade, long shorts, leg sleeve | Turnaround fadeaway (its own animation) | He starts on fire (to 15) | 0 / +20 / 0 / -10 / -10 |
+| Bartholomew "Freight" Thackeray | 48 | Low-post bulldozer center | Huge, shaved head, goatee, headband | Shoulder-in power dunk (hard to block) | Hold him under 7 (to 15) | -15 / -15 / +25 / +10 / -5 |
+| Keon "Eyes Closed" Pemberton | 14 | No-look passer | Slim, durag, wristbands, leg sleeve | No-look and behind-the-back passes | Comeback from 0-1 (to 15) | +5 / 0 / -5 / -5 / +5 |
+| Corwin "Lockbox" Hollister | 36 | Lockdown wing defender | Rangy, buzz cut, right arm sleeve | Chase-down block from behind | Score 6 yourself on him and win (to 11) | +5 / -10 / -5 / +20 / -10 |
+
+The finale: Rooftop, Midrange and Freight to 21, no goal.
 
 ### Chapter 3: Present
 | Legend | Archetype | Look notes | Signature move | Shape |
@@ -302,6 +308,7 @@ sample uses one of them)
 - a) Steeple: hold him under 6 (game to 15); Gate: race (reach 11 before his crew gets 7); Set Shot: beat the fire
   (to 15); Boxcar: stop the move (3 blocks or steals on him, and win, to 15); Velvet: hold him under 5 (to 11);
   Quarterback: comeback (start down 0-6, to 15); the finale a normal game to 21 **(recommended)**
+  (Shipped after P9-26: Steeple under 7, Gate 11 before 10, Boxcar 2 stops, Velvet under 6, Quarterback 0-2.)
 - b) Every Chapter 1 legend a "hold him" game (one goal type to build and tune first; the others in Phase 10)
 - c) A normal game against his crew for all six in Phase 9, the special goals later
 
@@ -381,7 +388,7 @@ answers; each question names the tasks it blocks.
 1's tuned ones and QA tunes them, as in P9-26)
 - a) Rooftop: stop the move (block or steal on him 2 times and win, to 15); Ankles: race (reach 11 before his crew gets
   10); Midrange: beat the fire (he starts on fire, to 15); Freight: hold him under 7 (to 15); Eyes Closed: comeback
-  (start down 0-2, to 15); Lockbox: one cheap new goal, "score on him" (you yourself score at least 6 of your team's
+  (start down 0-2, to 15; shipped 0-1, P10-23); Lockbox: one cheap new goal, "score on him" (you yourself score at least 6 of your team's
   points and win, to 11); the finale: Rooftop, Midrange and Freight to 21 **(recommended)**
 - b) As a), but Lockbox gets a race (reach 11 before his crew gets 9): only the five Phase 9 goal types, nothing new
   to build

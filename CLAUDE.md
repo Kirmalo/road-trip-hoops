@@ -11,15 +11,16 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
   list, the web ZIP name and the APK read it. `config/icon` is `assets/icon/icon.png`; `quit_on_go_back=false` (the
   Android back gesture pauses or goes BACK, it only quits on the title).
 - `main.tscn`: a single Node2D with `scripts/main.gd`. Everything else is built in code (no other scenes).
-- `scripts/main.gd`: game manager. Clocks, possession, HUD, camera, input routing, the test modes. Builds the game
-  when `Flow.screen == "game"`, else asks `flow.gd` for the current screen; plays a trip game from `Flow.match`
-  (crews, court, music, twist). `_fix_jersey_clash()` (P8-B7): your star jersey switches to your normal look for a
-  game against a crew in close colors (`Cosmetics.jersey_clashes()`; that game only, never saved).
-  Phase 9: a Legends game (`Flow.in_legends()`) builds both teams from `Flow.match` too (`Flow.in_match()`); a
-  challenge (`Flow.match.challenge` not empty) adds `challenge.gd` (`_add_challenge()`; `_count_points()` before every
-  score, `end_challenge(won)` when a goal breaks; the verdict goes to `Flow.last_result.challenge`). Hooks:
-  OLD SCHOOL's `inside_mult` and the perks `close_shot_bonus`, `three_bonus`, `contested_layup_bonus` in
-  `shot_probability()`, `pass_speed_mult` in `_perk_pass_step()`. `--legendtest`, `--challenge`, `--perk` (below).
+- `scripts/main.gd`: game manager. Clocks, possession, HUD, camera, input routing, the test modes. Builds the game when
+  `Flow.screen == "game"`, else asks `flow.gd` for the current screen; plays a trip game from `Flow.match` (crews,
+  court, music, twist). `_fix_jersey_clash()` (P8-B7): your star jersey switches to your normal look for a game against
+  a crew in close colors (`Cosmetics.jersey_clashes()`; that game only, never saved). Legends (Phase 9-10): a Legends
+  game (`Flow.in_legends()`) builds both teams from `Flow.match` too (`Flow.in_match()`); a challenge
+  (`Flow.match.challenge` not empty) adds `challenge.gd` (`_add_challenge()`; `_count_points()` before every score,
+  `end_challenge(won)` when a goal breaks; the verdict goes to `Flow.last_result.challenge`). Hooks: OLD SCHOOL's
+  `inside_mult` and the perks `close_shot_bonus`, `three_bonus`, `contested_layup_bonus` (P10-22: also `mid_shot_bonus`,
+  `contested_dunk_bonus`) in `shot_probability()`, `pass_speed_mult` in `_perk_pass_step()`, `strip_guard_mult` in
+  `steal_chance()`, `steal_window_mult` in `steal_quality()`. `--legendtest`, `--challenge`, `--perk` (below).
 - `scripts/rules.gd`: first to 21, scoring, switching sides, dead balls and inbounds, fouls, free throws, out of bounds.
 - `scripts/difficulty.gd`: EASY / NORMAL / HARD values for RED, and the saved settings (`user://settings.cfg`),
   including the Quick Game court unlocks (`unlock_court(city)` after a city's boss game is won; kept for good) and
@@ -45,14 +46,27 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
   `HOOK_BLOCK_MULT` 0.4 on it and on his layups; drawn with the sheet's `hook` frames when `Sheets.has_anim()`),
   `keep_block` (Gate), `deep_set` (Set Shot: long falloff starts 4 ft further out), `long_dunk` (Boxcar: dunks from
   9 ft), `finger_roll` (Velvet: keeps 25% of the rim contest), `outlet` (Quarterback: passes of 34 ft+ fly faster
-  and safer, `ball.outlet`). Constants at the top; `sig_log()` counts `sig_<id>_t<team>` and prints `SIGNATURE`
-  lines in test runs. Mentor perks (P9-24): `perk(key, default)` from his match dict's `"perk"` (default = today);
-  `perk_log()` counts `perk_<id>_t<team>` and prints one `PERK` line per game in test runs.
-- `scripts/defense.gd`: CPU man-to-man defense, pokes, block jumps and block rules. Phase 9: OLD SCHOOL's `foul_mult`
+  and safer, `ball.outlet`). The Fathers (P10-17): `cradle` (Rooftop: his dunks keep `CRADLE_KEEP` 0.5 of the rim
+  contest, drawn as `CRADLE_STYLE` windmill), `double_cross` (Ankles: a missed beat gets a second roll at
+  `DOUBLE_CROSS_EXTRA` 0.35, more falls), `fadeaway` (Midrange: a jumper inside the arc within `FADE_MAX_FT` 20 keeps
+  `FADE_KEEP` 0.5 of the contest, drawn with the sheet's `fadeaway` frames, sliding back `FADE_FT` 1.5), `shoulder`
+  (Freight: block chance x `SHOULDER_BLOCK_MULT` 0.5 on his layups, dunks and jumpers inside 14 ft), `no_look` (Eyes
+  Closed: interception chance x `NO_LOOK_PICK_MULT` 0.5, `pick_mult()`), `chase_down` (Lockbox, in defense.gd).
+  Constants at the top; `sig_log()` counts `sig_<id>_t<team>` and prints `SIGNATURE` lines in test runs (`anim_hook`
+  / `anim_fadeaway` when those frames played). ISO BALL (P10-12): `cross_beat_check()` gives a missed beat a second
+  roll sized on `CROSS_ISO_BASE_RATE` 0.42 (today's beat share) so the twist's `cross_beat_mult` x the beats;
+  `dunk_reach()` x `dunk_range_mult`. Mentor perks (P9-24): `perk(key, default)` from his match dict's `"perk"`
+  (default = today); `perk_log()` counts `perk_<id>_t<team>` and prints one `PERK` line per game in test runs.
+  P10-22: `cross_win_mult` in `cross_beat_check()`, `pass_safe_mult` in `pick_mult()`.
+- `scripts/defense.gd`: CPU man-to-man defense, pokes, block jumps and block rules. Legends: OLD SCHOOL's `foul_mult`
   on both foul calls, the `block_window_mult` perk in `_jump_timing()`, `shooter.sig_block_mult(kind)` on block
-  chances (the hook), `keep_block()` (Gate's swat tipped to a teammate or kept).
+  chances (the hook; P10-17 the shoulder), `keep_block()` (Gate's swat tipped to a teammate or kept). P10-17
+  `chase_down` (Lockbox): a block try from behind the shooter (`CHASE_DOWN_DOT`) x `CHASE_DOWN_MULT` 1.6 (at most 1)
+  with `CHASE_DOWN_REACH_FT` 1.5 more reach, and the CPU goes up at a rim move from behind within 9 ft (player.gd
+  constants). P10-22: `steal_window_mult` (quick_hands) in `_update_pokes()`.
 - `scripts/ball.gd`: ball states HELD, PASS, SHOT, LOOSE, DEAD; `z` is the ball's height (sim pixels). Draws the
   picked ball (`Cosmetics.ball_sheet()`) in every game. `outlet` (P9-20): the current pass is an outlet.
+  `_pick_mult()` (P10-17): the passer's `pick_mult()` on every pick-off roll, lobs too (no_look, blind_pass).
 - `scripts/court.gd`: draws the floor and backdrop (one instance) and the rims (second instance, above the players),
   through `view.gd`, in the look from `court_looks.gd` (plus props: wood backboard, near fence, puddles, sand).
 - `scripts/view.gd`: the projection (static functions, preloaded as `View`): `to_screen`, `to_floor`, `size_at`, the
@@ -60,25 +74,29 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
 - `scripts/court_looks.gd`: court looks as data (gym, blacktop, the 8 city courts and the 2 star reward looks
   `midnight` and `gold_hall`, "reward" `court_1` / `court_2`): colors, textures, music track, ambience.
   `ALWAYS_OPEN` (gym, blacktop) need no unlock. `era_grand` "OLD GYM" (P9-05) is the Legends Chapter 1 court
-  (music `legends_grand`, no twist key: the legends match brings it); never in the Quick Game COURT list.
+  (music `legends_grand`, no twist key: the legends match brings it); `era_fathers` "NIGHT PARK" (P10-05, a blacktop
+  under light poles) the Chapter 2 court, the same way. Neither is ever in the Quick Game COURT list.
 - `scripts/fx.gd`: popups (kept inside the view), screen shake, fire trail, foot dust, camera punch.
   `scripts/audio.gd`: sound effects, music (crossfade, ducking) and twist ambience loops; `sfx_volume` and
   `music_volume` (0..1, 1.0 = the old levels), both saved in `settings.cfg`.
-- `scripts/twists.gd`: the city twists as data (static, preloaded as `Twists`): wind, crowd, humid, thin_air, wet,
-  sand, cage (and none), and the era twist `era_grand` "OLD SCHOOL" (P9-08, Legends Chapter 1: `speed_mult` 0.94,
+- `scripts/twists.gd`: the city twists as data (static, preloaded as `Twists`): wind, crowd, humid, thin_air, wet, sand,
+  cage (and none), and the era twist `era_grand` "OLD SCHOOL" (P9-08, Legends Chapter 1: `speed_mult` 0.94,
   `long_shot_mult` 0.80 (P9-17, was 0.88), new keys `inside_mult` 1.08 (close jumpers, layups, dunks) and `foul_mult`
-  0.6 (every foul call), both 1.0 in `DEFAULTS`). Every sim hook is `Twists.value(key, default)`, so twist none is
-  exactly the old game; no hook reads a team. `scripts/twist_fx.gd`: the twist's banner, effects and ambience (drawing
-  only); `era_grand`'s banner icon is an old laced ball; `banner_y` (P9-B4) puts the banner under a challenge's goal
-  line.
+  0.6 (every foul call), both 1.0 in `DEFAULTS`), and `era_fathers` "ISO BALL" (P10-12, Chapter 2; P10-21 kept the
+  numbers: new keys `cross_beat_mult` 1.2 (crossovers beat the man in front, everyone; player.gd `CROSS_ISO_BASE_RATE`)
+  and `dunk_range_mult` 1.1 (6 -> 6.6 ft), plus `arc_mult` 1.05, drawing only). Every sim hook is `Twists.value(key,
+  default)`, so twist none is exactly the old game; no hook reads a team. `scripts/twist_fx.gd`: the twist's banner,
+  effects and ambience (drawing only); `era_grand`'s banner icon is an old laced ball, `era_fathers`'s a modern ball
+  with a crossover zigzag; `banner_y` (P9-B4) puts the banner under a challenge's goal line.
 - `scripts/sheets.gd`: the player sheet reader (static, `Sheets`): v2 from `assets/players2/format.json`, hands and
   ball points, cards, palettes, and the fallback chain. Indexed pages draw through `scripts/shaders/palette.gdshader`.
   Star jerseys are palettes `<sheet>_j<N>` / `<sheet>_crew_j<N>` (a missing one draws the look without it;
   `strip_jersey()`).
-  Extra animations (P9-04c): `format.json`'s `"extra"` section (today only `hook`, listing its `"sheets"`: the six
-  `lg_` sheets) is carried only by the sheets it lists, on extra pages `<id>_x<N>.png` after the normal pages (same
-  palettes, so every recolor works); `has_anim(sheet, anim)` says which; anywhere else an extra resolves to the
-  normal shot (ALIASES `hook` -> `shoot`). A `format.json` without `"extra"` reads as before.
+  Extra animations (P9-04c): `format.json`'s `"extra"` section (`hook`, its `"sheets"` the six Grandfathers;
+  `fadeaway` (P10-04b, 13 frames, `"fade"` / `"fade_ft"` 1.5 the slide back), only `lg_midrange`) is carried only by
+  the sheets it lists, on extra pages `<id>_x<N>.png` after the normal pages (same palettes, so every recolor works);
+  `has_anim(sheet, anim)` says which; anywhere else an extra resolves to the normal shot (ALIASES `hook` -> `shoot`,
+  `fadeaway` -> `shoot`). A `format.json` without `"extra"` reads as before.
 - `scripts/anim_test.gd`: the `--anim-test` driver (checks every sheet, writes contact sheets). It checks the
   `"extra"` section and, on each sheet it lists, the extra pages (present, right size, pixels, hand and ball points);
   x pages that nothing lists are a note; `--anim-fake-v2` adds a fake extra and two broken sheets that must fail.
@@ -88,7 +106,7 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
 - Road Trip (Phase 5; progression in Phase 8): static data and logic, and screens built in code (each a CanvasLayer
   from its own script):
   - `scripts/flow.gd`: scene flow (static). `Flow.go(screen, args)` reloads `main.tscn` into a screen; `Flow.match`
-    is the next trip game, `Flow.last_result` the last one. Screen table in `SCREENS`. Phase 9 (P9-03): screens
+    is the next trip game, `Flow.last_result` the last one. Screen table in `SCREENS`. Legends (P9-03): screens
     "legends" and "hall"; `in_legends()` (`Flow.match.mode == "legends"`), `in_match()` (trip or legends: a game built
     from `Flow.match`; `in_trip()` keeps its meaning), `legends_chapter()` / `legends_args()`. `game_finished()` hands a
     legends game to `Legends.record_result()` and goes where `Legends.after_result()` says; the pause panel's QUIT in
@@ -109,18 +127,20 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
     recruit / draft); the trip has `crew_points` (anyone may spend them), `paid` (game keys) and `replay` ({} or
     {city, game}); `points` is still written (the total), so 1.0.0 still reads it. A version 1 save catches up on
     load: its pool plus `CATCHUP_*` become crew points, every won game is paid, its stars are credited once.
-  - Phase 9 in `trip.gd` (P9-21, P9-23; the save stays version 2): a legend unlocked in the Legends file
-    (`Legends.is_unlocked()`, loaded at run time) is in the draft (`draft_pool_by_crew()`'s last row, city
-    `LEGENDS_ROW` "legends") for a star slot, at `legend_ratings(id, stage_reached())` (stage average +
-    `LegendsData.DRAFT_TIER` 20, his shape, each stat <= `BOSS_CAP` 95), via "draft", 0 points, your colors; a plain
-    roster entry with an `lg_` id (a Phase 8 build drops it). `LEGEND_LIMIT` 1 legend among the starters
-    (`starters_ok()`, `LEGEND_RULE` "ONLY ONE LEGEND CAN START", `is_legend()`); a legend is not a boss, so one legend
-    and one boss may start. A loaded `lg_` id stays on the roster even if this run's Legends file has him locked; more
-    legend starters are repaired on load like the bosses. Mentors: `roster_player()` adds `"perk"` (`perk_for(id)`,
-    from `Legends.perks_for()`) only on a loaded trip, never in the ramp sims (`_perks_off`). `end_of_trip_crew(best)`:
-    the New York final's three of `--expected-roster` / `--best-roster`, never one of the challenge's opponents (for
-    `--challenge` balance runs). Replay level (owner): `start_replay(city, n, level)` keeps the level in the marker's
-    optional `"level"` (`replay_level()`; "" or a marker without it = the trip's level, a closed LEGEND plays
+  - Legends in `trip.gd` (P9-21, P9-23, P10-19; the save stays version 2): a legend unlocked in the Legends file
+    (`Legends.is_unlocked()`, loaded at run time) is in the draft (`draft_pool_by_crew()`'s last rows, `legends_rows()`:
+    one per built chapter, city `LEGENDS_ROW` "legends", its `"chapter"` and color) for a star slot, at
+    `legend_ratings(id, stage_reached())` (stage average + `LegendsData.DRAFT_TIER` 20, his shape, each stat <=
+    `BOSS_CAP` 95), via "draft", 0 points, your colors; a plain roster entry with an `lg_` id (a Phase 8 build drops it;
+    a Phase 9 build drops a Father). `LEGEND_LIMIT` 1 legend among the starters, all chapters together (`starters_ok()`,
+    `LEGEND_RULE` "ONLY ONE LEGEND CAN START", `is_legend()`); a legend is not a boss, so one legend and one boss may
+    start. A loaded `lg_` id stays on the roster even if this run's Legends file has him locked; more legend starters
+    are repaired on load like the bosses. Mentors: `roster_player()` adds `"perk"` (`perk_for(id)`, from
+    `Legends.perks_for()`) only on a loaded trip, never in the ramp sims (`_perks_off`). `end_of_trip_crew(best)`: the
+    New York final's three of `--expected-roster` / `--best-roster`, never one of the challenge's opponents (for
+    `--challenge` balance runs; P10-N1: in a legends game its legend comes only from the chapters up to the challenge's
+    own, `_sim_chapters`). Replay level (owner): `start_replay(city, n, level)` keeps the level in the marker's optional
+    `"level"` (`replay_level()`; "" or a marker without it = the trip's level, a closed LEGEND plays
     `REPLAY_CLOSED_LEGEND` "hard"); the match, the CPU level and the stars use it, `Trip.level` never changes.
   - `scripts/cities.gd`: the 8-city route, cities (court look, music, twist), crews and players as const data
     (stage ratings, tiers, game targets); `player(id)` of an `lg_` id returns his `legends_data.gd` row (tier
@@ -134,12 +154,12 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
     section "cosmetics") and the 2 Quick Game court looks; `ball_sheet()`, `van_path()`, `jersey_suffix()`,
     `jersey_clashes()`. A missing file or a locked pick falls back to the default.
   - `scripts/ui_kit.gd`: the shared look for the screens (buttons, panels, sliders).
-  - `scripts/title.gd`: screens "title", "settings", "crew" (ROAD TRIP with its "STARS n/72" tab / QUICK GAME /
-    LOCKER / SETTINGS / HOW TO PLAY / CREW & CREDITS, the version bottom-right). Settings: MUSIC on/off and volume,
-    SOUND, LEVEL (LEGEND once open), FULL SCREEN, LEFT-HANDED. CREW shows each player's points, DRAFTED tags and the
-    crew points. The credits list is `CREDITS_LIST` (keep it in step with `CREDITS.md`), then the Godot license.
-    Phase 9 (P9-15): LEGENDS is the 4th top-row button (ROAD TRIP / QUICK GAME / LOCKER / LEGENDS, `TOP_BTN4`); before
-    Chapter 1's gate it is dark with a "24 STARS" tab and a tap shows "LEGENDS OPEN AT 24 STARS. YOU HAVE n: WIN TRIP
+  - `scripts/title.gd`: screens "title", "settings", "crew" (ROAD TRIP with its "STARS n/72" tab / QUICK GAME / LOCKER /
+    SETTINGS / HOW TO PLAY / CREW & CREDITS, the version bottom-right). Settings: MUSIC on/off and volume, SOUND, LEVEL
+    (LEGEND once open), FULL SCREEN, LEFT-HANDED. CREW shows each player's points, DRAFTED tags and the crew points. The
+    credits list is `CREDITS_LIST` (keep it in step with `CREDITS.md`), then the Godot license. Phase 9 (P9-15): LEGENDS
+    is the 4th top-row button (ROAD TRIP / QUICK GAME / LOCKER / LEGENDS, `TOP_BTN4`); before the first built chapter's
+    gate (Chapter 1's) it is dark with a "24 STARS" tab and a tap shows "LEGENDS OPEN AT 24 STARS. YOU HAVE n: WIN TRIP
     GAMES!" (`Legends.mode_open()` / `gate_text()`, a safe fallback without legends.gd). CREW & CREDITS gets HALL OF
     LEGENDS top-right (screen "hall", back "crew") once one legend is unlocked.
   - `scripts/locker.gd`: "locker" (from the title, BACK to `args.back`): the star ladder (scrolls) and the JERSEY,
@@ -151,15 +171,15 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
     level row (P9, owner: EASY / NORMAL / HARD, LEGEND once open; opens on the trip's level; the hint says what a win
     there earns, "A WIN ON HARD: 3 STARS"); PLAY = `Trip.start_replay(city, n, level)`.
     `scripts/story.gd`: "story" (portraits and text box); the lines are data in `scripts/story_text.gd` (also
-    `RECRUIT_LINES`, one per recruit, the six legends too). A legend's name plate and portrait come from
+    `RECRUIT_LINES`, one per recruit, the twelve legends too). A legend's name plate and portrait come from
     `legends_data.gd` (`lg_` ids); Legends scenes (ids `lg_*` / `legends_*`) never write the trip (legends.gd marks
     them seen in the Legends file). `scripts/lineup.gd`: "lineup" (pick 3 starters, the first is you; points
     badges and the STAT POINTS card, OPEN SLOT cards to the draft, BOSS tags and the one-boss rule; P9-22: LEGEND
     tags in the chapter's color, a second legend flashes `Trip.LEGEND_RULE` and is not picked).
   - `scripts/draft.gd`: "draft" (`args.back` "lineup"): the beaten crews' players by crew; pick one, SIGN, confirm.
-    P9-22: a last LEGENDS row ("UNLOCKED IN LEGENDS - THE GRANDFATHERS"): his card in your colors in the era frame
-    (`assets/legends/frame_<chapter>.png`), a LEGEND tag; picking one says "<name> joins at these stats. ONLY ONE
-    LEGEND CAN START."
+    P9-22: LEGENDS rows last, one per chapter (P10-19, timeline order: "UNLOCKED IN LEGENDS - THE GRANDFATHERS",
+    "... - THE FATHERS"): his card in your colors in his era's frame (`assets/legends/frame_<chapter>.png`), a LEGEND
+    tag in the chapter's color; picking one says "<name> joins at these stats. ONLY ONE LEGEND CAN START."
   - `scripts/after_game.gd`: "result" (score, the points each starter won, the stars (NEW STAR / NEW BEST, n/72),
     any reward just unlocked, RETRY / NEXT) and "points" (spend stat points: after every win the 3 starters with
     SKIP; after a city or from elsewhere the whole roster; crew points go to anyone).
@@ -168,23 +188,38 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
   - `scripts/pause.gd`: the pause button (top-right) and panel in every human game (with the twist line).
   - `scripts/trip_test.gd`: the `--trip-test` driver (plays a whole trip headless through each screen's
     `auto_step()`).
-- Legends (Phase 9, Chapter 1 "the Grandfathers"; plan `docs/legends-plan.md`, owner answers in VISION "Phase 9
-  answers L1-L8" and the rows after it). The hard rule: every legend is our own character (no real player's name,
-  nickname, face, number in team colors, trademark, team or arena; `docs/legends-namecheck.md`, checked by
-  `--legendtest`). Static data and logic, two screens (CanvasLayers built in code, a 1280 x 720 box centred):
+- Legends (Phase 9, Chapter 1 "the Grandfathers"; Phase 10, Chapter 2 "the Fathers"; plan `docs/legends-plan.md`,
+  owner answers in VISION "Phase 9 answers L1-L8", "Phase 10 answers F1-F8" and the rows after each). The hard
+  rule: every legend is our own character (no real player's name, nickname, face, number in team colors, trademark,
+  team or arena, and no look + build + number + move that points at one real player; `docs/legends-namecheck.md`,
+  checked by `--legendtest`). Every chapter is data: no chapter id in game logic outside `legends_data.gd`, the art
+  lookups and the tests. Static data and logic, two screens (CanvasLayers built in code, a 1280 x 720 box centred):
   - `scripts/legends_data.gd` (static const data, `LegendsData`; preloads nothing, cities.gd and trip.gd call it):
-    `CHAPTERS` (4 rows; only `grand` is `built`: twist `era_grand`, look `era_grand`, music `legends_grand`, gate 24
-    stars; Chapters 2-4 are locked pins with gates 36 / 48 / 72 stars or 12 / 30 / 48 tokens), `LEGENDS` (6 ids:
-    `lg_steeple`, `lg_gate`, `lg_set_shot`, `lg_boxcar`, `lg_velvet`, `lg_quarterback`: shape, signature, challenge,
-    perk, unlock scene), `PERKS`, the name check lists (`REAL_NAMES`, `REAL_NICKNAMES`: keep them in step with the
-    doc). Tuning at the top: `TOKENS_BY_LEVEL` 1 / 2 / 3 (LEGEND 3), `CHALLENGE_AVG` 66 (the challenge legend, plus
-    his shape), `MATE_DROP` 14 (his 2 legend teammates play that much lower), `DRAFT_TIER` 20, `FINALE_STAGE_AVG` 52
-    (finale legends at 52 + 20, shaped), `RATING_CAP` 95. `max_tokens()` 21 (6 challenges + the finale, x 3).
+    `CHAPTERS` (4 rows; `grand` and `fathers` are `built`. `grand`: twist `era_grand`, look `era_grand`, music
+    `legends_grand`, gate 24 stars. `fathers`: twist `era_fathers`, look `era_fathers`, music `legends_fathers` with
+    `fallback_music` `newyork` until the owner's pick (no `legends_fathers.ogg` yet; `--legendtest` prints a NOTE),
+    gate 36 stars or 12 tokens (whichever first, F7 a; no Chapter 1 finale needed). Chapters 3-4 are locked pins,
+    gates 48 / 72 stars or 30 / 48 tokens), `LEGENDS` (12 ids, Chapter 1 `lg_steeple`, `lg_gate`, `lg_set_shot`,
+    `lg_boxcar`, `lg_velvet`, `lg_quarterback`; Chapter 2 `lg_rooftop`, `lg_ankles`, `lg_midrange`, `lg_freight`,
+    `lg_eyes_closed`, `lg_lockbox`: shape, signature, challenge, perk, unlock scene), `PERKS`, the name check lists
+    (`REAL_NAMES`, `REAL_NICKNAMES`, 2000s era too: keep them in step with the doc). Tuning at the top:
+    `TOKENS_BY_LEVEL` 1 / 2 / 3 (LEGEND 3), `CHALLENGE_AVG` 66 (the challenge legend, plus his shape), `MATE_DROP` 14
+    (his 2 legend teammates play that much lower), `DRAFT_TIER` 20, `FINALE_STAGE_AVG` 55 (finale legends at 55 + 20,
+    shaped; P10 owner, was 52), `RATING_CAP` 95. Per-chapter rating keys (P10-02): a `CHAPTERS` row may set
+    `challenge_avg` / `mate_drop` / `finale_stage_avg` (read through `challenge_avg(ch)` etc.; a row without them
+    uses the constants, so Chapter 1 has none); the Fathers 69 / 14 / 56 (F6 a: a step harder). `max_tokens()` 42
+    (per built chapter: 6 challenges + the finale, x 3; `chapter_max_tokens(ch)` 21).
     Challenges as tuned (P9-26, `docs/qa/phase9-challenges.md`): Steeple hold under 7 (to 15), Gate race to 11 before
     his crew gets 10, Set Shot fire (he starts on fire, cools after 2 misses in a row; to 15), Boxcar 2 stops (blocks
     or steals on him) and win (to 15), Velvet hold under 6 (to 11), Quarterback comeback from 0-2 (to 15); the finale
-    Steeple, Velvet and Quarterback to 21, no goal. Perks (owner, after P9-30): shot perks +1.5% (`close_touch`,
-    `deep_range`, `soft_layup`), the others 5% (`block_timing`, `long_dunk`, `quick_pass`).
+    Steeple, Velvet and Quarterback to 21, no goal. Chapter 2 (P10-23 and the owner, `docs/qa/phase10-challenges.md`):
+    Rooftop 2 stops (to 15), Ankles race to 11 before 10, Midrange fire (to 15), Freight hold under 7 (to 15), Eyes
+    Closed comeback from 0-1 (to 15), Lockbox `score` `min` 6 (to 11; meant as the hardest, met about 17% or less);
+    the finale Rooftop, Midrange and Freight to 21. Perks (owner, after P9-30): shot perks +1.5% (`close_touch`,
+    `deep_range`, `soft_layup`), the others 5% (`block_timing`, `long_dunk`, `quick_pass`); the Fathers' (P10-22,
+    sizes after P10-26): `rise_up` (`contested_dunk_bonus` 0.025), `handle` (`cross_win_mult` 1.15), `pull_up`
+    (`mid_shot_bonus` 0.015), `strong_hold` (`strip_guard_mult` 0.95, steals on him), `blind_pass` (`pass_safe_mult`
+    0.85, interceptions of his passes), `quick_hands` (`steal_window_mult` 1.05).
   - `scripts/legends_save.gd` (static): `user://legends.json` (any test run `user://legends_test.json`), version 1,
     temp file + rename and the web sync file like `save.gd`: `{"tokens": {"lg:<id>" | "fin:<chapter>": 0..3},
     "unlocked", "seen", "finales", "mentors": {legend id: player id}}`. Missing, broken, oversized or not ours = {}; a
@@ -201,37 +236,43 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
     his scene, the finale win its "after" scene, then the chapter view). Mentors (P9-23; owner: regular players only,
     a drafted legend has no mentor): `mentor_of()`, `pupil_of()`, `can_mentor()`, `assign()` (switching frees both
     sides), `release()`, `perks_for()`; one perk per player, one pupil per legend; works in Road Trip games only.
-  - `scripts/challenge.gd`: the Node main.gd adds in a challenge game: the goal types `hold` / `fire` / `stop` /
-    `race` / `comeback`, a HUD line under the top bar (centred, 280..1000 at 1280: "HOLD STEEPLE UNDER 7: 3"), a broken
-    goal ends the game at once as a loss ("CHALLENGE FAILED: ..."). Its only sim changes are the start (the start
+  - `scripts/challenge.gd`: the Node main.gd adds in a challenge game: the goal types `hold` / `fire` / `stop` / `race`
+    / `comeback` and (P10-13) `score` (row key `min`: YOU, `Flow.match.human`, score at least `min` of your team's
+    points, free throws too, and win; judged at the end like `stop`, "YOU SCORED 4 OF 6"), a HUD line under the top bar
+    (centred, 280..1000 at 1280: "HOLD STEEPLE UNDER 7: 3", "SCORE 6 ON LOCKBOX: 2"; `possessive()`: "ANKLES' CREW"), a
+    broken goal ends the game at once as a loss ("CHALLENGE FAILED: ..."). Its only sim changes are the start (the start
     score, the legend on fire) and the end. A finale gets no challenge node.
-  - `scripts/legends_tour.gd`: "legends" (args `{"chapter": id}` opens that chapter's view, else the timeline; BACK
-    goes view -> timeline -> title): the timeline (4 chapter panels: PLAY, LOCKED with the gate, COMING LATER, FINALE
-    WON; TOKENS n/max, HALL); the chapter view: 6 plaques (locked: silhouette and "?"; beaten: his card and best
-    tokens), the finale card (locked until all 6), YOUR CREW, the level picker, PLAY. A chapter's first open plays
-    its intro scene, a finale's first PLAY its "before" scene. `auto_step()` plays the first open challenge.
+  - `scripts/legends_tour.gd`: "legends" (args `{"chapter": id}` opens that chapter's view, else the timeline; BACK goes
+    view -> timeline -> title): the timeline (4 chapter panels: PLAY, LOCKED with the gate, COMING LATER, FINALE WON;
+    TOKENS n/max, HALL; frames, pins and colors per chapter from `assets/legends/ui.json`, missing art = the `grand`
+    art; P9-B7: the backdrop fills a wide screen, the buttons stay in the 1280 box); the chapter view: 6 plaques
+    (locked: silhouette and "?"; beaten: his card and best tokens), the finale card (locked until all 6), YOUR CREW, the
+    level picker, PLAY. A chapter's first open plays its intro scene, a finale's first PLAY its "before" scene.
+    `auto_step()` plays the first open challenge.
   - `scripts/hall.gd`: "hall" (args `{"back": "legends" | "crew"}`, optional `"pick"`, `"back_args"`): era rows of
-    plaques (scroll; Chapters 2-4 locked rows), the detail (card in the era frame, names, archetype, number, tokens,
-    rating shape, signature move, mentor perk, REPLAY STORY) and the mentor panel (P9-27: TRAIN / SWITCH / STOP
-    TRAINING; the trip's roster, or the underdogs without a trip; a switch or a stop asks to confirm). `auto_step()`
+    plaques (scroll; one row per built chapter, Chapters 3-4 locked rows), the detail (card in the era frame, names,
+    archetype, number, tokens, rating shape, signature move, mentor perk, REPLAY STORY; long texts shrink to fit,
+    P10-B5 / B6) and the mentor panel (P9-27: TRAIN / SWITCH / STOP TRAINING, legends of every built chapter; the
+    trip's roster, or the underdogs without a trip; a switch or a stop asks to confirm; P10-B2 `known_mentor()`: a
+    mentor id this build doesn't know reads as NO MENTOR, the pair stays in the file). `auto_step()`
     closes the picker, then BACK (args `"train"` or `--hall-train`: it first assigns one pupil).
   - `scripts/legends_test.gd`: the `--legends-test` driver (below).
 - `scripts/countdown.gd`: the 3-2-1-GO! countdown at the start of every match (main.gd freezes play and input until GO!;
   timing, sizes and sounds are constants at its top).
 - `scripts/howto_shots.gd`: the `--howto-shots DIR` capture driver (test only; main.gd adds it to a seeded
   `--humantest` game; it only watches and saves `DIR/howto_<id>.png`, prints `HOWTO SHOTS <n>/9`).
-- `assets/`: original art made by `tools/art/`: `players2/` (v2.1 player sheets: 64 x 96 frames drawn 2x, indexed
-  8-bit gray pages `<id>_p<N>.png`, `palettes/<id>.png` per sheet, per `_crew` recolor and per star jersey `_j<N>`,
-  `palettes.json`, `format.json` (the truth for frames and animations), body-keyed `hands.json` (hand and ball
-  points), `cards/`), `courts/` floors and backdrops (with `midnight_*`, `gold_hall_*`), `ball/` (`ball_1..3` the
-  star balls), `portraits/` story portraits, `map/` trip map (`van_1..3` the van paints), `icon/` app icons,
-  `howto/` the How to Play pictures; `sfx/` (with the twist sounds and the reward and countdown sounds) and `music/`
-  (see `CREDITS.md`). Phase 9: `players2/lg_*` (the six legend sheets, `_crew` and `_crew_j1..3` palettes, cards;
-  each also carries the hook on extra pages `lg_<id>_x0.png`, listed in `format.json`'s `"extra"`), `portraits/lg_*`
-  (plus `_happy`), `legends/` (the tour timeline, chapter pins, the era card frame `frame_grand`, the locked plaque
-  frame, the silhouette, `ui.json`), `courts/era_grand_floor.png` / `era_grand_backdrop.png` (OLD GYM),
-  `music/legends_grand.ogg` (Bebop (Chiptune), Pro Sensory, CC0). The v1 sheets (`assets/players/`) were removed in
-  P6-25. The old Kenney Sports Pack sprites
+- `assets/`: original art made by `tools/art/`: `players2/` (v2.1 player sheets: 64 x 96 frames drawn 2x, indexed 8-bit
+  gray pages `<id>_p<N>.png`, `palettes/<id>.png` per sheet, per `_crew` recolor and per star jersey `_j<N>`,
+  `palettes.json`, `format.json` (the truth for frames and animations), body-keyed `hands.json` (hand and ball points),
+  `cards/`), `courts/` floors and backdrops (with `midnight_*`, `gold_hall_*`), `ball/` (`ball_1..3` the star balls),
+  `portraits/` story portraits, `map/` trip map (`van_1..3` the van paints), `icon/` app icons, `howto/` the How to Play
+  pictures; `sfx/` (with the twist sounds and the reward and countdown sounds) and `music/` (see `CREDITS.md`). Legends:
+  `players2/lg_*` (the twelve legend sheets, `_crew` and `_crew_j1..3` palettes, cards; the six Grandfathers carry the
+  hook and Midrange the fadeaway on extra pages `lg_<id>_x0.png`, listed in `format.json`'s `"extra"`), `portraits/lg_*`
+  (plus `_happy`), `legends/` (the tour timeline, chapter pins `pin_<chapter>[_done|_locked]`, the era card frames
+  `frame_grand` / `frame_fathers`, the locked plaque frame, the silhouette, `ui.json`), `courts/era_grand_*` (OLD GYM)
+  and `courts/era_fathers_floor.png` / `_backdrop.png` (NIGHT PARK), `music/legends_grand.ogg` (Bebop (Chiptune), Pro
+  Sensory, CC0). The v1 sheets (`assets/players/`) were removed in P6-25. The old Kenney Sports Pack sprites
   (`assets/*.png`, facing +x) are only a fallback when a player has no sheet at all.
 - `project.godot` imports lossless textures as PNG (`force_png`), so the indexed pages stay 8-bit. Keep it.
 - `tools/`: `art/make_players_v2.py` (the player sheets from `art/crews.json`; uses `art/make_anim_sample.py`, the
@@ -244,13 +285,18 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
   `make_music.sh` (sound and music processing), `make_twist_sfx.py` (twist sounds), `make_ui_sfx.py` (star,
   stat_up, unlock, countdown, go; `all` writes them into `assets/sfx/`; needs ffmpeg), `build_web.sh`,
   `build_android.sh`. Python 3 with Pillow and numpy; rerun a generator and commit its output in `assets/`.
-  Phase 9: `make_players_v2.py --extra-sheets id,...` (these sheets carry every extra animation this run; the `lg_`
-  ids and a crews.json `"extra"` list always do), `--hook-preview [ID]` (only `docs/art/hook_shot_v1.gif`),
-  `--legends-strip` (only `docs/art/legends_grand.png`, from the written files; the sheets: `--only <lg_ ids>`);
-  `make_players.py --legends-sample` (only the owner's look sample `docs/art/legends_sample_v1.png` / `.gif`; the
-  era parts live in its "Phase 9 era parts"); `make_portraits_v2.py --legends` (only the six legends and
-  `docs/art/legends_portraits.png`); `make_courts.py --era` (only `era_grand`; `--era-preview DIR` adds a tiles
-  preview); `art/make_legends_ui.py` (`assets/legends/` and the preview `docs/art/legends_ui.png`).
+  Legends: `make_players_v2.py --extra-sheets id,...` (these sheets carry every extra animation this run;
+  `name:id,...` only that extra; otherwise the hook goes on the Grandfathers' crew "GR" and an extra on any sheet
+  whose crews.json entry lists it in `"extra"`, today Midrange's fadeaway), `--hook-preview [ID]` (only
+  `docs/art/hook_shot_v1.gif`), `--extra-preview NAME [ID]` (only that extra's gif, `fadeaway`:
+  `docs/art/fadeaway_v1.gif`), `--extra-strip NAME ID DIR` (scratch), `--legends-strip [fathers]` (only
+  `docs/art/legends_grand.png` / `legends_fathers.png`, from the written files; the sheets: `--only <lg_ ids>`);
+  `make_players.py --legends-sample [fathers]` (only the owner's look sample `docs/art/legends_sample_v1.*` /
+  `legends_fathers_sample_v1.*`; the era parts live in its "Phase 9 era parts" / "Phase 10 era parts", palettes
+  `ERA2_*` in crews.json); `make_portraits_v2.py --legends [fathers]` (only that chapter's six legends and
+  `docs/art/legends_portraits.png` / `legends_fathers_portraits.png`); `make_courts.py --era [fathers|grand]`
+  (only the era looks, or that one; `--era-preview DIR` adds a tiles preview); `art/make_legends_ui.py`
+  (`assets/legends/` and the preview `docs/art/legends_ui.png`).
 - `docs/release/`: the itch.io release kit: `cover.png`, `screenshots/`, `itch_page.md` (the page text), `UPLOAD.md`
   (the owner's upload steps), `ANDROID.md` (the release key and the APK). Release builds go to `build/release/`
   (ignored by git).
@@ -361,6 +407,9 @@ godot --headless --path . --fixed-fps 60 --quit-after 20000 -- --titletest
   the Legends screens (24 stars, every legend unlocked for the run, nothing saved): the chapter view goes to the
   timeline, the timeline to the title, the Hall to its back (the tour's chapter view or CREW), the mentor picker
   closes; a challenge game pauses and resumes, and the pause panel's QUIT lands on the challenge's chapter view.
+  P10-25: the same for Chapter 2 (`BACKTEST_CHAPTER2` "fathers": its view, the Hall on a Fathers plaque back to the
+  chapter view and to CREW, the mentor picker, a Fathers challenge's pause, resume and QUIT); the run opens Chapter
+  2's gate itself (its gate's stars, this run only) unless `--stars 36` or `--tokens 12` already do.
 - `--titletest` also visits the LOCKER and back; it puts every setting back and restores `user://settings.cfg` byte
   for byte at the end. P9-15: it checks the LEGENDS button (locked with the gate tab and its line, e.g. `--stars 0`;
   open with `--stars 24`: LEGENDS and BACK to the title) and, once a legend is unlocked (`--legends-unlock-all`),
@@ -394,12 +443,14 @@ godot --headless --path . --fixed-fps 60 --quit-after 20000 -- --titletest
 - `--best-roster` (with `--city`): BLUE is the strongest legal three a trip could field there (4 star slots open,
   the best recruit and drafts, at most one boss among the starters): the upper bound. The ramp (P8-25,
   `docs/qa/phase8-ramp.md`): `Cities.STAGE_AVG` 40 / 46 / 52 / 58 / 63 / 68 / 73 / 78, `LEGEND_BONUS` 12.
-  Phase 9 (P9-21): the best three may hold one drafted legend next to one boss (every built legend counts as
-  draftable; `--legends-unlock-none` keeps them out: the Phase 8 bound). It gives **no** mentor perk: the ramp sims
-  run with `_perks_off` (the `trip.gd` comments that say P9-30 adds the best perk there are stale). P9-30 measured the
-  bound with `--best-roster --perk -,quick_pass,close_touch` (`docs/qa/phase9-ramp.md`).
+  Phase 9 (P9-21): the best three may hold one drafted legend next to one boss (in `--city` runs every built
+  legend of every chapter counts as draftable; in a `--challenge` run, P10-N1, only the legends of the chapters up to
+  the challenge's own, never one of its opponents; `--legends-unlock-none` keeps them out: the Phase 8 bound). It
+  gives **no** mentor perk: the ramp sims run with `_perks_off`. P9-30 measured the bound with `--best-roster --perk
+  -,quick_pass,close_touch` (`docs/qa/phase9-ramp.md`), P10-26 with `--perk -,quick_pass,quick_hands`
+  (`docs/qa/phase10-ramp.md`: Hard RED 46%).
 
-Phase 9 checks (Legends; the test files only: `user://legends_test.json`, `user://trip_test.json`,
+Phase 9-10 checks (Legends; the test files only: `user://legends_test.json`, `user://trip_test.json`,
 `user://settings_test.cfg`):
 ```
 # the Legends data (every row, shapes, scenes, sheets, portraits, perks; the real-name check against the
@@ -407,9 +458,11 @@ Phase 9 checks (Legends; the test files only: `user://legends_test.json`, `user:
 # (Legends.self_test(): records, gates, unlocks, both crew sources, the swap, mentors, the test trip save unchanged
 # byte for byte, in its own files). Prints LEGENDTEST OK (exit 0) or LEGENDTEST FAILED: <why> (exit 1) and quits
 godot --headless --path . -- --legendtest
-# Chapter 1 headless through every screen's auto_step(): title, LEGENDS, the intro, 6 challenges (each unlock
-# scene), the finale (its before and after scenes), one replay at another level (best tokens kept), HALL and back,
-# BACK to the title. Every game is decided at once. Checks tokens (the level's 1/2/3, best kept, in the file too),
+# every built chapter in data order, headless through every screen's auto_step(): title, LEGENDS, per chapter the
+# intro, 6 challenges (each unlock scene), the finale (its before and after scenes), one replay at another level
+# (best tokens kept), HALL and back, the next chapter's gate checked against the data (Chapter 2 opens by its 12
+# tokens after a Normal or Hard Chapter 1, or with --stars 36; an Easy run's 7 tokens leave it locked), then BACK to
+# the title. Every game is decided at once. Checks tokens (the level's 1/2/3, best kept, in the file too),
 # unlocks, the chapter closing and the test trip save byte for byte after every game. The first try of the first
 # "hold" challenge breaks its goal and the first try of the first "stop" challenge is won with no stops (no tokens);
 # both are retried. Prints LEGENDS lines, ends with "LEGENDS END" (exit 0) or "LEGENDS ERROR: <why>" (exit 1)
@@ -420,7 +473,12 @@ godot --headless --path . --fixed-fps 60 --quit-after 2000000 -- --legends-test 
   `--trip-test --target 3 --trip-stop-after chicago`), else the Kings. Level: `--difficulty` (LEGEND with
   `--stars 72`), else the chapter view's. Sub-flags: `--legends-force-loss N[,M]` (those legends games of this run
   are lost by the score, then retried), `--legends-no-trip` (erases the test trip save first: the Kings play),
-  `--legends-play` (the games are played out CPU vs CPU instead of decided; slow, not deterministic).
+  `--legends-play` (the games are played out CPU vs CPU instead of decided; slow, not deterministic),
+  `--legends-chapter <id>` (P10-09: only that built chapter, its gate forced open for the run by `--tokens` or
+  `--stars` as its gate says, never saved; no next-chapter gate check), `--legends-test-two` (the run uses
+  `LegendsData.two_chapter_test_data()`, a stand-in second chapter of Chapter 1 copies, gate 36 stars or 12 tokens).
+  Per chapter: the force-loss count and the goal tests (broken hold, short stop) run in each chapter, and the other
+  chapters' tokens and finales must not move.
 - `--challenge <id>` (with `--autoplay` CPU vs CPU, or `--humantest`): plays that Legends game as `Flow.match`
   (`Legends.test_match()`): a legend id (`lg_steeple`), his short name (`steeple`, `set_shot`), `finale` (the first
   built chapter's), `fin:<chapter>` or a chapter id. Level `--difficulty`, else `Legends.default_level()`. Your
@@ -430,19 +488,22 @@ godot --headless --path . --fixed-fps 60 --quit-after 2000000 -- --legends-test 
   <level> crew <crew> | to N | twist | look | music | BLUE ... | RED ...`, `CHALLENGE GOAL <id>: <line>` at the
   start, and at the end `CHALLENGE <id> <level> met|failed <score> | <goal summary> | <why>` (a finale: `CHALLENGE
   fin:<ch> <level> met|failed <score> | finale`) and `POINTS {...}`; signature moves print `SIGNATURE` lines and
-  count `sig_<id>_t<team>` (`anim_hook` when the hook frames played). An unknown id prints `LEGENDS MATCH: unknown
+  count `sig_<id>_t<team>` (`anim_hook` / `anim_fadeaway` when those frames played). An unknown id prints `LEGENDS MATCH: unknown
   --challenge ...` and the run plays a Quick Game.
 - `--legends-unlock-all` / `--legends-unlock-none`: every / no legend counts as unlocked this run (never saved; the
   title, the tour, the Hall, the draft, mentors). `--legends-unlock-all` closes no chapter (finales stay as saved).
 - `--tokens N` (or `--tokens=N`, 0..9999): this run acts as if the legend token total were N (never saved); only
-  built chapters open, so in Phase 9 it changes the counts shown, not what can be played.
+  built chapters open, so `--tokens 12` opens Chapter 2 (Chapters 3-4 are not built).
 - `--hall-train`: the Hall's `auto_step()` first trains one pupil (the first free legend on the first player without
   a mentor), then goes BACK.
 - `--trip-test` with a legend in its first draft's pool (`--legends-unlock-all`, or legends unlocked in the test
   Legends file) and `--stars 12` or more (P9-29): the first open slot drafts a legend through the DRAFT screen's
   LEGENDS row (the hint must say `LEGEND_RULE`), a second slot drafts a second one, the lineup must refuse a second
   legend starter, a recruit screen signs a boss and a game starts legend + boss; the driver never makes a legend
-  YOU. Without a legend in the pool it is the Phase 8 driver.
+  YOU (P10-B3: a resumed save's own legend YOU plays). P10-24, two eras: the first legend draft signs a Father from
+  the Fathers row, the second a Grandfather (`LEGEND_DRAFT_CHAPTERS`; each must show in his own chapter's row), the
+  lineup refuses the two together (`LEGEND_LIMIT` counts every era) and starts the Father next to a boss ("TRIP
+  legend eras" at TRIP END). Without a legend in the pool it is the Phase 8 driver.
 
 After gameplay changes, run several `--autoplay` games and check the stats look sane. A typical game to 21 is about
 55-90 shots at about 50% (P7-T1: was 75-120 at about 35%) and 7-11 minutes of game time (`GAME LENGTH`), ends 21-x
