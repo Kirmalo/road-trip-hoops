@@ -54,3 +54,36 @@ Notes:
   transcription of a commercial game's theme), "Ragtime Jazz" (Tarush Singhal, CC0; its page is tagged with a
   commercial game's name, so it may imitate that game's music), "Shufflin'" (Eric Matyas, CC-BY 3.0, big band, but
   not chiptune), tracks offered only as OGA-BY or CC-BY-SA, and one swing track with an insulting title.
+
+## Legends: Fathers (P10-07)
+
+The second era's chapter track (Chapter 2, the Fathers, ISO BALL): upbeat chiptune with a 2000s streetball feel, a
+blacktop under lights (hip-hop beats, funk, grooves), per VISION "Music style". Not New York's "Slam-Funk" and no track
+already in the game. Five candidates; each `fathers_*.ogg` here is a 30-second sample made like the samples above
+(mono, -20 LUFS, faded in and out, the busiest 30 s after the first 4 s, `python3 tools/make_music.py preview SRC
+OUT`). Pick one (or "none of these"); the pick then gets cut into a loop `assets/music/legends_fathers.ogg` (P10-20),
+with a row in `CREDITS.md` and `CREDITS_LIST`. Nothing here is in the game.
+
+All from OpenGameArt; each license was read on the track's page (November 2026): CC0 or CC-BY only. Where a page
+offers several licenses, we would use the one named first.
+
+| Sample | Title | Author | License | Page | Length | Why it fits | What would change |
+|---|---|---|---|---|---|---|---|
+| `fathers_a_headspin.ogg` | Headspin | congusbongus | CC0 (https://creativecommons.org/publicdomain/zero/1.0/) | https://opengameart.org/content/headspin | 3:25 (MP3) | The most "hip-hop" of the five: a MilkyTracker beat with a laid-back head-nod groove, bass, Rhodes, a guitar lick and synth stabs; the name fits the b-boy side of streetball. Built only from single instrument samples (kick, snare, 808 hat, bass, guitar, Rhodes, pad; read from the module's sample list), no sampled records | Tracker hip-hop more than pure chiptune (sampled drums, not chip noise); slower and cooler than the city tracks. Mastered loud (about -10 LUFS) brought down to -20; loop on a phrase with a crossfade, mono, Ogg q3; courtesy credit (same composer as Memphis and Denver) |
+| `fathers_b_wheelie.ogg` | Wheelie | congusbongus | CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/; also offered: OGA-BY 4.0) | https://opengameart.org/content/wheelie | 3:09 (MP3) | "Energetic synth funk" on the OPL3 FM chip (RADTracker): the most driving of the five, a funk bass and bright FM leads; reads as game-time energy | Loud master (about -9 LUFS) brought down; loop on a phrase with a crossfade; credit row "Wheelie" by congusbongus, CC-BY 4.0. Same composer as Memphis's "New Blue Shoes", so the FM sound is close to that city's |
+| `fathers_c_thrift_rob.ogg` | Thrift Rob | Christovix (asks for the credit "Music by Christovix Games") | CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/; also offered: CC-BY-SA 3.0, we would use CC-BY 3.0) | https://opengameart.org/content/thrift-rob | 1:49 (Ogg) | A groovy NES tune on the real 5 NES channels, made for a city beat-'em-up level: street swagger in true chiptune | Shortish: the loop is most of the file; mono, -20 LUFS, Ogg q3; credit row like Seattle's (same composer, "Music by Christovix Games") |
+| `fathers_d_hoverwhip.ogg` | HoverWhip | BossLevelVGM | CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/) | https://opengameart.org/content/hoverwhip | 0:34 (MP3, a short loop) | "Happy sounding chiptune/house stabs with a hiphop beat": the closest to "chiptune beat" in the brief, bright and bouncy | Only 34 s: it repeats a lot over a game to 21 (the sample is almost the whole file). Already a loop: whole file with a short wrap blend; credit row by BossLevelVGM, CC-BY 3.0. A page comment (not the author) compares it to a commercial platformer's level music; nothing on the page says it copies one |
+| `fathers_e_the_factory.ogg` | The Factory (Funky TIC-80 Chiptune) | jocolloman | CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/) | https://opengameart.org/content/the-factory-funky-tic-80-chiptune | 1:52 (WAV loop, 120 bpm on the page) | Funky 4-channel fantasy-console chiptune (TIC-80): a tight funk groove, the most lo-fi and "8-bit" of the five | The page has a loop file (used for the sample) and a faded version: whole loop file with a short wrap blend; a quiet master (-22 LUFS) raised to -20; credit row by jocolloman, CC-BY 3.0 |
+
+Notes:
+- Order of fit (art-audio's view, for a 2000s blacktop under lights): Headspin (the real hip-hop beat), then Wheelie
+  (most energy for a game), then Thrift Rob (pure NES street groove), then The Factory, then HoverWhip (fits the
+  brief but too short a loop).
+- Looked at and left out: "Mink Pohawk" (BossLevelVGM, CC-BY 3.0, frantic chiptune with a hip-hop beat; its page
+  describes it as in the style of a named commercial beat-'em-up series), "Itchy" (alleycat; the page's own notes put
+  conditions next to the license, unclear), "Hip Hop Boss Man" (GPL 3.0), "Gang$tazz" (CC-BY 4.0, but tagged and
+  described with a commercial game's name, and not chiptune), "Arex's Beat" (Varon Kein, CC-BY 4.0, hip-hop with
+  electric guitar, not chiptune), "Secret Code" (elvin, CC-BY 4.0, hip-hop drums, not chiptune), "Chiptune Chops"
+  (Eldritch Grim, CC0, a chiptune beat; kept as a spare), the 8-bit lofi hip-hop tracks by Tad (sad, slow), and the
+  share-alike or OGA-BY-only funk and beat-'em-up tracks ("Jump Button", "City Riff", "Funky Experimental Chiptune",
+  "There's No Rush", the wyver9 arcade loops, "Final Punch").
