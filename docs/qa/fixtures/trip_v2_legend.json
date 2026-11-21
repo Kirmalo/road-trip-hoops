@@ -1,0 +1,206 @@
+{
+	"beaten": [
+		"hometown",
+		"chicago",
+		"memphis",
+		"new_orleans",
+		"denver",
+		"seattle"
+	],
+	"bracket": {
+		"round": 0
+	},
+	"city": "los_angeles",
+	"crew_points": 0,
+	"game": 1,
+	"human": "ud_deuce",
+	"level": "normal",
+	"paid": [
+		"hometown:1",
+		"hometown:2",
+		"hometown:3",
+		"chicago:1",
+		"chicago:2",
+		"chicago:3",
+		"memphis:1",
+		"memphis:2",
+		"memphis:3",
+		"new_orleans:1",
+		"new_orleans:2",
+		"new_orleans:3",
+		"denver:1",
+		"denver:2",
+		"denver:3",
+		"seattle:1",
+		"seattle:2",
+		"seattle:3"
+	],
+	"phase": "map",
+	"points": 0,
+	"record": {
+		"losses": 2,
+		"wins": 18
+	},
+	"replay": {
+
+	},
+	"roster": [
+		{
+			"id": "ud_deuce",
+			"pts": 0,
+			"ratings": {
+				"defense": 66,
+				"finishing": 66,
+				"shooting": 68,
+				"speed": 67,
+				"stamina": 65
+			},
+			"via": "start"
+		},
+		{
+			"id": "ud_jojo",
+			"pts": 0,
+			"ratings": {
+				"defense": 56,
+				"finishing": 55,
+				"shooting": 56,
+				"speed": 62,
+				"stamina": 57
+			},
+			"via": "start"
+		},
+		{
+			"id": "ud_tank",
+			"pts": 0,
+			"ratings": {
+				"defense": 58,
+				"finishing": 62,
+				"shooting": 47,
+				"speed": 45,
+				"stamina": 48
+			},
+			"via": "start"
+		},
+		{
+			"id": "ht_g1",
+			"pts": 0,
+			"ratings": {
+				"defense": 47,
+				"finishing": 50,
+				"shooting": 56,
+				"speed": 56,
+				"stamina": 47
+			},
+			"via": "recruit"
+		},
+		{
+			"id": "chi_g1",
+			"pts": 0,
+			"ratings": {
+				"defense": 56,
+				"finishing": 59,
+				"shooting": 62,
+				"speed": 59,
+				"stamina": 62
+			},
+			"via": "recruit"
+		},
+		{
+			"id": "ht_boss",
+			"pts": 0,
+			"ratings": {
+				"defense": 69,
+				"finishing": 69,
+				"shooting": 69,
+				"speed": 72,
+				"stamina": 69
+			},
+			"via": "draft"
+		},
+		{
+			"id": "mem_g1",
+			"pts": 0,
+			"ratings": {
+				"defense": 68,
+				"finishing": 68,
+				"shooting": 56,
+				"speed": 56,
+				"stamina": 56
+			},
+			"via": "recruit"
+		},
+		{
+			"id": "nol_g1",
+			"pts": 0,
+			"ratings": {
+				"defense": 62,
+				"finishing": 62,
+				"shooting": 62,
+				"speed": 74,
+				"stamina": 74
+			},
+			"via": "recruit"
+		},
+		{
+			"id": "lg_steeple",
+			"pts": 0,
+			"ratings": {
+				"defense": 88,
+				"finishing": 95,
+				"shooting": 83,
+				"speed": 83,
+				"stamina": 82
+			},
+			"via": "draft"
+		},
+		{
+			"id": "den_g1",
+			"pts": 0,
+			"ratings": {
+				"defense": 67,
+				"finishing": 67,
+				"shooting": 79,
+				"speed": 67,
+				"stamina": 79
+			},
+			"via": "recruit"
+		},
+		{
+			"id": "sea_g1",
+			"pts": 0,
+			"ratings": {
+				"defense": 84,
+				"finishing": 72,
+				"shooting": 72,
+				"speed": 84,
+				"stamina": 72
+			},
+			"via": "recruit"
+		}
+	],
+	"seen": [
+		"rule:per_starter",
+		"trip_start",
+		"hometown_arrive",
+		"hometown_won",
+		"chicago_arrive",
+		"first_loss",
+		"chicago_won",
+		"memphis_arrive",
+		"memphis_won",
+		"new_orleans_arrive",
+		"new_orleans_won",
+		"denver_arrive",
+		"denver_won",
+		"seattle_arrive",
+		"seattle_won",
+		"los_angeles_arrive"
+	],
+	"serial": 137,
+	"starters": [
+		"ud_deuce",
+		"lg_steeple",
+		"ht_boss"
+	],
+	"version": 2
+}

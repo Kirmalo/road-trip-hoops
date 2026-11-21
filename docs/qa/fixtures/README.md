@@ -72,3 +72,54 @@ Checked in the Phase 8 build:
   - mid: resumes on the map before Memphis game 2 with `ht_boss` (drafted) starting, plays 39 games (a Memphis 1
     replay, a second draft `ht_g2` once the stars reach 24) to TRIP END, record 24-22, 48 stars, paid 24/24.
   - done: map in replay mode -> title, 0 games; TRIP END with 72 stars, slots 4, the 4 drafts kept, paid 24/24.
+
+# Phase 9 save fixtures (P10-01)
+
+Saves written by the Phase 9 build (commit `a1dc3c7`; its `scripts/` are identical to `9fa3283`), so Phase 10 can test
+that every Phase 9 save loads (`legends.json` version 1, a `trip.json` version 2 with a drafted legend, `settings.cfg`
+with 36 stars). Same rules as above: the exact bytes `save.gd`, `legends_save.gd` and `ConfigFile` wrote, don't edit
+them by hand. To test one, copy it to `user://legends.json` (any test run: `legends_test.json`), `trip.json`
+(`trip_test.json`) / `settings.cfg` (`settings_test.cfg`) of the build under test. All four are one owner's story:
+`trip_v2_legend.json`, `settings_v2_36.cfg` and `legends_v1_mid.json` are the same moment; `legends_v1_ch1_done.json`
+is the same Legends file later (the trip did not move in between, checked byte for byte).
+
+| File | State | How it was made |
+|---|---|---|
+| `trip_v2_legend.json` | Normal. Hometown to Seattle beaten (record 18-2: one loss in Chicago and in Denver), paid 18; MAYOR (`ht_boss`, drafted at 12 stars) and STEEPLE (`lg_steeple`, drafted from the draft's LEGENDS row at 24 stars, via "draft", ratings 83/83/95/88/82 + steal 80 / block 98) both start with Deuce (you): one legend + one boss, no repair. 7 recruits, 11 players, 3 slots, 1 open, every point spent (0 own, 0 crew). Deuce is trained by GATE (the mentor pair is in the Legends file, so his `block_timing` perk works only with `legends_v1_mid.json` / `_ch1_done.json`). On the map before Los Angeles game 1. CONTINUE -> map | scripted story D |
+| `settings_v2_36.cfg` | The owner's `settings.cfg` at that moment: 36 stars (18 games at 2), 3 slots, LEGEND closed, Legends open (gate 24); LOCKER picks `jersey_2` / `ball_1` / `van_1`; level normal, music on, sfx 0.9, music 0.7, full screen, right-handed, Quick Game court `midnight` (the 30-star reward), Kings vs `riverside_soul`; 6 courts and 6 crews unlocked (Hometown to Seattle) | scripted story D |
+| `legends_v1_mid.json` | The owner's `legends.json` at that moment: intro seen; STEEPLE won on Normal (2), GATE on Hard (3), SET SHOT failed once (score won, goal broken: nothing) then won on Normal (2): 3 unlocked, 7 tokens on two levels, their 3 unlock scenes seen; GATE trains Deuce (`mentors {"lg_gate": "ud_deuce"}`); no finale | scripted story D |
+| `legends_v1_ch1_done.json` | Later: BOXCAR won with 1 stop first (goal broken: nothing) then on Hard, VELVET lost once then won on Hard, QUARTERBACK on Hard, STEEPLE and SET SHOT replayed on Hard (best 2 -> 3), GATE replayed on Normal (best 3 kept), the finale's before scene, the finale won on Hard: 6 unlocked, 21/21 tokens, `finales ["grand"]` (Chapter 1 closed), 9 scenes seen, the same mentor. Your crew in the games with STEEPLE as an opponent: "STEEPLE SITS: DEX PLAYS" | scripted story D, later |
+
+How they were made (2026-11-21, Godot 4.3 stable):
+- A copy of the Phase 9 build: `git archive a1dc3c7`, with only `config/name` in `project.godot` changed ("RTH P1001
+  Fixtures") and its own fresh `XDG_DATA_HOME`, so it has its own `user://` folder.
+- `make_fixtures_v3.gd.txt` (rename to `.gd`, put it in that copy's root), run
+  `FIXTURE_OUT=<dir> godot --headless --path <copy> -s res://make_fixtures_v3.gd`. It starts on a fresh `settings.cfg`,
+  `trip.json` and `legends.json` and drives `trip.gd` as `make_fixtures_v2` does (plus the LEGENDS row draft) and
+  `legends.gd` with the calls the tour and the Hall make: the chapter intro's `mark_seen`, `match_for_challenge` /
+  `match_for_finale` on PLAY (the finale's before scene), `record_result` + `after_result` after each game (a broken
+  goal is `{"won": true, "challenge": {"met": false}}`), `assign` for TRAIN. No user arguments, so the build writes
+  `user://trip.json`, `user://legends.json` and `user://settings.cfg`, as on the tablet.
+
+Checked in the Phase 9 build (`a1dc3c7`) and in the current build (`9fa3283`), each in its own copy (own `config/name`,
+own fresh `XDG_DATA_HOME`):
+- `check_fixtures_v3.gd.txt` (same way, `FIXTURE_DIR=<dir>`, no user args: the owner's file names): the settings give
+  36 stars, 3 slots, LEGEND closed, the 3 picks, normal, 6 courts, MIDNIGHT open, Legends open; each Legends file
+  loads as saved (`to_dict()` == the file minus version / serial): mid 7 tokens, 3 unlocked, no finale; done 21/21,
+  6 unlocked, finale won, chapter done; both give Deuce GATE's `block_timing`; the trip loads as saved, version 2,
+  CONTINUE -> map (Los Angeles game 1), drafts `ht_boss` + `lg_steeple`, starters Deuce + STEEPLE + MAYOR legal, no
+  repair, 1 open slot, Deuce's perk on the trip, none on STEEPLE, the draft's last row LEGENDS (`lg_gate`,
+  `lg_set_shot`), STEEPLE's challenge "STEEPLE SITS: DEX PLAYS"; loading writes nothing (the files byte for byte).
+  CHECK OK in both builds.
+- The three as `trip_test.json` / `legends_test.json` (mid) / `settings_test.cfg`, then `-- --trip-test --target 3
+  --trip-resume`: **TRIP ERROR in both builds** ("the legend draft did not sign lg_gate to the bench (or it changed the
+  starters or who you play)"), a `trip_test.gd` driver bug, not the fixture: on a resumed trip the lineup's tap pick
+  test and the first (legend) draft happen on the same lineup visit, and `_draft_test()` keeps `Trip.starters` from
+  before the taps (the lineup saves its picks on the way to DRAFT), so it sees the starters change. The draft itself
+  worked (GATE signed, the hint gave the one-legend rule). With `--stars 24` (2 slots, none open, so no draft test) the
+  same resume plays to TRIP END (exit 0, no ERROR or WARNING lines), STEEPLE and MAYOR starting all the way, Deuce's
+  `PERK block_timing` line in a game: a1dc3c7 12 games, record 24-7; 9fa3283 10 games, record 24-5.
+- With the trip and `legends_v1_ch1_done.json`: `-- --autoplay --challenge velvet` (a real CPU game to 11, Normal,
+  crew trip, "STEEPLE SITS: DEX PLAYS", `sea_g1` in for him): a1dc3c7 11-10 met (Velvet 2 pts), 9fa3283 10-11 failed;
+  exit 0, the test trip and Legends files unchanged byte for byte. `-- --legends-test --target 3` on the trip fixture
+  (9fa3283; it erases the Legends test file first): LEGENDS END, crew trip, the swap line, 10 games, trip unchanged.
