@@ -86,7 +86,7 @@ Scope: a shippable Chapter 2 end to end, on the Phase 9 machinery (everything is
 - New goal type (only if F3 a): `"score"` in `CHALLENGE_TYPES`, row key `"min"`: **you** (the human, `Trip.human`)
   score at least `min` points yourself and your team wins; HUD "SCORE 6 ON LOCKBOX: 2"; checked at the end like `stop`.
 - New perks (F5 a; ids and keys distinct from Chapter 1's and from the twist keys): `"rise_up"` (`contested_dunk_bonus`
-  +0.015), `"handle"` (`cross_win_mult` 1.05), `"pull_up"` (`mid_shot_bonus` +0.015), `"strong_hold"`
+  +0.015, 0.025 after P10-26), `"handle"` (`cross_win_mult` 1.05, 1.15 after P10-26), `"pull_up"` (`mid_shot_bonus` +0.015), `"strong_hold"`
   (`strip_guard_mult` 0.95: steal chance on him), `"blind_pass"` (`pass_safe_mult` 0.95: interception chance on his
   passes), `"quick_hands"` (`steal_window_mult` 1.05). Defaults: 1.0 for `_mult`, 0.0 for `_bonus`.
 - Signature ids (F4 a): `cradle`, `double_cross`, `fadeaway`, `shoulder`, `no_look`, `chase_down` (one per legend; the

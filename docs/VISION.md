@@ -117,6 +117,7 @@ tablet with a joystick and two buttons.
 | Phase 10 names and numbers | Dorian "Rooftop" Ashcombe #27, Tremaine "Ankles" Pettaway #16, Darnell "Midrange" Kingsley #28, Bartholomew "Freight" Thackeray #48, Keon "Eyes Closed" Pemberton #14, Corwin "Lockbox" Hollister #36 (Corwin replaces Shane: name check). Approved by the owner |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
 | Phase 10 tuning (after P10-23) | Lockbox keeps the owner's 6 points (P10-23 measured 3; the score goal is meant to be the hardest, met about 17% or less in tests). Eyes Closed starts 0-1 (P10-23). Chapter 1's finale a bit harder: `FINALE_STAGE_AVG` 52 -> 55 (Hard had won 50% of 80 games, aim 35-50) |
+| Phase 10 perk sizes (after P10-26) | Owner: raise the three weak Fathers perks to about 2 stat points like the rest: rise_up +2.5% (was 1.5), handle 15% (was 5), blind_pass 15% fewer interceptions (was 5); pull_up, strong_hold, quick_hands stay (docs/qa/phase10-ramp.md) |
 
 ## Technical constraints
 - Godot 4.3+ (GDScript), GL Compatibility renderer, 1280x720 landscape. See `CLAUDE.md` for code conventions.
