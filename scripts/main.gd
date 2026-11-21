@@ -43,8 +43,11 @@ const CHALLENGE_PATH := "res://scripts/challenge.gd"
 const LEGENDS_PATH := "res://scripts/legends.gd"   # --legendtest, --challenge <id> (Legends.test_match())
 # P9-24 mentor perks: a player's perk (player.perk(key, default), from his match dict) is read at one spot per key:
 # close_shot_bonus, three_bonus and contested_layup_bonus here in shot_probability(), pass_speed_mult in
-# _perk_pass_step(), dunk_reach_mult in player.dunk_reach(), block_window_mult in defense._jump_timing(). No perk =
-# today's game. Test flag -- --perk <id>[,<id>,<id>]: BLUE's players get these legends_data PERKS (one id = all 3).
+# _perk_pass_step(), dunk_reach_mult in player.dunk_reach(), block_window_mult in defense._jump_timing(). P10-22 (the
+# Fathers): mid_shot_bonus and contested_dunk_bonus in shot_probability(), strip_guard_mult in steal_chance(),
+# steal_window_mult in steal_quality() (and defense._update_pokes()), cross_win_mult in player.cross_beat_check(),
+# pass_safe_mult in player.pick_mult(). No perk = today's game. Test flag -- --perk <id>[,<id>,<id>]: BLUE's players
+# get these legends_data PERKS (one id = all 3).
 const LEGENDS_DATA_PATH := "res://scripts/legends_data.gd"   # PERKS, for --perk (loaded only with the flag)
 const PERK_FLAG := "--perk"
 
@@ -1264,7 +1267,9 @@ func shot_probability(p, quality: float) -> float:
 
 # P9-24: the make chance a shooter's mentor perk adds to this shot (0.0 without one; still capped at SHOT_CAP):
 # close_shot_bonus on layups and on jumpers inside player.PERK_CLOSE_FT (not dunks), three_bonus beyond the arc,
-# contested_layup_bonus on a layup with a defender inside CONTEST_NEAR_FT. Free throws never get here.
+# contested_layup_bonus on a layup with a defender inside CONTEST_NEAR_FT; P10-22: mid_shot_bonus on every jumper inside
+# the arc (close ones too), contested_dunk_bonus on a dunk with a defender inside CONTEST_NEAR_FT. Free throws never
+# get here. A player holds one perk, so at most one of these applies.
 func _perk_shot_bonus(p, d_ft: float, hoop: Vector2, cont: float) -> float:
 	if not ("perk_key" in p) or p.perk_key == "":
 		return 0.0
@@ -1279,7 +1284,15 @@ func _perk_shot_bonus(p, d_ft: float, hoop: Vector2, cont: float) -> float:
 		if tb != 0.0:
 			return tb
 	if layup and cont < CONTEST_NEAR_FT:
-		return p.perk("contested_layup_bonus", 0.0)
+		var lb: float = p.perk("contested_layup_bonus", 0.0)
+		if lb != 0.0:
+			return lb
+	if jumper and not is_three(p.position, hoop):
+		var mb: float = p.perk("mid_shot_bonus", 0.0)   # P10-22 pull_up: every jumper inside the arc
+		if mb != 0.0:
+			return mb
+	if p.rim_kind == "dunk" and cont < CONTEST_NEAR_FT:
+		return p.perk("contested_dunk_bonus", 0.0)      # P10-22 rise_up: a dunk with a defender near
 	return 0.0
 
 # ---------------- ball events ----------------
@@ -1634,9 +1647,20 @@ func steal_timing(handler, grace := -1.0, late := -1.0) -> float:
 
 # 0..1: exposure x timing. At or over STEAL_GOOD_EXPOSURE it's a good poke.
 func steal_quality(defender, handler) -> float:
+	return steal_quality_at(defender, handler, steal_window_mult(defender))
+
+# P10-22 quick_hands: x this on the defender's timing windows around the floor touch (his steal_window_mult perk; 1.0
+# without it, so the windows are today's exactly). defense._update_pokes() times the CPU's pokes on the same window.
+func steal_window_mult(defender) -> float:
+	if defender == null or not ("perk_key" in defender) or defender.perk_key == "":
+		return 1.0
+	return defender.perk("steal_window_mult", 1.0)
+
+# steal_quality with the timing windows x wm (1.0 = today's windows)
+func steal_quality_at(defender, handler, wm: float) -> float:
 	if is_human(defender):
-		return steal_exposure(defender, handler) * steal_timing(handler, STEAL_GRACE, STEAL_HUMAN_LATE)
-	return steal_exposure(defender, handler) * steal_timing(handler, STEAL_CPU_GRACE)
+		return steal_exposure(defender, handler) * steal_timing(handler, STEAL_GRACE * wm, STEAL_HUMAN_LATE * wm)
+	return steal_exposure(defender, handler) * steal_timing(handler, STEAL_CPU_GRACE * wm)
 
 # true while a poke by the human would be a good one: drives the lit STEAL button
 func human_steal_cue() -> bool:
@@ -1667,7 +1691,14 @@ func steal_chance(defender, handler) -> float:
 		c *= STEAL_TURBO_MULT
 	if "fake_t" in handler and handler.fake_t > 0.0:
 		c *= STEAL_FAKE_MULT
-	return clampf(c, 0.0, STEAL_MAX_CHANCE)
+	return clampf(c, 0.0, STEAL_MAX_CHANCE) * strip_guard_mult(handler)
+
+# P10-22 strong_hold: x this on every poke's success chance against this handler (his strip_guard_mult perk, under
+# 1.0; 1.0 without it). Applied after STEAL_MAX_CHANCE, so it is always exactly 5% less.
+func strip_guard_mult(handler) -> float:
+	if handler == null or not ("perk_key" in handler) or handler.perk_key == "":
+		return 1.0
+	return handler.perk("strip_guard_mult", 1.0)
 
 # a poke at the ball (A on defense, or the CPU). The second argument is ignored (old callers passed a flat chance).
 func attempt_steal(defender, _legacy := -1.0) -> void:
@@ -1696,7 +1727,18 @@ func attempt_steal(defender, _legacy := -1.0) -> void:
 			stat("steal_shielded_body")   # the reach-foul roll itself is defense.try_reach_foul (P3-09)
 	if good:
 		stat("steal_good_pokes_t%d" % defender.team)
-	if rng.randf() < steal_chance(defender, h):
+		if steal_window_mult(defender) != 1.0 and steal_quality_at(defender, h, 1.0) < STEAL_GOOD_EXPOSURE:
+			# P10-22 quick_hands: well timed only thanks to the wider window (counted, logged the first time)
+			defender.perk_log("poke at %s timed in the wider window (x%.2f)" % [h.pname if h.pname != "" else h.pid,
+					steal_window_mult(defender)])
+	var steal_roll: float = rng.randf()
+	var steal_c: float = steal_chance(defender, h)
+	var sg: float = strip_guard_mult(h)
+	if sg != 1.0 and steal_roll >= steal_c and steal_roll < steal_c / sg:
+		# P10-22 strong_hold: this poke would have stripped anyone else (counted, logged the first time)
+		h.perk_log("kept the ball from %s's poke (steal chance %.2f, x%.2f)" % [defender.pname if defender.pname != ""
+				else defender.pid, steal_c, sg])
+	if steal_roll < steal_c:
 		stat("steals_good" if good else "steals_bad")
 		var v: Vector2 = (defender.position - h.position).normalized().rotated(rng.randf_range(-0.8, 0.8)) * 160.0
 		h.shooting = false

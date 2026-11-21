@@ -206,7 +206,8 @@ func _update_pokes(delta: float, man) -> void:
 	var exposed: bool = game.steal_exposure(p, h) >= CPU_POKE_EXPOSURE
 	if _poke_wait >= 0.0:
 		_poke_wait -= delta
-		var touch: bool = game.steal_timing(h, game.STEAL_CPU_GRACE) > 0.0
+		# P10-22 quick_hands: his steal_window_mult perk widens the floor-touch window he waits for (x1.0 without it)
+		var touch: bool = game.steal_timing(h, game.STEAL_CPU_GRACE * game.steal_window_mult(p)) > 0.0
 		if exposed and touch == _poke_on_time:
 			if touch:
 				game.stat("cpu_pokes_timed")
