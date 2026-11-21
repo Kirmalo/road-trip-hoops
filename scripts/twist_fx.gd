@@ -262,6 +262,7 @@ func _process(delta: float) -> void:
 			(game.twist_label as Label).visible = false
 		if _banner_t > BANNER_TIME:
 			_banner_t = -1.0
+			_hud_node.queue_redraw()   # P10-B7: clear the last banner frame
 	if _banner_t >= 0.0 or kind == "wind":
 		_hud_node.queue_redraw()
 	if _shot_dir != "":
