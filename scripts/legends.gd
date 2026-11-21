@@ -776,7 +776,7 @@ static func legendtest() -> bool:
 # ---------------------------------------------------------------------------------------------------- self test
 
 # Records, gates, unlocks, both crew sources, the swap, the match fields, the trip file unchanged byte for byte after
-# a challenge, a save round trip. Its own Legends file (SELFTEST_PATH); its own scripted trip in the test trip save
+# a challenge, a save round trip; P10-18: every shipped built chapter (_check_shipped_chapters()). Its own Legends file (SELFTEST_PATH); its own scripted trip in the test trip save
 # (P9-28: whatever a trip or legends run left there is kept aside and put back byte for byte at the end, so the test
 # never depends on it); every static of this file, Trip's and Stars' --stars is put back. "" = OK.
 static func self_test() -> String:
@@ -1025,6 +1025,9 @@ static func self_test() -> String:
 			and parse_challenge("present") == "" and parse_challenge("fin:present") == ""
 			and parse_challenge("nobody") == "", "parse_challenge")
 
+	# P10-18: every shipped built chapter (gates, matches, records, scenes, finales, the swap, mentors of both eras)
+	_check_shipped_chapters(errs, trip_path)
+
 	# P10-02: a stand-in second built chapter (test data only), then the shipped rows again
 	_check_two_chapters(errs, trip_path)
 
@@ -1059,6 +1062,236 @@ static func self_test() -> String:
 		return ""
 	var shown: Array = errs.slice(0, 6)
 	return "; ".join(PackedStringArray(shown)) + ("" if errs.size() <= 6 else " (+%d more)" % (errs.size() - 6))
+
+# P10-18: the shipped built chapters (at least 2 from Phase 10 on), data-driven over built_chapters(): each gate (stars,
+# --tokens and real tokens; F7 a: Chapter 2 needs no Chapter 1 finale), every challenge and finale match of each chapter
+# (its own opponents, look, twist, music, label), the intro scenes (seen once), records per chapter (tokens, unlocks in
+# data order, the unlock and "after" scenes going back to their own chapter view, a finale closing only its chapter),
+# a drafted legend of each era sitting only against his own opponents, mentors from both eras side by side, and the
+# test trip file unchanged. Starts and ends on a fresh Legends state (in SELFTEST_PATH); the trip in memory put back.
+static func _check_shipped_chapters(errs: Array, trip_path: String) -> void:
+	var trip_disk: PackedByteArray = _bytes(trip_path)
+	var trip_mem: Dictionary = Trip.to_dict()
+	var chs: Array = LegendsData.built_chapters()
+	_check(errs, chs.size() >= 2, "shipped: %d built chapters, want 2+" % chs.size())
+	if chs.size() < 2:
+		return
+	var c1: String = str(chs[0])
+	var c2: String = str(chs[1])
+	var ids1: Array = LegendsData.legend_ids(c1)
+	var ids2: Array = LegendsData.legend_ids(c2)
+	_check(errs, ids1.size() == 6 and ids2.size() == 6, "shipped: %d / %d legends" % [ids1.size(), ids2.size()])
+	if ids1.size() != 6 or ids2.size() != 6:
+		return
+	_from_dict({})
+	_loaded = true
+	unlock_override = ""
+
+	# gates: each chapter at its stars and its tokens (--tokens), one short of each stays shut
+	for ch in chs:
+		var gate: Dictionary = LegendsData.chapter(str(ch)).get("gate", {})
+		var ns: int = int(gate.get("stars", 0))
+		var nt: int = int(gate.get("tokens", 0))
+		force_tokens = 0
+		if ns > 0:
+			Stars.force_total = ns - 1
+			_check(errs, not chapter_open(str(ch)), "shipped: %s open at %d stars" % [ch, ns - 1])
+			Stars.force_total = ns
+			_check(errs, chapter_open(str(ch)), "shipped: %s closed at %d stars" % [ch, ns])
+		if nt > 0:
+			Stars.force_total = 0
+			force_tokens = nt - 1
+			_check(errs, not chapter_open(str(ch)), "shipped: %s open at %d tokens" % [ch, nt - 1])
+			force_tokens = nt
+			_check(errs, chapter_open(str(ch)), "shipped: %s closed at %d tokens" % [ch, nt])
+	force_tokens = -1
+	# Chapter 2's token gate from real Chapter 1 tokens, Chapter 1's finale not played (F7 a)
+	var nt2: int = int((LegendsData.chapter(c2).get("gate", {}) as Dictionary).get("tokens", 0))
+	Stars.force_total = 0
+	_check(errs, not chapter_open(c2) and not mode_open(), "shipped: open at 0 stars, 0 tokens")
+	if nt2 > 0:
+		var i: int = 0
+		while real_tokens_total() < nt2 and i < ids1.size():
+			_check(errs, not chapter_open(c2), "shipped: %s open at %d real tokens" % [c2, real_tokens_total()])
+			match_for_challenge(str(ids1[i]), "hard")
+			record_result({"won": true})
+			i += 1
+		_check(errs, real_tokens_total() >= nt2 and chapter_open(c2) and mode_open() and not chapter_done(c1)
+				and not finale_open(c1), "shipped: %s at %d real tokens without the %s finale" % [c2, real_tokens_total(), c1])
+	_from_dict({})
+	_loaded = true
+
+	# every match of every shipped chapter: its own opponents, look, twist, music, label
+	Stars.force_total = 72
+	for ch in chs:
+		var cid: String = str(ch)
+		for id in LegendsData.legend_ids(cid):
+			for lv in ["normal", "legend"]:
+				var m: Dictionary = match_for_challenge(str(id), lv)
+				_check_match(errs, m, str(id), lv)
+				_check(errs, str(m.get("chapter", "")) == cid and str(m.get("label", "")) == CHALLENGE_LABEL
+						% [str(LegendsData.chapter(cid).get("name", "")), str(LegendsData.legend(str(id)).get("name", ""))]
+						and str(m.get("look", "")) == look_for(cid) and str(m.get("twist", "")) == twist_for(cid)
+						and str(m.get("music", "")) == music_for(cid), "shipped: %s %s match fields" % [id, lv])
+				for p in m["teams"][1]["players"]:
+					_check(errs, LegendsData.chapter_of(str((p as Dictionary).get("id", ""))) == cid,
+							"shipped: %s has an opponent of another chapter" % id)
+		var fm: Dictionary = match_for_finale(cid, "hard")
+		var f: Dictionary = LegendsData.chapter(cid).get("finale", {})
+		var fin_ok: bool = str(fm.get("key", "")) == finale_key(cid) and str(fm.get("chapter", "")) == cid \
+				and int(fm.get("target", 0)) == int(f.get("target", -1)) and str(fm.get("label", "")) == str(f.get("label", "-")) \
+				and (fm.get("challenge", {}) as Dictionary).is_empty() and str(fm.get("look", "")) == look_for(cid)
+		var fps: Array = fm.get("teams", [{}, {}])[1].get("players", []) if fin_ok else []
+		var fteam: Array = LegendsData.finale_team(cid)
+		fin_ok = fin_ok and fps.size() == 3 and fteam.size() == 3
+		for i in fps.size():
+			if not fin_ok:
+				break
+			var want: Dictionary = LegendsData.finale_ratings(str(fteam[i]), Difficulty.rating_bonus("hard"))
+			fin_ok = str((fps[i] as Dictionary).get("id", "")) == str(fteam[i]) and LegendsData.chapter_of(str(fteam[i])) == cid
+			for s in Ratings.STATS:
+				if fin_ok and int(fps[i]["ratings"][s]) != int(want[s]):
+					fin_ok = false
+		_check(errs, fin_ok, "shipped: %s finale match %s" % [cid, JSON.stringify(fm).left(200)])
+	Stars.force_total = 72
+
+	# the intro scenes: in story_text.gd, unseen on a fresh file, marked once (the tour plays them on the first open)
+	for ch in chs:
+		var sc: String = str(LegendsData.chapter(str(ch)).get("intro_scene", ""))
+		_check(errs, sc != "" and StoryText.has_scene(sc) and not has_seen(sc) and mark_seen(sc) and has_seen(sc)
+				and not mark_seen(sc), "shipped: %s intro scene '%s'" % [ch, sc])
+
+	# Chapter 2's records: a loss gives nothing; unlocks and their scenes go back to Chapter 2's view; its finale opens
+	# after its 6 and closes only it; Chapter 1 untouched
+	var a2: String = str(ids2[0])
+	match_for_challenge(a2, "normal")
+	var o: Dictionary = record_result({"won": false})
+	var nx: Dictionary = after_result()
+	_check(errs, not bool(o["won"]) and str(o["chapter"]) == c2 and nx["screen"] == SCREEN
+			and nx["args"].get("chapter", "") == c2 and not is_unlocked(a2), "shipped: %s loss %s / %s" % [a2, str(o), str(nx)])
+	o = record_result({"won": true})
+	nx = after_result()
+	var us: String = str(LegendsData.legend(a2).get("unlock_scene", ""))
+	_check(errs, bool(o["won"]) and str(o["unlocked"]) == a2 and int(o["tokens_now"]) == 2 and StoryText.has_scene(us)
+			and nx["screen"] == "story" and nx["args"].get("scene", "") == us and nx["args"].get("then", "") == SCREEN
+			and nx["args"].get("then_args", {}).get("chapter", "") == c2, "shipped: %s unlock %s" % [a2, str(nx)])
+	nx = after_result()
+	_check(errs, nx["screen"] == SCREEN and nx["args"].get("chapter", "") == c2, "shipped: %s unlock scene twice" % a2)
+	for i in range(1, ids2.size()):
+		_check(errs, not finale_open(c2), "shipped: %s finale open after %d" % [c2, i])
+		match_for_challenge(str(ids2[i]), "easy")
+		o = record_result({"won": true})
+		var sc_i: String = str(LegendsData.legend(str(ids2[i])).get("unlock_scene", ""))
+		nx = after_result()
+		_check(errs, str(o["unlocked"]) == str(ids2[i]) and StoryText.has_scene(sc_i) and nx["screen"] == "story"
+				and nx["args"].get("then_args", {}).get("chapter", "") == c2, "shipped: %s unlock %s" % [ids2[i], str(nx)])
+	_check(errs, finale_open(c2) and not finale_open(c1) and not chapter_done(c2) and unlocked_ids() == ids2
+			and chapter_tokens(c2) == 2 + 5 and chapter_tokens(c1) == 0 and real_tokens_total() == 7,
+			"shipped: %s after its 6 (tokens %d / %d, unlocked %s)" % [c2, chapter_tokens(c2), chapter_tokens(c1),
+			str(unlocked_ids())])
+	match_for_finale(c2, "hard")
+	o = record_result({"won": true})
+	var after_sc: String = str((LegendsData.chapter(c2).get("finale_scenes", {}) as Dictionary).get("after", ""))
+	nx = after_result()
+	_check(errs, bool(o["chapter_done"]) and chapter_done(c2) and not chapter_done(c1) and finales == [c2]
+			and int(o["tokens_now"]) == 3 and str(o["unlocked"]) == "" and StoryText.has_scene(after_sc)
+			and nx["screen"] == "story" and nx["args"].get("scene", "") == after_sc
+			and nx["args"].get("then_args", {}).get("chapter", "") == c2, "shipped: %s finale %s / %s" % [c2, str(o), str(nx)])
+	nx = after_result()
+	_check(errs, nx["screen"] == SCREEN and nx["args"].get("chapter", "") == c2, "shipped: %s after scene twice" % c2)
+	# Chapter 1 after it: its own unlocks, its own finale; Chapter 2 stays done
+	for i in ids1.size():
+		match_for_challenge(str(ids1[i]), "hard")
+		o = record_result({"won": true})
+		nx = after_result()
+		_check(errs, str(o["chapter"]) == c1 and str(o["unlocked"]) == str(ids1[i])
+				and nx.get("args", {}).get("then_args", nx.get("args", {})).get("chapter", "") == c1,
+				"shipped: %s back to %s" % [ids1[i], str(nx)])
+	match_for_finale(c1, "normal")
+	o = record_result({"won": true})
+	nx = after_result()
+	_check(errs, chapter_done(c1) and chapter_done(c2) and finales == [c2, c1]
+			and nx.get("args", {}).get("then_args", nx.get("args", {})).get("chapter", "") == c1
+			and chapter_tokens(c1) == 18 + 2 and chapter_tokens(c2) == 10 and real_tokens_total() == 30
+			and unlocked_ids() == ids1 + ids2, "shipped: both chapters done (tokens %d / %d, unlocked %s)"
+			% [chapter_tokens(c1), chapter_tokens(c2), str(unlocked_ids())])
+	_from_dict({})
+	_loaded = true
+
+	# the swap, each era: a drafted legend starting for you sits against his own chapter's games he is in (as the
+	# challenge legend, a mate or a finale legend) and plays against the other chapter's
+	for ch in chs:
+		var lid: String = str(LegendsData.legend_ids(str(ch))[0])
+		var mem: Dictionary = Trip.to_dict()
+		Trip.roster_data.append({"id": lid, "ratings": LegendsData.draft_ratings(lid, 60), "pts": 0, "via": "draft"})
+		var keep: Array = Trip.starters.duplicate()
+		Trip.starters = [lid, str(keep[0]), str(keep[1])]
+		Trip.human = lid
+		for ch_b in chs:
+			for id in LegendsData.legend_ids(str(ch_b)):
+				var m: Dictionary = match_for_challenge(str(id), "normal")
+				var sits: bool = LegendsData.challenge_team(str(id)).has(lid)
+				var mine: Array = []
+				for p in m["teams"][0]["players"]:
+					mine.append(str((p as Dictionary).get("id", "")))
+				_check(errs, mine.has(lid) != sits and (m["swaps"] as Array).size() == (1 if sits else 0)
+						and (str(m["human"]) == lid) != sits and mine.size() == 3,
+						"shipped: %s against %s: %s, swaps %s" % [lid, id, str(mine), str(m["swaps"])])
+			var fm: Dictionary = match_for_finale(str(ch_b), "normal")
+			var fsits: bool = LegendsData.finale_team(str(ch_b)).has(lid)
+			var fmine: Array = []
+			for p in fm["teams"][0]["players"]:
+				fmine.append(str((p as Dictionary).get("id", "")))
+			_check(errs, fmine.has(lid) != fsits and (fm["swaps"] as Array).size() == (1 if fsits else 0),
+					"shipped: %s in the %s finale: %s" % [lid, ch_b, str(fmine)])
+		_check(errs, Trip.starters[0] == lid and Trip.human == lid, "shipped: the swap changed the trip's starters")
+		mem["version"] = Save.VERSION
+		Trip.from_dict(mem)
+
+	# mentors from both eras side by side (one per player, one pupil per legend, the perk of each era's legend)
+	unlocked = ids1 + ids2
+	mentors = {}
+	var g: String = str(ids1[0])
+	var fa: String = str(ids2[0])
+	var you: String = str(Trip.starters[0])
+	var mate: String = str(Trip.starters[1])
+	var pg: Dictionary = LegendsData.perk_of(g)
+	var pf: Dictionary = LegendsData.perk_of(fa)
+	_check(errs, not pg.is_empty() and not pf.is_empty() and str(pg.get("key", "")) != str(pf.get("key", "")),
+			"shipped mentors: %s / %s perks %s / %s" % [g, fa, str(pg), str(pf)])
+	_check(errs, assign(g, you) and assign(fa, mate) and mentors.size() == 2
+			and str(perks_for(you).get("key", "")) == str(pg.get("key", "-"))
+			and str(perks_for(mate).get("key", "")) == str(pf.get("key", "-"))
+			and str((Trip.roster_player(mate).get(PERK_KEY, {}) as Dictionary).get("mentor", "")) == fa
+			and str((Trip.roster_player(you).get(PERK_KEY, {}) as Dictionary).get("mentor", "")) == g,
+			"shipped mentors: one of each era %s" % str(mentors))
+	_check(errs, assign(fa, you) and mentor_of(you) == fa and pupil_of(g) == "" and mentor_of(mate) == ""
+			and pupil_of(fa) == you and mentors.size() == 1, "shipped mentors: a %s legend takes a %s pupil %s"
+			% [c2, c1, str(mentors)])
+	_check(errs, assign(g, mate) and not assign(fa, g) and not assign(g, fa) and mentors.size() == 2,
+			"shipped mentors: a legend trains a legend %s" % str(mentors))
+	var cm: Dictionary = match_for_challenge(str(ids2[ids2.size() - 1]), "normal")
+	for t in 2:
+		for p in (cm["teams"][t] as Dictionary).get("players", []):
+			_check(errs, not (p as Dictionary).has(PERK_KEY), "shipped mentors: a perk in a %s challenge" % c2)
+	unlocked.erase(fa)
+	_check(errs, not can_mentor(fa) and perks_for(you).is_empty() and pupil_of(fa) == you
+			and str(perks_for(mate).get("mentor", "")) == g, "shipped mentors: a locked %s mentor" % c2)
+	unlocked.append(fa)
+	var pairs: String = JSON.stringify(mentors)
+	_check(errs, save(), "shipped mentors: save %s" % LegendsSave.last_error)
+	mentors = {}
+	load_state(true)
+	_check(errs, JSON.stringify(mentors) == pairs, "shipped mentors: round trip %s vs %s" % [JSON.stringify(mentors), pairs])
+
+	# put back: a fresh Legends state, the trip as it was in memory, the file never written
+	trip_mem["version"] = Save.VERSION
+	Trip.from_dict(trip_mem)
+	_check(errs, _bytes(trip_path) == trip_disk, "shipped: the trip file changed")
+	_from_dict({})
+	_loaded = true
+	force_tokens = -1
+	Stars.force_total = 24
 
 # P10-02: the multi-chapter paths on a stand-in second built chapter (LegendsData.two_chapter_test_data(): "fathers"
 # built with 6 copies of Chapter 1's legends, its own rating keys, missing look / twist / music / scenes). Gates (stars,
