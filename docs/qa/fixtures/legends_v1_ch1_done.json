@@ -1,0 +1,38 @@
+{
+	"finales": [
+		"grand"
+	],
+	"mentors": {
+		"lg_gate": "ud_deuce"
+	},
+	"seen": [
+		"legends_grand_intro",
+		"lg_steeple_unlock",
+		"lg_gate_unlock",
+		"lg_set_shot_unlock",
+		"lg_boxcar_unlock",
+		"lg_velvet_unlock",
+		"lg_quarterback_unlock",
+		"legends_grand_finale_before",
+		"legends_grand_finale_after"
+	],
+	"serial": 20,
+	"tokens": {
+		"fin:grand": 3,
+		"lg:lg_boxcar": 3,
+		"lg:lg_gate": 3,
+		"lg:lg_quarterback": 3,
+		"lg:lg_set_shot": 3,
+		"lg:lg_steeple": 3,
+		"lg:lg_velvet": 3
+	},
+	"unlocked": [
+		"lg_steeple",
+		"lg_gate",
+		"lg_set_shot",
+		"lg_boxcar",
+		"lg_velvet",
+		"lg_quarterback"
+	],
+	"version": 1
+}

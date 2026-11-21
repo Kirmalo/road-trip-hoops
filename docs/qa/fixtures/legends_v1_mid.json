@@ -1,0 +1,24 @@
+{
+	"finales": [],
+	"mentors": {
+		"lg_gate": "ud_deuce"
+	},
+	"seen": [
+		"legends_grand_intro",
+		"lg_steeple_unlock",
+		"lg_gate_unlock",
+		"lg_set_shot_unlock"
+	],
+	"serial": 8,
+	"tokens": {
+		"lg:lg_gate": 3,
+		"lg:lg_set_shot": 2,
+		"lg:lg_steeple": 2
+	},
+	"unlocked": [
+		"lg_steeple",
+		"lg_gate",
+		"lg_set_shot"
+	],
+	"version": 1
+}

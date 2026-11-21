@@ -1,0 +1,144 @@
+extends SceneTree
+# P10-01 check: the Phase 9 fixtures in FIXTURE_DIR load in this build, under the owner's file names (no user args):
+# settings_v2_36.cfg as user://settings.cfg, legends_v1_mid.json / legends_v1_ch1_done.json as user://legends.json,
+# trip_v2_legend.json as user://trip.json. Each loaded state must be the file's own (minus version / serial), and the
+# stars, slots, gates, tokens, unlocks, finale, mentor and perk, the drafted legend starting next to a boss (no repair),
+# the draft's LEGENDS row and a challenge's swap line are read back. Loading writes nothing (files byte for byte).
+#   FIXTURE_DIR=/abs/dir godot --headless --path <copy> -s res://check_fixtures_v3.gd
+
+const Trip = preload("res://scripts/trip.gd")
+const Save = preload("res://scripts/save.gd")
+const Difficulty = preload("res://scripts/difficulty.gd")
+const Stars = preload("res://scripts/stars.gd")
+const Cosmetics = preload("res://scripts/cosmetics.gd")
+const Legends = preload("res://scripts/legends.gd")
+const LegendsSave = preload("res://scripts/legends_save.gd")
+const LegendsData = preload("res://scripts/legends_data.gd")
+
+var ok := true
+var dir := ""
+
+func _bytes(p: String) -> PackedByteArray:
+	if not FileAccess.file_exists(p):
+		return PackedByteArray()
+	var f: FileAccess = FileAccess.open(p, FileAccess.READ)
+	var b: PackedByteArray = f.get_buffer(f.get_length())
+	f.close()
+	return b
+
+func _copy(name: String, dst: String) -> bool:
+	var b: PackedByteArray = _bytes(dir.path_join(name))
+	if b.is_empty():
+		print("CHECK %s: MISSING" % name)
+		ok = false
+		return false
+	var w: FileAccess = FileAccess.open(dst, FileAccess.WRITE)
+	w.store_buffer(b)
+	w.close()
+	return true
+
+func _want(cond: bool, what: String) -> void:
+	if not cond:
+		ok = false
+		print("CHECK   FAILED: %s" % what)
+
+func _same_json(a, b) -> bool:
+	return JSON.stringify(a, "", true) == JSON.stringify(b, "", true)
+
+func _file_dict(name: String) -> Dictionary:
+	var d = JSON.parse_string(_bytes(dir.path_join(name)).get_string_from_utf8())
+	var out: Dictionary = (d as Dictionary).duplicate(true) if d is Dictionary else {}
+	out.erase("version")
+	out.erase("serial")
+	return out
+
+func _initialize() -> void:
+	dir = OS.get_environment("FIXTURE_DIR")
+	print("CHECK files: trip %s legends %s settings %s" % [Save.path(), LegendsSave.path(), Difficulty.SAVE_PATH])
+	Save.erase()
+	LegendsSave.erase()
+	_copy("settings_v2_36.cfg", Difficulty.SAVE_PATH)
+	_copy("legends_v1_mid.json", LegendsSave.path())
+	_copy("trip_v2_legend.json", Save.path())
+	_check_settings()
+	_check_legends("legends_v1_mid.json", 7, ["lg_steeple", "lg_gate", "lg_set_shot"], false)
+	_check_trip()
+	_want(_bytes(Save.path()) == _bytes(dir.path_join("trip_v2_legend.json")), "trip.json unchanged by loading")
+	_want(_bytes(LegendsSave.path()) == _bytes(dir.path_join("legends_v1_mid.json")), "legends.json (mid) unchanged")
+	_copy("legends_v1_ch1_done.json", LegendsSave.path())
+	_check_legends("legends_v1_ch1_done.json", 21, LegendsData.legend_ids("grand"), true)
+	var pk: Dictionary = Trip.roster_player("ud_deuce").get("perk", {})
+	print("CHECK trip with legends_v1_ch1_done.json: Deuce's perk %s | finale match %s" % [str(pk.get("id", "")),
+			Legends.match_line(Legends.match_for_finale("grand", "hard"))])
+	_want(str(pk.get("id", "")) == "block_timing", "ch1_done: Deuce keeps Gate's perk on the trip")
+	_want(_bytes(LegendsSave.path()) == _bytes(dir.path_join("legends_v1_ch1_done.json")), "legends.json (done) unchanged")
+	_want(_bytes(Save.path()) == _bytes(dir.path_join("trip_v2_legend.json")), "trip.json still unchanged")
+	Save.erase()
+	LegendsSave.erase()
+	DirAccess.remove_absolute(Difficulty.SAVE_PATH)
+	print("CHECK %s" % ("OK" if ok else "FAILED"))
+	quit(0 if ok else 1)
+
+func _check_settings() -> void:
+	Cosmetics._reset_cache()
+	Difficulty.load_saved()
+	var picks: Array = [Cosmetics.picked("jersey"), Cosmetics.picked("ball"), Cosmetics.picked("van")]
+	print("CHECK settings_v2_36.cfg: stars %d slots %d legend %s | picks %s | courts %d %s | open reward courts %s | level %s | left-handed %s | fullscreen %s | legends open %s (gate %s)" % [
+			Stars.real_total(), Stars.slots(), Stars.legend_open(), str(picks), Difficulty.unlocked_cities().size(),
+			str(Difficulty.unlocked_cities()), str(Cosmetics.open_court_looks()), Difficulty.level_name(),
+			Difficulty.left_handed_saved(), Difficulty.fullscreen_saved(), Legends.mode_open(), Legends.mode_gate_text()])
+	_want(Stars.real_total() == 36, "36 stars")
+	_want(Stars.slots() == 3, "3 slots")
+	_want(not Stars.legend_open(), "LEGEND closed")
+	_want(picks == ["jersey_2", "ball_1", "van_1"], "picks")
+	_want(Difficulty.level_name() == "normal", "level")
+	_want(Difficulty.unlocked_cities().size() == 6, "6 courts")
+	_want(Legends.mode_open() and Legends.chapter_open("grand"), "Chapter 1 open at 36 stars")
+
+func _check_legends(name: String, want_tokens: int, want_unlocked: Array, done: bool) -> void:
+	Legends.load_state(true)
+	var same: bool = _same_json(Legends.to_dict(), _file_dict(name))
+	var pk: Dictionary = Legends.perks_for("ud_deuce")
+	print("CHECK %s: same state %s | tokens %d (chapter %d / %d) %s | unlocked %s | finale open %s, chapter done %s | mentors %s, Deuce's perk %s | seen %d" % [
+			name, same, Legends.real_tokens_total(), Legends.chapter_tokens("grand"), Legends.chapter_max_tokens("grand"),
+			str(Legends.tokens), str(Legends.unlocked_ids()), Legends.finale_open("grand"), Legends.chapter_done("grand"),
+			str(Legends.mentors), str(pk.get("id", "")), Legends.seen.size()])
+	_want(same, name + " loads as saved")
+	_want(Legends.real_tokens_total() == want_tokens, name + " tokens")
+	_want(Legends.unlocked_ids() == want_unlocked, name + " unlocks")
+	_want(Legends.finale_open("grand") == done and Legends.chapter_done("grand") == done, name + " finale / chapter")
+	_want(Legends.mentor_of("ud_deuce") == "lg_gate" and str(pk.get("id", "")) == "block_timing", name + " mentor")
+
+func _check_trip() -> void:
+	var loaded: bool = Trip.continue_trip()
+	var same: bool = loaded and _same_json(Trip.to_dict(), _file_dict("trip_v2_legend.json"))
+	var st: Array = Trip.starters
+	var deuce: Dictionary = Trip.roster_player("ud_deuce")
+	var steeple: Dictionary = Trip.roster_player("lg_steeple")
+	var rows: Array = Trip.draft_pool_by_crew()
+	var last: Dictionary = rows[rows.size() - 1] if not rows.is_empty() else {}
+	var legend_row: Array = []
+	for p in last.get("players", []):
+		legend_row.append(str((p as Dictionary).get("id", "")))
+	var m: Dictionary = Legends.match_for_challenge("lg_steeple", "normal")
+	print("CHECK trip_v2_legend.json: loaded %s, same state %s, CONTINUE -> %s | level %s city %s game %d phase %s | roster %d drafted %s | starters %s (legends %d bosses %d, rule '%s') | repair %s | open slots %d | Deuce perk %s | Steeple %s %s | draft rows %d, last %s %s | steeple challenge: crew %s note '%s'" % [
+			loaded, same, Trip.resume_screen(), Trip.level, Trip.city, Trip.game, Trip.phase, Trip.roster_ids().size(),
+			str(Trip.drafted_ids()), str(st), Trip.legend_count(st), Trip.boss_count(st), Trip.starters_ok(st),
+			str(Trip.boss_repair), Trip.open_slots(), str(deuce.get("perk", {}).get("id", "")),
+			str(steeple.get("tier", "")), str(steeple.get("ratings", {})), rows.size(), str(last.get("city", "")),
+			str(legend_row), str(m.get("crew", "")), str(m.get("note", ""))])
+	_want(same, "trip loads as saved")
+	_want(int(_file_dict_raw("trip_v2_legend.json").get("version", 0)) == Save.VERSION, "trip version 2")
+	_want(Trip.resume_screen() == "map" and Trip.phase == "map" and Trip.city == "los_angeles", "CONTINUE -> map, LA")
+	_want(Trip.drafted_ids() == ["ht_boss", "lg_steeple"], "drafts")
+	_want(st == ["ud_deuce", "lg_steeple", "ht_boss"], "starters legend + boss")
+	_want(Trip.starters_ok(st) == "" and Trip.boss_repair.is_empty(), "lineup legal, no repair")
+	_want(Trip.open_slots() == 1, "one open slot")
+	_want(str(deuce.get("perk", {}).get("id", "")) == "block_timing", "Deuce's perk on the trip")
+	_want(not steeple.has("perk"), "a legend has no perk")
+	_want(str(last.get("city", "")) == Trip.LEGENDS_ROW, "draft LEGENDS row")
+	_want(str(m.get("note", "")).begins_with("STEEPLE SITS"), "Steeple sits in his own challenge")
+
+func _file_dict_raw(name: String) -> Dictionary:
+	var d = JSON.parse_string(_bytes(dir.path_join(name)).get_string_from_utf8())
+	return d if d is Dictionary else {}
