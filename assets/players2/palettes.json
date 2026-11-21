@@ -301,6 +301,21 @@
   "la_g2_crew_j3": {
    "pages": "la_g2"
   },
+  "lg_ankles": {
+   "pages": "lg_ankles"
+  },
+  "lg_ankles_crew": {
+   "pages": "lg_ankles"
+  },
+  "lg_ankles_crew_j1": {
+   "pages": "lg_ankles"
+  },
+  "lg_ankles_crew_j2": {
+   "pages": "lg_ankles"
+  },
+  "lg_ankles_crew_j3": {
+   "pages": "lg_ankles"
+  },
   "lg_boxcar": {
    "pages": "lg_boxcar"
   },
@@ -315,6 +330,36 @@
   },
   "lg_boxcar_crew_j3": {
    "pages": "lg_boxcar"
+  },
+  "lg_eyes_closed": {
+   "pages": "lg_eyes_closed"
+  },
+  "lg_eyes_closed_crew": {
+   "pages": "lg_eyes_closed"
+  },
+  "lg_eyes_closed_crew_j1": {
+   "pages": "lg_eyes_closed"
+  },
+  "lg_eyes_closed_crew_j2": {
+   "pages": "lg_eyes_closed"
+  },
+  "lg_eyes_closed_crew_j3": {
+   "pages": "lg_eyes_closed"
+  },
+  "lg_freight": {
+   "pages": "lg_freight"
+  },
+  "lg_freight_crew": {
+   "pages": "lg_freight"
+  },
+  "lg_freight_crew_j1": {
+   "pages": "lg_freight"
+  },
+  "lg_freight_crew_j2": {
+   "pages": "lg_freight"
+  },
+  "lg_freight_crew_j3": {
+   "pages": "lg_freight"
   },
   "lg_gate": {
    "pages": "lg_gate"
@@ -331,6 +376,36 @@
   "lg_gate_crew_j3": {
    "pages": "lg_gate"
   },
+  "lg_lockbox": {
+   "pages": "lg_lockbox"
+  },
+  "lg_lockbox_crew": {
+   "pages": "lg_lockbox"
+  },
+  "lg_lockbox_crew_j1": {
+   "pages": "lg_lockbox"
+  },
+  "lg_lockbox_crew_j2": {
+   "pages": "lg_lockbox"
+  },
+  "lg_lockbox_crew_j3": {
+   "pages": "lg_lockbox"
+  },
+  "lg_midrange": {
+   "pages": "lg_midrange"
+  },
+  "lg_midrange_crew": {
+   "pages": "lg_midrange"
+  },
+  "lg_midrange_crew_j1": {
+   "pages": "lg_midrange"
+  },
+  "lg_midrange_crew_j2": {
+   "pages": "lg_midrange"
+  },
+  "lg_midrange_crew_j3": {
+   "pages": "lg_midrange"
+  },
   "lg_quarterback": {
    "pages": "lg_quarterback"
   },
@@ -345,6 +420,21 @@
   },
   "lg_quarterback_crew_j3": {
    "pages": "lg_quarterback"
+  },
+  "lg_rooftop": {
+   "pages": "lg_rooftop"
+  },
+  "lg_rooftop_crew": {
+   "pages": "lg_rooftop"
+  },
+  "lg_rooftop_crew_j1": {
+   "pages": "lg_rooftop"
+  },
+  "lg_rooftop_crew_j2": {
+   "pages": "lg_rooftop"
+  },
+  "lg_rooftop_crew_j3": {
+   "pages": "lg_rooftop"
   },
   "lg_set_shot": {
    "pages": "lg_set_shot"
@@ -869,18 +959,42 @@
   "la_g2_crew_j1": "la_g2",
   "la_g2_crew_j2": "la_g2",
   "la_g2_crew_j3": "la_g2",
+  "lg_ankles_crew": "lg_ankles",
+  "lg_ankles_crew_j1": "lg_ankles",
+  "lg_ankles_crew_j2": "lg_ankles",
+  "lg_ankles_crew_j3": "lg_ankles",
   "lg_boxcar_crew": "lg_boxcar",
   "lg_boxcar_crew_j1": "lg_boxcar",
   "lg_boxcar_crew_j2": "lg_boxcar",
   "lg_boxcar_crew_j3": "lg_boxcar",
+  "lg_eyes_closed_crew": "lg_eyes_closed",
+  "lg_eyes_closed_crew_j1": "lg_eyes_closed",
+  "lg_eyes_closed_crew_j2": "lg_eyes_closed",
+  "lg_eyes_closed_crew_j3": "lg_eyes_closed",
+  "lg_freight_crew": "lg_freight",
+  "lg_freight_crew_j1": "lg_freight",
+  "lg_freight_crew_j2": "lg_freight",
+  "lg_freight_crew_j3": "lg_freight",
   "lg_gate_crew": "lg_gate",
   "lg_gate_crew_j1": "lg_gate",
   "lg_gate_crew_j2": "lg_gate",
   "lg_gate_crew_j3": "lg_gate",
+  "lg_lockbox_crew": "lg_lockbox",
+  "lg_lockbox_crew_j1": "lg_lockbox",
+  "lg_lockbox_crew_j2": "lg_lockbox",
+  "lg_lockbox_crew_j3": "lg_lockbox",
+  "lg_midrange_crew": "lg_midrange",
+  "lg_midrange_crew_j1": "lg_midrange",
+  "lg_midrange_crew_j2": "lg_midrange",
+  "lg_midrange_crew_j3": "lg_midrange",
   "lg_quarterback_crew": "lg_quarterback",
   "lg_quarterback_crew_j1": "lg_quarterback",
   "lg_quarterback_crew_j2": "lg_quarterback",
   "lg_quarterback_crew_j3": "lg_quarterback",
+  "lg_rooftop_crew": "lg_rooftop",
+  "lg_rooftop_crew_j1": "lg_rooftop",
+  "lg_rooftop_crew_j2": "lg_rooftop",
+  "lg_rooftop_crew_j3": "lg_rooftop",
   "lg_set_shot_crew": "lg_set_shot",
   "lg_set_shot_crew_j1": "lg_set_shot",
   "lg_set_shot_crew_j2": "lg_set_shot",

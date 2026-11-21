@@ -40,8 +40,10 @@ Usage:  python3 tools/art/make_players_v2.py [--only ID[,ID...] | --all] [--jobs
         [--hook-strip ID DIR]        (a still strip of the hook in 5 directions to DIR)
         [--extra-preview NAME [ID]]  (P10-04b: only that extra's preview gif, e.g. fadeaway: docs/art/fadeaway_v1.gif)
         [--extra-strip NAME ID DIR]  (a still strip of that extra in 5 directions to DIR)
-        [--legends-strip]            (P9-09: only docs/art/legends_grand.png, the six lg_ sheets with the hook, from
-                                     the written files; the sheets themselves: --only <the LEGENDS ids>)
+        [--legends-strip [fathers]]  (P9-09: only docs/art/legends_grand.png, the six lg_ sheets with the hook, from
+                                     the written files; the sheets themselves: --only <the LEGENDS ids>. P10-14:
+                                     fathers = docs/art/legends_fathers.png, Midrange with the fadeaway;
+                                     --only <the LEGENDS_FATHERS ids>)
 Extra animations (P9-04b): EXTRA (the hook shot; P10-04b the turnaround fadeaway) is rendered only for the sheets
 that carry it (EXTRA_CREWS: the hook on crew "GR"; a crews.json "extra": [...] list; --extra-sheets [name:]id,...),
 onto extra pages <id>_x<N>.png with the same palettes, and listed in format.json's "extra" section (only the extras
@@ -1189,8 +1191,9 @@ EXTRA = [
 ]
 EXTRA_ANIM = {a[0]: a for a in EXTRA}
 # Who carries an extra is data (P10-04b): EXTRA_CREWS names the crews.json crews whose sheets carry it (Chapter 1's
-# "GR" sheets carry the hook; the Fathers' crew is added to "fadeaway" when their sheets are made, P10-08), and any
-# crews.json player can list it in "extra": [names] (a sheet may carry several: each keeps its own columns).
+# "GR" sheets carry the hook), and any crews.json player can list it in "extra": [names] (a sheet may carry several:
+# each keeps its own columns). P10-14: the Fathers (crew "FA") carry no hook; only Midrange lists "extra":
+# ["fadeaway"], so his x page holds the fadeaway in its own columns (11..23, the hook's 0..10 left empty).
 # --extra-sheets id,... makes those sheets carry every extra this run; --extra-sheets name:id,... only that extra.
 EXTRA_CREWS = {"hook": ("GR",), "fadeaway": ()}
 EXTRA_FORCE = set()
@@ -2134,7 +2137,7 @@ def moves_gif(all_frames, path=MOVES_GIF):
 
 
 PREVIEW4 = os.path.join(ROOT, "docs", "art", "players_preview_v4.png")
-CREW_ORDER = ["U", "HT", "CHI", "MEM", "NOL", "DEN", "SEA", "LA", "NYQ", "NYS", "NYF", "NY", "GR"]
+CREW_ORDER = ["U", "HT", "CHI", "MEM", "NOL", "DEN", "SEA", "LA", "NYQ", "NYS", "NYF", "NY", "GR", "FA"]
 
 
 def decoded_pages(base, pal_id):
@@ -2279,29 +2282,55 @@ def cut_extra(pages, name, dname, k):
     return Image.fromarray(pages[c // PAGE_COLS][r * FH:(r + 1) * FH, (c % PAGE_COLS) * FW:(c % PAGE_COLS + 1) * FW].copy())
 
 
-def legends_strip(path=LEGENDS_STRIP):
-    """P9-09 contact sheet: per legend, two lines. Era colors: idle in the 5 drawn directions, running dribble SE,
-    jump shot release E, block S | the hook shot (E: gather, sweep, top, release, follow; release S and SE, lifted
-    as the preview does). Your colors: the _crew recolor and the 3 star jerseys (idle S) | _crew's hook.
-    Everything is decoded from the written index pages and palettes (no render); the ball from hands.json."""
+# P10-14: the Fathers sheets (crews.json crew "FA", ids lg_*; original characters, names and numbers approved by the
+# owner, VISION "Phase 10 names and numbers") are 'draft': true entries like the Grandfathers: era kits (ERA2_*), a
+# _crew recolor (crew_recolor "FA", the look sample's map) and the _crew_j1..3 jerseys. They carry no hook; Midrange
+# lists "extra": ["fadeaway"] (P10-04b, approved). Rebuild: --only <the LEGENDS_FATHERS ids> --no-preview, then
+# --legends-strip fathers (docs/art/legends_fathers.png).
+LEGENDS_FATHERS = ["lg_rooftop", "lg_ankles", "lg_midrange", "lg_freight", "lg_eyes_closed", "lg_lockbox"]
+LEGENDS_FATHERS_STRIP = os.path.join(ROOT, "docs", "art", "legends_fathers.png")
+LEGEND_FADE = [("E", k) for k in (0, 2, 4, 7, 8, 10)] + [("S", 8), ("SE", 8)]
+LEGEND_EXTRA_CELLS = {"hook": ("HOOK", LEGEND_HOOK), "fadeaway": ("FADEAWAY", LEGEND_FADE)}
+LEGEND_STRIPS = {
+    "grand": (LEGENDS, LEGENDS_STRIP,
+              "Legends Chapter 1, the Grandfathers (P9-09): the six legend sheets as the game draws them "
+              "(index pages + palettes), 2x. Original characters; owner-approved numbers.",
+              "Top: era colors (idle S SE E NE N, run dribble SE, jump shot E, block S | HOOK: E gather .. "
+              "follow, release S, SE). Bottom: your colors (_crew, star jerseys %s) | the _crew hook."),
+    "fathers": (LEGENDS_FATHERS, LEGENDS_FATHERS_STRIP,
+                "Legends Chapter 2, the Fathers (P10-14): the six legend sheets as the game draws them "
+                "(index pages + palettes), 2x. Original characters; owner-approved names and numbers.",
+                "Top: era colors (idle S SE E NE N, run dribble SE, jump shot E, block S | Midrange's FADEAWAY: E "
+                "post, turn, gather, top, release, follow; release S, SE). Bottom: your colors (_crew, star jerseys "
+                "%s) | the _crew fadeaway. No hook on these sheets."),
+}
+
+
+def legends_strip(path=None, chapter="grand"):
+    """P9-09 contact sheet (P10-14: per chapter): per legend, two lines. Era colors: idle in the 5 drawn directions,
+    running dribble SE, jump shot release E, block S | the extra he carries (the hook: E gather, sweep, top, release,
+    follow; release S and SE; the fadeaway: E post .. follow, release S and SE; lifted as the preview does). Your
+    colors: the _crew recolor and the 3 star jerseys (idle S) | _crew's extra. Everything is decoded from the written
+    index pages and palettes (no render); the ball from hands.json."""
+    ids, default_path, head1, head2 = LEGEND_STRIPS[chapter]
+    path = path or default_path
     raw = json.load(open(M.CREWS))
     ent = {e["id"]: e for e in raw["players"]}
     hands = json.load(open(os.path.join(OUT_DIR, "hands.json")))
+    fmt = json.load(open(os.path.join(OUT_DIR, "format.json")))
+    carried = {sid: [n for n in EXTRA_ANIM if sid in fmt.get("extra", {}).get(n, {}).get("sheets", [])] for sid in ids}
     jn = [(n, name) for n, name, _ in jersey_defs()]
     Z, pad = 2, 6
     cw, chh = FW * Z, FH * Z
-    lift = PREVIEW_LIFT.get("hook", [0] * 11)
-    W = 150 + len(LEGEND_CELLS) * cw + 16 + len(LEGEND_HOOK) * cw + pad
+    ncells = max([len(LEGEND_EXTRA_CELLS[n][1]) for s in ids for n in carried[s]] or [len(LEGEND_HOOK)])
+    W = 150 + len(LEGEND_CELLS) * cw + 16 + ncells * cw + pad
     line_h = chh + 22
-    H = 44 + len(LEGENDS) * (2 * line_h + 10)
+    H = 44 + len(ids) * (2 * line_h + 10)
     img = S.floor_bg(W, H)
     dr = ImageDraw.Draw(img)
     dr.rectangle([0, 0, W, 36], fill=(28, 26, 38, 255))
-    S.label(dr, (8, 3), "Legends Chapter 1, the Grandfathers (P9-09): the six legend sheets as the game draws them "
-                        "(index pages + palettes), 2x. Original characters; owner-approved numbers.", 14)
-    S.label(dr, (8, 20), "Top: era colors (idle S SE E NE N, run dribble SE, jump shot E, block S | HOOK: E gather .. "
-                         "follow, release S, SE). Bottom: your colors (_crew, star jerseys %s) | the _crew hook." %
-            ", ".join(nm for _, nm in jn), 12)
+    S.label(dr, (8, 3), head1, 14)
+    S.label(dr, (8, 20), head2 % ", ".join(nm for _, nm in jn), 12)
 
     def rec_of(sid, name, dn, k):
         r = hands["bodies"][hands["sheets"][sid]][name][dn][k]
@@ -2311,8 +2340,21 @@ def legends_strip(path=LEGENDS_STRIP):
         cell = S.compose_frame(fr, rec, lift=lf, top=0)
         img.alpha_composite(cell.resize((cw, chh), Image.NEAREST), (x, y))
 
+    def extras(sid, pal, x, y, label):
+        for name in carried[sid][:1]:
+            tag, cells = LEGEND_EXTRA_CELLS[name]
+            lift = PREVIEW_LIFT.get(name, [0] * EXTRA_ANIM[name][1]["n"])
+            if label:
+                S.label(dr, (x + 2, y + 2), tag, 12, (255, 224, 138))
+            xp = decoded_extra_pages(sid, pal)
+            for dn, k in cells:
+                put(cut_extra(xp, name, dn, k), rec_of(sid, name, dn, k), x, y, lift[k])
+                x += cw
+        if not carried[sid] and label:
+            S.label(dr, (x + 2, y + 2), "no extra animation (the normal jump shot)", 12, (200, 196, 186))
+
     y = 44
-    for sid in LEGENDS:
+    for sid in ids:
         e = ent[sid]
         pages = decoded_pages(sid, sid)
         S.label(dr, (8, y + 30), e["name"].upper(), 14)
@@ -2323,22 +2365,14 @@ def legends_strip(path=LEGENDS_STRIP):
             put(cut(pages, name, dn, k), rec_of(sid, name, dn, k), x, y)
             x += cw
         x += 16
-        S.label(dr, (x + 2, y + 2), "HOOK", 12, (255, 224, 138))
-        xp = decoded_extra_pages(sid, sid)
-        for dn, k in LEGEND_HOOK:
-            put(cut_extra(xp, "hook", dn, k), rec_of(sid, "hook", dn, k), x, y, lift[k])
-            x += cw
+        extras(sid, sid, x, y, True)
         y += line_h
         x = 150
         for v, lab in [(sid + "_crew", "your colors")] + [("%s_crew_j%d" % (sid, n), nm.lower()) for n, nm in jn]:
             put(cut(decoded_pages(sid, v), "idle", "S", 0), {"ball": None}, x, y)
             S.label(dr, (x + 4, y + chh - 4), lab, 11)
             x += cw
-        x = 150 + len(LEGEND_CELLS) * cw + 16
-        cx = decoded_extra_pages(sid, sid + "_crew")
-        for dn, k in LEGEND_HOOK:
-            put(cut_extra(cx, "hook", dn, k), rec_of(sid, "hook", dn, k), x, y, lift[k])
-            x += cw
+        extras(sid, sid + "_crew", 150 + len(LEGEND_CELLS) * cw + 16, y, False)
         y += line_h + 10
     img.convert("RGB").save(path, optimize=True)
     return path
@@ -2394,8 +2428,10 @@ def _extra_args(argv):
 def main(argv):
     if _extra_args(argv):
         return
-    if "--legends-strip" in argv:    # only the P9-09 contact sheet, from the written files
-        print("wrote", legends_strip())
+    if "--legends-strip" in argv:    # only the P9-09 contact sheet (P10-14: "fathers"), from the written files
+        i = argv.index("--legends-strip") + 1
+        ch = argv[i] if i < len(argv) and argv[i] in LEGEND_STRIPS else "grand"
+        print("wrote", legends_strip(chapter=ch))
         return
     if "--draft-strip" in argv:      # only the P8-05 contact strip, from the written files
         print("wrote", draft_strip())

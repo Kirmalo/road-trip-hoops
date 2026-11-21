@@ -128,7 +128,8 @@
     "NYQ": {"team": "red", "ring": [236, 52, 64], "_note": "New York quarterfinal: Bridge Runners, red and black"},
     "NYS": {"team": "red", "ring": [236, 52, 64], "_note": "New York semifinal: Bodega Bandits, grey and plum"},
     "NYF": {"team": "red", "ring": [236, 52, 64], "_note": "New York final: Concrete Crowns, black and gold"},
-    "GR": {"team": "red", "ring": [236, 52, 64], "_note": "Legends Chapter 1: the Grandfathers (P9-09), each in his own era kit"}
+    "GR": {"team": "red", "ring": [236, 52, 64], "_note": "Legends Chapter 1: the Grandfathers (P9-09), each in his own era kit"},
+    "FA": {"team": "red", "ring": [236, 52, 64], "_note": "Legends Chapter 2: the Fathers (P10-14), each in his own era kit"}
   },
   "crew_recolor": {
     "_help": "per city crew: palette name swaps, then '_fields' sets these fields outright (gold trims)",
@@ -146,7 +147,10 @@
     "GR": {"_note": "P9-09: every era kit color to one of your colors (rust, crimson, olive and powder BLUE, brown and navy NAVY, mustard and lemon GOLD, cream and white WHITE); pads and gum soles stay",
            "ERA_RUST": "BLUE", "ERA_OLIVE": "BLUE", "ERA_POWDER": "BLUE", "ERA_CRIMSON": "BLUE",
            "ERA_BROWN": "NAVY", "ERA_NAVY": "NAVY", "ERA_MUSTARD": "GOLD", "ERA_LEMON": "GOLD",
-           "ERA_CREAM": "WHITE", "ERA_WHITE": "WHITE"}
+           "ERA_CREAM": "WHITE", "ERA_WHITE": "WHITE"},
+    "FA": {"_note": "P10-14: every era kit color to one of your colors, as in the approved look sample (seafoam, brick and grape BLUE, charcoal and steel NAVY, tangerine and citrus GOLD, ice WHITE)",
+           "ERA2_SEAFOAM": "BLUE", "ERA2_BRICK": "BLUE", "ERA2_GRAPE": "BLUE", "ERA2_CHARCOAL": "NAVY",
+           "ERA2_STEEL": "NAVY", "ERA2_TANGERINE": "GOLD", "ERA2_CITRUS": "GOLD", "ERA2_ICE": "WHITE"}
   },
   "jerseys": {
     "_help": ["P8-09: the 3 alternate jerseys (star rewards jersey_1..3, Cosmetics.ITEMS). Palette only: every sheet that",
@@ -765,6 +769,65 @@
       "shorts_len": 0.46, "era_shorts": true, "sleeve": null, "tight": null, "sock_pal": "ERA_CREAM", "sock_len": 0.9,
       "socks": "striped", "stripe_pal": "ERA_RUST", "stripe2_pal": "ERA_CREAM", "shoe_pal": "ERA_CREAM", "shoe_acc": "ERA_RUST",
       "sole_pal": "ERA_GUM", "action": ["pass", 2]
+    },
+    {
+      "id": "lg_rooftop", "crew": "FA", "phase": 10, "number": 27, "role": "high-flying shooting guard", "name": "Rooftop",
+      "draft": true, "desc": "P10-14 legend (original): tall and lanky wing, brown skin, black cornrows, charcoal left arm sleeve, no headband; seafoam tank, white trim, baggy seafoam shorts with charcoal side panels, white crew socks (the approved look sample)",
+      "body": "lanky_wing", "body_tweak": {"leg": 0.04, "torso": 0.01}, "skin": "brown", "hair": "cornrows",
+      "hair_pal": "HAIR_BLACK", "top": "tank", "top_pal": "ERA2_SEAFOAM", "trim_pal": "ERA2_ICE",
+      "shorts_pal": "ERA2_SEAFOAM", "shorts_trim": "ERA2_CHARCOAL", "shorts_len": 1.1, "baggy": true, "sleeve": "L",
+      "sleeve_pal": "ERA2_CHARCOAL", "tight": null, "sock_pal": "ERA2_ICE", "sock_len": 0.26, "socks": "crew",
+      "stripe_pal": "ERA2_SEAFOAM", "shoe_pal": "ERA2_ICE", "shoe_acc": "ERA2_SEAFOAM", "sole_pal": "ERA2_CHARCOAL",
+      "action": ["dunk_tomahawk", 5]
+    },
+    {
+      "id": "lg_ankles", "crew": "FA", "phase": 10, "number": 16, "role": "crossover artist", "name": "Ankles",
+      "draft": true, "desc": "P10-14 legend (original): small and quick, tan skin, short twists under a white headband, no arm sleeve, white wristbands; citrus tank, charcoal trim, baggy citrus shorts with charcoal side panels, white crew socks",
+      "body": "stocky_guard", "body_tweak": {"mass": -0.12, "width": -0.04}, "skin": "tan", "hair": "twists",
+      "hair_pal": "HAIR_DARK", "headband": true, "band_pal": "ERA2_ICE", "wrist": true, "wrist_pal": "ERA2_ICE",
+      "top": "tank", "top_pal": "ERA2_CITRUS", "trim_pal": "ERA2_CHARCOAL", "shorts_pal": "ERA2_CITRUS",
+      "shorts_trim": "ERA2_CHARCOAL", "shorts_len": 1.1, "baggy": true, "sleeve": null, "tight": null,
+      "sock_pal": "ERA2_ICE", "sock_len": 0.26, "socks": "crew", "stripe_pal": "ERA2_CHARCOAL", "shoe_pal": "ERA2_ICE",
+      "shoe_acc": "ERA2_CHARCOAL", "sole_pal": "ERA2_CHARCOAL", "action": ["cross", 3]
+    },
+    {
+      "id": "lg_midrange", "crew": "FA", "phase": 10, "number": 28, "role": "isolation scorer", "name": "Midrange",
+      "draft": true, "extra": ["fadeaway"], "desc": "P10-14 legend (original): wiry wing, light brown skin (tan), low fade (buzz), white left leg sleeve; grape tank, white trim, long baggy grape shorts with white side panels, white crew socks. Carries the turnaround fadeaway extra (P10-04b)",
+      "body": "lanky_guard", "body_tweak": {"leg": 0.02}, "skin": "tan", "hair": "buzz", "hair_pal": "HAIR_BLACK",
+      "top": "tank", "top_pal": "ERA2_GRAPE", "trim_pal": "ERA2_ICE", "shorts_pal": "ERA2_GRAPE",
+      "shorts_trim": "ERA2_ICE", "shorts_len": 1.14, "baggy": true, "sleeve": null, "tight": "L",
+      "tight_pal": "ERA2_ICE", "sock_pal": "ERA2_ICE", "sock_len": 0.26, "socks": "crew", "stripe_pal": "ERA2_GRAPE",
+      "shoe_pal": "ERA2_ICE", "shoe_acc": "ERA2_GRAPE", "sole_pal": "ERA2_GRAPE", "action": ["shoot", 6]
+    },
+    {
+      "id": "lg_freight", "crew": "FA", "phase": 10, "number": 48, "role": "low-post bulldozer center", "name": "Freight",
+      "draft": true, "desc": "P10-14 legend (original): huge and heavy, umber skin, shaved head, short goatee, steel headband; steel tank, citrus trim, baggy steel shorts with citrus side panels, white crew socks",
+      "body": "heavy_big", "body_tweak": {"mass": 0.1}, "skin": "umber", "hair": "bald", "hair_pal": "HAIR_BLACK",
+      "goatee": true, "headband": true, "band_pal": "ERA2_STEEL", "top": "tank", "top_pal": "ERA2_STEEL",
+      "trim_pal": "ERA2_CITRUS", "shorts_pal": "ERA2_STEEL", "shorts_trim": "ERA2_CITRUS", "shorts_len": 1.1,
+      "baggy": true, "sleeve": null, "tight": null, "sock_pal": "ERA2_ICE", "sock_len": 0.26, "socks": "crew",
+      "stripe_pal": "ERA2_STEEL", "shoe_pal": "ERA2_ICE", "shoe_acc": "ERA2_STEEL", "sole_pal": "ERA2_CITRUS",
+      "action": ["dunk_two", 4]
+    },
+    {
+      "id": "lg_eyes_closed", "crew": "FA", "phase": 10, "number": 14, "role": "no-look passer", "name": "Eyes Closed",
+      "draft": true, "desc": "P10-14 legend (original): slim guard, deep brown skin, tangerine durag, white wristbands, steel right leg sleeve; brick tank, tangerine trim, baggy brick shorts with tangerine side panels, white crew socks (the approved look sample)",
+      "body": "slim_guard", "skin": "deep", "hair": "durag", "hair_pal": "HAIR_BLACK", "rag_pal": "ERA2_TANGERINE",
+      "wrist": true, "wrist_pal": "ERA2_ICE", "top": "tank", "top_pal": "ERA2_BRICK", "trim_pal": "ERA2_TANGERINE",
+      "shorts_pal": "ERA2_BRICK", "shorts_trim": "ERA2_TANGERINE", "shorts_len": 1.1, "baggy": true, "sleeve": null,
+      "tight": "R", "tight_pal": "ERA2_STEEL", "sock_pal": "ERA2_ICE", "sock_len": 0.26, "socks": "crew",
+      "stripe_pal": "ERA2_BRICK", "shoe_pal": "ERA2_ICE", "shoe_acc": "ERA2_BRICK", "sole_pal": "ERA2_TANGERINE",
+      "action": ["pass_chest", 3]
+    },
+    {
+      "id": "lg_lockbox", "crew": "FA", "phase": 10, "number": 36, "role": "lockdown wing defender", "name": "Lockbox",
+      "draft": true, "desc": "P10-14 legend (original): rangy wing, light skin, brown buzz cut, no headband, charcoal right arm sleeve; charcoal tank, tangerine trim, baggy charcoal shorts with tangerine side panels, white crew socks",
+      "body": "lanky_wing", "body_tweak": {"width": 0.04, "mass": 0.06}, "skin": "light", "hair": "buzz",
+      "hair_pal": "HAIR_BROWN", "top": "tank", "top_pal": "ERA2_CHARCOAL", "trim_pal": "ERA2_TANGERINE",
+      "shorts_pal": "ERA2_CHARCOAL", "shorts_trim": "ERA2_TANGERINE", "shorts_len": 1.1, "baggy": true, "sleeve": "R",
+      "sleeve_pal": "ERA2_CHARCOAL", "tight": null, "sock_pal": "ERA2_ICE", "sock_len": 0.26, "socks": "crew",
+      "stripe_pal": "ERA2_CHARCOAL", "shoe_pal": "ERA2_ICE", "shoe_acc": "ERA2_CHARCOAL", "sole_pal": "ERA2_TANGERINE",
+      "action": ["steal", 3]
     }
   ]
 }
