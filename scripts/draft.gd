@@ -118,7 +118,8 @@ const LEGEND_TAG_TEXT := "LEGEND"
 const LEGEND_TAG_FONT := 17
 const LEGEND_TAG_COLOR := Color(1.0, 0.82, 0.25)   # gold text and border on the row's colour
 const LEGEND_WHERE := "UNLOCKED IN LEGENDS"     # the LEGENDS header's line (then the chapter names)
-const ROLE_MIN_FONT := 12                # a long role ("no-look floor general") shrinks down to this to fit
+const ROLE_MIN_FONT := 10                # a long role ("high-flying shooting guard") shrinks down to this to fit
+const ROLE_PAD := 5.0                    # P10-B5: the role line's side margin (inside the border, wider than CARD_PAD)
 
 var main                     # main.gd (set by Flow.build_screen)
 var audio                    # this screen's audio.gd
@@ -790,8 +791,9 @@ class Card extends Control:
 				s.UI.LIT_COLOR if picked else s.UI.TEXT_COLOR, HORIZONTAL_ALIGNMENT_CENTER, w - pad * 2.0)
 		y += 22.0
 		var role: String = str(p.get("role", "")).to_upper()
-		s.draw_text(self, Vector2(pad, y), role, s.fit_size(role, s.SMALL_FONT, w - pad * 2.0), s.DIM_TEXT,
-				HORIZONTAL_ALIGNMENT_CENTER, w - pad * 2.0)
+		var role_w: float = w - s.ROLE_PAD * 2.0
+		s.draw_text(self, Vector2(s.ROLE_PAD, y), role, s.fit_size(role, s.SMALL_FONT, role_w + 6.0), s.DIM_TEXT,
+				HORIZONTAL_ALIGNMENT_CENTER, role_w)
 		y += 8.0
 		# the 5 stats he joins with
 		var rt: Dictionary = p.get("ratings", {})

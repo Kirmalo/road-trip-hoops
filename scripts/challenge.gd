@@ -145,6 +145,10 @@ func show_start() -> void:
 		game.audio.play("fire")
 
 # the goal line as it reads now
+# P10-B4: "GATE'S", "ANKLES'" (a name ending in S takes only the apostrophe, as the data lines write it)
+static func possessive(nm: String) -> String:
+	return nm + "'" if nm.to_upper().ends_with("S") else nm + "'S"
+
 func line_text() -> String:
 	match type:
 		"hold":
@@ -155,7 +159,7 @@ func line_text() -> String:
 		"stop":
 			return "BLOCK OR STEAL ON %s: %d/%d" % [legend_name, stops, count]
 		"race":
-			return "REACH %d BEFORE %s'S CREW GETS %d" % [int(game.rules.target), legend_name, their_target]
+			return "REACH %d BEFORE %s CREW GETS %d" % [int(game.rules.target), possessive(legend_name), their_target]
 		"comeback":
 			return "COME BACK FROM %d-%d: WIN TO %d" % [int(start_score[0]), int(start_score[1]), int(game.rules.target)]
 		"score":
@@ -236,7 +240,7 @@ func _broken_now() -> String:
 				return "%s SCORED %d" % [legend_name, legend_points]
 		"race":
 			if int(game.score[1]) >= their_target:
-				return "%s'S CREW GOT %d" % [legend_name, their_target]
+				return "%s CREW GOT %d" % [possessive(legend_name), their_target]
 	return ""
 
 

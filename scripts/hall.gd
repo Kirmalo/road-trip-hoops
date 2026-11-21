@@ -94,7 +94,11 @@ const SHAPE_NUM_W := 40.0
 const SHAPE_MAX := 25.0                  # an offset of this fills half the bar
 const SHAPE_BAR_H := 10.0
 const SIG_Y := 290.0                     # SIGNATURE MOVE under the plaque
-const PERK_Y := 380.0                    # MENTOR PERK
+const PERK_Y := 380.0                    # MENTOR PERK (lower when the signature text needs it, P10-B6)
+const PERK_GAP := 6.0                    # P10-B6: px at least between the signature text and MENTOR PERK
+const PERK_BLOCK_H := 52.0               # MENTOR PERK and its one line (22 + 30), kept above MENTOR_RECT
+const SIG_TEXT_MIN := 14                 # a long signature text shrinks down to this so the perk block fits
+const DETAIL_ARCH_MIN := 12              # P10-B5: a long archetype shrinks down to this to fit one line
 const MENTOR_RECT := Rect2(14, 434, 444, 20)    # P9-27: the strip for "TRAINS: ..."
 const REPLAY_RECT := Rect2(14, 456, 444, 110)   # REPLAY STORY and TRAIN share it (each >= UI.MIN_BUTTON)
 const REPLAY_FONT := 40
@@ -506,7 +510,9 @@ func _detail_open(id: String) -> void:
 	_fit_font(nm, w)
 	var full: Label = _text(str(p.get("full", "")), Rect2(x, 60, w, 30), DETAIL_FULL_FONT, UI.TEXT_COLOR)
 	_fit_font(full, w, DETAIL_FULL_MIN)
-	_text(str(p.get("archetype", "")).to_upper(), Rect2(x, 108, w, 26), DETAIL_TEXT_FONT - 2, UI.TEXT_COLOR)
+	var arch: Label = _text(str(p.get("archetype", "")).to_upper(), Rect2(x, 108, w, 26), DETAIL_TEXT_FONT - 2,
+			UI.TEXT_COLOR)
+	_fit_font(arch, w, DETAIL_ARCH_MIN)
 	var num: int = int(p.get("number", 0))
 	_text(("#%d  " % num if num > 0 else "") + str(ch.get("name", "")), Rect2(x, 134, w, 24), DETAIL_HEAD_FONT,
 			DIM_TEXT)
@@ -514,14 +520,23 @@ func _detail_open(id: String) -> void:
 	var full_w: float = DETAIL_RECT.size.x - 2.0 * DETAIL_PAD
 	var sig: Dictionary = p.get("signature", {})
 	_text("SIGNATURE MOVE", Rect2(DETAIL_PAD, SIG_Y, full_w, 22), DETAIL_HEAD_FONT, GOLD)
-	_text(str(sig.get("text", "")), Rect2(DETAIL_PAD, SIG_Y + 22.0, full_w, 58), DETAIL_TEXT_FONT, UI.TEXT_COLOR,
-			true)
+	# P10-B6: the perk block goes under the signature text's measured height; a text too tall for the space above
+	# the mentor strip shrinks (down to SIG_TEXT_MIN)
+	var sig_text: String = str(sig.get("text", ""))
+	var sig_fs: int = DETAIL_TEXT_FONT
+	var sig_h: float = _wrapped_height(sig_text, full_w, sig_fs)
+	var perk_y: float = maxf(PERK_Y, SIG_Y + 22.0 + sig_h + PERK_GAP)
+	while sig_fs > SIG_TEXT_MIN and perk_y + PERK_BLOCK_H > MENTOR_RECT.position.y:
+		sig_fs -= 1
+		sig_h = _wrapped_height(sig_text, full_w, sig_fs)
+		perk_y = maxf(PERK_Y, SIG_Y + 22.0 + sig_h + PERK_GAP)
+	_text(sig_text, Rect2(DETAIL_PAD, SIG_Y + 22.0, full_w, sig_h), sig_fs, UI.TEXT_COLOR, true)
 	var perk: Dictionary = LegendsData.perk_of(id)
-	_text("MENTOR PERK", Rect2(DETAIL_PAD, PERK_Y, full_w, 22), DETAIL_HEAD_FONT, GOLD)
+	_text("MENTOR PERK", Rect2(DETAIL_PAD, perk_y, full_w, 22), DETAIL_HEAD_FONT, GOLD)
 	if not perk.is_empty():
-		_text(RT_ONLY_TEXT, Rect2(DETAIL_PAD, PERK_Y, full_w, 22), DETAIL_HEAD_FONT, DIM_TEXT, false,
+		_text(RT_ONLY_TEXT, Rect2(DETAIL_PAD, perk_y, full_w, 22), DETAIL_HEAD_FONT, DIM_TEXT, false,
 				HORIZONTAL_ALIGNMENT_RIGHT)
-	_text(str(perk.get("text", "none")), Rect2(DETAIL_PAD, PERK_Y + 22.0, full_w, 30), DETAIL_TEXT_FONT,
+	_text(str(perk.get("text", "none")), Rect2(DETAIL_PAD, perk_y + 22.0, full_w, 30), DETAIL_TEXT_FONT,
 			UI.TEXT_COLOR)
 	var mentor: bool = _mentor_hook(id, MENTOR_RECT)
 	var rr: Rect2 = REPLAY_RECT
@@ -603,6 +618,17 @@ func _detail_chapter(chid: String) -> void:
 		_text("OPENS AT " + gate, Rect2(DETAIL_PAD, LOCK_LINE_Y, full_w, 30), DETAIL_TEXT_FONT, WARN_COLOR)
 	_text("Six more legends wait in this era. Their plaques go up here when the chapter is built.",
 			Rect2(DETAIL_PAD, LOCK_LINE_Y + 40.0, full_w, 100), DETAIL_TEXT_FONT, DIM_TEXT, true)
+
+# the height of a wrapped _text() label (word-smart wrap at width w, font size fs, the default line spacing)
+static func _wrapped_height(text: String, w: float, fs: int) -> float:
+	if text == "":
+		return 0.0
+	var font: Font = ThemeDB.fallback_font
+	var flags: int = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+	var line_h: float = font.get_height(fs)
+	var lines: int = maxi(1, roundi(font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, w, fs, -1,
+			flags).y / line_h))
+	return lines * (line_h + LabelSettings.new().line_spacing)
 
 # shrinks a one-line label's font (down to min_size) until its text fits max_w
 static func _fit_font(lbl: Label, max_w: float, min_size := 16) -> void:
