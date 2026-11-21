@@ -257,7 +257,12 @@ Everything below (Tasks by wave).
   technical choice, shown at the check-in); `LEGEND_LIMIT` 1 across all chapters; legend + boss still allowed; the
   stale P9-30 comments in `trip.gd` fixed; save version 2; every fixture loads; `--triptest-data` (+ `--load`) TRIPDATA
   OK | P10-11, P10-06
-- **P10-20** | Era music in the game
+- **P10-20** | DONE (art-audio-integrator E: `assets/music/legends_fathers.ogg`, "Headspin" by congusbongus, CC0,
+  license re-read on the page; loop 76.34-173.75 s (97.41 s, 32 bars), 40 ms crossfade in a near-silent gap, mono,
+  -20.1 LUFS, true peak -4.3 dBFS, 913 KB; seam within 0.3 dB on the 20 ms envelope; CREDITS.md row and
+  `CREDITS_LIST` entry; `fallback_music` `newyork` kept as the missing-file guard; `--legendtest` OK without the
+  NOTE, `--titletest` DONE, `--challenge rooftop` plays music `legends_fathers`; the previews stay, as Phase 9's did)
+  | Era music in the game
   | art-audio-integrator E | `assets/music/legends_fathers.ogg`, `tools/make_music.sh`, `CREDITS.md` (one row)
   | the owner's pick, processed to the game loudness, credited (CC-BY rows: title, author, license link, source,
   changes) | P10-07 and the owner's pick, P10-10 merged (CREDITS.md)

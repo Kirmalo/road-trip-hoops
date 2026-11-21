@@ -284,8 +284,8 @@ them for good. Every legend is a made-up character with his own name and looks, 
   shots, layups and dunks go in 8% more often, and fouls are called a little over half as often (60%).
 - ISO BALL rules: every Fathers game is played in the NIGHT PARK (a blacktop under lights) with the era's rules,
   the same for both teams: a crossover beats the defender in front about 20% more often, dunks take off from 10%
-  further out, and shots fly on a slightly higher arc. The Fathers' own music track is not in yet (the owner picks
-  it); until then their games play the New York music.
+  further out, and shots fly on a slightly higher arc. The Fathers have their own music track, a laid-back hip-hop beat
+  ("Headspin" by congusbongus).
 - Signature moves: each legend has one small edge only he has. Steeple shoots hook shots close to the rim (hard to
   block), Gate's blocks stay in play (he keeps the ball or tips it to a teammate), Set Shot's long range starts
   further out, Boxcar dunks from further out, Velvet's finger rolls slip past defenders, and Quarterback throws

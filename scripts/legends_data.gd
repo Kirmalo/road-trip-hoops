@@ -127,8 +127,9 @@ const CHAPTERS := [
 		"finale_scenes": {"before": "legends_grand_finale_before", "after": "legends_grand_finale_after"},
 	},
 	{
-		# P10-11 (owner F1 a, F3 a, F6 a, F7 a). Art, story, twist and music land in their own tasks; until then the
-		# chapter plays on the fallbacks (Sheets' chain, the silhouette, twist none, the gym, fallback_music)
+		# P10-11 (owner F1 a, F3 a, F6 a, F7 a). Art, story, twist and music landed in their own tasks (music: P10-20,
+		# Headspin); a missing file still plays the fallbacks (Sheets' chain, the silhouette, twist none, the gym,
+		# fallback_music)
 		"id": "fathers", "name": "THE FATHERS", "built": true,
 		"rules": "ISO BALL", "feel": "Baggy shorts, high flyers, isolation scorers",
 		"twist": "era_fathers", "look": "era_fathers", "music": "legends_fathers", "fallback_music": "newyork",

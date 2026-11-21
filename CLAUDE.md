@@ -196,8 +196,8 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
   lookups and the tests. Static data and logic, two screens (CanvasLayers built in code, a 1280 x 720 box centred):
   - `scripts/legends_data.gd` (static const data, `LegendsData`; preloads nothing, cities.gd and trip.gd call it):
     `CHAPTERS` (4 rows; `grand` and `fathers` are `built`. `grand`: twist `era_grand`, look `era_grand`, music
-    `legends_grand`, gate 24 stars. `fathers`: twist `era_fathers`, look `era_fathers`, music `legends_fathers` with
-    `fallback_music` `newyork` until the owner's pick (no `legends_fathers.ogg` yet; `--legendtest` prints a NOTE),
+    `legends_grand`, gate 24 stars. `fathers`: twist `era_fathers`, look `era_fathers`, music `legends_fathers` (P10-20, the
+    owner's pick; `fallback_music` `newyork` only guards a missing file, like Chapter 1's `memphis`),
     gate 36 stars or 12 tokens (whichever first, F7 a; no Chapter 1 finale needed). Chapters 3-4 are locked pins,
     gates 48 / 72 stars or 30 / 48 tokens), `LEGENDS` (12 ids, Chapter 1 `lg_steeple`, `lg_gate`, `lg_set_shot`,
     `lg_boxcar`, `lg_velvet`, `lg_quarterback`; Chapter 2 `lg_rooftop`, `lg_ankles`, `lg_midrange`, `lg_freight`,
@@ -272,8 +272,9 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
   (plus `_happy`), `legends/` (the tour timeline, chapter pins `pin_<chapter>[_done|_locked]`, the era card frames
   `frame_grand` / `frame_fathers`, the locked plaque frame, the silhouette, `ui.json`), `courts/era_grand_*` (OLD GYM)
   and `courts/era_fathers_floor.png` / `_backdrop.png` (NIGHT PARK), `music/legends_grand.ogg` (Bebop (Chiptune), Pro
-  Sensory, CC0). The v1 sheets (`assets/players/`) were removed in P6-25. The old Kenney Sports Pack sprites
-  (`assets/*.png`, facing +x) are only a fallback when a player has no sheet at all.
+  Sensory, CC0) and `music/legends_fathers.ogg` (Headspin, congusbongus, CC0). The v1 sheets (`assets/players/`)
+  were removed in P6-25. The old Kenney Sports Pack sprites (`assets/*.png`, facing +x) are only a fallback when a
+  player has no sheet at all.
 - `project.godot` imports lossless textures as PNG (`force_png`), so the indexed pages stay 8-bit. Keep it.
 - `tools/`: `art/make_players_v2.py` (the player sheets from `art/crews.json`; uses `art/make_anim_sample.py`, the
   approved animation sample, and the parts loader of the retired v1 generator `art/make_players.py`, whose own

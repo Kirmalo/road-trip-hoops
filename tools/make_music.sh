@@ -63,3 +63,15 @@ ffmpeg -v error -y -i "$D/Bebop (Chiptune)_0.mp3" \
     -af "aeval=exprs='0.5*clip(val(0)/0.95\,-1\,1)|0.5*clip(val(1)/0.95\,-1\,1)',adeclip=t=10:m=s" -c:a pcm_f32le "$T"
 $M "$T"                                 assets/music/legends_grand.ogg --start 28.25 --end 78.2516 --xfade 0.06 --lufs -20 --q 3
 rm -f "$T"
+# Phase 10 (P10-20), the Legends Chapter 2 (Fathers era) track, the owner's pick A from docs/audio_preview/LIST.md:
+#   legends_fathers  Headspin (headspin_0.mp3, the page's 128k joint-stereo MP3, 205.0 s; not the .xm module)
+#   Loud master (-10.9 LUFS integrated, true peak +1.7 dBFS) but not clipped: no flat tops (0 samples within 2% of
+#   the max), the 0.03% above 1.0 are MP3 overshoot, kept in float and turned down, so no de-clip step.
+#   L/R correlation 0.98: the mono sum is safe. About 78.85 bpm (1 bar = 3.044 s):
+#   find --min 40 --max 110 --from 12 --to 200 -> 76.55-173.9566 (97.41 s, 32 bars, similarity 0.996); the 16-bar
+#   loop 51.20-99.90 matched worse (envelope off by up to 5 dB). Both points sit 0.18 s after a near-silent gap
+#   (-40 dB) before a downbeat, so the loop is moved 0.21 s earlier into it (same length): 76.34-173.7466, 40 ms
+#   crossfade inside the gap. Seam: the source's 20 ms envelope at 76.34 and 173.75 s is the same within 0.3 dB for
+#   0.2 s before and 0.3 s after (100 ms blocks the same for 2 s); the encoded wrap is at -50 dB, step 0.0007 (the
+#   track's steps: p99 0.125). -20.1 LUFS, true peak -4.3 dBFS, 913 KB.
+$M "$D/headspin_0.mp3"                  assets/music/legends_fathers.ogg --start 76.34 --end 173.7466 --xfade 0.04 --lufs -20 --q 3
