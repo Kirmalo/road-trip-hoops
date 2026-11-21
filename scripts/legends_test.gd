@@ -583,6 +583,8 @@ func _decide() -> void:
 		"win":
 			if ch != null and _g_type == "stop":
 				ch.set("stops", int(ch.get("count")))
+			if ch != null and _g_type == "score":
+				ch.set("your_points", int(ch.get("score_min")))   # P10: the score goal needs your own points
 			main.score[0] = tg
 			main.score[1] = mini(start1, tg - 1)
 			main.rules.call("_end_game", 0)
