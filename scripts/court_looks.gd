@@ -368,6 +368,33 @@ const LOOKS := {
 		"rim": Color(0.91, 0.38, 0.16),
 		"net": Color(0.96, 0.94, 0.89, 0.85),
 	},
+	# ---- Phase 10 era court (P10-05; tools/art/make_courts.py --era fathers, --print-looks): the Legends Chapter 2
+	# court, a night playground under light towers. No twist key (the legends match brings the era twist), no reward,
+	# not a city: never in quick_courts(). Music: an existing track until the era's own (P10-20) ----
+	"era_fathers": {
+		"name": "NIGHT PARK",
+		"music": "blacktop",
+		"floor_texture": "res://assets/courts/era_fathers_floor.png",
+		"floor_scale": 2.0,
+		"floor": Color(0.33, 0.30, 0.29),
+		"floor_stripe": Color(0.33, 0.30, 0.29),
+		"stripe_ft": 0.0,
+		"speckle": 0,
+		"line": Color(1.00, 0.97, 0.93, 0.92),
+		"paint": Color(0.16, 0.43, 0.32, 0.78),
+		"logo": Color(0.94, 0.66, 0.23, 0.72),
+		"apron": Color(0.24, 0.22, 0.22),
+		"backdrop": "fence",
+		"backdrop_texture": "res://assets/courts/era_fathers_backdrop.png",
+		"backdrop_scale": 2.0,
+		"wall": Color(0.23, 0.11, 0.19),
+		"wall_dark": Color(0.09, 0.05, 0.11),
+		"backboard": "glass",
+		"board_square": Color(1.00, 0.90, 0.63),
+		"pole": Color(0.20, 0.17, 0.20),
+		"rim": Color(0.94, 0.42, 0.12),
+		"net": Color(1.00, 0.96, 0.89, 0.85),
+	},
 }
 const DEFAULT := "gym"
 const ALWAYS_OPEN := ["gym", "blacktop"]   # Quick Game courts that need no unlock (twist none)

@@ -21,6 +21,8 @@ Outputs (all opaque except the ball):
   docs/art/rewards_preview.png         the reward looks and balls for the owner (needs --rewards-preview DIR)
   assets/courts/era_grand_*.png       P9-05 Legends Chapter 1 court (OLD GYM: an old wood gym with banners of old
                                        years), same sizes as the city looks; see "Phase 9 era courts" below
+  assets/courts/era_fathers_*.png     P10-05 Legends Chapter 2 court (NIGHT PARK: a blacktop under lights), same
+                                       sizes; see "Phase 10 era court" below
   docs/art/courts_preview_v2.png      the city looks for the owner: the game's own 1280 x 720 screenshot of each, its
                                        whole backdrop and its floor tile 3 x 3 (needs --shots DIR, below)
   docs/art/courts_preview_v1.png      preview: both looks composed in the 3/4 view as the game frames it, plus the
@@ -46,10 +48,11 @@ Usage:  python3 tools/art/make_courts.py                  all textures, the v1 p
         python3 tools/art/make_courts.py --rewards        only the P8-06 reward looks and balls
         python3 tools/art/make_courts.py --rewards-preview DIR   the same, plus docs/art/rewards_preview.png from
                                                           DIR/<look>.png (-- --court midnight / gold_hall --shots)
-        python3 tools/art/make_courts.py --era            only the P9-05 era looks (era_grand)
-        python3 tools/art/make_courts.py --era-preview DIR   the same, plus DIR/era_grand_tiles.png (backdrop at 3x
+        python3 tools/art/make_courts.py --era            only the era looks (era_grand, era_fathers)
+        python3 tools/art/make_courts.py --era fathers    only that chapter's era look (era_fathers; also --era grand)
+        python3 tools/art/make_courts.py --era-preview DIR   the same, plus DIR/<look>_tiles.png (backdrop at 3x
                                                           and the floor tile 3 x 3; game check: -- --court era_grand
-                                                          --shots)
+                                                          --shots; add --era fathers for one look)
         python3 tools/art/make_courts.py --print-looks    prints the city, reward and era looks' court_looks.gd
                                                           entries (colours for the lines, paint, hoop; CITY_LOOKS,
                                                           REWARD_LOOKS, ERA_LOOKS below) as GDScript
@@ -2568,6 +2571,285 @@ def era_grand_backdrop(seed=52):
     return haze_rows(px.image(), H("#5a4632"), 0.30, 0.10)     # warm and a little faded: the old days
 
 
+# ============================================================================= Phase 10 era court (P10-05)
+# Legends, Chapter 2 (the Fathers): look "era_fathers", a blacktop under lights. Same conventions as era_grand
+# (64 x 64 seamless floor tile, 384 x 100 backdrop repeating in x; the game shows rows ~52-100 at 1280 x 720 and the
+# HUD bar covers ~54-68, so the landmarks sit in rows ~56-99). A made-up night playground: no teams, arenas,
+# leagues, brands, letters or digits (nothing that could read as a score under the HUD). Its court_looks.gd row has
+# no twist (the legends match brings the era twist) and it never joins the Quick Game COURT list.
+# Not the MIDNIGHT look (blue-violet night, moon and stars, neon shop fronts, street lamps, an empty street): here a
+# warm sodium-lit summer night, a wine-red city glow with no stars, tall light towers with floodlight banks, a
+# made-up skyline of plain towers behind an elevated rail line (a lit train on it), a tall fence and a crowd on
+# aluminium stands, with a speaker stack table between them (a night tournament).
+#   era_fathers  NIGHT PARK  warm charcoal asphalt with tar-sealed cracks, patches and lamp-warm glints; wine sky
+#                            glowing orange-red at the horizon; plain dark towers with a few lit windows; a steel
+#                            rail viaduct; three light towers (4 x 2 floodlight banks, halos); chain-link fence;
+#                            two tiers of aluminium stands full of a 2000s crowd (baggy tees, fitted caps, durags);
+#                            speaker stacks on a folding table; a low concrete curb at the floor. At 1280 x 720 the
+#                            game shows rows ~54-100 and the HUD band covers ~54-68: the blocks and the lit train
+#                            sit behind the band (seen through it), the floodlights at its lower edge
+
+# --- era_fathers floor
+NIGHTPARK_ASP = pal("#5c5452", "#544c4b", "#4c4544", "#443e3e")   # warm charcoal asphalt (sodium-lit)
+NIGHTPARK_GLINT = pal("#9a8466", "#7e6c58")                         # aggregate catching the warm lamps
+NIGHTPARK_TAR = pal("#2c2626", "#3c3534")                           # tar-sealed cracks (soft, so the tile never
+                                                                    # shows a repeating mark)
+NIGHTPARK_PATCH = pal("#4a4342", "#47403f")                         # a re-paved patch, a little darker
+
+
+def era_fathers_floor(seed=61):
+    """Warm charcoal asphalt in soft blotches, light and dark aggregate, lamp-warm glints, two re-paved patches and
+    tar-sealed cracks. Lighter than MIDNIGHT's floor so blue and red jerseys and the ball stay readable."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, NIGHTPARK_ASP[1], wrap_y=True)
+    noise_tones(px, NIGHTPARK_ASP, rnd, cuts=(0.80, 0.50, 0.22))
+    for (x0, y0, w, h) in ((6, 40, 15, 9), (38, 8, 12, 7)):     # re-paved patches: a little darker, soft edges
+        for y in range(y0, y0 + h):
+            for x in range(x0, x0 + w):
+                edge = x in (x0, x0 + w - 1) or y in (y0, y0 + h - 1)
+                if not edge or rnd.random() < 0.5:
+                    px.blend(x, y, NIGHTPARK_PATCH[0], 0.30 if edge else 0.55)
+    for _ in range(110):                                        # aggregate: light and dark specks
+        px.put(rnd.randrange(TILE), rnd.randrange(TILE), NIGHTPARK_ASP[rnd.choice((0, 0, 3, 3))])
+    for _ in range(18):                                         # warm glints
+        px.put(rnd.randrange(TILE), rnd.randrange(TILE), NIGHTPARK_GLINT[rnd.choice((0, 1, 1))])
+    for _ in range(2):                                          # tar-sealed cracks (wider and darker than hairlines)
+        crack(px, rnd.randrange(TILE), rnd.randrange(TILE), rnd.randint(10, 18), rnd, NIGHTPARK_TAR[1])
+    return px.image()
+
+
+# --- era_fathers backdrop
+FSKY = pal("#160e1c", "#1e1224", "#2a162c", "#3a1c30", "#522436", "#6e2e38", "#8a3c36")  # wine night .. city glow
+FTOWER = [pal("#2e2230", "#281d2a", "#221824", "#1c141e"), pal("#33262e", "#2c2028", "#251b22", "#1e161c")]
+FTOWER_NEAR = [pal("#3a2a30", "#33242a", "#2c1f25", "#24191e"), pal("#40302c", "#382926", "#302320", "#281d1b")]
+FWIN = pal("#ffd88a", "#f0a85a", "#d8d0c0", "#8a5a40")           # warm lit windows (and a few pale ones)
+STEEL = pal("#5a4e56", "#463c44", "#342c34", "#241e26")          # the viaduct and the light towers
+SODIUM = pal("#fffbe6", "#ffe6a0", "#ffc860", "#c8823a")         # floodlights (core .. warm halo)
+ALU = pal("#e8e4e0", "#bcb6b4", "#8c8688", "#5e585e")            # aluminium stands
+NFENCE2 = pal("#d8c8b8", "#a8988c", "#786a66", "#4e4446")        # chain-link lit warm from the court
+CURB = pal("#8a7c72", "#6e625c", "#564c48", "#3e3634")
+SPEAKER = pal("#4a4248", "#343038", "#24202a", "#141218")
+STREET_SHIRTS = [pal("#ffffff", "#e6e4ec", "#b4b2c0", "#7a7888"),   # baggy white tees (most of them)
+                 pal("#ffffff", "#e6e4ec", "#b4b2c0", "#7a7888"),
+                 pal("#ff7a6a", "#d8283a", "#951833", "#5a0e2a"),   # plain jerseys in bright colours (no numbers)
+                 pal("#78b8ff", "#2f74e0", "#1f479e", "#172a66"),
+                 pal("#ffe07a", "#f0b02a", "#b8781a", "#7a4a10"),
+                 pal("#8ad86a", "#3a9a46", "#26703a", "#184a28"),
+                 pal("#6a6470", "#46404e", "#302c36", "#1e1c24"),   # black hoodies
+                 pal("#c8a8e8", "#8a5ab8", "#5e3a8a", "#3a2458")]
+DURAG = pal("#2a2a6a", "#1a1a3a"), pal("#8a1a2a", "#4a0e18"), pal("#1e1e22", "#0e0e10"), pal("#e8e8f0", "#a8a8b8")
+FITTED = [pal("#d8283a", "#951833"), pal("#2f74e0", "#1f479e"), pal("#1e1e22", "#0e0e10"), pal("#f0b02a", "#b8781a"),
+          pal("#3a9a46", "#26703a")]
+FATHERS_TIER_H = 8
+FATHERS_POLES = (40, 168, 296)                                   # light towers (one every 128 texels)
+FATHERS_STANDS = ((0, 30), (50, 154), (182, 240), (306, 384))   # stand sections (x0, x1), gaps at the poles
+FATHERS_SPEAKERS = 248                                           # the speaker table, between the stands
+
+
+def street_person(px, x, y, rnd, t, standing=False, arms_up=False):
+    """A spectator of the 2000s: a baggy tee or a plain jersey, often a fitted cap (flat brim) or a durag."""
+    person(px, x, y, rnd, t, standing, arms_up, shirts=STREET_SHIRTS)
+    r = rnd.random()
+    hx = x + 1
+    if r < 0.28:                                                # fitted cap with a flat brim
+        cc = rnd.choice(FITTED)
+        px.rect(hx, y - 1, hx + 2, y, cc[0])
+        px.put(hx + 2, y, cc[1])
+        px.rect(hx - 1, y + 1, hx + 3, y + 1, cc[1])
+    elif r < 0.42:                                              # durag, tail at the back
+        dc = rnd.choice(DURAG)
+        px.rect(hx, y, hx + 2, y, dc[0])
+        px.put(hx + 2, y + 1, dc[1])
+        px.put(hx + 3, y + 2, dc[1])
+
+
+def light_tower(px, x, top=63):
+    """A tall steel light tower: a 5 x 2 floodlight bank in a frame (rows ~63-69, at the HUD band's lower edge, so it
+    shows at 1280 x 720; its halo spills over the fence and the stands) on a 2-texel pole."""
+    px.rect(x, top + 6, x + 1, BD_H - 4, STEEL[1])               # pole
+    px.rect(x, top + 6, x, BD_H - 4, STEEL[0])
+    for y in range(top + 10, BD_H - 6, 6):                       # climbing pegs
+        px.put(x + 2, y, STEEL[2])
+    bx0, bx1 = x - 9, x + 10
+    px.rect(bx0, top, bx1, top + 5, STEEL[3])                    # bank frame
+    px.rect(bx0, top, bx1, top, STEEL[1])
+    px.rect(bx0 + 2, top + 6, bx1 - 2, top + 6, STEEL[2])        # the bracket under it
+    for row in range(2):
+        for col in range(5):
+            lx, ly = bx0 + 1 + col * 4, top + 1 + row * 2
+            px.rect(lx, ly, lx + 2, ly + 1, SODIUM[1])
+            px.put(lx, ly, SODIUM[0])
+            px.put(lx + 1, ly, SODIUM[0])
+
+
+def era_fathers_backdrop(seed=62):
+    """Back to front: the wine night sky and its city glow, far towers, nearer blocks, the rail viaduct (a lit
+    train on part of it), the light towers, the fence, the stands with the crowd and the speaker table, the curb.
+    The top-left texel is the sky's top colour (the game fills above the strip with it)."""
+    rnd = random.Random(seed)
+    px = bd_canvas(FSKY[0])
+    sky(px, 0, 80, FSKY)
+    # far towers: plain flat-topped slabs (tops rows 22-52), dim, a few lit windows; no famous shapes
+    x = 0
+    k = 0
+    while x < BD_W:
+        w = rnd.choice((16, 20, 24, 28, 34))
+        if BD_W - (x + w) < 16:
+            w = BD_W - x
+        top = rnd.randint(22, 52)
+        c = FTOWER[k % 2]
+        for xx in range(x, x + w):
+            for y in range(top, 82):
+                px.put(xx, y, c[0] if xx == x else (c[2] if xx >= x + w - 2 else c[1]))
+        if rnd.random() < 0.35:                                  # a rooftop box or a water tank
+            bx = x + rnd.randint(3, max(3, w - 9))
+            px.rect(bx, top - 3, bx + 5, top - 1, c[2])
+            px.rect(bx + 1, top - 1, bx + 1, top - 1, c[3])
+        for wy in range(top + 3, 80, 3):
+            for wx in range(x + 2, x + w - 2, 3):
+                if rnd.random() < 0.16:
+                    px.put(wx, wy, FWIN[rnd.choice((0, 1, 1, 2, 3))])
+        x += w
+        k += 1
+    img = haze_rows(px.image(), H("#6e2e38"), 0.35, 0.30)        # the city glow pushes them back
+    px = from_img(img)
+    # nearer blocks: lower and darker (tops rows 50-57), more lit windows, flat roofs with a parapet
+    x = 0
+    k = 0
+    while x < BD_W:
+        w = rnd.choice((26, 32, 38, 44))
+        if BD_W - (x + w) < 26:
+            w = BD_W - x
+        top = rnd.randint(50, 57)
+        c = FTOWER_NEAR[k % 2]
+        for xx in range(x, x + w):
+            for y in range(top, 84):
+                px.put(xx, y, c[0] if xx == x else (c[3] if xx >= x + w - 2 else c[1]))
+        px.rect(x, top, x + w - 1, top, c[0])
+        for wy in range(top + 3, 62, 4):
+            for wx in range(x + 3, x + w - 4, 5):
+                if rnd.random() < 0.45:
+                    wc = FWIN[rnd.choice((0, 1, 1, 3))]
+                    px.rect(wx, wy, wx + 2, wy + 1, wc)
+                else:
+                    px.rect(wx, wy, wx + 2, wy + 1, c[3])
+        x += w
+        k += 1
+    # the elevated rail line: a steel deck (rows 64-69) with an X-braced girder, columns every 48, a lit train
+    dy0, dy1 = 64, 69
+    tx0, tx1 = 196, 312                                          # the train, on part of the line
+    for x in range(tx0, tx1):
+        car_i = (x - tx0) // 29
+        u = (x - tx0) % 29
+        if u == 28:
+            continue                                             # gap between cars
+        for y in range(58, dy0):
+            px.put(x, y, STEEL[1] if y > 58 else STEEL[0])
+        if 2 <= u <= 25 and u % 5 != 0:
+            px.rect(x, 60, x, 61, FWIN[1] if (car_i + u // 5) % 3 else FWIN[0])
+    px.rect(0, dy0, BD_W - 1, dy0, STEEL[0])
+    px.rect(0, dy0 + 1, BD_W - 1, dy1, STEEL[2])
+    for x in range(BD_W):
+        u = x % 8
+        for y in range(dy0 + 1, dy1 + 1):
+            if (y - dy0 - 1) in (u * 4 // 8, 4 - u * 4 // 8):     # X bracing
+                px.put(x, y, STEEL[1])
+    px.rect(0, dy1 + 1, BD_W - 1, dy1 + 1, STEEL[3])
+    for cx in range(20, BD_W, 48):
+        px.rect(cx, dy1 + 1, cx + 2, 86, STEEL[2])
+        px.put(cx, dy1 + 2, STEEL[1])
+    # the ground behind the fence: a dark strip of grass and path
+    px.rect(0, 84, BD_W - 1, BD_H - 1, H("#1e1a1c"))
+    # light towers and their halos (behind the fence, over the city)
+    for lx in FATHERS_POLES:
+        light_tower(px, lx)
+    for lx in FATHERS_POLES:
+        glow(px, lx + 1, 66, 44, SODIUM[2], 0.40)
+        glow(px, lx + 1, 66, 24, SODIUM[2], 0.45)
+        glow(px, lx + 1, 66, 12, SODIUM[1], 0.70)
+    # the fence: chain-link from row 73 down (its top rail just under the HUD band), lit warm from the court
+    ft = 73
+    for y in range(ft + 2, BD_H - 4):
+        for x in range(BD_W):
+            u, v = (x + y) % 5, (x - y) % 5
+            if u == 0 or v == 0:
+                px.blend(x, y, NFENCE2[1] if u == 0 else NFENCE2[2], 0.30 if u == 0 else 0.24)
+    for x in range(BD_W):
+        px.put(x, ft, NFENCE2[0])
+        px.put(x, ft + 1, NFENCE2[2])
+    for x in range(8, BD_W, 64):
+        px.rect(x, ft - 1, x + 1, BD_H - 4, NFENCE2[1])
+        px.rect(x, ft - 1, x, BD_H - 4, NFENCE2[0])
+        px.put(x - 1, ft - 1, NFENCE2[2])
+        px.put(x + 2, ft - 1, NFENCE2[2])
+    # aluminium stands, two tiers (rows 80-95), full of the crowd; sections leave gaps at the light towers
+    top0 = BD_H - 5 - 2 * FATHERS_TIER_H
+    for x0, x1 in FATHERS_STANDS:
+        for t in range(2):
+            y0 = top0 + t * FATHERS_TIER_H
+            px.rect(x0, y0 + 2, x1 - 1, y0 + FATHERS_TIER_H - 3, SPEAKER[2])            # open riser (dark)
+            px.rect(x0, y0 + FATHERS_TIER_H - 2, x1 - 1, y0 + FATHERS_TIER_H - 2, ALU[0])  # bench, lit edge
+            px.rect(x0, y0 + FATHERS_TIER_H - 1, x1 - 1, y0 + FATHERS_TIER_H - 1, ALU[2])
+            for xx in range(x0 + 3, x1 - 1, 16):                                       # legs
+                px.put(xx, y0 + FATHERS_TIER_H - 1, ALU[3])
+            x = x0 + rnd.randint(0, 3)
+            while x < x1 - 5:
+                if rnd.random() < 0.80:
+                    standing = rnd.random() < 0.15
+                    street_person(px, x, y0 + FATHERS_TIER_H - 10 - (2 if standing else 0), rnd, t, standing,
+                                  arms_up=rnd.random() < 0.14)
+                x += rnd.choice((5, 6, 6, 7))
+        px.rect(x0, top0 + 2 * FATHERS_TIER_H, x1 - 1, top0 + 2 * FATHERS_TIER_H, ALU[1])  # foot rail
+    # people standing along the fence in the gaps (by the light towers)
+    for gx0, gx1 in ((31, 49), (155, 181), (241, 305)):
+        x = gx0 + 1
+        while x < gx1 - 5:
+            if rnd.random() < 0.55 and not (FATHERS_SPEAKERS - 2 <= x <= FATHERS_SPEAKERS + 34):
+                street_person(px, x, BD_H - 17, rnd, 1, True, arms_up=rnd.random() < 0.2)
+            x += rnd.choice((6, 7, 8))
+    # the speaker table: a folding table with two speaker stacks (cones only, no badge or text)
+    sx = FATHERS_SPEAKERS
+    px.rect(sx, 87, sx + 31, 88, ALU[1])
+    px.rect(sx, 87, sx + 31, 87, ALU[0])
+    px.rect(sx + 2, 89, sx + 2, BD_H - 5, ALU[3])
+    px.rect(sx + 29, 89, sx + 29, BD_H - 5, ALU[3])
+    for cx0 in (sx + 1, sx + 21):
+        px.rect(cx0, 73, cx0 + 9, 86, SPEAKER[1])
+        px.rect(cx0, 73, cx0 + 9, 73, SPEAKER[0])
+        px.rect(cx0 + 9, 74, cx0 + 9, 86, SPEAKER[3])
+        for (ccy, cr) in ((77, 2.6), (83, 3.2)):
+            ccx = cx0 + 4.5
+            for y in range(int(ccy - cr - 1), int(ccy + cr + 2)):
+                for x in range(cx0 + 1, cx0 + 9):
+                    d = math.hypot(x + 0.5 - ccx, y + 0.5 - ccy)
+                    if d <= cr * 0.45:
+                        px.put(x, y, SPEAKER[0])
+                    elif d <= cr:
+                        px.put(x, y, SPEAKER[3])
+                    elif d <= cr + 0.8:
+                        px.put(x, y, SPEAKER[2])
+    px.rect(sx + 12, 84, sx + 19, 86, SPEAKER[2])               # the deck between the speakers
+    px.put(sx + 14, 84, SODIUM[2])
+    # the low concrete curb at the floor
+    cy = BD_H - 4
+    px.rect(0, cy, BD_W - 1, BD_H - 1, CURB[1])
+    px.rect(0, cy, BD_W - 1, cy, CURB[0])
+    px.rect(0, BD_H - 1, BD_W - 1, BD_H - 1, CURB[3])
+    for x in range(0, BD_W, 32):
+        px.rect(x, cy + 1, x, BD_H - 2, CURB[2])
+    # warm light falling from the towers: a soft cone down over the fence and the crowd, a wide halo on the stands
+    for lx in FATHERS_POLES:
+        for y in range(70, BD_H - 4):
+            f = (y - 70) / float(BD_H - 74)
+            hw = 9 + 14 * f
+            for x in range(int(lx + 1 - hw), int(lx + 2 + hw)):
+                edge = 1.0 - abs(x - lx - 1) / hw
+                px.blend(x, y, SODIUM[1], 0.16 * (1 - 0.6 * f) * min(1.0, edge * 2.5))
+        glow(px, lx + 1, 86, 44, SODIUM[2], 0.20)
+    return px.image()
+
+
+
 # The era looks' court_looks.gd data (like CITY_LOOKS; --print-looks prints them too). Music: an existing track until
 # the era's own (P9-16); no "twist" key (the match brings the era twist).
 ERA_LOOKS = {
@@ -2576,30 +2858,52 @@ ERA_LOOKS = {
                   "logo": ("#c8923a", 0.82), "apron": "#6e4424", "backdrop": "bleachers", "wall": "#d0bf9c",
                   "wall_dark": "#4e2e18", "backboard": "wood", "board_square": "#f0e6cc",
                   "pole": "#7a5030", "rim": "#e8602a", "net": ("#f4f0e4", 0.85)},
+    "era_fathers": {"name": "NIGHT PARK", "music": "blacktop", "floor": "#544c4b", "floor_stripe": "#544c4b",
+                    "stripe_ft": 0, "speckle": 0, "line": ("#fff8ec", 0.92), "paint": ("#2a6e52", 0.78),
+                    "logo": ("#f0a83a", 0.72), "apron": "#3e3838", "backdrop": "fence", "wall": "#3a1c30",
+                    "wall_dark": "#160e1c", "backboard": "glass", "board_square": "#ffe6a0",
+                    "pole": "#342c34", "rim": "#f06a1e", "net": ("#fff4e4", 0.85)},
 }
-ERA_MAKERS = {"era_grand": (era_grand_floor, era_grand_backdrop)}
+ERA_MAKERS = {"era_grand": (era_grand_floor, era_grand_backdrop), "era_fathers": (era_fathers_floor, era_fathers_backdrop)}
 
 
-def era_outputs():
-    """P9-05: {path: image} for the era court looks (floor + backdrop)."""
+def era_ids(args):
+    """The era looks to write: `--era ID` (ID = a chapter id like "fathers", or the look id "era_fathers") only that
+    one (P10-05: so a new chapter's court never rewrites an older one); `--era` alone (or a full run) every one."""
+    if "--era" in args:
+        i = args.index("--era")
+        if i + 1 < len(args) and not args[i + 1].startswith("--"):
+            lid = args[i + 1] if args[i + 1].startswith("era_") else "era_" + args[i + 1]
+            if lid not in ERA_MAKERS:
+                sys.exit("--era: unknown era look '%s' (%s)" % (args[i + 1], ", ".join(ERA_MAKERS)))
+            return [lid]
+    return list(ERA_MAKERS)
+
+
+def era_outputs(ids=None):
+    """P9-05, P10-05: {path: image} for the era court looks (floor + backdrop); ids: only these looks."""
     out = {}
     for lid, (fl, bd) in ERA_MAKERS.items():
+        if ids is not None and lid not in ids:
+            continue
         out[os.path.join(COURTS, lid + "_floor.png")] = fl()
         out[os.path.join(COURTS, lid + "_backdrop.png")] = bd()
     return out
 
 
 def write_era(args):
-    """The P9-05 outputs; --era-preview DIR also writes DIR/<look>_tiles.png (the backdrop at 3x, the floor 3 x 3)."""
+    """The era outputs (era_ids(args)); --era-preview DIR also writes DIR/<look>_tiles.png (the backdrop at 3x, the
+    floor 3 x 3)."""
     os.makedirs(COURTS, exist_ok=True)
-    era = era_outputs()
+    ids = era_ids(args)
+    era = era_outputs(ids)
     for path, img in era.items():
         img.save(path, optimize=True)
         print("wrote %s %s %d bytes" % (os.path.relpath(path, ROOT), img.size, os.path.getsize(path)))
     if "--era-preview" in args:
         i = args.index("--era-preview")
         d = args[i + 1]
-        for lid in ERA_MAKERS:
+        for lid in ids:
             bd = era[os.path.join(COURTS, lid + "_backdrop.png")]
             t3 = tile_test(era[os.path.join(COURTS, lid + "_floor.png")], n=3, zoom=2)
             pv = Image.new("RGB", (BD_W * 3, BD_H * 3 + 8 + t3.size[1]), (20, 18, 28))
@@ -2976,7 +3280,7 @@ def main():
         write_rewards(args)                       # only the P8-06 files (the other textures are left as they are)
         return
     if "--era" in args or "--era-preview" in args:
-        write_era(args)                           # only the P9-05 era looks (the other textures are left as they are)
+        write_era(args)                           # only the era looks (the other textures are left as they are)
         return
     shots_dir = None
     if "--shots" in args:
