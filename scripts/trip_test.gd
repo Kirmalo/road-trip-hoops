@@ -48,7 +48,8 @@ extends Node
 #   - LEGEND + BOSS: the first recruit screen with a legend on the roster and no boss signs the city's boss (the card
 #     tap); the next lineup after the pick test's game taps [Cities.START_CREW[0], legend, boss] and PLAYs: the game
 #     and the save must start them, you play the underdog. They stay the starters from then on (the lineup's
-#     auto_step keeps the picks). The driver never makes a legend YOU (checked at every tip-off).
+#     auto_step keeps the picks). The driver never makes a legend YOU (checked at every tip-off; P10-B3: a
+#     --trip-resume save whose YOU is a drafted legend plays him until the driver picks a lineup itself).
 #   - TRIP END fails when a legend run missed one of these (the refusal only with 2+ slots and 2+ legends open).
 #   The pick test's "newest recruit" is the newest roster player who joined as a recruit (never a drafted one).
 # Phase 10 (P10-24), two eras in the draft (Trip.legends_rows(): one LEGENDS row per chapter, its "chapter" key):
@@ -129,6 +130,8 @@ static var _lg_offered := {}      # P10-24: chapter -> true for every chapter ro
 static var _lg_chapters: Array = []   # P10-24: the chapter of each legend the driver drafted, in order
 static var _lg_refused_eras: Array = []   # P10-24: the chapters of the two legends the refusal tried together
 static var _lg_boss_ch := ""      # P10-24: the chapter of the legend who started next to the boss
+static var _save_you := ""        # P10-B3: a --trip-resume save's YOU when he is a drafted legend ("" = none, or the
+                                  # driver has picked a lineup since): the save's pick, not the driver's
 
 var main                          # main.gd (Flow sets it)
 var _screen := ""
@@ -154,6 +157,9 @@ func _ready() -> void:
 				_fail("--trip-resume: no trip save to load (%s)" % Save.last_error)
 				return
 			print("TRIP resume | %s" % _state())
+			if Trip.is_legend(Trip.human):
+				_save_you = Trip.human
+				print("TRIP resume: the save's YOU is the drafted legend %s (the save's pick: allowed)" % _save_you)
 			Flow.go(Trip.resume_screen())
 			return
 		Save.erase()   # a fresh trip every run (the test file only)
@@ -295,7 +301,10 @@ func _start_game() -> void:
 			_lg_boss_ch = Trip.LegendsData.chapter_of(str(mine[1]))
 			print("TRIP legend + boss start: ok | %s (you), legend %s (chapter %s), boss %s" % [str(mine[0]),
 					str(mine[1]), Trip.LegendsData.chapter_of(str(mine[1])), str(mine[2])])
-	if mine.size() > 0 and Trip.is_legend(str(mine[0])):
+	if mine.size() > 0 and Trip.is_legend(str(mine[0])) and str(mine[0]) == _save_you:
+		print("TRIP game %d: you play the legend %s, the resumed save's pick (not the driver's): ok" % [_games,
+				_save_you])
+	elif mine.size() > 0 and Trip.is_legend(str(mine[0])):
 		_fail("the driver made a legend YOU (%s): a legend run keeps you on a player you picked" % str(mine[0]))
 		return
 	if mine.size() != Trip.STARTERS or theirs.size() != Trip.STARTERS:
@@ -446,6 +455,7 @@ func _pick_test() -> void:
 		_fail("lineup taps did not pick %s" % str(want))
 		return
 	_pick_want = want   # PLAY saves them; the next game must use them (checked in _start_game)
+	_save_you = ""      # the driver picked YOU from here on
 	if _shoot:
 		_screenshot("lineup_picked")
 
@@ -825,6 +835,7 @@ func _legend_boss_test() -> void:
 		return
 	_lg_boss_state = 1
 	_pick_want = want   # PLAY saves them; the next game must start them (checked in _start_game)
+	_save_you = ""      # the driver picked YOU from here on
 
 # the map: replay REPLAY_AFTER's first won game once, between games (not when --mapshot drives the map)
 func _replay_wanted() -> bool:

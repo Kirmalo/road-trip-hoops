@@ -25,6 +25,9 @@ extends CanvasLayer
 #   (the legend's old pupil, the player's old mentor) opens the SWITCH confirm first (NOT YET / YES, SWITCH). STOP
 #   TRAINING (confirmed too) frees the legend. Everything goes through legends.gd's mentor API (mentor_of, pupil_of,
 #   can_mentor, assign, release); the perk in play is P9-24's. The tiles scroll (drag, the bar, the wheel).
+#   P10-B2: a mentor this build doesn't know (a newer build's legends.json, e.g. "lg_future") counts as no mentor here
+#   (known_mentor(): the tile says "NO MENTOR", no confirm names him); the pair stays in the file until the player
+#   is given a known mentor (the one-mentor rule then drops it, as any switch does).
 # Desktop: Escape = BACK (main.gd turns the Android back into one; it closes the confirm, then the picker, first),
 # Left / Right = the plaque before / after, Enter = REPLAY STORY. auto_step() (test drivers): closes the picker, then
 # BACK; asked to train (args "train": true, auto_train = true or --hall-train) it first assigns one pupil: the first
@@ -676,6 +679,21 @@ func player_name(id: String) -> String:
 static func legend_name(id: String) -> String:
 	return str(LegendsData.legend(id).get("name", id))
 
+# this player's mentor if this build knows him, else "" (P10-B2: a newer file's legend shows as no mentor; the pair
+# itself is left in the file)
+static func known_mentor(player_id: String) -> String:
+	var m: String = Legends.mentor_of(player_id)
+	return m if LegendsData.is_legend_id(m) else ""
+
+# the mentor line on this player's tile in this legend's picker
+static func tile_status(player_id: String, legend_id: String) -> String:
+	var m: String = known_mentor(player_id)
+	if m == "":
+		return "NO MENTOR"
+	if m == legend_id:
+		return "HIS PUPIL"
+	return "TRAINED BY " + legend_name(m).to_upper()
+
 func _on_train() -> void:
 	if _busy or _arm_t > 0.0 or _picker != null:
 		return
@@ -766,6 +784,11 @@ func open_picker(legend_id := "") -> bool:
 	_stat("hall_picker")
 	print("HALL picker %s | trains %s | %d players %s" % [lid, pupil if pupil != "" else "-", _tiles.size(),
 			str(player_ids())])
+	var labels: PackedStringArray = PackedStringArray()
+	for t in _tiles:
+		var tid: String = str(t.p.get("id", ""))
+		labels.append("%s: %s" % [tid, tile_status(tid, lid)])
+	print("HALL picker tiles | " + ", ".join(labels))
 	return true
 
 # closes the picker (and its confirm); false when it was not open
@@ -820,7 +843,7 @@ func tile_tapped(pid: String) -> void:
 	if Legends.pupil_of(lid) == pid:
 		_flash("%s already trains %s." % [legend_name(lid), player_name(pid)], GOLD)
 		return
-	if Legends.pupil_of(lid) == "" and Legends.mentor_of(pid) == "":
+	if Legends.pupil_of(lid) == "" and known_mentor(pid) == "":
 		_do_assign(lid, pid)
 		return
 	_open_confirm([lid, pid])
@@ -845,7 +868,7 @@ func confirm_text(pair: Array) -> Array:
 	var lines: Array = []
 	if old != "" and old != pid:
 		lines.append("%s stops training %s." % [ln, player_name(old)])
-	var om: String = Legends.mentor_of(pid)
+	var om: String = known_mentor(pid)
 	if om != "" and om != lid:
 		lines.append("%s leaves %s (%s then trains nobody)." % [player_name(pid), legend_name(om), legend_name(om)])
 	lines.append("%s trains %s: %s." % [ln, player_name(pid), perk])
@@ -1362,7 +1385,7 @@ class PlayerTile extends Control:
 		var s = screen
 		var id: String = str(p.get("id", ""))
 		var lid: String = s._picker_for
-		var mentor: String = s.Legends.mentor_of(id)
+		var mentor: String = s.known_mentor(id)
 		var pupil: bool = mentor != "" and mentor == lid
 		draw_style_box(s.UI.style_box(s.TILE_PUPIL_FILL if pupil else s.TILE_FILL,
 				s.GOLD if pupil else s.UI.OFF_BORDER, s.TILE_PUPIL_BORDER_W if pupil else s.TILE_BORDER_W),
@@ -1397,13 +1420,11 @@ class PlayerTile extends Control:
 			tag += "  LEGEND"
 		s.draw_text(self, Vector2(x, 78.0), tag, s.TILE_TEXT_FONT, s.GOLD if tag.begins_with("YOU")
 				else s.UI.TEXT_COLOR)
-		var st: String = "NO MENTOR"
+		var st: String = s.tile_status(id, lid)
 		var col: Color = s.DIM_TEXT
 		if pupil:
-			st = "HIS PUPIL"
 			col = s.GOLD
 		elif mentor != "":
-			st = "TRAINED BY " + s.legend_name(mentor).to_upper()
 			col = s.MENTOR_COLOR
 		var mfs: int = s.MENTOR_FONT
 		while mfs > 12 and font.get_string_size(st, HORIZONTAL_ALIGNMENT_LEFT, -1, mfs).x > w:
