@@ -80,6 +80,8 @@
    "locked": "pin_grand_locked.png"
   },
   "fathers": {
+   "open": "pin_fathers.png",
+   "done": "pin_fathers_done.png",
    "locked": "pin_fathers_locked.png"
   },
   "present": {
@@ -95,6 +97,7 @@
  ],
  "frames": {
   "grand": "frame_grand.png",
+  "fathers": "frame_fathers.png",
   "locked": "frame_locked.png"
  },
  "window": [

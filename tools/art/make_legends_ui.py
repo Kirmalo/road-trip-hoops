@@ -25,6 +25,11 @@ Output (assets/legends/; texel = one pixel of these images, drawn at 2 canvas px
   frame_locked.png        56 x 88 locked plaque frame: grey iron and dark wood, a dim spotlit backing, a padlock on
                           top, an empty dark name plate. Draw the silhouette (below, or the card darkened) in the
                           window, and "?" / the challenge line where the game likes.
+  frame_fathers.png       56 x 88 era card frame (Fathers, P10-06): park-green fence steel with a chain-link mesh, a
+                          galvanized bevel, a light pole's lamp bank on top, a night blacktop in the window (made-up
+                          skyline, chain fence, a pool of sodium light) and an empty rim-orange name plate
+  pin_fathers.png         Chapter 2 open (green fence-steel medallion, the chain-net hoop under a pool of light)
+  pin_fathers_done.png    Chapter 2 finished (gold, the hoop and a star)
   silhouette.png          40 x 60 a generic player silhouette that fits the window (from a player card's shape)
   ui.json                 the numbers above for the screens (see "_help" inside)
   docs/art/legends_ui.png preview for the owner: the tour mock-up at 1280 x 720 (header, labels, pins drawn as the
@@ -58,6 +63,9 @@ INK = (22, 14, 26)
 # the four chapters, left to right; "court" = the textures shown in the panel (a hint for the locked ones)
 CHAPTERS = [
     {"id": "grand", "court": "era_grand", "open": True},
+    # P10-06: the Fathers panel keeps today's dim blacktop hint, so timeline.png stays byte for byte. Once P10-05's
+    # assets/courts/era_fathers_floor.png / _backdrop.png exist, set "court": "era_fathers" (and "open": True to show
+    # it in colour, plus an x0 for it in court_scene()); that rewrites timeline.png, so check the tour after.
     {"id": "fathers", "court": "blacktop", "open": False},
     {"id": "present", "court": "gold_hall", "open": False},
     {"id": "next", "court": "midnight", "open": False},
@@ -84,6 +92,37 @@ DARKSTEEL = [H_("#8a8a96"), H_("#62626e"), H_("#44444e"), H_("#2c2c34")]
 LEATHER = [H_("#c8783a"), H_("#a05a2a"), H_("#74401e"), H_("#4a2812")]
 BALL = [H_("#ffb070"), H_("#e8782a"), H_("#b0501a"), H_("#7a3410")]
 CREAM = H_("#fff4d0")
+
+# Chapter 2, the Fathers (P10-06): a 2000s blacktop under lights. A first guess until the owner's look check of
+# P10-04's era palettes: when tools/art/crews.json has the ERA2_* names below in "palettes", they are used instead
+# (rerun this script after the look check). Park-green painted fence steel, galvanized chain, the court-ball orange
+# of the rims and the sodium light of the poles; night sky and asphalt for the window backing. Kept away from the
+# MIDNIGHT reward look's navy and cyan.
+ERA2 = {
+    "ERA2_FENCE": ["#6ea07a", "#3e6e4c", "#2a4c36", "#182c20"],     # painted fence / pole steel, light .. dark
+    "ERA2_CHAIN": ["#e4e8ee", "#b0b6c2", "#7c8292", "#4c5060"],     # galvanized chain and bolts
+    "ERA2_ORANGE": ["#ffc27a", "#f08a2a", "#b85a18", "#6a3010"],    # rim orange: the name plate
+    "ERA2_LAMP": ["#fffbe6", "#ffe8a6", "#f4c060", "#b07a2a"],      # sodium light (bulbs, pools of light)
+    "ERA2_NIGHT": ["#3a3456", "#28263e", "#1c1a2c", "#100e1a"],     # sky, horizon glow .. darkest
+    "ERA2_ASPHALT": ["#5c5a62", "#46454c", "#34333a", "#24232a"],   # blacktop
+}
+
+
+def era2(name):
+    """One ERA2 palette as 4 RGB tuples: crews.json's "palettes" entry if P10-04 wrote it, else the guess above."""
+    try:
+        with open(os.path.join(HERE, "crews.json")) as fh:
+            pals = json.load(fh).get("palettes", {})
+    except (OSError, ValueError):
+        pals = {}
+    row = pals.get(name)
+    if not (isinstance(row, list) and len(row) >= 4):
+        row = ERA2[name]
+    return [H_(c) for c in row[:4]]
+
+
+FENCE, CHAIN, ORANGE2 = era2("ERA2_FENCE"), era2("ERA2_CHAIN"), era2("ERA2_ORANGE")
+LAMP, NIGHT, ASPHALT = era2("ERA2_LAMP"), era2("ERA2_NIGHT"), era2("ERA2_ASPHALT")
 
 
 def mix(a, b, t):
@@ -328,8 +367,9 @@ def padlock(cv, x, y, body, dark):
 
 
 def pin_image(kind, state):
-    """state: open, done or locked."""
-    rp = {"open": BRASS, "done": GOLD, "locked": STEEL}[state]
+    """state: open, done or locked. The open pin wears its era's metal (Grandfathers brass, Fathers park-green
+    fence steel); done is gold for every era, locked grey."""
+    rp = {"open": FENCE if kind == "fathers" else BRASS, "done": GOLD, "locked": STEEL}[state]
     cv = Canvas(PIN_W, PIN_H)
     cx, cy, r = 16, 15, 13
     tip = PIN_ANCHOR
@@ -354,8 +394,15 @@ def pin_image(kind, state):
         a = k * math.pi / 8
         cv.put(cx + round(math.cos(a) * (r - 2.5)), cy + round(math.sin(a) * (r - 2.5)), rp[3 if state != "locked" else 2])
     face = H_("#3a2a24") if state != "locked" else H_("#3a3a44")
+    if kind == "fathers" and state != "locked":
+        face = ASPHALT[3]                                     # a night blacktop behind the chain-net hoop
     cv.disk(cx, cy, 9, face)
     cv.disk(cx, cy, 8, mix(face, (0, 0, 0), 0.25))
+    if kind == "fathers" and state != "locked":               # a pool of pole light under the net
+        for y in range(cy + 2, cy + 9):
+            for x in range(cx - 8, cx + 9):
+                if ((x - cx) / 7.5) ** 2 + ((y - cy - 6) / 2.6) ** 2 < 1 and (x - cx) ** 2 + (y - cy) ** 2 <= 64:
+                    cv.blend(x, y, LAMP[2], 0.35)
     emblem(cv, kind, cx, cy, state == "locked")
     cv.put(cx - 9, cy - 7, (255, 255, 255))
     cv.put(cx - 8, cy - 9, (255, 255, 255))
@@ -486,6 +533,76 @@ def window_backing_locked(cv):
                 cv.blend(x, y, H_("#9a96b0"), 0.35)
 
 
+def window_backing_fathers(cv):
+    """A blacktop at night: dark sky over a made-up skyline (no real city), a chain fence, a light pole's cone and
+    its pool of sodium light on the asphalt where he stands, a painted line."""
+    wx, wy, ww, wh = WINDOW
+    floor_y = wy + 51
+    sky_y = wy + 27                                            # skyline base
+    for y in range(wy, wy + wh):
+        for x in range(wx, wx + ww):
+            if y < sky_y:
+                t = (y - wy) / float(sky_y - wy)
+                c = mix(NIGHT[2], NIGHT[0], t)                 # darker at the top, a city glow at the horizon
+                if (x * 7 + y * 13) % 53 == 0 and y < wy + 12:
+                    c = mix(c, CHAIN[0], 0.7)                  # a few stars
+            elif y < floor_y:
+                c = mix(ASPHALT[3], NIGHT[2], 0.4)             # the far side beyond the fence, unlit
+            else:
+                k = 2 if (x * 3 + (y - floor_y) * 5) % 7 else 1
+                c = ASPHALT[k]
+                if (x * 11 + y * 7) % 19 == 0:
+                    c = ASPHALT[3]                             # grit
+            cv.put(x, y, c)
+    # skyline: blocky towers with a few lit windows (made up, no landmark)
+    towers = [(0, 7, 9), (5, 6, 14), (12, 7, 7), (19, 5, 16), (24, 8, 10), (33, 7, 13)]
+    for (tx, tw, th) in towers:
+        for y in range(sky_y - th, sky_y):
+            for x in range(wx + tx, min(wx + ww, wx + tx + tw)):
+                cv.put(x, y, NIGHT[3])
+        for y in range(sky_y - th + 2, sky_y - 1, 3):
+            for x in range(wx + tx + 1, min(wx + ww - 1, wx + tx + tw - 1), 2):
+                if (x * 5 + y * 3) % 7 == 0:
+                    cv.put(x, y, LAMP[3])
+    # chain fence across the window: top rail, posts, the diamond mesh
+    rail = sky_y - 3
+    for y in range(rail, floor_y):
+        for x in range(wx, wx + ww):
+            if y == rail:
+                cv.put(x, y, CHAIN[1])
+            elif y == rail + 1:
+                cv.put(x, y, CHAIN[3])
+            elif (x + y) % 4 == 0 or (x - y) % 4 == 0:
+                cv.blend(x, y, CHAIN[2], 0.42 if y < sky_y else 0.28)
+    for px in (wx + 3, wx + ww - 4):
+        cv.rect(px, rail - 1, px, floor_y - 1, CHAIN[2])
+        cv.put(px, rail - 1, CHAIN[0])
+    cv.rect(wx, floor_y - 1, wx + ww - 1, floor_y - 1, ASPHALT[3])
+    # the light pole's cone from above and its pool of light on the asphalt
+    mid = wx + ww / 2 - 0.5
+    for y in range(wy, floor_y):
+        for x in range(wx, wx + ww):
+            half = 4 + (y - wy) * 0.33
+            if abs(x - mid) < half:
+                cv.blend(x, y, LAMP[1], 0.10 + 0.06 * (1 - abs(x - mid) / half))
+    lx = int(mid + 0.5)                                        # the lamp head the cone comes from
+    cv.rect(lx - 4, wy, lx + 3, wy + 1, FENCE[3])
+    cv.rect(lx - 3, wy + 2, lx + 2, wy + 2, LAMP[1])
+    cv.put(lx - 1, wy + 2, LAMP[0])
+    cv.put(lx, wy + 2, LAMP[0])
+    for y in range(floor_y, wy + wh):
+        for x in range(wx, wx + ww):
+            d = ((x - mid) / 17.0) ** 2 + ((y - (wy + 56)) / 4.5) ** 2
+            if d < 0.55:
+                cv.blend(x, y, LAMP[1], 0.42)
+            elif d < 1:
+                cv.blend(x, y, LAMP[2], 0.28 if (x + y) % 2 == 0 else 0.18)   # dithered edge
+            elif d < 1.5:
+                cv.blend(x, y, (10, 8, 16), 0.15)
+    for x in range(wx, wx + ww):                               # a painted line across the asphalt behind him
+        cv.blend(x, floor_y + 2, (236, 236, 228), 0.65)
+
+
 def crest(cv, kind):
     """The top of the frame: a felt pennant with a star (era frame) or an iron padlock (locked)."""
     mid = FRAME_W // 2
@@ -502,11 +619,48 @@ def crest(cv, kind):
         for sx in (mid - 6, mid + 5):
             cv.rect(sx, 2, sx + 1, 3, BRASS[1])
             cv.put(sx, 2, BRASS[0])
+    elif kind == "fathers":                                   # a light pole's lamp bank: green housing, 4 bulbs
+        cv.rect(mid - 9, 0, mid + 9, 5, INK)
+        cv.rect(mid - 8, 1, mid + 8, 4, FENCE[1])
+        cv.rect(mid - 8, 1, mid + 8, 1, FENCE[0])
+        cv.rect(mid - 8, 4, mid + 8, 4, FENCE[2])
+        for i in range(4):
+            bx = mid - 7 + i * 4
+            cv.rect(bx, 2, bx + 1, 3, LAMP[1])
+            cv.put(bx, 2, LAMP[0])
+            cv.put(bx + 1, 3, LAMP[2])
     else:
         cv.rect(mid - 6, 0, mid + 6, 6, INK)
         cv.rect(mid - 5, 1, mid + 5, 5, DARKSTEEL[1])
         cv.rect(mid - 5, 1, mid + 5, 1, DARKSTEEL[0])
         padlock(cv, mid - 3, 0, STEEL[1], H_("#1c1c24"))
+
+
+def chain_band(cv):
+    """The Fathers frame band: painted fence steel with a chain-link diamond mesh pressed into it."""
+    wx, wy, ww, wh = WINDOW
+    px, py, pw, ph = PLATE
+    for y in range(7, FRAME_H - 4):
+        for x in range(3, FRAME_W - 4):
+            inside = wx - 2 <= x <= wx + ww + 1 and wy - 2 <= y <= wy + wh + 1
+            plate = px - 1 <= x <= px + pw and py - 1 <= y <= py + ph
+            if inside or plate:
+                continue
+            if (x + y) % 4 == 0 or (x - y) % 4 == 0:
+                cv.put(x, y, FENCE[0] if (x + y) % 8 == 0 else FENCE[2])
+
+
+def plate_paint(cv, metal):
+    """Repaint the name plate in another colour (same shape as frame_border's)."""
+    px, py, pw, ph = PLATE
+    cv.rect(px, py, px + pw - 1, py + ph - 1, metal[2])
+    cv.rect(px, py, px + pw - 1, py, metal[0])
+    cv.rect(px, py + 1, px + pw - 1, py + 1, metal[1])
+    cv.rect(px, py + ph - 1, px + pw - 1, py + ph - 1, metal[3])
+    cv.rect(px + pw - 1, py, px + pw - 1, py + ph - 1, metal[3])
+    for sx in (px + 2, px + pw - 3):
+        cv.put(sx, py + ph // 2, CHAIN[3])
+        cv.put(sx, py + ph // 2 - 1, CHAIN[0])
 
 
 def frame_image(kind):
@@ -515,6 +669,11 @@ def frame_image(kind):
         wood = [C.WAINSCOT[0], C.WAINSCOT[1], C.WAINSCOT[2], C.WAINSCOT[3]]
         frame_border(cv, wood, BRASS, True)
         window_backing_grand(cv)
+    elif kind == "fathers":
+        frame_border(cv, FENCE, CHAIN, True)
+        chain_band(cv)
+        plate_paint(cv, ORANGE2)
+        window_backing_fathers(cv)
     else:
         wood = [H_("#5a5260"), H_("#433c48"), H_("#2f2a34"), H_("#1e1a22")]
         frame_border(cv, wood, DARKSTEEL, False)
@@ -522,7 +681,7 @@ def frame_image(kind):
     crest(cv, kind)
     # corner rosettes on the era frame / bolts on the locked one
     for (x, y) in ((2, 6), (FRAME_W - 5, 6), (2, FRAME_H - 5), (FRAME_W - 5, FRAME_H - 5)):
-        m = BRASS if kind == "grand" else DARKSTEEL
+        m = {"grand": BRASS, "fathers": CHAIN}.get(kind, DARKSTEEL)
         cv.rect(x, y, x + 2, y + 2, m[2])
         cv.put(x, y, m[0])
         cv.put(x + 1, y + 1, m[1])
@@ -585,13 +744,13 @@ def preview(tl, pins, frames, sil):
     d.text((12, 708), "mock-up: header, labels and buttons drawn by the game (P9-18); pins and backdrop from "
                       "assets/legends/", font=font(14), fill=(190, 190, 200), anchor="lm")
     # hall pieces
-    hall_h = 670
+    hall_h = 1090
     pv = Image.new("RGBA", (1280, 720 + hall_h), (24, 22, 34, 255))
     pv.alpha_composite(tour, (0, 0))
     d2 = ImageDraw.Draw(pv)
     d2.rectangle([0, 720, 1279, 756], fill=(16, 14, 26))
     d2.text((12, 738), "Hall of Legends pieces at 2x (as in the game) and 4x: era frame with a stand-in card (the "
-                       "legend cards come in P9-09), the locked plaque with the silhouette, the 6 pins",
+                       "legend cards come in P9-09), the locked plaque, the silhouette; 8 pins below",
              font=font(16), fill=(235, 235, 245), anchor="lm")
     stand_in = card_crop(Image.open(os.path.join(CARDS, "ht_a1.png")).convert("RGBA"))
     fr_card = frames["grand"].copy()
@@ -618,14 +777,49 @@ def preview(tl, pins, frames, sil):
         cyp = y + (PLATE[1] + PLATE[3] / 2) * sc
         nm.text((cxp, cyp), s, font=font(8 * sc), fill=(255, 250, 230), anchor="mm", stroke_width=2,
                 stroke_fill=(0, 0, 0))
+    # Chapter 2, the Fathers (P10-06): the frame alone and with a stand-in card at 2x and 4x, and the open pin on
+    # today's dim Chapter 2 panel (the timeline keeps its dim hint until era_fathers court art exists)
+    y = 1170
+    d2.rectangle([0, y - 34, 1279, y - 8], fill=(16, 14, 26))
+    d2.text((12, y - 21), "Chapter 2, the Fathers (P10-06, first guess of the era colours): frame_fathers, a stand-in "
+                          "card (the Fathers cards come in P10-14), the open pin on today's Chapter 2 panel",
+             font=font(16), fill=(235, 235, 245), anchor="lm")
+    stand2 = card_crop(Image.open(os.path.join(CARDS, "chi_g1.png")).convert("RGBA"))
+    fr2 = frames["fathers"].copy()
+    fr2.alpha_composite(stand2, WINDOW[:2])
+    x = 24
+    for im, tag in ((frames["fathers"], "frame_fathers"), (fr2, "+ card")):
+        pv.alpha_composite(im.resize((FRAME_W * 2, FRAME_H * 2), Image.NEAREST), (x, y))
+        d2.text((x + FRAME_W, y + FRAME_H * 2 + 14), tag, font=font(15), fill=(220, 220, 230), anchor="mm")
+        x += FRAME_W * 2 + 24
+    x += 10
+    pv.alpha_composite(fr2.resize((FRAME_W * 4, FRAME_H * 4), Image.NEAREST), (x, y))
+    for (px0, sc) in ((24 + FRAME_W * 2 + 24, 2), (x, 4)):
+        cxp = px0 + (PLATE[0] + PLATE[2] / 2) * sc
+        cyp = y + (PLATE[1] + PLATE[3] / 2) * sc
+        nm.text((cxp, cyp), "ROOFTOP", font=font(8 * sc), fill=(255, 250, 230), anchor="mm", stroke_width=2,
+                stroke_fill=(0, 0, 0))
+    x += FRAME_W * 4 + 40
+    py0, py1 = RAIL_Y - 60, RAIL_Y + 40                       # a slice of the Chapter 2 panel, at 2x
+    panel = tl.crop((panel_x(1) - 2, py0, panel_x(1) + PANEL_W + 2, py1)).convert("RGBA")
+    panel = panel.resize((panel.width * 2, panel.height * 2), Image.NEAREST)
+    pin2 = pins["fathers_open"].resize((PIN_W * 2, PIN_H * 2), Image.NEAREST)
+    panel.alpha_composite(pin2, ((PANEL_W // 2 + 2 - PIN_ANCHOR[0]) * 2, (RAIL_Y - py0 - PIN_ANCHOR[1]) * 2))
+    dp = ImageDraw.Draw(panel)
+    label(dp, (panel.width // 2, (RAIL_Y - py0 + 22) * 2), "FATHERS", 30, (150, 230, 170))
+    label(dp, (panel.width // 2, (RAIL_Y - py0 + 36) * 2), "PLAY", 22, (120, 230, 120))
+    pv.alpha_composite(panel, (x, y))
+    d2.text((x + panel.width // 2, y + panel.height + 14), "Chapter 2 open (mock-up)", font=font(15),
+            fill=(220, 220, 230), anchor="mm")
     # pins at 4x
-    x, y = 24, 1180
-    for key in ("grand_open", "grand_done", "grand_locked", "fathers_locked", "present_locked", "next_locked"):
+    x, y = 24, 1590
+    for key in ("grand_open", "grand_done", "grand_locked", "fathers_open", "fathers_done", "fathers_locked",
+                "present_locked", "next_locked"):
         big = pins[key].resize((PIN_W * 4, PIN_H * 4), Image.NEAREST)
         pv.alpha_composite(big, (x, y))
         d2.text((x + PIN_W * 2, y + PIN_H * 4 + 12), "pin_" + key.replace("_open", ""), font=font(15),
                 fill=(220, 220, 230), anchor="mm")
-        x += PIN_W * 4 + 40
+        x += PIN_W * 4 + 26
     pv.convert("RGB").save(PREVIEW, optimize=True)
     print("wrote", os.path.relpath(PREVIEW, ROOT))
 
@@ -640,11 +834,13 @@ def main():
         "fathers_locked": pin_image("fathers", "locked"),
         "present_locked": pin_image("present", "locked"),
         "next_locked": pin_image("next", "locked"),
+        "fathers_open": pin_image("fathers", "open"),
+        "fathers_done": pin_image("fathers", "done"),
     }
-    frames = {"grand": frame_image("grand"), "locked": frame_image("locked")}
+    frames = {"grand": frame_image("grand"), "fathers": frame_image("fathers"), "locked": frame_image("locked")}
     sil = silhouette_image()
     files = {"timeline.png": tl, "frame_grand.png": frames["grand"], "frame_locked.png": frames["locked"],
-             "silhouette.png": sil}
+             "frame_fathers.png": frames["fathers"], "silhouette.png": sil}
     for k, im in pins.items():
         files["pin_" + k.replace("_open", "") + ".png"] = im
     for fn, im in files.items():
@@ -665,9 +861,11 @@ def main():
         "pin_points": [[panel_cx(i), RAIL_Y] for i in range(4)],
         "pin_size": [PIN_W, PIN_H], "pin_anchor": list(PIN_ANCHOR),
         "pins": {"grand": {"open": "pin_grand.png", "done": "pin_grand_done.png", "locked": "pin_grand_locked.png"},
-                 "fathers": {"locked": "pin_fathers_locked.png"}, "present": {"locked": "pin_present_locked.png"},
+                 "fathers": {"open": "pin_fathers.png", "done": "pin_fathers_done.png",
+                             "locked": "pin_fathers_locked.png"}, "present": {"locked": "pin_present_locked.png"},
                  "next": {"locked": "pin_next_locked.png"}},
-        "frame_size": [FRAME_W, FRAME_H], "frames": {"grand": "frame_grand.png", "locked": "frame_locked.png"},
+        "frame_size": [FRAME_W, FRAME_H],
+        "frames": {"grand": "frame_grand.png", "fathers": "frame_fathers.png", "locked": "frame_locked.png"},
         "window": list(WINDOW), "card_crop": list(CARD_CROP), "name_plate": list(PLATE),
         "silhouette": "silhouette.png",
     }
