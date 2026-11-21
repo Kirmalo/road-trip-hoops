@@ -132,6 +132,8 @@ const CROSS_BEAT_CONE := 75.0     # degrees either side of the handler's facing 
 const CROSS_STUN := 0.45          # seconds a beaten defender stumbles
 const CROSS_BEAT_CHANCE := 0.5    # CPU defender not moving the wrong way: chance he is beaten (until def decides)
 const CROSS_WRONG_WAY_SPEED := 40.0  # px/s: a defender moving at least this fast away from the cut is beaten
+const CROSS_ISO_BASE_RATE := 0.42 # ISO BALL (P10-12): today's share of crossovers in front of a defender that beat him
+                                  # (measured: 42.3%, 40 --autoplay games, twist none); sizes cross_beat_mult's second roll
 const CROSS_HAND_RATE := 13.0     # dribble hand travel per second during a crossover (2.0 = one hand to the other)
 const HAND_SWITCH_RATE := 4.0     # same for the slow switch away from a defender
 const HAND_SWITCH_FT := 8.0       # the nearest defender inside this, on the ball side ...
@@ -754,6 +756,9 @@ func cross_beat_check() -> void:
 			beaten = best.def.beaten_by_cross(self, cross_dir)
 		else:
 			beaten = game.rng.randf() < CROSS_BEAT_CHANCE
+	var iso: float = Twists.value("cross_beat_mult", 1.0)   # ISO BALL; 1.0 without a twist: no extra roll
+	if iso != 1.0:
+		beaten = _iso_cross_roll(beaten, iso, best)
 	if not beaten:
 		return
 	best.stumble(CROSS_STUN)
@@ -767,6 +772,24 @@ func cross_beat_check() -> void:
 		game.stat("human_cross_beats")
 	if game.fx:
 		game.fx.popup("SHOOK!", best.position + Vector2(0, -40), BEAT_POPUP_COLOR, 30)
+
+# ISO BALL (P10-12): the twist's cross_beat_mult x moves how often a crossover beats the defender in front, for every
+# handler and defender, CPU or human. x > 1: a crossover that did not beat him gets a second roll at
+# (x - 1) * b / (1 - b), b = CROSS_ISO_BASE_RATE (today's beat share), so about x times as many beats; against a human
+# defender a CPU crossover's second roll is eased like the wrong-way lean (cross_beat_human). x < 1: a beat stands at
+# chance x. Never called at x = 1.0, so without the twist no extra random number is drawn (today's game exactly).
+func _iso_cross_roll(beaten: bool, mult: float, def_p) -> bool:
+	if mult < 1.0:
+		return beaten and game.rng.randf() < mult
+	if beaten:
+		return true
+	var extra: float = clampf((mult - 1.0) * CROSS_ISO_BASE_RATE / (1.0 - CROSS_ISO_BASE_RATE), 0.0, 1.0)
+	if game.is_human(def_p) and not game.is_human(self):
+		extra *= Difficulty.value(team, "cross_beat_human", 1.0)
+	if game.rng.randf() >= extra:
+		return false
+	game.stat("iso_cross_beats_t%d" % team)   # beats the twist added (in cross_beats_t<team> too)
+	return true
 
 # Moves the drawn dribble hand (hand_x) toward dribble_side; the ball is centered while shooting or in the air.
 # Out of a move, the handler slowly switches hands away from the nearest defender.
@@ -1133,9 +1156,14 @@ func sig_log(id: String, what: String) -> void:
 func dunk_range() -> float:
 	return dunk_reach() + (LONG_DUNK_EXTRA_FT if signature == SIG_LONG_DUNK else 0.0)
 
-# P9-24: DUNK_RANGE with his dunk_reach_mult perk (DUNK_RANGE without it); a long_dunk signature reaches past this
+# P9-24: DUNK_RANGE with his dunk_reach_mult perk (DUNK_RANGE without it) and the ISO BALL dunk_range_mult (P10-12);
+# a long_dunk signature reaches past this
 func dunk_reach() -> float:
-	return DUNK_RANGE * perk("dunk_reach_mult", 1.0)
+	return twist_dunk_range() * perk("dunk_reach_mult", 1.0)
+
+# DUNK_RANGE x the twist's dunk_range_mult (ISO BALL 1.1; 1.0 without a twist: DUNK_RANGE exactly)
+func twist_dunk_range() -> float:
+	return DUNK_RANGE * Twists.value("dunk_range_mult", 1.0)
 
 # defense.gd: x this on a block try at my shot of `kind` ("" jumper, "layup", "dunk"); 1.0 for everyone but the hook man
 func sig_block_mult(kind: String) -> float:
@@ -1205,8 +1233,10 @@ func start_rim_move(d_ft: float) -> void:
 	long_dunk = dunk and d_ft > dunk_reach()   # P9-20: only a long_dunk signature reaches past DUNK_RANGE
 	if long_dunk:
 		sig_log(SIG_LONG_DUNK, "power dunk from %.1f ft" % d_ft)
-	elif dunk and d_ft > DUNK_RANGE:
+	elif dunk and d_ft > twist_dunk_range():
 		perk_log("dunk from %.1f ft (reach %.1f ft)" % [d_ft, dunk_reach()])   # P9-24 dunk_reach_mult
+	elif dunk and d_ft > DUNK_RANGE:
+		game.stat("iso_far_dunks_t%d" % team)   # ISO BALL (P10-12): a take-off only the twist's longer range allows
 	alley_oop = false
 	rim_kind = "dunk" if dunk else "layup"
 	jump_time = DUNK_TIME if dunk else LAYUP_TIME

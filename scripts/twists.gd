@@ -12,6 +12,9 @@ extends RefCounted
 #                            (main.shot_probability, P9-08); 1.0 = today
 #   foul_mult                x the chance a foul is called: bad block jumps into the shooter and reaching fouls
 #                            (defense._foul_roll, defense.try_reach_foul; P9-08); 1.0 = today
+#   cross_beat_mult          x how often a crossover beats the defender in front, CPU and human defenders alike
+#                            (player.cross_beat_check, P10-12); 1.0 = today
+#   dunk_range_mult          x the dunk range (player.DUNK_RANGE, 6 ft today, in player.dunk_reach; P10-12); 1.0 = today
 #   shot_clock               seconds on the shot clock (main.SHOT_CLOCK_LENGTH, 24 today)
 #   speed_mult               x every player's top speed (player.speed, after the speed rating)
 #   turbo_mult               the turbo speed multiplier itself (player.TURBO_SPEED_MULT, 1.35 today)
@@ -90,6 +93,14 @@ const TWISTS := {
 		"inside_mult": 1.08,          # close jumpers, layups and dunks go in 8% more often
 		"foul_mult": 0.6,             # fouls are called 60% as often as today (rougher defense)
 	},
+	# Legends, Chapter 2 (P10-12, owner F2 a): the Fathers era, "ISO BALL". Starting values; QA tunes them (P10-21)
+	"era_fathers": {
+		"name": "ISO BALL", "banner": "Iso ball: crossovers shake defenders, dunks from further out",
+		"icon": "era_fathers",
+		"cross_beat_mult": 1.2,       # a crossover beats the defender in front about 20% more often (everyone)
+		"dunk_range_mult": 1.1,       # dunks take off from 10% further out (6 -> 6.6 ft)
+		"arc_mult": 1.05,             # jump shots and lobs drawn a little higher (drawing only)
+	},
 }
 
 # Today's value of every hook key (what each hook passes as `default`; listed so the table can be checked)
@@ -98,6 +109,7 @@ const DEFAULTS := {
 	"stamina_drain_mult": 1.0, "stamina_refill_mult": 1.0, "cut_grip": 1.0, "cut_min_speed": 0.8,
 	"cut_angle_deg": 60.0, "lob_drift_ft": 0.0, "shot_curve_ft": 0.0, "lob_time_mult": 1.0, "arc_mult": 1.0,
 	"sideline_fence": 0.0, "fence_bounce": 0.6, "crowd_db": 0.0, "inside_mult": 1.0, "foul_mult": 1.0,
+	"cross_beat_mult": 1.0, "dunk_range_mult": 1.0,
 }
 const TEXT_KEYS := ["name", "banner", "icon", "gust_min", "gust_keys"]
 

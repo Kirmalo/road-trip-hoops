@@ -748,6 +748,25 @@ func _draw_icon(n: CanvasItem, icon: String, c: Vector2, s: float) -> void:
 			for i in 4:
 				var lx: float = c.x - br * 0.36 + br * 0.24 * float(i)
 				n.draw_line(Vector2(lx - 2.0, ly - 3.0), Vector2(lx + 2.0, ly + 3.0), Color(0.96, 0.92, 0.8), 1.5)
+		"era_fathers":
+			# ISO BALL (P10-12): a modern orange ball with black seams, and the crossover's zigzag arrow beside it
+			var bc: Vector2 = c + Vector2(s * 0.28, -s * 0.12)
+			var r2: float = s * 0.62
+			n.draw_circle(bc, r2 + 2.0, Color(0.08, 0.05, 0.04))
+			n.draw_circle(bc, r2, Color(0.95, 0.5, 0.14))
+			n.draw_circle(bc + Vector2(-r2 * 0.3, -r2 * 0.3), r2 * 0.32, Color(1.0, 0.66, 0.32))
+			var sm := Color(0.1, 0.06, 0.04)
+			n.draw_line(bc + Vector2(-r2, 0.0), bc + Vector2(r2, 0.0), sm, 2.0)
+			n.draw_line(bc + Vector2(0.0, -r2), bc + Vector2(0.0, r2), sm, 2.0)
+			n.draw_arc(bc + Vector2(-r2 * 1.2, 0.0), r2 * 0.95, -0.8, 0.8, 10, sm, 2.0)
+			n.draw_arc(bc + Vector2(r2 * 1.2, 0.0), r2 * 0.95, PI - 0.8, PI + 0.8, 10, sm, 2.0)
+			var zz := PackedVector2Array([c + Vector2(-s * 0.95, -s * 0.2), c + Vector2(-s * 0.55, s * 0.3),
+					c + Vector2(-s * 0.2, s * 0.05), c + Vector2(s * 0.25, s * 0.75)])
+			n.draw_polyline(zz, Color(1.0, 0.95, 0.3), 3.0)
+			var tip: Vector2 = zz[3]
+			var d2: Vector2 = (zz[3] - zz[2]).normalized()
+			var o2: Vector2 = d2.orthogonal() * 5.0
+			n.draw_colored_polygon(PackedVector2Array([tip + d2 * 6.0, tip + o2, tip - o2]), Color(1.0, 0.95, 0.3))
 		_:
 			n.draw_circle(c, s * 0.4, white)
 
