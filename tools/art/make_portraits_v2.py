@@ -14,6 +14,8 @@ his sprite in tools/art/crews.json (skin, hair, headwear, outfit, colors).
 Usage:  python3 tools/art/make_portraits_v2.py              every portrait + the full preview
         python3 tools/art/make_portraits_v2.py --sample     also redraw the approved sample sheet
         python3 tools/art/make_portraits_v2.py --legends    only the Grandfathers (LG below) + their contact sheet
+        python3 tools/art/make_portraits_v2.py --legends fathers   only the Fathers (LG2 below) + their sheet
+                                                            (kit colors follow their crews.json sheets if present)
         python3 tools/art/make_portraits_v2.py ht_g1 ...    a quick row of those characters (ROW_OUT), writes nothing
 Output: assets/portraits/<id>.png           288 x 336 (the 96 x 112 contract at 3x), base portrait
         assets/portraits/<id>_<mood>.png    the moods story_text.gd uses (happy; bosses also smug)
@@ -21,6 +23,7 @@ Output: assets/portraits/<id>.png           288 x 336 (the 96 x 112 contract at 
         docs/art/portraits_p6.png           the same for the Phase 6 cast (P6-A4: the five new city crews and the
                                             New York crews, specs in P6 below)
         docs/art/legends_portraits.png      the six Grandfathers of Legends Chapter 1 (P9-10, specs in LG below)
+        docs/art/legends_fathers_portraits.png   the six Fathers of Legends Chapter 2 (P10-15, specs in LG2)
 Needs:  Pillow, numpy
 """
 import json
@@ -1497,6 +1500,80 @@ def era_mustache(cv, T, hair, expr):
 
 # characters (Phase 6) ------------------------------------------------------------
 
+# Phase 10 (P10-15) parts for the Fathers: a low fade, a durag, eyes shut (Eyes Closed's calm face)
+
+def fade_hair(cv, T, hair):
+    """A low fade: a short stippled top over shaved sides that fade into the skin (no ink on the hairline)."""
+    hm = buzz_hair(cv, T, hair, sparse=True)
+    top = cv.poly(T([(-56, -40), (-58, -60), (-40, -80), (-12, -90), (20, -90), (46, -78), (60, -58), (61, -46),
+                     (48, -49), (26, -56), (8, -56), (-14, -54), (-36, -48)])) & hm
+    mid = cv.samp(top, 0, -7, fill=False) & hm & ~top        # the fade: a band of denser stubble under the top
+    st = cv.dots(np.full(hm.shape, 0.8, np.float32), 2.2, 0.65, 15) & mid & ~cv.k
+    cv.rgb[st] = hair["sh"]
+    hsh = cv.crescent(top, 8)
+    cv.cel(top, hair, shadow=hsh, hi=None, ink=0, dots=False)
+    st = cv.dots(np.full(hm.shape, 0.5, np.float32), 2.4, 0.6, 15)
+    cv.rgb[st & top & ~hsh] = hair["sh"]
+    cv.rgb[st & top & hsh] = hair["dp"]
+    hhi = cv.poly(T([(-40, -62), (-18, -82), (12, -86), (-4, -76), (-28, -64)]))
+    cv.rgb[hhi & top & ~st] = hair["lt"]
+    # a crisp line-up at the front and a shaved part line, the barber's marks
+    cv.ink(cv.line(T([(26, -56), (48, -50), (60, -47)]), 1.2, taper=(0.5, 0.3)) & cv.samp(top, 0, -2, fill=False))
+    cv.ink(cv.line(T([(-10, -66), (14, -78), (34, -76)]), 0.9, taper=(0.4, 0.6)) & top)
+    return top
+
+
+DURAG = [(-60, -2), (-67, -34), (-56, -70), (-24, -95), (14, -97), (46, -85), (63, -62), (67, -44), (40, -47),
+         (10, -47), (-8, -36), (-12, -18), (-30, -17), (-48, -7)]
+
+
+def durag_tails(cv, T, rag):
+    """The durag's two tails hanging from the knot down the back of the neck (drawn before the head)."""
+    for pts, w in (([(-58, -26), (-70, 8), (-74, 46), (-70, 78)], 11.0),
+                   ([(-56, -24), (-62, 12), (-60, 50), (-52, 84)], 10.0)):
+        m = cv.line(T(pts), w * T.scale(), taper=(0.1, 0.2))
+        cv.cel(m, rag, shadow=cv.crescent(m, 3.5), hi=cv.sheen(m, 1.0, 1.6), ink=1.6, dots=False)
+        cv.ink(cv.line(T([(p[0] + 2, p[1]) for p in pts[1:]]), 0.8, taper=(0.5, 0.5)) & m)
+
+
+def durag(cv, T, rag):
+    """A satin durag: a shiny cloth cap down to the brow line, a centre seam, the tie band round to a knot."""
+    dm = cv.poly(T(DURAG))
+    sh = cv.crescent(dm, 10)
+    hi = cv.sheen(dm, 3, 5) | cv.poly(T([(-40, -70), (-18, -88), (10, -92), (-8, -82), (-30, -68)]))
+    cv.cel(dm, rag, shadow=sh, hi=hi, ink=2.4, dots=True, dot_sp=3.0)
+    # satin folds: soft lit streaks running back over the dome
+    for pts in ([(52, -60), (30, -76), (0, -84)], [(-20, -60), (-36, -72), (-46, -60)], [(20, -56), (0, -66)]):
+        cv.rgb[cv.line(T(pts), 2.2, taper=(0.5, 0.6)) & dm & ~cv.k & ~sh] = rag["lt"]
+    cv.ink(cv.line(T([(46, -50), (40, -76), (14, -94), (-24, -90), (-50, -66)]), 1.1, taper=(0.4, 0.4)) & dm)
+    # the tie band along the lower edge, from the brow round behind the ear to the knot
+    top = [(66, -54), (40, -57), (10, -57), (-10, -46), (-30, -34), (-50, -24), (-62, -22)]
+    bot = [(-58, -10), (-46, -12), (-26, -22), (-6, -30), (10, -45), (40, -46), (67, -43)]
+    bm = cv.poly(T(top + bot)) & dm
+    cv.cel(bm, rag, shadow=cv.crescent(bm, 3) | sh, hi=cv.sheen(bm, 1.0, 1.4), ink=1.4, dots=False)
+    knot = cv.ellipse(*T([(-60, -18)])[0], 8 * T.scale(), 7 * T.scale())
+    cv.cel(knot, rag, shadow=cv.crescent(knot, 3.5), hi=cv.sheen(knot, 1.0, 1.6), ink=1.8, dots=False)
+    return dm
+
+
+def shut_eyes(cv, T, skin, head):
+    """Both eyes closed (calm, not asleep): the open eyes painted over with lid skin, a lash line curving down."""
+    inner = head & cv.samp(head, 2.5, 0, fill=False) & cv.samp(head, -2.5, 0, fill=False) & \
+        cv.samp(head, 0, 2.5, fill=False) & cv.samp(head, 0, -2.5, fill=False)
+    for cx, sx, far in ((16, 1.1, False), (55, 0.56, True)):
+        sgn = -1 if far else 1
+
+        def F(pts):
+            return T([(cx + sgn * x * sx, -4 + y) for x, y in pts])
+
+        lid = cv.poly(F([(-21, -6), (-8, -12), (8, -12), (16, -4), (15, 8), (0, 11), (-14, 8)])) & inner
+        cv.paint(lid, skin["base"])
+        cv.rgb[cv.poly(F([(-15, 4), (0, 7), (14, 4), (12, 9), (0, 11), (-13, 8)])) & lid] = skin["sh"]
+        cv.ink(cv.line(F([(-13, 1), (-6, 4.5), (5, 4.5), (13, 1)]), 3.0 if not far else 2.4, taper=(0.15, 0.4)))
+        cv.ink(cv.line(F([(-12, 1.5), (-16, 3), (-18.5, 2)]), 2.0, taper=(0.0, 1.0)))
+        cv.ink(cv.line(F([(-9, -5), (0, -7), (9, -5)]), 1.0, taper=(0.5, 0.5)))
+
+
 def cast_member(s):
     """A draw function from a spec (see P6 below): body and top, head, beard, hair, extras."""
 
@@ -1540,11 +1617,15 @@ def cast_member(s):
             locs_tail(cv, T, hair)
         if style == "backcap":
             backcap_brim(cv, T, P(s["brim"]))
+        if style == "durag":
+            durag_tails(cv, T, P(s["rag"]))
         beard = s.get("beard")
         head = face(cv, T, Tn, skin, expr, jaw=jaw, chin=s.get("chin", 0), crown=s.get("crown", 0),
                     beard=bool(beard), brow_col=s.get("brow") or (hair["dp"] if hair else (20, 12, 14)),
                     brow_w=s.get("brow_w", 1.0), neck=False, nose=s.get("nose", 0.0), wide=s.get("wide", 0.0),
                     lips=s.get("lips", False), iris=s.get("iris", (60, 36, 30)), mouth=not s.get("goatee"))
+        if expr in ex.get("eyes_shut", ()):
+            shut_eyes(cv, T, skin, head)
         if "stubble" in ex:
             stubble(cv, T, skin, head, expr)
         if "freckles" in ex:
@@ -1567,6 +1648,10 @@ def cast_member(s):
             bald_shine(cv, T)
         elif style == "buzz":
             buzz_hair(cv, T, hair)
+        elif style == "fade":
+            fade_hair(cv, T, hair)
+        elif style == "durag":
+            durag(cv, T, P(s["rag"]))
         elif style == "waves":
             waves(cv, T, hair)
         elif style == "part":
@@ -1819,6 +1904,76 @@ for _pid, _s in LG.items():
                   LG_ANCHOR.get(_s["hair"], P6_ANCHOR.get(_s["hair"], 250)))
 CREW_CARD["LG"] = (196, 88, 42)
 
+# Phase 10 (P10-15): the six Fathers (Legends Chapter 2, F1 a). Original characters from the kit's parts; looks
+# and kit colors from the "look" and "colors" of their rows in scripts/legends_data.gd and the approved look sample
+# (docs/art/legends_fathers_sample_v1.png: Rooftop's cornrows and left arm sleeve, Eyes Closed's tangerine durag),
+# ERA2_* colors of crews.json. Wristbands and leg sleeves sit below the bust. A far sleeve is the left arm (the
+# head looks to screen right). Base mood neutral, plus happy. Eyes Closed keeps his eyes shut in the neutral one.
+# The kit follows the in-game sheet: when crews.json has a player with the same id (P10-14), its skin, hair_pal,
+# top_pal, trim_pal, sleeve_pal, band_pal (headband) and rag_pal (durag) win over the table (FATHERS_KIT_KEYS), so
+# after a kit change a rerun of --legends fathers redraws the portraits in the new colors.
+LG2 = {
+    # high-flying shooting guard: tall and lanky, cornrows, a charcoal LEFT arm sleeve (far arm), no headband
+    "lg_rooftop": dict(name="ROOFTOP", skin="brown", top="tank", top_pal="ERA2_SEAFOAM", trim_pal="ERA2_ICE",
+                       broad=0.92, sx=0.9, sy=1.06, sxn=0.95, cy=138, jaw=-2, chin=2, nose=0.5, wide=0.6, lips=True,
+                       tilt=3.0, hair="cornrows", hair_pal="HAIR_BLACK", brow=(16, 8, 10),
+                       sleeve="ERA2_CHARCOAL", sleeve_near=False),
+    # crossover artist: small and quick, short twists under a white headband
+    "lg_ankles": dict(name="ANKLES", skin="tan", top="tank", top_pal="ERA2_CITRUS", trim_pal="ERA2_CHARCOAL",
+                      broad=0.94, sx=0.96, sy=0.96, cy=142, jaw=-1, chin=-1, nose=-0.5, wide=0.5, tilt=4.0,
+                      hair="twists", hair_pal="HAIR_DARK", seed=41, headband="ERA2_ICE", brow=(24, 14, 14)),
+    # isolation scorer: wiry, a low fade (the leg sleeve is below the bust)
+    "lg_midrange": dict(name="MIDRANGE", skin="brown", top="tank", top_pal="ERA2_GRAPE", trim_pal="ERA2_ICE",
+                        broad=0.9, sx=0.92, sy=1.04, cy=136, jaw=1, chin=3, nose=1.0, wide=0.6, lips=True, tilt=2.0,
+                        hair="fade", hair_pal="HAIR_BLACK", brow=(16, 8, 10), brow_w=1.2),
+    # low-post bulldozer center: huge, shaved head, short goatee, steel headband
+    "lg_freight": dict(name="FREIGHT", skin="umber", top="tank", top_pal="ERA2_STEEL", trim_pal="ERA2_CITRUS",
+                       broad=1.24, sx=1.12, sxn=1.24, cy=132, jaw=7, chin=2, crown=-3, wide=1.3, lips=True, tilt=0.0,
+                       hair="shaved", hair_pal="HAIR_BLACK", goatee=True, headband="ERA2_STEEL", brow=(14, 8, 10),
+                       brow_w=1.5),
+    # no-look passer: slim, a tangerine durag (wristbands and the leg sleeve are below the bust)
+    "lg_eyes_closed": dict(name="EYES CLOSED", skin="deep", top="tank", top_pal="ERA2_BRICK",
+                           trim_pal="ERA2_TANGERINE", broad=0.9, sx=0.94, cy=138, jaw=-1, chin=1, wide=0.9, lips=True,
+                           tilt=2.0, hair="durag", rag="ERA2_TANGERINE", brow=(14, 8, 10),
+                           extras={"eyes_shut": ("neutral",)}),
+    # lockdown wing defender: rangy, a brown buzz cut, a charcoal RIGHT arm sleeve (near arm)
+    "lg_lockbox": dict(name="LOCKBOX", skin="light", top="tank", top_pal="ERA2_CHARCOAL", trim_pal="ERA2_TANGERINE",
+                       broad=1.0, sx=1.0, sy=1.04, cy=136, jaw=3, chin=3, nose=0.5, wide=0.3, tilt=1.0, hair="buzz",
+                       hair_pal="HAIR_BROWN", brow_w=1.3, iris=(80, 104, 126), sleeve="ERA2_CHARCOAL",
+                       sleeve_near=True),
+}
+FATHERS_KIT_KEYS = {"skin": "skin", "hair_pal": "hair_pal", "top_pal": "top_pal", "trim_pal": "trim_pal",
+                    "sleeve_pal": "sleeve", "band_pal": "headband", "rag_pal": "rag"}
+LG2_RIM = (170, 226, 255)
+LG2_SHEET = os.path.join(ROOT, "docs", "art", "legends_fathers_portraits.png")
+LG2_ANCHOR = {"durag": 230, "fade": 250}
+for _pid, _s in LG2.items():
+    CAST[_pid] = (_s["name"], cast_member(_s), LG2_RIM, [("neutral", ""), ("happy", "_happy")],
+                  LG2_ANCHOR.get(_s["hair"], P6_ANCHOR.get(_s["hair"], 250)))
+CREW_CARD["LG2"] = (46, 150, 150)
+
+
+def fathers_kit(players, pal, skins):
+    """Take the Fathers' kit colors from their crews.json sheets (P10-14) when those exist; prints what changed.
+    A sleeve or headband counts only when the sheet wears one (sleeve / headband set)."""
+    for pid, spec in LG2.items():
+        p = players.get(pid)
+        if not p:
+            continue
+        for src, dst in FATHERS_KIT_KEYS.items():
+            v = p.get(src)
+            if not isinstance(v, str) or dst not in spec:
+                continue
+            if dst == "headband" and not p.get("headband"):
+                continue
+            if dst == "sleeve" and not p.get("sleeve"):
+                continue
+            if v not in (skins if dst == "skin" else pal):
+                continue
+            if spec.get(dst) != v:
+                print("kit", pid, dst, spec.get(dst), "->", v)
+                spec[dst] = v
+
 
 # ----------------------------------------------------------------------------- the sample sheet
 
@@ -1887,9 +2042,21 @@ def save(img, path):
 
 def main():
     pal, skins, players = load()
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    argv = sys.argv[1:]
+    legends_only = None            # "--legends": the Grandfathers; "--legends fathers": the Fathers (P10-15)
+    for i, a in enumerate(argv):
+        if a == "--legends":
+            legends_only = "grand"
+            if i + 1 < len(argv) and argv[i + 1] in ("fathers", "grand"):
+                legends_only = argv[i + 1]
+        elif a.startswith("--legends="):
+            legends_only = a.split("=", 1)[1] or "grand"
+    if legends_only not in (None, "grand", "fathers"):
+        sys.exit("unknown --legends chapter: %s (grand, fathers)" % legends_only)
+    args = [a for k, a in enumerate(argv) if not a.startswith("--")
+            and not (k > 0 and argv[k - 1] == "--legends" and a in ("fathers", "grand"))]
     sample = "--sample" in sys.argv
-    legends_only = "--legends" in sys.argv
+    fathers_kit(players, pal, skins)
     if args:
         # quick look at some characters: a row of their moods, nothing written to assets/
         made = [portrait(pid, e, pal, skins) for pid in args for e, _ in CAST[pid][3]]
@@ -1902,7 +2069,7 @@ def main():
     made = {}
     total = 0
     for pid, (name, _, _, moods, _) in CAST.items():
-        if legends_only and pid not in LG:
+        if legends_only and pid not in (LG if legends_only == "grand" else LG2):
             continue
         for expr, suf in moods:
             img = portrait(pid, expr, pal, skins)
@@ -1912,7 +2079,10 @@ def main():
             total += os.path.getsize(path)
             print("wrote", pid + suf + ".png", os.path.getsize(path))
     print("total bytes", total)
-    legends_sheet(made, pal, skins)
+    if legends_only != "fathers":
+        legends_sheet(made, pal, skins)
+    if legends_only != "grand":
+        fathers_sheet(made, pal, skins)
     if legends_only:
         return
     if sample:
@@ -1943,6 +2113,22 @@ def legends_sheet(made, pal, skins):
                        "Lean in, young man. Watch the elbow.", "Nobody blocks what they cannot reach."),
                       (("ud_jojo", "happy"), ("lg_quarterback", "happy"), "right", "QUARTERBACK",
                        "Pass first, kid. Then pass again.", "Shooting is for folks who can't find a teammate.")])
+
+
+def fathers_sheet(made, pal, skins):
+    """docs/art/legends_fathers_portraits.png (P10-15): the six Fathers, two story mock-ups and every mood.
+    The mock-ups' crew portraits are drawn here when --legends fathers did not make them (nothing more is written);
+    the mock-up lines are only for the look check (Chapter 2's story is in scripts/story_text.gd)."""
+    for key in (("ud_deuce", "focus"), ("ud_jojo", "happy")):
+        if key not in made:
+            made[key] = portrait(key[0], key[1], pal, skins)
+    full_sheet(made, crews=[("LEGENDS CHAPTER 2: THE FATHERS", "LG2", list(LG2))], path=LG2_SHEET,
+               heading="Story portraits, the Fathers (P10-15) - drawn comic style v2, 288 x 336 (shown 1:1); "
+                       "the first of each legend is the base portrait",
+               mocks=[(("ud_deuce", "focus"), ("lg_rooftop", "neutral"), "right", "ROOFTOP",
+                       "The rim? That's just a step, young blood.", "I'm going somewhere higher."),
+                      (("ud_jojo", "happy"), ("lg_eyes_closed", "happy"), "right", "EYES CLOSED",
+                       "Don't watch my eyes. Watch your hands.", "The ball's already on its way.")])
 
 
 def full_sheet(made, crews=None, mocks=None, path=FULL_SHEET,
