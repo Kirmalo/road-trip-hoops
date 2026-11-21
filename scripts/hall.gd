@@ -1,9 +1,10 @@
 extends CanvasLayer
 # HALL OF LEGENDS (P9-19, board Phase 9; Flow screen "hall", args {"back": "legends" | "crew"}).
-#   Left: the era rows (legends_data.gd CHAPTERS, timeline order) in a list that scrolls (drag or wheel). A built
-#   chapter is a row of its 6 plaques in plaque order: an unlocked legend is his card in the era frame with his name
-#   on the plate and his best tokens under it; a locked one is the locked frame with the silhouette and "?". A chapter
-#   that is not built (Chapters 2-4) is a locked row: 6 small empty locked frames, COMING LATER and its gate.
+#   Left: the era rows (LegendsData.chapter_rows(), timeline order) in a list that scrolls (drag or wheel). Every built
+#   chapter (P10-03: any number of them) is a row of its 6 plaques in plaque order: an unlocked legend is his card in
+#   his era's frame with his name on the plate and his best tokens under it; a locked one is the locked frame with the
+#   silhouette and "?" (a built chapter whose gate is not met says OPENS AT <gate>). A chapter that is not built is a
+#   locked row: 6 small empty locked frames, COMING LATER and its gate.
 #   Right: the picked plaque in detail. Unlocked: the plaque at 3x, name, full name, archetype, number, best tokens,
 #   the rating shape (five bars around his level), the signature move, the mentor perk and REPLAY STORY (his unlock
 #   scene in story.gd, back here on the same plaque). Locked: the silhouette, his challenge line and how to get it.
@@ -156,6 +157,11 @@ const DEF_CARD_CROP := Rect2(12, 34, 40, 60)
 const DEF_PLATE := Rect2(6, 72, 44, 11)
 const DEF_FRAMES := {"grand": "frame_grand.png", "locked": "frame_locked.png"}
 const DEF_SILHOUETTE := "silhouette.png"
+# P10-03: per-chapter art, as legends_tour.gd. A chapter's frame that ui.json doesn't list (or whose file is missing)
+# is this chapter's (Chapter 1's). ui.json's optional "colors": {"<chapter>": {"title": "#rrggbb", "plate_text":
+# "#rrggbb"}} tint a built row's heading and his name plates (not listed = GOLD / PLATE_TEXT, as in Phase 9).
+const ART_BASE_CHAPTER := "grand"
+const FALLBACK_DARKEN := 0.35            # a missing era frame is drawn in its crew's ui_color, this much darker
 const V2_CARD := Vector2(64, 96)         # a v2 card frame (card_crop is inside it)
 const STAT_NAMES := [["speed", "SPD"], ["shooting", "SHT"], ["finishing", "FIN"], ["defense", "DEF"],
 		["stamina", "STA"]]
@@ -334,7 +340,7 @@ func _layout() -> void:
 	var fs: Vector2 = _frame_size()
 	var y: float = 0.0
 	var n: int = 0
-	for row in LegendsData.CHAPTERS:
+	for row in LegendsData.chapter_rows():
 		n += 1
 		var ch: String = str(row.get("id", ""))
 		var built: bool = bool(row.get("built", false)) and not (row.get("legends", []) as Array).is_empty()
@@ -1069,8 +1075,25 @@ func frame_tex(kind: String) -> Texture2D:
 	var frames = _ui.get("frames", DEF_FRAMES)
 	if not (frames is Dictionary):
 		frames = DEF_FRAMES
-	var file: String = str((frames as Dictionary).get(kind, (frames as Dictionary).get("grand", "")))
-	return _texture(UI_DIR + file) if file != "" else null
+	var keys: Array = [kind] if kind == "locked" else [kind, ART_BASE_CHAPTER]
+	for k in keys:
+		var file: String = str((frames as Dictionary).get(k, DEF_FRAMES.get(k, "")))
+		var t: Texture2D = _texture(UI_DIR + file) if file != "" else null
+		if t != null:
+			return t
+	return null
+
+# a chapter color from ui.json's optional "colors": {"<chapter>": {"<key>": "#rrggbb"}}, else def
+func chapter_color(ch: String, key: String, def: Color) -> Color:
+	var cols = _ui.get("colors", {})
+	var row = (cols as Dictionary).get(ch, {}) if cols is Dictionary else {}
+	var s: String = str((row as Dictionary).get(key, "")) if row is Dictionary else ""
+	return Color.from_string(s, def) if s != "" else def
+
+# the drawn frame of a chapter whose frame art is missing: its crew's ui_color (legends_data.gd), else FALLBACK_FRAME
+static func era_fill(ch: String) -> Color:
+	var c = (LegendsData.chapter(ch).get("crew", {}) as Dictionary).get("ui_color", null)
+	return (c as Color).darkened(FALLBACK_DARKEN) if c is Color else FALLBACK_FRAME
 
 func silhouette_tex() -> Texture2D:
 	return _texture(UI_DIR + str(_ui.get("silhouette", DEF_SILHOUETTE)))
@@ -1113,13 +1136,14 @@ func draw_plaque(c: CanvasItem, pos: Vector2, sc: float, id: String, state: Stri
 	var win: Rect2 = _ui_rect("window", DEF_WINDOW)
 	var plate: Rect2 = _ui_rect("name_plate", DEF_PLATE)
 	var open: bool = state == "open"
-	var kind: String = LegendsData.chapter_of(id) if open else "locked"
+	var era: String = LegendsData.chapter_of(id)
+	var kind: String = era if open else "locked"
 	var ft: Texture2D = frame_tex(kind)
 	var dest := Rect2(pos, fs * sc)
 	if ft != null:
 		c.draw_texture_rect(ft, dest, false)
 	else:
-		c.draw_style_box(UI.style_box(FALLBACK_FRAME if open else FALLBACK_LOCKED, UI.OPT_BORDER, 2), dest)
+		c.draw_style_box(UI.style_box(era_fill(era) if open else FALLBACK_LOCKED, UI.OPT_BORDER, 2), dest)
 	var wr := Rect2(pos + win.position * sc, win.size * sc)
 	if open:
 		var card: Dictionary = card_for(id)
@@ -1133,7 +1157,7 @@ func draw_plaque(c: CanvasItem, pos: Vector2, sc: float, id: String, state: Stri
 		return
 	var pr := Rect2(pos + plate.position * sc, plate.size * sc)
 	var txt: String = str(LegendsData.legend(id).get("name", "?")) if open else "?"
-	_plate_text(c, pr, txt, sc, PLATE_TEXT if open else PLATE_LOCKED_TEXT)
+	_plate_text(c, pr, txt, sc, chapter_color(era, "plate_text", PLATE_TEXT) if open else PLATE_LOCKED_TEXT)
 
 # tex's src drawn into r, keeping its shape (centred; a card stands on r's bottom)
 func _draw_fit(c: CanvasItem, tex: Texture2D, src: Rect2, r: Rect2, stand: bool) -> void:
@@ -1234,7 +1258,8 @@ class HallList extends Control:
 					s.UI.PANEL_BORDER if built else s.UI.OPT_BORDER.darkened(0.4), s.UI.BORDER), rr)
 			var head_y: float = rr.position.y + 29.0
 			s.draw_text(self, Vector2(rr.position.x + 14.0, head_y), "CHAPTER %d  %s" % [int(r["num"]),
-					str(row.get("name", chid))], s.ROW_HEAD_FONT, s.GOLD if built else s.LOCKED_TEXT)
+					str(row.get("name", chid))], s.ROW_HEAD_FONT, s.chapter_color(chid, "title", s.GOLD) if built
+					else s.LOCKED_TEXT)
 			var right: String = ""
 			var right_col: Color = s.DIM_TEXT
 			if not built:
