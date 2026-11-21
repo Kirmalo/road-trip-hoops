@@ -629,8 +629,8 @@
    ]
   }
  },
- "_help_extra": "extra (P9-04b): animations only some sheets carry (sheets = the base sheets; a recolor or star jersey carries what its pages' sheet carries). Their frames are on extra pages <sheet>_x<N>.png after the normal pages: start = the logical extra column (extra_cols in all, pages of page_cols, the same rows and palettes as the normal pages). Events as above, plus top (the ball over the head). hook: right-hand hook shot, left shoulder to the hoop.",
- "extra_cols": 11,
+ "_help_extra": "extra (P9-04b): animations only some sheets carry (sheets = the base sheets; a recolor or star jersey carries what its pages' sheet carries). Their frames are on extra pages <sheet>_x<N>.png after the normal pages: start = the logical extra column (extra_cols in all, pages of page_cols, the same rows and palettes as the normal pages). Events as above, plus top (the ball over the head). hook: right-hand hook shot, left shoulder to the hoop. fadeaway: turnaround fadeaway jumper off the left hand; post (back to the hoop), turn (the pivot), rise, top; fade [first, last] = the frames over which the game moves him fade_ft feet back (the art stays over his floor point).",
+ "extra_cols": 24,
  "extra": {
   "hook": {
    "start": 0,
@@ -674,6 +674,64 @@
     "lg_boxcar",
     "lg_velvet",
     "lg_quarterback"
+   ]
+  },
+  "fadeaway": {
+   "start": 11,
+   "frames": 13,
+   "fps": 0.0,
+   "loop": false,
+   "ms": [
+    100,
+    120,
+    60,
+    60,
+    70,
+    60,
+    60,
+    60,
+    60,
+    120,
+    80,
+    90,
+    120
+   ],
+   "post": [
+    0,
+    1
+   ],
+   "turn": [
+    1,
+    4
+   ],
+   "gather": [
+    4,
+    5
+   ],
+   "takeoff": 5,
+   "rise": [
+    6,
+    7
+   ],
+   "top": 7,
+   "release": 8,
+   "follow": [
+    9,
+    10
+   ],
+   "air": [
+    5,
+    10
+   ],
+   "land": 11,
+   "fade": [
+    6,
+    11
+   ],
+   "fade_ft": 1.5,
+   "hand": "L",
+   "sheets": [
+    "lg_midrange"
    ]
   }
  }
