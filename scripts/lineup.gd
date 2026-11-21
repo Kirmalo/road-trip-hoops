@@ -22,7 +22,8 @@ extends CanvasLayer
 # boss starters (Trip.boss_repair), the hint line shows Trip.boss_repair_note() until the first tap.
 # One legend in the starting three (P9-22, Trip.LEGEND_LIMIT): legend cards carry a LEGEND tag (era colour, gold) in
 # the same place; tapping a second legend flashes Trip.LEGEND_RULE and doesn't pick him. A legend is not a boss, so one
-# legend and one boss may start together.
+# legend and one boss may start together. P10-19: the limit counts every chapter together (a Grandfather and a Father
+# never start together; the flash names the one already picked); each tag is in its own chapter's colour.
 # Drag the list (or its wide scroll bar) to scroll; a drag never counts as a tap. Taps are ignored for ARM_T s when the
 # screen opens and once PLAY is on its way, so nothing leaks into the next screen or the game.
 # Desktop testing: Enter = PLAY, Escape = BACK. Trip test: auto_step() keeps the lineup and taps PLAY;
@@ -78,6 +79,8 @@ const CARD_FILL_PICKED := Color(0.18, 0.2, 0.28, 0.98)
 const CARD_BORDER_W := 3
 const PICKED_BORDER_W := 8
 const BADGE_R := 26.0                    # the YOU / 2 / 3 badge
+const SUB_MIN_FONT := 13                 # P10-19: a card's number + role line shrinks down to this to clear the badge
+const SUB_BADGE_GAP := 8.0               # px between that line and the badge
 const DIM_TEXT := Color(0.7, 0.72, 0.78)
 const HINT_COLOR := Color(0.85, 0.87, 0.92)
 const WARN_COLOR := Color(1.0, 0.6, 0.35)
@@ -375,11 +378,12 @@ func legend_in_the_way(id: String) -> String:
 			return str(e)
 	return ""
 
-# P9-22: a legend's tag colour: his chapter's ui_color (legends_data.gd), else LEGEND_TAG_FILL
+# P9-22: a legend's tag colour: his chapter's ui_color (legends_data.gd), else LEGEND_TAG_FILL (P10-19: the same
+# colour as his chapter's LEGENDS row on the DRAFT screen, Trip.chapter_color())
 static func legend_color(id: String) -> Color:
-	var ch: String = str(Cities.player(id).get("chapter", ""))
+	var ch: String = Trip.LegendsData.chapter_of(id)
 	var c = (Trip.LegendsData.chapter(ch).get("crew", {}) as Dictionary).get("ui_color", null)
-	return Color(c as Color, LEGEND_TAG_FILL.a) if c is Color else LEGEND_TAG_FILL
+	return Color(Trip.chapter_color(ch), LEGEND_TAG_FILL.a) if c is Color else LEGEND_TAG_FILL
 
 # a tap on a roster card (also the trip test's tap)
 func tap_player(id: String) -> void:
@@ -684,7 +688,13 @@ class Card extends Control:
 		var tagged: bool = Trip.is_boss(id) or Trip.is_legend(id)
 		var tier: String = str(s.TIER_TEXT.get(str(p.get("tier", "")), "")) if not tagged else ""   # the tag says it
 		var sub: String = ("#%d  " % num if num > 0 else "") + role + (("  " + tier) if tier != "" else "")
-		s.draw_text(self, Vector2(x, pad + 50.0), sub, s.SMALL_FONT, s.DIM_TEXT, HORIZONTAL_ALIGNMENT_LEFT, tw)
+		# P10-19: a long role (the Fathers' "high-flying shooting guard") shrinks to clear the YOU / 2 / 3 badge
+		var sub_w: float = tw - (s.BADGE_R * (3.2 if slot == 1 else 2.0) + s.SUB_BADGE_GAP if slot > 0 else 0.0)
+		var sub_fs: int = s.SMALL_FONT
+		var font_s: Font = ThemeDB.fallback_font
+		while sub_fs > s.SUB_MIN_FONT and font_s.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, sub_fs).x > sub_w:
+			sub_fs -= 1
+		s.draw_text(self, Vector2(x, pad + 50.0), sub, sub_fs, s.DIM_TEXT, HORIZONTAL_ALIGNMENT_LEFT, sub_w)
 		# the 5 stats
 		var rt: Dictionary = p.get("ratings", {})
 		var y: float = pad + 62.0

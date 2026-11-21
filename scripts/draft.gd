@@ -16,6 +16,9 @@ extends CanvasLayer
 #   true): its header reads the row's "name" and the legends' chapters ("UNLOCKED IN LEGENDS - THE GRANDFATHERS"), each
 #   legend's card stands in his era's card frame (assets/legends/frame_<chapter>.png, ui.json's window and card crop)
 #   in your colors, with a LEGEND tag in the row's colour; picking one says only one legend can start (Trip.LEGEND_RULE).
+#   P10-19: one LEGENDS row per chapter (Trip.legends_rows(), timeline order): "UNLOCKED IN LEGENDS - THE GRANDFATHERS",
+#   then "... - THE FATHERS", each in its chapter's colour (band, tag) with its chapter's frame (assets/legends/ui.json
+#   "frames", else frame_<chapter>.png, else LEGEND_FRAME_DEFAULT's). One legend starts, whatever his era.
 # Taps are ignored for ARM_T s when the screen opens and SIGN for PICK_ARM_T s after a pick (a double tap can't
 # confirm). Desktop: Escape = BACK (closes the confirm panel first; on the joining line it goes on); main.gd turns the
 # Android back gesture into an Escape press. auto_step() (test drivers): draft the first card if a slot is open (no
@@ -99,6 +102,8 @@ const TIER_TEXT := {"good": "GOOD", "boss": "BOSS", "avg": "", "start": ""}
 const STAT_NAMES := [["speed", "SPD"], ["shooting", "SHT"], ["finishing", "FIN"], ["defense", "DEF"],
 		["stamina", "STA"]]
 # P9-22: the LEGENDS row
+const LEGEND_UI_PATH := "res://assets/legends/ui.json"   # P10-19: its "frames" map names each chapter's frame file
+const LEGEND_DIR := "res://assets/legends/"
 const LEGEND_FRAME_PATH := "res://assets/legends/frame_%s.png"   # the era card frame per chapter id (56 x 88 texels)
 const LEGEND_FRAME_DEFAULT := "grand"    # a chapter without a frame of its own uses this one
 const LEGEND_FRAME_SCALE := 1.5          # px per frame texel (84 x 132 on a card, where the 80 x 128 sprite box was)
@@ -138,6 +143,7 @@ var _confirm_t := 0.0
 var _leave_t := -1.0
 var _join_t := -1.0          # s the joining line has been up (-1: not shown)
 var _join_hint: Label
+var _ui_cache = null         # P10-19: assets/legends/ui.json (_legend_ui(); null = not read yet)
 
 func _ready() -> void:
 	_back = str(Flow.args.get("back", DEFAULT_BACK))
@@ -286,7 +292,9 @@ func _build_list() -> void:
 			c.color = color
 			c.card = _card_of(str((pl as Dictionary).get("sheet", "")))
 			if bool((pl as Dictionary).get("legend", false)):
-				c.frame = _legend_frame(str((pl as Dictionary).get("chapter", "")))
+				var lch: String = str((pl as Dictionary).get("chapter", ""))
+				c.frame = _legend_frame(lch)
+				c.plate_color = _plate_color(lch)
 				c.legend = true
 			c.custom_minimum_size = CARD_SIZE
 			c.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -298,11 +306,14 @@ func _color_of(crew: Dictionary) -> Color:
 	return c if c is Color else UI.OPT_COLOR
 
 # "CHICAGO" for a city crew, "NEW YORK - ROUND 2" for a bracket crew, "UNLOCKED IN LEGENDS - THE GRANDFATHERS" for
-# the LEGENDS row (P9-22)
+# a LEGENDS row (P9-22; P10-19: the row's "chapter", else its legends' chapters)
 func _where(crew: Dictionary) -> String:
 	if str(crew.get("city", "")) == Trip.LEGENDS_ROW:
 		var chs: Array = []
-		for pl in crew.get("players", []):
+		var row_ch: String = str(Trip.LegendsData.chapter(str(crew.get("chapter", ""))).get("name", "")).to_upper()
+		if row_ch != "":
+			chs.append(row_ch)
+		for pl in ([] if row_ch != "" else crew.get("players", [])):
 			var ch: String = str(Trip.LegendsData.chapter(str((pl as Dictionary).get("chapter", ""))).get("name", ""))
 			if ch != "" and not chs.has(ch.to_upper()):
 				chs.append(ch.to_upper())
@@ -317,15 +328,41 @@ func _card_of(sheet: String) -> Dictionary:
 	tries.append(FALLBACK_SHEET)
 	return Sheets.card_first(tries)
 
-# P9-22: the era card frame of a chapter (its own, else the default one; null = none, the card draws as usual)
+# P9-22: the era card frame of a chapter (its own, else the default one; null = none, the card draws as usual).
+# P10-19: ui.json's "frames" entry for the chapter first, then frame_<chapter>.png.
 func _legend_frame(chapter: String) -> Texture2D:
+	var frames = _legend_ui().get("frames", {})
 	for ch in [chapter, LEGEND_FRAME_DEFAULT]:
-		var path: String = LEGEND_FRAME_PATH % str(ch)
-		if str(ch) != "" and ResourceLoader.exists(path):
-			var tex: Texture2D = load(path) as Texture2D
-			if tex != null:
-				return tex
+		if str(ch) == "":
+			continue
+		var paths: Array = []
+		if frames is Dictionary and str((frames as Dictionary).get(str(ch), "")) != "":
+			paths.append(LEGEND_DIR + str((frames as Dictionary)[str(ch)]).get_file())
+		paths.append(LEGEND_FRAME_PATH % str(ch))
+		for path in paths:
+			if ResourceLoader.exists(str(path)):
+				var tex: Texture2D = load(str(path)) as Texture2D
+				if tex != null:
+					return tex
 	return null
+
+# P10-19: the name plate ink of a chapter's frame: ui.json's optional "colors": {"<chapter>": {"plate_text":
+# "#rrggbb"}} (as hall.gd reads it), else LEGEND_PLATE_TEXT
+func _plate_color(chapter: String) -> Color:
+	var cols = _legend_ui().get("colors", {})
+	var row = (cols as Dictionary).get(chapter, {}) if cols is Dictionary else {}
+	var hex: String = str((row as Dictionary).get("plate_text", "")) if row is Dictionary else ""
+	return Color.from_string(hex, LEGEND_PLATE_TEXT) if hex != "" else LEGEND_PLATE_TEXT
+
+# assets/legends/ui.json, read once ({} when missing or broken)
+func _legend_ui() -> Dictionary:
+	if _ui_cache == null:
+		_ui_cache = {}
+		if FileAccess.file_exists(LEGEND_UI_PATH):
+			var got = JSON.parse_string(FileAccess.get_file_as_string(LEGEND_UI_PATH))
+			if got is Dictionary:
+				_ui_cache = got
+	return _ui_cache as Dictionary
 
 # ---------------- state ----------------
 
@@ -698,6 +735,7 @@ class Card extends Control:
 	var card: Dictionary = {}   # Sheets.card_info() in your colors
 	var frame: Texture2D = null   # P9-22: a legend's era card frame (null = none)
 	var legend := false        # P9-22: a legend (the LEGEND tag)
+	var plate_color := Color(0.24, 0.14, 0.08)   # P10-19: his frame's name plate ink (_plate_color())
 	var _st := {}
 
 	func _gui_input(event: InputEvent) -> void:
@@ -786,7 +824,7 @@ class Card extends Control:
 		var nm: String = str(p.get("name", "")).to_upper()
 		var fs: int = s.fit_size(nm, s.LEGEND_PLATE_FONT, plate.size.x + 8.0, s.LEGEND_PLATE_MIN_FONT)
 		draw_string(ThemeDB.fallback_font, Vector2(plate.position.x, plate.get_center().y + fs * 0.36), nm,
-				HORIZONTAL_ALIGNMENT_CENTER, plate.size.x, fs, s.LEGEND_PLATE_TEXT)
+				HORIZONTAL_ALIGNMENT_CENTER, plate.size.x, fs, plate_color)
 		return fsz
 
 
