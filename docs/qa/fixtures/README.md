@@ -119,6 +119,8 @@ own fresh `XDG_DATA_HOME`):
   worked (GATE signed, the hint gave the one-legend rule). With `--stars 24` (2 slots, none open, so no draft test) the
   same resume plays to TRIP END (exit 0, no ERROR or WARNING lines), STEEPLE and MAYOR starting all the way, Deuce's
   `PERK block_timing` line in a game: a1dc3c7 12 games, record 24-7; 9fa3283 10 games, record 24-5.
+  Fixed in P10-24 (79d69a3, P10-B1): the plain resume (no `--stars 24`) now plays to TRIP END (17 games, 24-12), the
+  draft keeping the lineup's tapped picks.
 - With the trip and `legends_v1_ch1_done.json`: `-- --autoplay --challenge velvet` (a real CPU game to 11, Normal,
   crew trip, "STEEPLE SITS: DEX PLAYS", `sea_g1` in for him): a1dc3c7 11-10 met (Velvet 2 pts), 9fa3283 10-11 failed;
   exit 0, the test trip and Legends files unchanged byte for byte. `-- --legends-test --target 3` on the trip fixture
