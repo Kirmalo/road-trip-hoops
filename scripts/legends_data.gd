@@ -138,9 +138,10 @@ const CHAPTERS := [
 		"finale": {"target": 21, "legends": ["lg_rooftop", "lg_midrange", "lg_freight"], "label": "FATHERS FINALE"},
 		"intro_scene": "legends_fathers_intro",
 		"finale_scenes": {"before": "legends_fathers_finale_before", "after": "legends_fathers_finale_after"},
-		# F6 a: a step harder than Chapter 1 (CHALLENGE_AVG 66, MATE_DROP 14); the finale about as hard as Chapter 1's
-		# (FINALE_STAGE_AVG 52). Starting guesses: P10-23 tunes them (and the goal numbers, which matter more)
-		"challenge_avg": 69, "mate_drop": 13, "finale_stage_avg": 52,
+		# F6 a: a step harder than Chapter 1 (CHALLENGE_AVG 66, MATE_DROP 14, FINALE_STAGE_AVG 52). P10-23
+		# (docs/qa/phase10-challenges.md): 69 / 14 / 56 (from the 69 / 13 / 52 guesses), Eyes Closed from 0-1 (was 0-2),
+		# Lockbox min 3 (was 6): the expected crew meets Normal ~63%, Hard ~44%
+		"challenge_avg": 69, "mate_drop": 14, "finale_stage_avg": 56,
 	},
 	{
 		"id": "present", "name": "THE PRESENT", "built": false,
@@ -323,8 +324,8 @@ const LEGENDS := {
 		"shape": {"speed": 5, "shooting": 0, "finishing": -5, "defense": -5, "stamina": 5},
 		"spec": [], "steal_bias": 12, "block_bias": -12,
 		"signature": {"id": "no_look", "text": "No-look and behind-the-back passes: his passes are harder to intercept"},
-		"challenge": {"type": "comeback", "target": 15, "start_score": [0, 2], "mates": ["lg_lockbox", "lg_rooftop"],
-			"line": "START DOWN 0-2: COME BACK AND WIN (TO 15)"},
+		"challenge": {"type": "comeback", "target": 15, "start_score": [0, 1], "mates": ["lg_lockbox", "lg_rooftop"],
+			"line": "START DOWN 0-1: COME BACK AND WIN (TO 15)"},
 		"perk": "blind_pass",
 		"colors": ["ERA2_BRICK", "ERA2_TANGERINE"],
 		"look": "slim guard, deep brown skin, tangerine durag, white wristbands, steel right leg sleeve, brick tank with tangerine trim, baggy brick shorts, white crew socks (the approved look sample)",
@@ -338,8 +339,8 @@ const LEGENDS := {
 		"shape": {"speed": 5, "shooting": -10, "finishing": -5, "defense": 20, "stamina": -10},
 		"spec": ["defense"], "steal_bias": 14, "block_bias": 10,
 		"signature": {"id": "chase_down", "text": "Chase-down block: his blocks from behind work more often"},
-		"challenge": {"type": "score", "target": 11, "min": 6, "mates": ["lg_ankles", "lg_midrange"],
-			"line": "SCORE 6 POINTS YOURSELF ON LOCKBOX AND WIN (TO 11)"},
+		"challenge": {"type": "score", "target": 11, "min": 3, "mates": ["lg_ankles", "lg_midrange"],
+			"line": "SCORE 3 POINTS YOURSELF ON LOCKBOX AND WIN (TO 11)"},
 		"perk": "quick_hands",
 		"colors": ["ERA2_CHARCOAL", "ERA2_TANGERINE"],
 		"look": "rangy wing, light skin, brown buzz cut, no headband, charcoal right arm sleeve, charcoal tank with tangerine trim, baggy charcoal shorts, white crew socks",
