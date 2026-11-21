@@ -300,7 +300,7 @@ Everything below (Tasks by wave).
   | gameplay-programmer C | `scripts/main.gd` (the `--backtest` table only)
   | the Chapter 2 view goes to the timeline, a Chapter 2 challenge pauses, resumes and QUITs to its chapter view, the
   Hall from a Chapter 2 plaque goes back; BACKTEST OK; `--titletest` passes | P10-22 merged (main.gd), P10-18, P10-03
-- **P10-26** | QA: the ramp with Fathers and their perks
+- **P10-26** | DONE (qa-balance-tester, `docs/qa/phase10-ramp.md` at 1c7ff3b: 872 games, `--best-roster --perk -,quick_pass,quick_hands` (Eyes Closed + boss in New York, Quarterback + boss in Seattle / LA): Hard RED 46% pooled (200; cells 52 / 55 / 55 / 20 / 50%, NY SF on the line, a watch item), Easy 7 / Normal 26 / LEGEND 57%; perks vs "2 stat points" (about 0.05 points a game a player): pull_up, strong_hold, quick_hands about 1x as they were, rise_up 0.015 -> 0.025, handle 1.05 -> 1.15, blind_pass 0.95 -> 0.85 (each was 0.2-0.55x; now about 1x; owner to confirm against F5 a); LEGENDTEST OK; 0 errors) | QA: the ramp with Fathers and their perks
   | qa-balance-tester | `docs/qa/phase10-ramp.md`; may tune the Fathers perk sizes in `scripts/legends_data.gd`
   | `--best-roster` with the strongest legal three (a Father or a Grandfather + a boss) plus the best perk of either
   chapter (`--perk`), late boss games and New York on every level, 40+ games a cell: on Hard RED still wins 20%+ (the
