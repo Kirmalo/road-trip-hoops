@@ -1,457 +1,351 @@
 # Task Board
 
-Current phase: **Phase 9: Legends, Chapter 1 (the Grandfathers)** (planned 2026-11-19 by `lead-producer`). The Phase 8
-board is archived in `docs/board-phase8.md` (Phase 7: `docs/board-phase7.md`, Phase 6: `docs/board-phase6.md`,
-Phase 5: `docs/board-phase5.md`, Phase 4: `docs/board-phase4.md`, Phase 3: `docs/board-phase3.md`, Phase 2:
-`docs/board-phase2.md`, Phase 1: `docs/board-phase1.md`).
+Current phase: **Phase 10: Legends, Chapter 2 (the Fathers)** (planned 2026-11-21 by `lead-producer`; VISION "Phase 10
+start": "Go on to the next"). The Phase 9 board is archived in `docs/board-phase9.md` (Phase 8: `docs/board-phase8.md`,
+Phase 7: `docs/board-phase7.md`, Phase 6: `docs/board-phase6.md`, Phase 5: `docs/board-phase5.md`, Phase 4:
+`docs/board-phase4.md`, Phase 3: `docs/board-phase3.md`, Phase 2: `docs/board-phase2.md`, Phase 1: `docs/board-phase1.md`).
 
-**STATUS: BUILD DONE through P9-33 (2026-11-19, checked against `git log` at `1f4d7d5`); P9-34 (final QA) and P9-35
-(summary and check-in) are next. Planned with the owner answers in (VISION "Phase 9 answers L1-L8": L1 a, L2 a, L3 b,
-L4 a, L5 a, L6 b, L7 a, L8 a).** Updated for L3 b (challenges with your Road Trip crew: P9-12, P9-18, P9-21, P9-25, P9-26)
-and L6 b (the hook-shot animation: new P9-04b and P9-04c; P9-09, P9-20, P9-32 and P9-34 updated). P9-20, P9-23,
-P9-24 and P9-27 stay in (L6 b, L8 a).
+**STATUS: PLANNED, not started. Wave 1 needs no owner answer (except P10-04b, only built if F4 says so). Waves 2+ wait
+for the owner's answers to F1-F8 (`docs/legends-plan.md` "Phase 10 open questions") and the era look check (P10-04).**
 
-Scope: a shippable first slice of the Legends mode (`docs/legends-plan.md`, VISION "Legends (long-term)", "Legends plan
-answers"):
-1. **Chapter 1, the Grandfathers era, end to end**: 6 original legends (data, sheets, portraits, story), the era court
-   and the era rules (one twist, `era_grand`), 6 challenge games (a mix per legend: hold him, beat the fire, stop the
-   move, race, comeback) and the era finale, legend tokens (1 / 2 / 3 per level, best kept).
-2. **The era tour screen** (a timeline of the 4 chapters; Chapter 1 playable, 2-4 shown locked with their gates) and
-   the **Hall of Legends** (plaques, cards, REPLAY STORY).
-3. **Unlocking**: a LEGENDS button on the title, Chapter 1 open at 24 stars from any games (L4 a); winning a challenge
-   unlocks that legend for good (`user://legends.json`, kept across NEW TRIP).
-4. **Challenges are played with your current Road Trip crew and starters** (L3 b): they get easier as the crew grows.
-5. **Signature moves** (L6 b): a small play edge per legend, plus one new animation, the hook shot, on the legend
-   sheets (an "extra pages" rule: only sheets that list an extra animation carry it).
-6. **Legends in the Road Trip**: an unlocked legend can be drafted into a star roster slot; at most one legend among
-   the 3 starters, and he may start next to one boss (owner). A drafted legend is boss-level at the stage reached
-   (L7 a).
-7. **Mentors** (L8 a, Road Trip games only): an unlocked legend trains one of your players (a small perk, about 2 stat
-   points' worth; one perk per player; a legend trains one player at a time and can switch).
-8. **Later chapters only as data hooks**: Chapters 2-4 are rows in `legends_data.gd` with `"built": false`, their gates
-   and names, no legends, art or games. One-on-one, era teams and legends in Quick Game, Legends cosmetics and the
-   token ladder are Phase 10.
+Scope: a shippable Chapter 2 end to end, on the Phase 9 machinery (everything is data in `legends_data.gd` `CHAPTERS` /
+`LEGENDS` / `PERKS`, so Chapter 2 is mostly data, art, story and one era twist):
+1. **Six original Fathers legends** (`docs/legends-plan.md` part 3: the 2000s look, baggy shorts, arm sleeves, cornrows;
+   isolation scorers and high flyers): data, the name check (extended to the 2000s era), sheets in the approved style
+   with new era parts, portraits, unlock stories, joining lines, jersey numbers the owner approves.
+2. **Their six challenges** on the Phase 9 goal types (hold / fire / stop / race / comeback), plus at most one cheap new
+   type if the owner wants it (F3), and **the Fathers finale** to 21.
+3. **The era rules**: one twist, `era_fathers` "ISO BALL" (F2). **The era court**: `era_fathers`, a blacktop under
+   lights. **The era music**: a listening list, the owner picks (CC0 / CC-BY).
+4. **The gate**: 36 stars or 12 tokens (already data; F7 asks whether Chapter 1's finale is also needed). The timeline,
+   chapter view and Hall show two playable chapters.
+5. **Mentors**: one perk per Fathers legend, about 2 stat points each (F5). **Draft**: unlocked Fathers join the Road
+   Trip draft; the one-legend rule stays (one legend from any chapter + one boss may start).
+6. **Signature moves**: a small play edge each on existing animations; a new animation only if the owner picks one
+   (F4).
+7. **Carry-overs**: the Velvet challenge watch item (re-measure, tune if still off, P10-08), P9-B7 (wide-screen art bars
+   on the tour, P10-03), the P9-33 leftovers (credits rows, the How to Play line, P10-10), the story lines and docs that
+   still show Chapter 1's pre-P9-26 goal numbers (P10-29).
+8. **Not in Phase 10** unless F8 adds it: era teams and single legends in Quick Game, one-on-one, Legends cosmetics and
+   the token ladder, Chapters 3-4 (they stay `built: false` pins).
 
 ## Rules for every task in this phase
 - **The hard rule (`docs/legends-plan.md` part 1): every legend is our own character.** No real player's name or
-  nickname, face or likeness, number in a team's colors, signature accessory, trademark, slogan, team, arena or
-  league. The owner's reference picture is never an asset or an input to a script. Review rejects any change that
-  breaks it, the same way it rejects an asset without a license.
-- No game-sim change outside P9-08 (era rules), P9-13 (challenge start and end), P9-20 (signature moves, the hook
-  shot) and P9-24 (mentor perks). Every new hook is a default that is exactly today's game: with twist `none`, no challenge and no
-  perk, Quick Game and the Road Trip play as in Phase 8 (`--autoplay` stats match the Phase 8 reference in
-  `docs/qa/phase8.md`).
-- Tuning constants at the top of the script they belong to (`TOKENS_BY_LEVEL`, the challenge numbers, `LEGEND_LIMIT`,
-  the drafted legend's rating rule, the perk sizes, the era twist values).
-- Godot 4.3, no `:=` with untyped right sides, no new `.tscn` (new screens are CanvasLayer scripts like `locker.gd`),
-  touch first: every new button is a big tap target, Escape = BACK on desktop, the Android back goes BACK on every new
-  screen; in a challenge game nothing new is needed beyond the joystick and A / B (the goal is a line in the HUD).
-- Test runs never touch the owner's files: `user://legends_test.json`, `user://trip_test.json`,
-  `user://settings_test.cfg`.
-- Saves: `trip.json` stays **version 2** (a drafted legend is an ordinary `via: "draft"` roster entry with an `lg_`
-  id); the Legends progress is its own file. 1.0.0 and Phase 8 saves load and play on; a Phase 8 build that opens a
-  Phase 9 trip drops the unknown `lg_` id (it already drops unknown ids) and plays on.
+  nickname, face or likeness, number in a team's colors, signature accessory, trademark, slogan, team, arena or league.
+  The 2000s are the era most players remember, so the risk is higher than in Chapter 1: **no legend may carry a
+  combination of look, build, number and move that points at one real player** (e.g. the small quick crossover guard
+  with cornrows, a single arm sleeve and a headband is one famous real player's look: sleeves and braids are era parts
+  spread over several legends, never that whole set on one). Move names are plain basketball words ("crossover",
+  "fadeaway", "chase-down block"). The owner's reference picture is never an asset or an input to a script. Review
+  rejects any change that breaks it, the same way it rejects an asset without a license.
+- **Chapter 1 and the rest of the game play exactly as in Phase 9.** No game-sim change outside P10-12 (ISO BALL),
+  P10-13 (the new goal type, only if F3 a), P10-17 (signature moves) and P10-22 (mentor perks). Every new hook is a
+  default that is exactly today's game: with twist `none` / `era_grand`, no Fathers legend on the court and no new perk,
+  `--autoplay` and the Chapter 1 `--challenge` runs match `docs/qa/phase9.md` / `phase9-challenges.md`.
+- **Every chapter is data.** No `"fathers"` (or `"grand"`) string in game logic outside `legends_data.gd`, the art
+  lookups keyed by chapter id (frames, pins) and the tests; a third chapter must later be data, art and story only.
+- Tuning constants at the top of the script they belong to (the ISO BALL values in `twists.gd`, the signature numbers in
+  `player.gd` / `defense.gd`, the challenge numbers, per-chapter rating keys and perk sizes in `legends_data.gd`).
+- Godot 4.3, no `:=` with untyped right sides, no new `.tscn`, touch first (joystick + A + B in every game; the menus are
+  big tap targets, Escape = BACK on desktop, the Android back goes BACK), 1280x720 and wider screens.
+- Saves stay compatible: **`legends.json` version 1** (new legends are just new keys: `"lg:<id>"`, `"fin:fathers"`, ids
+  in `unlocked` / `seen` / `mentors`), **`trip.json` version 2** (a drafted Father is a `via: "draft"` entry with an `lg_`
+  id). A Phase 9 build opening Phase 10 files must not crash (unknown ids ignored or dropped, P10-27).
+- Test runs never touch the owner's files: `user://legends_test.json`, `user://trip_test.json`, `user://settings_test.cfg`.
 - Art: generated by the `tools/art` scripts in the approved style (style sample v1, the approved animation sample,
-  comic portraits v2), never drawn by hand, downloaded or traced; rerun the generator and commit its output. Music:
-  CC0 or CC-BY only, a row in `CREDITS.md`.
+  comic portraits v2, the approved legend look sample v1 for build and finish), never drawn by hand, downloaded or traced;
+  rerun the generator and commit its output. Music: CC0 or CC-BY only, a row in `CREDITS.md` and `CREDITS_LIST`.
+
+## Process rule (worked in Phase 9, keep it)
+- **At most 2 Godot processes per agent** at a time (the 4 cores are shared with the other agents).
+- **Every test run in its own `XDG_DATA_HOME`** (and, for a scratch project copy, its own `config/name`), so no run sees
+  another's `user://` files. Runs that must share files (`--triptest-data` then `--load`; `--trip-stop-after` then
+  `--trip-resume`; `--trip-test` then `--challenge` with its trip save) share one name and one data folder, nothing else.
+- **Scratch folders outside the repo** (the agent's scratchpad or `/tmp/<task>/`): project copies for candidate numbers,
+  logs, screenshots. Only the task's own files are committed.
+- QA reports give the build commit, the flags, the game count per cell and the standard error; a 20-game cell cannot
+  see a 3-point change (`docs/qa/phase9-challenges.md`).
 
 ## Shared contract (names fixed now so parallel tasks can call each other)
 
-### Legends data (`scripts/legends_data.gd`, static const data, `const LegendsData = preload(...)`)
-- `CHAPTERS`: ordered rows `{"id": "grand" | "fathers" | "present" | "next", "name", "built": bool, "twist": "era_grand",
-  "look": "era_grand", "music": "<track>", "fallback_music", "gate": {"stars": 24, "tokens": 0}, "legends": [ids],
-  "finale": {"target": 21, "legends": [3 ids], "label"}, "intro_scene", "finale_scenes"}`. Chapters 2-4: `built:
-  false`, their name and gate (36 / 48 / 72 stars or 12 / 30 / 48 tokens, the plan's draft numbers), no legends.
-- `LEGENDS`: `{"lg_<name>": {"name", "full", "chapter", "archetype", "tier": "legend", "sheet", "portrait", "number",
-  "shape": {speed, shooting, finishing, defense, stamina offsets, sum 0}, "signature": {"id", "text"}, "challenge":
-  {"type": "hold" | "fire" | "stop" | "race" | "comeback", "target", ... the type's numbers, "line"}, "perk": "<perk id>",
-  "look", "bio", "unlock_scene"}`. Player dicts have the same keys as `cities.gd` PLAYERS where they overlap, so
-  `Cities.player(id)` can return them.
-- `PERKS`: `{"<perk id>": {"key", "value", "text"}}` (keys read through `perk(key, default)` in the sim, P9-24).
-- Constants: `TOKENS_BY_LEVEL := {"easy": 1, "normal": 2, "hard": 3, "legend": 3}`, `CHALLENGE_AVG` (the legends'
-  stat average in a challenge, fixed: your crew is what grows, L3 b; the legend's shape on top, his 2 teammates (other
-  Grandfathers legends, `"mates"` in his challenge row) a little lower, `MATE_DROP`), `DRAFT_TIER := 20` and the stage
-  rule for a drafted legend (L7 a: stage average + 20, shaped, `BOSS_CAP` 95). The finale uses the same rule.
-- Helpers: `legend(id) -> Dictionary`, `chapter(id) -> Dictionary`, `chapter_of(legend_id) -> String`,
-  `built_chapters() -> Array`, `max_tokens() -> int` (computed: built challenges + finales x 3), `is_legend_id(id)`.
-- `self_test() -> String` ("" = OK): every row complete, shapes sum to 0, every scene, sheet, portrait and perk named
-  exists or falls back, and **the name check**: no name, nickname or full name matches `docs/legends-namecheck.md`'s
-  list of real players and nicknames (the list is copied into the test as data). Flag `--legendtest` prints
-  `LEGENDTEST OK` or `LEGENDTEST FAILED: <why>` (exit 0 / 1).
+### Chapter 2 data (`scripts/legends_data.gd`)
+- The `fathers` row becomes `"built": true` (P10-11) with: `"rules": "ISO BALL"`, `"twist": "era_fathers"`, `"look":
+  "era_fathers"`, `"music": "legends_fathers"`, `"fallback_music"` (an existing city track until the pick, P10-20),
+  `"gate": {"stars": 36, "tokens": 12}` (F7 may add a finale rule), `"crew"` (`"THE FATHERS"`, a `ratings.gd` style,
+  the era palettes from P10-04, `ui_color`), `"legends"` (6 ids), `"finale"` (target 21, 3 ids, `"FATHERS FINALE"`),
+  `"intro_scene": "legends_fathers_intro"`, `"finale_scenes": {"before": "legends_fathers_finale_before", "after":
+  "legends_fathers_finale_after"}`.
+- **Optional per-chapter rating keys (P10-02)** in a `CHAPTERS` row: `"challenge_avg"`, `"mate_drop"`,
+  `"finale_stage_avg"`; a row without them uses today's constants (`CHALLENGE_AVG` 66, `MATE_DROP` 14,
+  `FINALE_STAGE_AVG` 52), so Chapter 1 is unchanged. The Fathers row sets them only if F6 asks for a step.
+- Legend ids `lg_<nickname>` in lower case with `_` (the F1 answer fixes them; the plan's draft: `lg_rooftop`,
+  `lg_ankles`, `lg_midrange`, `lg_freight`, `lg_eyes_closed`, `lg_lockbox`). Each row has every Chapter 1 key (`name`,
+  `full`, `first`, `last`, `chapter: "fathers"`, `archetype`, `role`, `tier: "legend"`, `sheet`, `portrait`, `number`,
+  `shape` (sum 0), `spec`, `steal_bias`, `block_bias`, `signature`, `challenge` (its `mates`: 2 other Fathers), `perk`,
+  `colors`, `look`, `bio`, `unlock_scene: "lg_<id>_unlock"`).
+- New goal type (only if F3 a): `"score"` in `CHALLENGE_TYPES`, row key `"min"`: **you** (the human, `Trip.human`)
+  score at least `min` points yourself and your team wins; HUD "SCORE 6 ON LOCKBOX: 2"; checked at the end like `stop`.
+- New perks (F5 a; ids and keys distinct from Chapter 1's and from the twist keys): `"rise_up"` (`contested_dunk_bonus`
+  +0.015), `"handle"` (`cross_win_mult` 1.05), `"pull_up"` (`mid_shot_bonus` +0.015), `"strong_hold"`
+  (`strip_guard_mult` 0.95: steal chance on him), `"blind_pass"` (`pass_safe_mult` 0.95: interception chance on his
+  passes), `"quick_hands"` (`steal_window_mult` 1.05). Defaults: 1.0 for `_mult`, 0.0 for `_bonus`.
+- Signature ids (F4 a): `cradle`, `double_cross`, `fadeaway`, `shoulder`, `no_look`, `chase_down` (one per legend; the
+  `text` in plain words for the Hall).
 
-### Legends save (`scripts/legends_save.gd`, static, like `save.gd`)
-- `VERSION := 1`, `PATH := "user://legends.json"`, `TEST_PATH := "user://legends_test.json"` (any test run: user
-  arguments after `--`), `path()`, `exists()`, `write(d) -> bool` (temp file + rename, the web sync file like
-  `save.gd`), `read() -> Dictionary` ({} for missing, broken, too big or not ours), `erase()`.
-- File: `{"version": 1, "tokens": {"lg:<id>": 0..3, "fin:<chapter>": 0..3}, "unlocked": [ids], "seen": [scene ids],
-  "finales": [chapter ids won], "mentors": {"<legend id>": "<roster player id>"}}`. A newer version loads what fits.
+### ISO BALL (`scripts/twists.gd`, F2)
+- Twist `era_fathers`: `"name": "ISO BALL"`, a banner line, `"icon": "era_fathers"`. Keys (F2 a; values are starting
+  points, P10-21 tunes): `cross_beat_mult` (a crossover beats the defender this much more often, CPU and human
+  defenders alike), `dunk_range_mult` (dunk range x this), `arc_mult` 1.05 (existing, drawing only). F2 b adds
+  `help_mult` (the off-ball help lean x this); F2 c `mid_mult` (jumpers inside the arc). Each in `DEFAULTS` at today's
+  value (1.0), read once through `Twists.value(key, default)`, no team read.
 
-### Legends progress (`scripts/legends.gd`, static, `const Legends = preload(...)`)
-- State: `tokens`, `unlocked`, `seen`, `finales`, `mentors`; `load_state()` (once per run), `save() -> bool`.
-- Gates: `chapter_open(ch) -> bool` (stars from `Stars.total()` or tokens), `gate_text(ch) -> String` ("24 STARS"),
-  `mode_open() -> bool` (Chapter 1 open), `tokens_total() -> int`, `token_best(key) -> int`.
-- Keys: `challenge_key(id) -> "lg:<id>"`, `finale_key(ch) -> "fin:<ch>"`.
-- Unlocks: `is_unlocked(id)`, `unlocked_ids() -> Array` (data order), `finale_open(ch) -> bool` (all 6 of the chapter
-  beaten), `chapter_done(ch) -> bool`.
-- Matches: `match_for_challenge(id, level) -> Dictionary` and `match_for_finale(ch, level) -> Dictionary` set and
-  return `Flow.match` with `"mode": "legends"`, `"label"`, `"target"`, `"look"`, `"music"`, `"twist"`, `"level"`,
-  `"teams"` (as the trip's), `"challenge": {"legend": id, "type", ...}` ({} for a finale), `"key"`, `"crew"`
-  (`"trip"` or `"kings"`).
-  - Your side (L3 b): the trip's current 3 starters with their ratings as they are now (`Trip.roster_player()`, the
-    saved trip loaded with `Trip.continue_trip()` if none is active), the human = `Trip.human`. No perks (L8 a: Road
-    Trip games only). A challenge never changes the trip: no points, stars, record, phase, starters or save write
-    (like a replay).
-  - **Technical choice: no trip save** (a NEW TRIP not started yet, a deleted or broken save): the Cornfield Kings at
-    even ratings (`Trip.quick_ratings()`, every stat averaging 50); the chapter view says "NO TRIP: THE KINGS PLAY".
-  - **Technical choice: a legend on both sides** (you drafted him and now play his challenge or the finale): for that
-    game he sits and your strongest bench non-legend takes his place (the chapter view names the swap).
-  - **Technical choice: the level** is picked on the chapter view (tokens are per level, like stars per game); it
-    opens on the trip's level (Quick Game's saved level without a trip); LEGEND only when `Stars.legend_open()`. The
-    trip's own level never changes.
-  - Opponents: the legend at `CHALLENGE_AVG` + his shape + `Difficulty.rating_bonus(level)` (LEGEND), each stat <= 95,
-    with his 2 legend teammates; the CPU level as in Quick Game.
-  - Test: `--challenge <id>` plays with the test trip save if there is one, else the Kings; with `--expected-roster` or
-    `--best-roster` it plays with the end-of-trip crew of that kind (`Trip.end_of_trip_crew(best)`, P9-21).
-- After a game: `record_result(result) -> Dictionary` (`{"won", "key", "tokens_got", "tokens_before", "tokens_now",
-  "unlocked": id or "", "chapter_done": bool, "failed": "<why>" or ""}`, kept in `last_outcome`), `after_result() ->
-  {"screen", "args"}` (an unlock: story `unlock_scene` then the chapter; else the chapter view).
-- Mentors (P9-23): `mentor_of(player_id) -> String`, `pupil_of(legend_id) -> String`, `assign(legend_id, player_id)
-  -> bool` (switches: the legend's old pupil and the player's old mentor are freed), `perks_for(player_id) ->
-  Dictionary` ({} = none).
-- Test flags: `--legends-unlock-all` / `--legends-unlock-none` (this run, never saved), `--tokens N` (this run acts as
-  if the token total were N).
+### Art and audio files
+- Sheets `assets/players2/lg_<id>_p<N>.png`, palettes `lg_<id>`, `_crew`, `_crew_j1..3`, cards; strip
+  `docs/art/legends_fathers.png`. Era palettes `ERA2_*` in `tools/art/crews.json` (P10-04). The `hook` extra stays on
+  the Chapter 1 sheets only (technical choice: the Fathers don't use it; saves a few pages each) unless F4 adds an extra.
+- Portraits `assets/portraits/lg_<id>.png` and `_happy`; contact sheet `docs/art/legends_fathers_portraits.png`.
+- Court `assets/courts/era_fathers_floor.png`, `era_fathers_backdrop.png`; `court_looks.gd` row `"era_fathers"` (no
+  twist key, no reward, never in the Quick Game COURT list, like `era_grand`); it must not read as the MIDNIGHT reward
+  look (a different palette and props: light poles and their pools of light, a chain fence, painted lines).
+- Legends UI `assets/legends/frame_fathers.png`, `pin_fathers.png`, `pin_fathers_done.png` (the locked pin exists),
+  listed in `assets/legends/ui.json` under `frames.fathers` and `pins` (P10-06; P10-03 reads them, a missing one falls
+  back to the `grand` art).
+- Music `assets/music/legends_fathers.ogg` (P10-20, the owner's pick from P10-07).
 
-### Flow (`scripts/flow.gd`)
-- SCREENS rows: `"legends"` (`scripts/legends_tour.gd`; args `{"chapter": id}` opens that chapter, else the
-  timeline; BACK to the title) and `"hall"` (`scripts/hall.gd`, args `{"back": "legends" | "crew"}`).
-- `in_legends() -> bool` (`Flow.match.mode == "legends"`), `in_match() -> bool` (trip or legends: a game built from
-  `Flow.match`). `in_trip()` keeps its meaning.
-- `game_finished()` hands a legends game to `Legends.record_result()` and goes where `Legends.after_result()` says;
-  the pause panel's QUIT goes to `"legends"` in a legends game.
-- `--legends-test` adds `scripts/legends_test.gd` like `--trip-test` adds `trip_test.gd` (a missing script = nothing).
+### Story (`scripts/story_text.gd`)
+- Scenes `legends_fathers_intro`, `lg_<id>_unlock` x 6, `legends_fathers_finale_before`, `legends_fathers_finale_after`;
+  `RECRUIT_LINES` for the six (the draft's joining line). Lines that name a goal number use the numbers in
+  `legends_data.gd` at the time; P10-23 lists any line its tuning makes stale, P10-29 fixes it.
 
-### Challenge goals (`scripts/challenge.gd`, a Node main.gd adds when `Flow.match.challenge` is not empty)
-- Types (numbers from the legend's `challenge` row): `hold` (win while the legend scores fewer than `limit`), `fire`
-  (the legend starts on fire; win), `stop` (block or steal on the legend `count` times and win), `race` (reach `target`
-  before his team reaches `their_target`), `comeback` (start at `start_score` [0, N]; win).
-- A HUD line under the score shows the goal and its count ("HOLD STEEPLE UNDER 6: 3"); a broken goal ends the game at
-  once as a loss ("CHALLENGE FAILED: ..."). `Flow.last_result["challenge"] = {"type", "met": bool, "why"}`.
-- main.gd's part: add the node, build both teams from `Flow.match` (`Flow.in_match()`), the start score, a per-player
-  points count, the `end_challenge(won)` path. Test flag `--challenge <legend id>` (with `--autoplay`: CPU vs CPU, your
-  side as a human would have it; prints `CHALLENGE <id> <level> met|failed <score>`; with `--humantest` or a shot mode
-  too).
-
-### Trip (`scripts/trip.gd`, `scripts/cities.gd`) additions (P9-21)
-- `Cities.player(id)` returns `LegendsData.legend(id)` for an `lg_` id (tier `"legend"`); `Cities.crew_sheet()` gives a
-  drafted legend `<sheet>_crew` plus the jersey suffix like any drafted player.
-- `LEGEND_LIMIT := 1`, `LEGEND_RULE := "ONLY ONE LEGEND CAN START"`, `is_legend(id) -> bool`; `starters_ok()` refuses a
-  second legend; a legend is **not** a boss (`is_boss()` false), so one legend + one boss may start (owner).
-- Draft: `draft_pool_by_crew()` adds a row `{"city": "legends", "round": 0, "name": "LEGENDS", ...}` with the unlocked
-  legends not on the roster; `draft(id)` takes them into a star slot like anyone; ratings by L7 (constants at the top
-  of `legends_data.gd`, `BOSS_CAP` still caps). A loaded `lg_` id that is not unlocked in this run's legends file stays
-  on the roster (he was drafted when he was).
-- `--best-roster` may field one legend next to one boss, with the best perk (P9-30).
-- `end_of_trip_crew(best: bool) -> Array`: the 3 player dicts `--expected-roster` / `--best-roster` would start in the
-  New York final (the expected crew has no legend; the best one may have one, never the challenge's own legend), for
-  `--challenge` balance runs (P9-26).
-
-### Art files
-- Sheets: `assets/players2/lg_<name>_p<N>.png`, `palettes/lg_<name>.png` (era colors), `_crew` (your colors) and
-  `_crew_j1..3` (the star jerseys), cards in `cards/`; every animation in `format.json`, plus the extra animation
-  `hook` (L6 b).
-- Extra animations (P9-04b / P9-04c / P9-09): `format.json` gains `"extra": {"hook": {frames, timing, directions like
-  any animation, "sheets": ["lg_..."]}}`; a sheet that carries extras has extra pages `<id>_x<N>.png` after its normal
-  pages (same palettes, so every recolor works). `Sheets.has_anim(sheet, anim) -> bool`; a sheet that doesn't list an
-  extra never asks for it, and a missing extra page falls back to the normal shot animation. All 6 legend sheets
-  carry `hook` (technical choice: one rule for the era, a few pages each); in play only a legend whose signature is the
-  hook uses it (Steeple, P9-20). `--anim-test` checks the extra pages on the sheets that list them (hands and ball
-  points too).
-- Portraits: `assets/portraits/lg_<name>.png` plus `_happy` (and one more mood each if the story needs it).
-- Court: `assets/courts/era_grand_floor.png`, `era_grand_backdrop.png`, a row `"era_grand"` in `court_looks.gd`
-  (twist from the match, never a Quick Game reward in Phase 9).
-- Legends UI: `assets/legends/` (the era card frame, the locked plaque frame, the timeline backdrop, 4 chapter pins:
-  Chapters 2-4 as locked pins only), made by `tools/art/make_legends_ui.py`.
-- Music: `assets/music/legends_grand.ogg` (the owner's pick from a listening list); until then the chapter's
-  `fallback_music` (an existing track).
-
-## Owner answers (VISION "Legends plan answers", "Phase 9 start")
-6 legends per era, 24 in all; Chapter 1 = the Grandfathers, opens after a finished trip (24 stars); later chapters at
-36 / 48 / 72 stars or legend tokens; challenge games a mix per legend (hold him, beat the fire, stop the move, race,
-comeback), one-on-one later; legends join the Road Trip through the star slots, one legend among the starters, and he
-may start next to one boss; mentor perks small (about 2 stat points' worth, one per player, a legend trains one player
-at a time and can switch); original archetypes only; Phase 9 now, planned on the board and shown to the owner first.
+## Owner answers already in (VISION)
+"Legends plan answers" (6 per era, gates 36 / 48 / 72 stars or tokens, a mix of goals, one legend + one boss may start,
+small perks), "Phase 9 answers L1-L8" (challenges with your Road Trip crew, the Kings without a trip; boss-level
+drafted legends; mentors for regular players only, Road Trip games only), "Mentor perk size" (shot perks +1.5%, others
+5%), "Phase 10 start". Phase 9's technical choices (the level picked on the chapter view, a drafted legend sits when he
+is an opponent) apply to Chapter 2 unchanged.
 
 ## Todo
-- **P9-34** Final Phase 9 QA (qa), then **P9-35** Phase summary and check-in (lead, coordinator).
-- **P9-B7** (Low, cosmetic, open; `docs/qa/phase9-screens.md`): at 1600x720 the timeline and chapter-view art stops
-  at the 1280 box (`scripts/legends_tour.gd`). Not fixed in any commit so far.
-- Left over from P9-33's file list (P9-33 was cut to the docs files by the coordinator; see the P9-33 row): the
-  `CREDITS.md` rows and the `CREDITS_LIST` art line for the Phase 9 art, and the How to Play trip page line on
-  legends in the draft (`scripts/howto.gd`). Needs an owner of `CREDITS.md`, `title.gd` and `howto.gd`.
+Everything below (Tasks by wave).
 
 ## Doing
 
 ## Review
 
 ## Done
-Every task row below up to P9-33 is merged on `ccr-f5c087b2-3ojk5f` (commit after each row). Also done:
-- **P9-B1** (trip test draft check on a finished migrated trip) and **P9-B2** (the token total counts only known
-  keys): `99411b9`. **P9-B3** (legends' joining lines), **P9-B4** (era banner under the goal line), **P9-B5** (no YOU
-  without a trip), **P9-B6** (the name on the chapter view): `57b583a`.
-- Owner items during the build: mentors coach regular players only and OLD SCHOOL long shots 0.80 (`99411b9`); the
-  blank OLD GYM flip board and the OLD SCHOOL banner icon (`37e6004`); the replay level picker on the map
-  (`d5a1417`, VISION "Replay level"); mentor perks shrunk to about 2 stat points (`e6a2ba9`, VISION "Mentor perk
-  size"); story lines matching the tuned goals (`1f4d7d5`); the trip data test ignores leftover Legends test files
-  (`3b0f8c3`).
 
-## Tasks by wave (all rows above P9-34 are DONE)
+## Tasks by wave
 
-### Wave 1 (no owner answer needed)
-- **P9-01** DONE (`9bac67a`) | Phase 8 save fixtures
-  | qa-balance-tester | `docs/qa/fixtures/` (new files only): `trip_v2_mid.json` (mid-trip, a draft, points on the
-  starters), `trip_v2_done.json` (trip over, 4 slots, a replay marker cleared), `settings_v2_24.cfg` and
-  `settings_v2_72.cfg` (24 and 72 stars, cosmetics picked), README lines on how each was made
-  | each made by the Phase 8 build (`0dc6c22`) through `--trip-test` stops or a scripted trip, loads in that build,
-  committed | none
-- **P9-02** DONE (`fedb03a`) | Legends save file
-  | gameplay-programmer A | `scripts/legends_save.gd` (new)
-  | the Legends save contract; temp file + rename and the web sync like `save.gd`; the test path in every test run; a
-  missing, broken, oversized or newer file never crashes (newer: what fits); `self_test()` round-trips a full and an
-  empty file in a scratch path | none
-- **P9-03** DONE (`90b12ed`) | Flow: the Legends screens and games
-  | gameplay-programmer B | `scripts/flow.gd`
-  | the Flow contract: `legends` and `hall` rows (the "not built yet" panel until P9-18 / P9-19), `in_legends()`,
-  `in_match()`, legends results routed through `legends.gd` when it exists (loaded at run time, so a missing script
-  falls back to the title), pause QUIT to `legends`, the `--legends-test` hook; `--trip-test` and `--titletest`
-  unchanged | none
-- **P9-04** DONE (`07f023d`) | Era outfit parts and a legend look sample
-  | art-audio-integrator A | `tools/art/make_players.py` (the parts loader: new era parts), `tools/art/crews.json`
-  (palettes and part docs only), `docs/art/legends_sample_v1.png` and `.gif` (new)
-  | era parts drawn once for the whole era: short shorts, tall striped socks, a terry headband over any hair, mutton
-  chops, a flat-top, a mustache, knee pads in era colors; the sample shows one Grandfathers look (run, running dribble,
-  a dunk, idle card) in the approved style for the **owner's look check** before P9-09 (shown together with P9-04b's
-  hook shot); nothing in `assets/` changes; `--anim-test` ANIM OK | none (the look is one of L1 a's six)
-- **P9-05** DONE (`f2fe595`) | The Grandfathers court
-  | art-audio-integrator C | `tools/art/make_courts.py`, `assets/courts/era_grand_floor.png`, `era_grand_backdrop.png`,
-  `scripts/court_looks.gd` (one row)
-  | an old wood gym with era banners (made up, no real team, arena or league), floor + backdrop like a city court;
-  `--court era_grand` shows it (screenshot in the task report); not in the Quick Game COURT list | none
-- **P9-06** DONE (`c7e741a`) | Era music listening list
-  | art-audio-integrator D | `docs/audio_preview/LIST.md` (a "Legends: Grandfathers" section), `docs/audio_preview/`
-  (2-3 preview clips)
-  | 2-3 upbeat chiptune tracks with an old-school feel (VISION "Music style"), CC0 or CC-BY only, each with its license
-  link checked; the owner picks one at the plan check or during the build | none
-- **P9-04b** DONE (`e9ef769`) | The hook-shot animation and its preview (L6 b)
-  | art-audio-integrator B | `tools/art/make_players_v2.py` (the `hook` keys in the approved animation style: gather
-  sideways, one-arm sweep over the head, release at the top, follow-through, land; and the extra-animation rule: an
-  animation in the `extra` list is rendered only for the sheets it names, onto `_x<N>` pages, and written into
-  `format.json`'s `extra` section), `docs/art/hook_shot_v1.gif` (new: the hook on one body in 5 directions, next to
-  the normal jump shot)
-  | the preview goes to the **owner's look check** with P9-04's sample; ball and hand points for the hook; nothing in
-  `assets/` is committed yet (the generator run for the preview writes to a scratch dir) | none
-- **P9-04c** DONE (`6d22af7`) | Extra animation pages in the game
-  | gameplay-programmer C | `scripts/sheets.gd`, `scripts/anim_test.gd`
-  | the Extra animations contract: `format.json`'s `extra` section read (an older `format.json` without it reads as
-  today), `has_anim()`, the `_x<N>` pages through the same palette shader, the fallback to the shot animation;
-  `--anim-test` checks extras only on the sheets that list them and fails a listed sheet with a missing or empty extra
-  frame; `--anim-fake-v2` gets a fake sheet with one extra; `Sheets.self_test()` passes; every existing sheet ANIM OK
-  and draws exactly as before | none (the contract above)
+### Wave 1 (no owner answer needed; P10-04b only if F4 picks an animation)
+- **P10-01** | Phase 9 save fixtures
+  | qa-balance-tester | `docs/qa/fixtures/` (new files only): `legends_v1_mid.json` (3 Grandfathers beaten, tokens on
+  two levels, one mentor), `legends_v1_ch1_done.json` (Chapter 1 closed, 21 tokens), `trip_v2_legend.json` (a trip with
+  a drafted Grandfather starting next to a boss, a mentored player), `settings_v2_36.cfg` (36 stars); README lines on
+  how each was made
+  | each made by the Phase 9 build (`a1dc3c7`) through `--legends-test` / `--trip-test` stops, loads and plays in that
+  build, committed | none
+- **P10-02** | Multi-chapter readiness in the Legends logic
+  | gameplay-programmer A | `scripts/legends.gd`, `scripts/legends_data.gd` (helpers only, no rows)
+  | the per-chapter rating keys of the contract (defaults = today's constants: every Chapter 1 match is byte for byte the
+  same `Flow.match`); no `"grand"` or "first built chapter" assumption left in game logic (`test_match()` takes
+  `fathers` / `fin:fathers`; `max_tokens()`, `chapter_tokens()`, `after_result()` and the finale's "chapter done" work
+  for any built chapter); `self_test()` adds a case with two built chapters (a test-only data hook, never the shipped
+  rows); `--legendtest` LEGENDTEST OK | none
+- **P10-03** | Tour and Hall for several chapters, P9-B7
+  | gameplay-programmer B | `scripts/legends_tour.gd`, `scripts/hall.gd`
+  | frames, pins and colors per chapter from `assets/legends/ui.json` and the chapter row (missing art = the `grand`
+  art); the timeline with 2 open chapters (each PLAY, LOCKED with its gate or FINALE WON), the chapter view and the
+  Hall row for any built chapter; the mentor picker lists the legends of every built chapter; P9-B7 fixed (at 1600x720
+  the backdrop reaches the screen edges, the buttons stay in the 1280 box); with today's data every screen looks as in
+  Phase 9 (screenshots before / after in the report); `--legends-test`, `--backtest` unchanged | none
+- **P10-04** | Fathers era parts and a look sample
+  | art-audio-integrator A | `tools/art/make_players.py` (era parts in "Phase 10 era parts", `--legends-sample fathers`),
+  `tools/art/crews.json` (`ERA2_*` palettes and part docs only), `docs/art/legends_fathers_sample_v1.png` / `.gif` (new)
+  | parts drawn once for the era: baggy knee-length shorts, an arm sleeve (left or right), a shooting sleeve on the leg,
+  wristbands, a durag, braids / cornrows if the existing ones don't read, a goatee, crew socks; a sample of two era
+  looks (run, running dribble, a dunk, idle card) in the approved style for the **owner's look check**; no sample look
+  matches one real player (the hard rule's combination check, written in the report); nothing in `assets/` changes;
+  `--anim-test` ANIM OK | none
+- **P10-04b** (only if F4 b, c or d) | The new animation and its preview
+  | art-audio-integrator B | `tools/art/make_players_v2.py` (the new `EXTRA` row, carried only by the sheets that use
+  it), `docs/art/<move>_v1.gif` (new: 5 directions next to the move it replaces)
+  | ball and hand points for every frame; goes to the owner's look check with P10-04; nothing in `assets/` committed |
+  F4
+- **P10-05** | The Fathers court: a blacktop under lights
+  | art-audio-integrator C | `tools/art/make_courts.py` (`--era fathers`), `assets/courts/era_fathers_floor.png`,
+  `era_fathers_backdrop.png`, `scripts/court_looks.gd` (one row)
+  | a made-up night playground (no real team, arena, league or brand), light poles, a fence, a city skyline that is no
+  real city's; clearly not the MIDNIGHT look; players and the ball readable under it (screenshot with `--court
+  era_fathers`, both views); not in the COURT list | none
+- **P10-06** | Legends UI art for Chapter 2
+  | art-audio-integrator D | `tools/art/make_legends_ui.py`, `assets/legends/` (`frame_fathers.png`, `pin_fathers.png`,
+  `pin_fathers_done.png`, `ui.json`), `docs/art/legends_ui.png`
+  | the Fathers card frame and pins in the approved style, era colors of P10-04's palettes (a first guess until the look
+  check; rerun after it if they change); Chapter 1's files byte for byte unchanged | none
+- **P10-07** | Era music listening list
+  | art-audio-integrator E | `docs/audio_preview/LIST.md` ("Legends: Fathers"), `docs/audio_preview/fathers_*.ogg`
+  | 3-5 upbeat chiptune tracks with a 2000s streetball feel (boom-bap, funk, R&B grooves, not New York's track), CC0 or
+  CC-BY only, each license link checked; the owner picks one during the build | none
+- **P10-08** | QA: the Velvet watch item
+  | qa-balance-tester | `docs/qa/phase10-velvet.md` (new); candidate numbers only in a scratch copy
+  | Velvet's challenge on Normal and Hard, expected and best end-of-trip crews, 40+ games per cell (P9-34 saw Normal 45%
+  under Hard 60%); if Normal is still below Hard or outside the P9-26 band, a candidate `limit` (or `target`) measured
+  the same way; the number goes into P10-11 (this task commits no code) | none
+- **P10-09** | Legends test driver: every built chapter
+  | gameplay-programmer C | `scripts/legends_test.gd`
+  | `--legends-test` plays each built chapter in data order (its intro, 6 challenges, finale, the next chapter's gate
+  checked: open by stars or tokens as the data says); `--legends-chapter <id>` plays only that one (gate forced open for
+  the run, nothing saved); the forced loss / broken goal retries apply per chapter; on today's data the output is the
+  Phase 9 run plus one line; LEGENDS END on every level | none
+- **P10-10** | Credits catch-up (P9-33 leftovers)
+  | gameplay-programmer D | `CREDITS.md`, `scripts/title.gd` (`CREDITS_LIST`), `scripts/howto.gd` (one trip-page line)
+  | the Phase 9 art rows (legend sheets, portraits, OLD GYM, Legends UI: generated, our own) and the How to Play line on
+  legends in the draft; `CREDITS.md` and `CREDITS_LIST` in step; `--titletest` passes | none
 
-### Wave 2
-- **P9-07** DONE (`09a1718`) | Legends data: Chapter 1 and the chapter hooks
-  | gameplay-programmer A | `scripts/legends_data.gd` (new), `docs/legends-namecheck.md` (new: the real names and
-  nicknames the check uses, and the result)
-  | the Legends data contract; Chapter 1's 6 legends (L1), their challenges (L2), the finale, the gate (L4); Chapters
-  2-4 as `built: false` rows; `--legendtest` passes, name check included | none (L1-L4 answered)
-- **P9-08** DONE (`0c80f7b`) | The OLD SCHOOL era rules
-  | gameplay-programmer B | `scripts/twists.gd` (twist `era_grand` and its new keys with their defaults),
-  `scripts/main.gd` (the close-shot hook in `shot_probability`), `scripts/defense.gd` (the foul hook)
-  | per L5: every new key is one `Twists.value(key, default)`, default = today; `--twisttest` TWISTTEST OK (twist
-  `none` changes nothing); `--twist era_grand --autoplay` plays a sane game; banner and pause line read | none (L5 a)
-- **P9-09** DONE (`d57dfca`, `a997340`, `6cca088`) | The six Grandfathers sheets
+### Wave 2 (needs F1-F7 and the look check)
+- **P10-11** | Chapter 2 data and the name check
+  | gameplay-programmer A | `scripts/legends_data.gd`, `docs/legends-namecheck.md`
+  | **first** the name check: the lists extended with the 2000s-era players and nicknames (the doc says the source),
+  `NUMBER_AVOID` reviewed for the era, the six F1 names checked (the Phase 9 doc already flags Vance and Ridley), any
+  flag shown to the owner before the art uses the name; then the contract's `fathers` row and six `LEGENDS` rows (F1),
+  their challenges and the finale (F3), the per-chapter rating keys (F6), the six `PERKS` rows (F5, data only), the
+  Velvet number from P10-08 if it changed; `--legendtest` LEGENDTEST OK (name check included) | P10-02, F1, F3, F5, F6
+- **P10-12** | The ISO BALL era rules
+  | gameplay-programmer B | `scripts/twists.gd`, `scripts/player.gd` (the crossover and dunk-range hooks),
+  `scripts/defense.gd` (the help hook, F2 b only), `scripts/twist_fx.gd` (banner icon), `scripts/main.gd` (F2 c only:
+  `mid_mult` in `shot_probability()`)
+  | per F2: each key one `Twists.value(key, default)`, default = today; `--twisttest` TWISTTEST OK; `--twist
+  era_fathers --autoplay` a sane game; banner and pause line read; twist `none` and `era_grand` unchanged | F2
+- **P10-13** (only if F3 a) | The `score` goal type
+  | gameplay-programmer C | `scripts/challenge.gd`
+  | the contract's `score` type: HUD line and count, met / failed at the end with a reason ("YOU SCORED 4 OF 6"), the
+  existing five types unchanged; `--challenge` on a fake row in a scratch copy shows met and failed | F3
+- **P10-14** | The six Fathers sheets
   | art-audio-integrator A | `tools/art/make_players_v2.py`, `tools/art/crews.json`, `assets/players2/` (pages,
-  palettes, `palettes.json`, cards)
-  | 6 `lg_` sheets in the approved animation style with their era colors, `_crew` and `_crew_j1..3` recolors, each
-  with the `hook` extra pages (`format.json`'s `extra` section written by the generator); `--anim-test` ANIM OK on
-  every sheet, extras checked on the 6; contact strip `docs/art/legends_grand.png` (with the hook); download growth
-  reported (about 0.4 MB a sheet plus the extra pages)
-  | P9-04 and P9-04b approved by the owner (look check), P9-04c merged
-- **P9-10** DONE (`7fb2042`, `d2323ed`) | The Grandfathers portraits
-  | art-audio-integrator B | `tools/art/make_portraits_v2.py`, `assets/portraits/lg_*.png`
-  | each legend in the comic portrait style v2 (neutral, happy, and a third mood if P9-14 asks), original faces made
-  from the kit's parts, no likeness; a contact sheet `docs/art/legends_portraits.png` | none (L1 a)
-- **P9-11** DONE (`3f11773`) | Legends UI art
-  | art-audio-integrator C | `tools/art/make_legends_ui.py` (new), `assets/legends/` (new)
-  | the era card frame (Grandfathers), the locked plaque frame, the timeline backdrop, 4 chapter pins (2-4 only as
-  locked pins), all in the approved style; a preview `docs/art/legends_ui.png` | P9-05 (same palette)
+  palettes, `palettes.json`, cards, `format.json` only if F4 adds an extra)
+  | 6 `lg_` sheets in the approved style with the approved era parts and their own era kits, `_crew` and `_crew_j1..3`;
+  the hook pages stay on the Chapter 1 sheets only (their files unchanged); the F4 extra on its sheets if picked;
+  `--anim-test` ANIM OK on every sheet; strip `docs/art/legends_fathers.png`; download growth reported | P10-04 approved
+  (and P10-04b if F4 b-d), P10-11's name check (ids)
+- **P10-15** | The Fathers portraits
+  | art-audio-integrator B | `tools/art/make_portraits_v2.py` (`--legends fathers`), `assets/portraits/lg_*.png`,
+  `docs/art/legends_fathers_portraits.png`
+  | neutral and happy for each, comic style v2, original faces from the kit's parts, kits matching P10-14's; no likeness |
+  F1, P10-11's name check, P10-04 approved
+- **P10-16** | Chapter 2 story
+  | gameplay-programmer D | `scripts/story_text.gd`, `scripts/story.gd` (only if a lookup needs it)
+  | the intro, 6 unlock scenes, the finale's before and after, 6 joining lines; light comedy with heart, the Fathers as
+  the Grandfathers' "kids" grown up (theme only, no real families), no real people, quotes, slogans or trademarked move
+  names; goal numbers as in the data; every scene the data names exists (`--legendtest`) | F1, F3, P10-11
 
 ### Wave 3
-- **P9-12** DONE (`d1a81b6`) | Legends progress and matches
-  | gameplay-programmer A | `scripts/legends.gd` (new)
-  | the Legends progress contract; tokens best kept per key (`TOKENS_BY_LEVEL`), a win unlocks the legend once, the
-  finale opens after all 6 and closes the chapter; `match_for_challenge()` / `match_for_finale()` build your side
-  from the trip's current starters (L3 b; the Kings at even ratings without a trip save; the swap when a drafted
-  legend would be on both sides), the opponents by `CHALLENGE_AVG`, at the level picked (opens on the trip's level),
-  the era twist, look and music (fallback when the track is missing); a challenge never writes the trip; test flags,
-  `--challenge` with `--expected-roster` / `--best-roster` when `Trip.end_of_trip_crew()` exists (P9-21);
-  `--legendtest` also runs `Legends.self_test()` (records, gates, unlocks, both crew sources, the trip save unchanged
-  byte for byte after a challenge, a save round trip in the test file) | P9-02, P9-03, P9-07
-- **P9-13** DONE (`b0867f9`) | Challenge goals in the game
-  | gameplay-programmer B | `scripts/challenge.gd` (new), `scripts/main.gd` (the challenge hooks only)
-  | the Challenge contract: all five types end the game right (met / failed), the HUD line fits 1280x720 in both hand
-  layouts and never covers the joystick or A / B, `--challenge <id>` on every Chapter 1 legend prints its line;
-  without a challenge the game is unchanged (`--autoplay` stats) | P9-07, P9-03, P9-08 merged (main.gd)
-- **P9-14** DONE (`e96fc92`) | Chapter 1 story
-  | gameplay-programmer C | `scripts/story_text.gd`, `scripts/story.gd` (a legend's name plate and portrait lookup
-  only, if needed)
-  | the era intro scene, 6 unlock scenes (each legend speaks, like a recruit's line), the finale's before and after
-  scenes; light comedy with heart (VISION), grandfathers-and-grandkids banter allowed, no real people, quotes or
-  slogans; every scene `legends_data.gd` names exists (`--legendtest`) | P9-07
-- **P9-15** DONE (`403c7f6`) | Title: the LEGENDS button
-  | gameplay-programmer D | `scripts/title.gd`
-  | per L4: the button opens `legends`; before the gate it shows locked with the gate ("24 STARS") and a tap says so;
-  CREW & CREDITS gets a HALL OF LEGENDS button (`hall`, back `crew`) once one legend is unlocked; the six title
-  buttons still fit 1280 px; `--titletest` passes (visits LEGENDS and back) | P9-03
-- **P9-16** DONE (`38a3373`, `968f284`) | Era music in the game
-  | art-audio-integrator D | `assets/music/legends_grand.ogg`, `tools/make_music.sh`, `CREDITS.md` (one row)
-  | the owner's pick, processed like the city tracks (levels matched), credited; the chapter plays it | P9-06 and the
-  owner's pick
-- **P9-17** DONE (`1710f4c` (tuned in `99411b9`)) | QA: the era rules
-  | qa-balance-tester | `docs/qa/phase9-era.md`; may tune the `era_grand` numbers in `scripts/twists.gd`
-  | 40+ `--autoplay --twist era_grand` games (and with the Chapter 1 legends via `--challenge`): fewer fouls, more
-  close makes, game length, shots and scores inside the CLAUDE.md bands or explained; twist `none` matches the Phase 8
-  reference | P9-08
+- **P10-17** | Signature moves
+  | gameplay-programmer A | `scripts/player.gd`, `scripts/defense.gd`, `scripts/ball.gd` (only what the moves need)
+  | per F4: each edge works only for the legend whose `signature` it is (constants at the top, `sig_log()` lines and
+  `sig_<id>_t<team>` counts); the F4 extra played when `Sheets.has_anim()` says so; without a Fathers legend on the court
+  nothing changes (`--autoplay` stats, a Chapter 1 `--challenge` pass); each move seen in a `--challenge` run | P10-12
+  merged (player.gd, defense.gd), P10-11, P10-14 (F4 extra)
+- **P10-18** | Chapter flow and the gate
+  | gameplay-programmer B | `scripts/legends.gd`
+  | the F7 gate rule; Chapter 2's intro on its first open; its finale closes it; the tour returns to the right chapter
+  view after a Chapter 2 game, unlock or finale; drafted Fathers sit when they are opponents, like Chapter 1;
+  `Legends.self_test()` covers both shipped chapters (gates, tokens per chapter, unlocks, mentors from both eras, the
+  test trip save unchanged) | P10-11, F7
+- **P10-19** | Draft and lineup with two eras
+  | gameplay-programmer C | `scripts/trip.gd`, `scripts/draft.gd`, `scripts/lineup.gd`
+  | one LEGENDS row per chapter in the draft ("UNLOCKED IN LEGENDS - THE FATHERS", that chapter's frame and tag color;
+  technical choice, shown at the check-in); `LEGEND_LIMIT` 1 across all chapters; legend + boss still allowed; the
+  stale P9-30 comments in `trip.gd` fixed; save version 2; every fixture loads; `--triptest-data` (+ `--load`) TRIPDATA
+  OK | P10-11, P10-06
+- **P10-20** | Era music in the game
+  | art-audio-integrator E | `assets/music/legends_fathers.ogg`, `tools/make_music.sh`, `CREDITS.md` (one row)
+  | the owner's pick, processed to the game loudness, credited (CC-BY rows: title, author, license link, source,
+  changes) | P10-07 and the owner's pick, P10-10 merged (CREDITS.md)
+- **P10-21** | QA: the ISO BALL era rules
+  | qa-balance-tester | `docs/qa/phase10-era.md`; may tune the `era_fathers` numbers in `scripts/twists.gd`
+  | 64+ `--autoplay --twist era_fathers` games against 64 twist `none` (and 40 with `--court era_fathers`): each rule
+  noticeable (crossover beats, dunk range, help if F2 b, mid makes if F2 c), length, shots, FG%, fouls, rebounds inside
+  the CLAUDE.md bands or explained; the share by crew style (inside vs outside crews; the Phase 9 lesson: an era can
+  favour one style); twist `none` and `era_grand` match Phase 9 | P10-12
 
 ### Wave 4
-- **P9-18** DONE (`75d7855`) | The era tour screen
-  | gameplay-programmer C | `scripts/legends_tour.gd` (new)
-  | the timeline of 4 chapters (Chapter 1 open or locked with its gate, 2-4 locked "COMING LATER" with their gates), the
-  chapter view: 6 legend cards (locked = silhouette, "?" and his challenge line; beaten = card and best tokens), the
-  finale card (locked until all 6), the level picker (EASY / NORMAL / HARD, LEGEND once open; opens on the trip's
-  level), YOUR CREW: the 3 starters who will play (from the trip; "NO TRIP: THE KINGS PLAY" without one; a swapped
-  legend named), PLAY, a HALL button, tokens n/max; BACK and the Android back; `auto_step()` plays the first open challenge | P9-12, P9-11, P9-09 (cards
-  fall back to the plain card)
-- **P9-19** DONE (`582de2c`) | Hall of Legends
-  | gameplay-programmer D | `scripts/hall.gd` (new)
-  | era rows of 6 plaques (Chapters 2-4 as locked rows), a locked plaque = silhouette and challenge line, an unlocked
-  one = card in the era frame, name, archetype, signature, shape and perk text, REPLAY STORY (the unlock scene, back to
-  the hall); BACK to `args.back`, Android back; `auto_step()` goes BACK | P9-12, P9-11, P9-14
-- **P9-20** DONE (`3f33a5a`) | Signature moves
-  | gameplay-programmer B | `scripts/player.gd`, `scripts/defense.gd`, `scripts/ball.gd` (only what the moves need)
-  | per L6 b: each legend's play edge works only for that legend (a key in his data, never a team or a name check in
-  the sim); Steeple's close shots play the `hook` animation when `Sheets.has_anim()` says his sheet has it (else the
-  normal shot) and are harder to block; without a legend on the court nothing changes (`--autoplay` stats); each move
-  seen in a `--challenge` run (log line), the hook in a screenshot | P9-13 merged, P9-09 (the hook pages), P9-04c
-- **P9-21** DONE (`d8761a3`) | Legends in the Road Trip draft
-  | gameplay-programmer A | `scripts/trip.gd`, `scripts/cities.gd`
-  | the Trip additions contract: unlocked legends in the draft pool, `LEGEND_LIMIT` in `starters_ok()`, legend + boss
-  allowed, the L7 a ratings (boss-level at the stage reached, cap 95), the save stays version 2, every 1.0.0 and
-  Phase 8 fixture loads; `--triptest-data` (+ `--load`) TRIPDATA OK; `--best-roster` can field a legend;
-  `end_of_trip_crew(best)` for the challenge balance runs | P9-12
+- **P10-22** | Mentor perks for the Fathers
+  | gameplay-programmer B | `scripts/player.gd`, `scripts/main.gd`, `scripts/defense.gd` (one hook per new perk key)
+  | each key one `p.perk(key, default)`, default = today; your side only, Road Trip games only; `--perk <id>` shows each
+  working (PERK line, `perk_<id>_t0`); `--autoplay` unchanged with no perk; the Hall's perk text from the data | P10-17
+  merged, P10-11, F5
+- **P10-23** | QA: Chapter 2 challenge balance
+  | qa-balance-tester | `docs/qa/phase10-challenges.md`; may tune the Chapter 2 goal numbers and its per-chapter rating
+  keys in `scripts/legends_data.gd`
+  | `--challenge <id> --autoplay` with `--expected-roster` / `--best-roster` on every Father and the finale, Easy / Normal
+  / Hard (40+ games a cell where near a band) and LEGEND; bands: P9-26's, shifted as F6 says; harder level = lower
+  share; each goal type met and failed in the logs; the Kings fallback and a mid-trip crew (36-star stage) reported;
+  Chapter 1 re-run on Normal and Hard (expected crew) to show no change; any story line made stale is listed for P10-29 |
+  P10-17, P10-18, P10-21 tuned, P10-13 (F3 a)
+- **P10-24** | Trip test: a drafted Father
+  | gameplay-programmer C | `scripts/trip_test.gd`
+  | with `--legends-unlock-all --stars 24`: the first slot drafts a Grandfather, the second a Father (from his chapter's
+  row), the lineup refuses the two legends together and accepts one + a boss; TRIP END on every level; `--trip-resume`
+  works | P10-19
 
 ### Wave 5
-- **P9-22** DONE (`be9c768`) | Draft and lineup: the LEGENDS row and the one-legend rule
-  | gameplay-programmer D | `scripts/draft.gd`, `scripts/lineup.gd`
-  | a LEGENDS group on the DRAFT screen (era frame, LEGEND tag, his card in your colors), the lineup shows LEGEND tags
-  and the `LEGEND_RULE` line like the boss rule; `auto_step()` unchanged | P9-21, P9-09
-- **P9-23** DONE (`5e85608`) | Mentors: who trains whom
-  | gameplay-programmer A | `scripts/legends.gd` (mentor API), `scripts/trip.gd` (`roster_player()` adds the
-  player's `"perk"` dict)
-  | per L8: one perk per player, one pupil per legend, switching frees both sides, saved in `legends.json` (a NEW TRIP
-  keeps it; a pupil not on this trip's roster just has no effect); `Legends.self_test()` covers it | P9-12, P9-21
-- **P9-24** DONE (`ff0380f`) | Mentor perks in play
-  | gameplay-programmer B | `scripts/player.gd` (`perk(key, default)` from his match dict), `scripts/main.gd` and
-  `scripts/defense.gd` (one hook per perk key)
-  | each perk key is one `p.perk(key, default)`, default = today; perks only on your side and only where L8 says (never
-  the CPU, never a challenge goal number); a perk never lifts a stat past the 90 cap; `--autoplay` stats unchanged with
-  no perk; `--perk <id>` test flag shows each one working (log line) | P9-20 merged (player.gd), P9-13 merged (main.gd)
-- **P9-25** DONE (`42a6a0a`) | Legends test driver
-  | gameplay-programmer C | `scripts/legends_test.gd` (new)
-  | `--legends-test` (with `--stars 24` and `--target 3`) plays Chapter 1 headless through every screen's
-  `auto_step()`: title, LEGENDS, 6 challenges (one forced loss and retry with `--legends-force-loss N`), each unlock
-  scene, the finale, the Hall; checks tokens (the level's 1/2/3, best kept), unlocks and the chapter closing, and that
-  the test trip save is unchanged after every challenge; runs with the test trip save (after a `--trip-test` run) and
-  without one (the Kings); prints
-  `LEGENDS` lines and ends `LEGENDS END` (exit 0) or `LEGENDS ERROR: <why>` (exit 1); test file only | P9-18, P9-19,
-  P9-13, P9-14
-- **P9-26** DONE (`bf03f71`, `1f4d7d5`) | QA: challenge balance
-  | qa-balance-tester | `docs/qa/phase9-challenges.md`; may tune the challenge numbers and the challenge rating rule
-  in `scripts/legends_data.gd`
-  | `--challenge <id> --autoplay` with the end-of-trip crews (`--expected-roster` and `--best-roster`, L3 b) on every
-  legend and the finale, Easy / Normal / Hard / LEGEND, 40+ games per cell (more where a cell is near its band); bands
-  (lead's proposal, the owner may change them): the expected crew wins about as often as in the New York final on
-  that level (`docs/qa/phase8-ramp.md`), the best crew wins more but on Hard RED still wins 20%+; harder level = lower
-  share; each goal type met and failed in the logs; the Kings fallback reported (no target); tunes `CHALLENGE_AVG`,
-  `MATE_DROP` and the goal numbers | P9-13, P9-12, P9-20, P9-21
+- **P10-25** | Back test and title test for Chapter 2
+  | gameplay-programmer C | `scripts/main.gd` (the `--backtest` table only)
+  | the Chapter 2 view goes to the timeline, a Chapter 2 challenge pauses, resumes and QUITs to its chapter view, the
+  Hall from a Chapter 2 plaque goes back; BACKTEST OK; `--titletest` passes | P10-22 merged (main.gd), P10-18, P10-03
+- **P10-26** | QA: the ramp with Fathers and their perks
+  | qa-balance-tester | `docs/qa/phase10-ramp.md`; may tune the Fathers perk sizes in `scripts/legends_data.gd`
+  | `--best-roster` with the strongest legal three (a Father or a Grandfather + a boss) plus the best perk of either
+  chapter (`--perk`), late boss games and New York on every level, 40+ games a cell: on Hard RED still wins 20%+ (the
+  P8-25 bound); each new perk worth about 2 stat points (measured, like P9-30) | P10-22, P10-19
+- **P10-27** | QA: saves
+  | qa-balance-tester | `docs/qa/phase10-saves.md`
+  | every 1.0.0, Phase 8 and P10-01 fixture loads and plays on in Phase 10; a Phase 10 `legends.json` (Fathers unlocked,
+  their tokens, a Fathers mentor) and a trip with a drafted Father, opened by the Phase 9 build (`a1dc3c7`): no error
+  dialog, the unknown legend dropped from the trip, his tokens not counted, his mentor pair ignored, plays on; missing,
+  broken, newer `legends.json`: no crash; NEW TRIP keeps it; no test touches the owner's files | P10-01, P10-18, P10-19,
+  P10-22
+- **P10-28** | QA: screens
+  | qa-balance-tester | `docs/qa/phase10-screens.md`
+  | xvfb screenshots: the timeline (Chapter 2 locked with its gate, open, finale won), the Chapter 2 view (crew and Kings),
+  each Fathers challenge HUD line, the ISO BALL banner, the era court in play (both views), each signature move (and the
+  F4 animation), an unlock scene, the finale, the Hall's two rows and the mentor picker, the draft's two LEGENDS rows,
+  the lineup rule line; 1280x720 and 1600x720 (P9-B7 gone), both hand layouts; the hard rule by eye on every screen and
+  sheet (names and the look combination); bugs filed as P10-Bn | P10-03, P10-14, P10-15, P10-16, P10-18, P10-19, P10-20
 
 ### Wave 6
-- **P9-27** DONE (`6a733f4`) | Hall: the mentor panel
-  | gameplay-programmer D | `scripts/hall.gd`
-  | per L8: on an unlocked plaque TRAIN opens a picker of your players (this trip's roster, or the underdogs without a
-  trip), shows who he trains and each player's mentor, SWITCH asks to confirm; big tap targets; `auto_step()` assigns
-  one pupil when asked | P9-23, P9-19
-- **P9-28** DONE (`2a69c9b`) | Back test for the new screens
-  | gameplay-programmer C | `scripts/main.gd` (the `--backtest` table only)
-  | `legends` (chapter view to timeline to title), `hall` (to its back), a challenge game (pauses and resumes, QUIT
-  to `legends`), the mentor picker closes; BACKTEST OK | P9-18, P9-19, P9-27, P9-24 merged (main.gd)
-- **P9-29** DONE (`b66a209`) | Trip test: a drafted legend
-  | gameplay-programmer A | `scripts/trip_test.gd`
-  | with `--legends-unlock-all` and `--stars 12` or more the first open slot drafts a legend, the lineup refuses a
-  second legend and accepts legend + boss; TRIP END on every level; `--trip-resume` still works | P9-22
-- **P9-30** DONE (`4eddfc1`; no values changed; finding: `--best-roster` gives no perk, measured with `--perk`)
-  | QA: the ramp with legends and perks
-  | qa-balance-tester | `docs/qa/phase9-ramp.md`; may tune the drafted legend rule in `scripts/legends_data.gd` and
-  the perk sizes (`PERKS`)
-  | `--best-roster` with one legend, one boss and the best perk on the late boss games and New York, every level, 40+
-  games per cell: on Hard RED still wins 20%+ (the P8-25 bound); `--expected-roster` unchanged (no legends there) |
-  P9-21, P9-24
-- **P9-31** DONE (`663a61d`) | QA: saves
-  | qa-balance-tester | `docs/qa/phase9-saves.md`
-  | every 1.0.0 and P9-01 fixture loads and plays on; a Phase 9 trip with a drafted legend opened by the Phase 8 build
-  (`0dc6c22`) loads without an error dialog, drops the legend and plays on; `legends.json` missing, broken, empty,
-  newer: no crash; NEW TRIP keeps `legends.json`; no test touches `legends.json`, `trip.json` or `settings.cfg` | P9-01,
-  P9-21, P9-23
-- **P9-32** DONE (`6707780` (bugs P9-B3..B7)) | QA: screens
-  | qa-balance-tester | `docs/qa/phase9-screens.md`
-  | xvfb screenshots of the title (locked and open LEGENDS), the timeline, the chapter view, each challenge's HUD line
-  in a game, Steeple's hook shot in a game, the chapter view with a trip crew and with the Kings, an unlock scene, the
-  finale, the Hall (locked and open plaques, the mentor picker), the draft's LEGENDS
-  row, the lineup rule line; 1280x720 and 1600x720, both hand layouts; the name check reread by eye on every screen;
-  bugs filed here as P9-Bn | P9-18, P9-19, P9-22, P9-25, P9-27
-
-### Wave 7
-- **P9-33** DONE (CLAUDE.md, README.txt, docs/release/itch_page.md, this board; the coordinator limited it to
-  those files, so the CREDITS.md / CREDITS_LIST rows for the Phase 9 art and the howto.gd line are under Todo) | Docs
-  | gameplay-programmer C | `CLAUDE.md`, `README.txt`, `CREDITS.md` (check), `scripts/title.gd` (`CREDITS_LIST`: the
-  era music and the new art rows), `scripts/howto.gd` (one line on the trip page: legends in the draft)
-  | every new script, screen, flag and file documented; credits in step | P9-26..P9-32
-- **P9-34** | DONE | Final Phase 9 QA
-  | qa-balance-tester | `docs/qa/phase9.md`
-  | `--legends-test` on every level, `--trip-test` on every level, resume, backtest, titletest, legendtest, startest,
-  cosmetictest, twisttest, anim-test (the legend sheets' hook pages too), triptest-data, 10+ `--autoplay` games (Phase 8 reference), the P9-26/30/31
-  results, a web build in Playwright (touch) through an unlock, the Hall and a legend draft; release-ready or bugs |
-  P9-33
-- **P9-35** | DONE | Phase summary and check-in
-  | lead-producer, then the coordinator | `docs/phase9-summary.md`; publish the web build | the summary with 2-4
-  questions, the owner plays | P9-34
+- **P10-29** | Docs
+  | gameplay-programmer C | `CLAUDE.md`, `README.txt`, `CREDITS.md` (check), `scripts/title.gd` (`CREDITS_LIST`),
+  `docs/legends-plan.md` (part 3's Fathers table and the Chapter 1 goal numbers as shipped), `docs/release/itch_page.md`,
+  `scripts/story_text.gd` (goal numbers in lines only, from P10-23's list)
+  | every new key, flag, file and screen state documented; credits in step; no story line names a stale number | P10-23..
+  P10-28
+- **P10-30** | Final Phase 10 QA
+  | qa-balance-tester | `docs/qa/phase10.md`
+  | `--legends-test` on every level (both chapters), `--trip-test` on every level, resume, backtest, titletest,
+  legendtest, startest, cosmetictest, twisttest, ratingtest, anim-test, triptest-data, 10+ `--autoplay` games against the
+  Phase 9 reference, the P10-21/24/28/29 results; a web build in Playwright (touch) through a Chapter 2 unlock, the Hall,
+  a Fathers draft; release-ready or bugs | P10-29
+- **P10-31** | Phase summary and check-in
+  | lead-producer, then the coordinator | `docs/phase10-summary.md`; publish the web build | the summary with 2-4
+  questions; the owner plays | P10-30
 
 ## Parallel plan (never two tasks on the same file in one wave)
 | Wave | Tasks (agent) | Files | Notes |
 |---|---|---|---|
-| 1 | P9-01 (qa), P9-02 (gameplay A), P9-03 (gameplay B), P9-04 (art A), P9-04b (art B), P9-04c (gameplay C), P9-05 (art C), P9-06 (art D) | fixtures / legends_save.gd / flow.gd / make_players.py, crews.json, docs/art sample / make_players_v2.py, docs/art hook gif / sheets.gd, anim_test.gd / make_courts.py, courts, court_looks.gd / audio_preview | P9-04's sample and P9-04b's hook go to the owner together (look check) |
-| 2 | P9-07 (A), P9-08 (B), P9-09 (art A), P9-10 (art B), P9-11 (art C) | legends_data.gd, namecheck doc / twists.gd, main.gd, defense.gd / make_players_v2.py, crews.json, players2 / make_portraits_v2.py, portraits / make_legends_ui.py, assets/legends | P9-09 waits for the owner's look check (P9-04 + P9-04b) and P9-04c merged |
-| 3 | P9-12 (A), P9-13 (B), P9-14 (C), P9-15 (D), P9-16 (art D), P9-17 (qa) | legends.gd / challenge.gd, main.gd / story_text.gd, story.gd / title.gd / music, make_music.sh, CREDITS.md / docs + twists.gd numbers | P9-13 after P9-08 is merged (main.gd) |
-| 4 | P9-18 (C), P9-19 (D), P9-20 (B), P9-21 (A) | legends_tour.gd / hall.gd / player.gd, defense.gd, ball.gd / trip.gd, cities.gd | |
-| 5 | P9-22 (D), P9-23 (A), P9-24 (B), P9-25 (C), P9-26 (qa) | draft.gd, lineup.gd / legends.gd, trip.gd / player.gd, main.gd, defense.gd / legends_test.gd / docs + legends_data.gd numbers | P9-24 after P9-20 is merged |
-| 6 | P9-27 (D), P9-28 (C), P9-29 (A), P9-30 (qa), P9-31 (qa), P9-32 (qa) | hall.gd / main.gd / trip_test.gd / docs + legends_data.gd numbers / docs / docs | P9-28 after P9-24 is merged (main.gd) |
-| 7 | P9-33 (C), then P9-34 (qa), then P9-35 (lead, coordinator) | CLAUDE.md, README.txt, CREDITS.md, title.gd, howto.gd / docs / docs | |
+| 1 | P10-01 (qa), P10-02 (gameplay A), P10-03 (gameplay B), P10-04 (art A), P10-04b (art B, if F4), P10-05 (art C), P10-06 (art D), P10-07 (art E), P10-08 (qa), P10-09 (gameplay C), P10-10 (gameplay D) | fixtures / legends.gd, legends_data.gd helpers / legends_tour.gd, hall.gd / make_players.py, crews.json, sample / make_players_v2.py, gif / make_courts.py, courts, court_looks.gd / make_legends_ui.py, assets/legends / audio_preview / scratch only / legends_test.gd / CREDITS.md, title.gd, howto.gd | P10-04 (+ P10-04b) go to the owner's look check together; at most two qa tasks run at once (2 Godot processes each) |
+| 2 | P10-11 (A), P10-12 (B), P10-13 (C, if F3 a), P10-14 (art A), P10-15 (art B), P10-16 (D) | legends_data.gd, namecheck doc / twists.gd, player.gd, defense.gd, twist_fx.gd, main.gd (F2 c) / challenge.gd / make_players_v2.py, crews.json, players2 / make_portraits_v2.py, portraits / story_text.gd, story.gd | P10-11's name check lands before P10-14 / P10-15 use the names |
+| 3 | P10-17 (A), P10-18 (B), P10-19 (C), P10-20 (art E), P10-21 (qa) | player.gd, defense.gd, ball.gd / legends.gd / trip.gd, draft.gd, lineup.gd / music, make_music.sh, CREDITS.md / docs + twists.gd numbers | P10-17 after P10-12 is merged |
+| 4 | P10-22 (B), P10-23 (qa), P10-24 (C) | player.gd, main.gd, defense.gd / docs + legends_data.gd numbers / trip_test.gd | P10-22 after P10-17 is merged |
+| 5 | P10-25 (C), P10-26 (qa), P10-27 (qa), P10-28 (qa) | main.gd / docs + legends_data.gd perk numbers / docs / docs | P10-25 after P10-22 is merged; the three qa tasks: at most two at once |
+| 6 | P10-29 (C), then P10-30 (qa), then P10-31 (lead, coordinator) | docs, title.gd, story_text.gd numbers / docs / docs | |
 
-Chains to watch: `main.gd` is touched by P9-08 (wave 2), P9-13 (3), P9-24 (5) and P9-28 (6), each merged before the
-next; `make_players_v2.py` by P9-04b then P9-09; `sheets.gd` by P9-04c only; `legends.gd` by P9-12 then P9-23; `trip.gd` by P9-21 then P9-23; `player.gd` and `defense.gd` by P9-08
-(defense only), P9-20 and P9-24; `hall.gd` by P9-19 then P9-27; `title.gd` by P9-15 then P9-33; `legends_data.gd` by
-P9-07, then numbers only by QA in P9-26 and P9-30 (different waves); `crews.json` by P9-04 then P9-09.
+Chains to watch: `legends_data.gd` by P10-02 (helpers, wave 1), P10-11 (rows, 2), then numbers only by P10-23 (4) and
+P10-26 (5); `legends.gd` by P10-02 then P10-18; `player.gd` / `defense.gd` by P10-12, P10-17, P10-22 (each merged before
+the next); `main.gd` by P10-12 (F2 c only), P10-22, P10-25; `make_players_v2.py` by P10-04b then P10-14; `crews.json` by
+P10-04 then P10-14; `CREDITS.md` by P10-10, P10-20, P10-29; `title.gd` by P10-10 then P10-29; `story_text.gd` by P10-16
+then numbers only in P10-29.
 
 ## Open questions for the owner
-None open: L1-L8 answered (VISION "Phase 9 answers L1-L8"). The era music pick comes from P9-06's list during the
-build. The technical choices for L3 b (the Kings without a trip save, the level picked on the chapter view, the swap
-of a legend on both sides) are shown to the owner at the check-in.
+F1-F8 in `docs/legends-plan.md` "Phase 10 open questions" (each says which tasks it blocks). The era music pick comes
+from P10-07's list during the build. Technical choices shown at the check-in: the hook pages stay on Chapter 1's sheets;
+the draft shows one LEGENDS row per chapter.

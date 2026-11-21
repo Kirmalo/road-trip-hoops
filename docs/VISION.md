@@ -193,3 +193,7 @@ level), replays of beaten city games from the map, the ramp retuned, 1.0.0 saves
   the six Grandfathers legends, the challenge per legend, who plays the challenge games and how hard, where the mode
   is entered and what opens it, the OLD SCHOOL era rules, signature moves, a drafted legend's strength, mentor details.
   Each names the board tasks it blocks.
+- Phase 10 (Legends, Chapter 2, the Fathers), before the build past wave 1: `docs/legends-plan.md` "Phase 10 open
+  questions" F1-F8: the six Fathers legends, the ISO BALL era rules, the challenge per legend, signature moves and a
+  new animation, the Fathers perks, how hard Chapter 2 is, what opens it, and anything beyond Chapter 2. Each names the
+  board tasks it blocks.

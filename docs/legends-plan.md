@@ -350,3 +350,80 @@ sample uses one of them)
   Quick Game or challenges) **(recommended)**
 - b) The same perks, but a switch only takes effect at a NEW TRIP
 - c) Mentors move to Phase 10 with the other eras
+
+## Phase 10 open questions (lead-producer, 2026-11-21; answer with the letter, (a) is the recommendation)
+
+Phase 10 builds Chapter 2, the Fathers, end to end (`docs/BOARD.md`). Wave 1 of the board starts without these
+answers; each question names the tasks it blocks.
+
+**F1. The six Fathers legends** (blocks P10-11 data and name check, P10-14 sheets, P10-15 portraits, P10-16 story)
+- a) The six of part 3: Dorian "Rooftop" Vance (high-flying shooting guard), Tremaine "Ankles" Pettaway (crossover
+  artist), Darnell "Midrange" Kingsley (isolation scorer), Bartholomew "Freight" Thackeray (low-post bulldozer center),
+  Keon "Eyes Closed" Ridley (no-look passer), Shane "Lockbox" Hollister (lockdown wing defender), with their rating
+  shapes; two changes for the hard rule: new surnames for Vance (a real player's) and Ridley (one letter from one),
+  proposed by the team and shown to you; and the looks spread so that no one legend has the small, quick crossover
+  guard's cornrows + single arm sleeve + headband set (one famous real player's look): Ankles gets other hair and no
+  sleeve, sleeves go to Rooftop and Lockbox. Jersey numbers from the script's list, avoiding famous ones, shown to you
+  **(recommended)**
+- b) The same six archetypes, but the team proposes two full new name sets for you to pick from
+- c) You change some of them (tell us which names, archetypes or looks)
+
+**F2. The ISO BALL era rules** (blocks P10-12, P10-21)
+- a) Crossovers beat the defender about 20% more often (for every player, CPU and you alike), dunks from about 10%
+  further out, shots drawn with a slightly higher arc; nothing else changes **(recommended)**
+- b) As a), plus less help defense: the defenders away from the ball lean toward it 40% less, so one-on-one drives
+  decide more (the most "isolation" feel; one more sim hook to tune)
+- c) A mid-range era instead: jumpers inside the arc go in 8% more often and crossovers beat the defender 20% more; no
+  dunk change
+- d) No era rules (the era is its court, music and legends only)
+
+**F3. Which challenge each Fathers legend gives** (blocks P10-11, P10-13, P10-16, P10-23; numbers start from Chapter
+1's tuned ones and QA tunes them, as in P9-26)
+- a) Rooftop: stop the move (block or steal on him 2 times and win, to 15); Ankles: race (reach 11 before his crew gets
+  10); Midrange: beat the fire (he starts on fire, to 15); Freight: hold him under 7 (to 15); Eyes Closed: comeback
+  (start down 0-2, to 15); Lockbox: one cheap new goal, "score on him" (you yourself score at least 6 of your team's
+  points and win, to 11); the finale: Rooftop, Midrange and Freight to 21 **(recommended)**
+- b) As a), but Lockbox gets a race (reach 11 before his crew gets 9): only the five Phase 9 goal types, nothing new
+  to build
+- c) Every Fathers challenge a "hold him" game with its own number
+
+**F4. Signature moves and a new animation** (blocks P10-04b, P10-14, P10-17)
+- a) Each legend's move is an existing animation with a small play edge only he has: Rooftop's dunks slip part of a
+  contest (drawn as an existing dunk style), Ankles's crossovers beat defenders more often with more ankle-breaker
+  falls, Midrange's jumpers inside the arc lose less to a contest, Freight's close shots and dunks are harder to block,
+  Eyes Closed's passes are harder to intercept, Lockbox's blocks from behind succeed more often (chase-down); no new
+  frames **(recommended)**
+- b) As a), plus one new animation on the Fathers sheets only (extra pages, like the hook): Midrange's turnaround
+  fadeaway (a preview for your look check first; a few pages per sheet)
+- c) As a), plus Rooftop's cradle dunk as a new dunk animation (same way)
+- d) As a), plus both b and c
+
+**F5. The Fathers mentor perks** (blocks P10-11 PERKS, P10-22, P10-26; each about 2 stat points, one per player, Road
+Trip games only, as in Phase 9)
+- a) Six new perks, none the same as a Grandfather's: Rooftop contested dunks +1.5%, Ankles crossovers beat the
+  defender 5% more often, Midrange jumpers inside the arc +1.5%, Freight 5% harder to strip, Eyes Closed passes 5%
+  harder to intercept, Lockbox steal timing window 5% wider **(recommended)**
+- b) Reuse Chapter 1's perks where they fit (Rooftop teaches "dunks from further out" like Boxcar, Eyes Closed "passes
+  5% faster" like Quarterback), new ones only for Ankles, Midrange, Freight and Lockbox (fewer sim hooks; two legends
+  teach the same thing)
+- c) No perks for the Fathers (they unlock, play in the draft and hang in the Hall only)
+
+**F6. How hard is Chapter 2 next to Chapter 1?** (blocks P10-11 rating keys, P10-23 bands. Phase 9 learned the goal
+numbers set the win shares, the ratings barely do, so this mostly picks the goal numbers)
+- a) A step harder: with the end-of-trip crew about 5-10 points fewer wins than Chapter 1 on each level (Normal about
+  60-65%, Hard about 40%), the finale about as hard as Chapter 1's **(recommended)**
+- b) The same as Chapter 1 (the same bands)
+- c) Clearly harder: Normal about 50%, Hard about 30%
+
+**F7. What opens Chapter 2?** (blocks P10-18, P10-09's gate check)
+- a) As in the data today: 36 trip stars or 12 legend tokens, whichever comes first; Chapter 1's finale is not needed
+  **(recommended)**
+- b) 36 stars or 12 tokens, and Chapter 1's finale won
+- c) Chapter 1's finale won, nothing else
+
+**F8. Anything beyond Chapter 2 in Phase 10?** (adds tasks; a) adds none)
+- a) No: era teams and single legends in Quick Game, one-on-one, Legends cosmetics and the token ladder stay for later
+  phases **(recommended)**
+- b) Add era teams in Quick Game: GRANDFATHERS and FATHERS on YOUR TEAM / OPPONENT once 3 of an era are unlocked (their
+  3 best, stats averaged to 50 like the Quick Game crews), with the era court and its rules on COURT
+- c) Add the token ladder with Legends cosmetics (an era jersey and an era ball in the LOCKER)
