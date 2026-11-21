@@ -143,6 +143,11 @@ const PERK_KEY := "perk"           # = Trip.PERK_KEY, the player dict's perk ent
 const PERK_TEAM := 0              # only BLUE (your side) ever plays a perk (never the CPU crew, L8 a)
 const PERK_CLOSE_FT := 14.0       # close_shot_bonus: a jumper this close to the rim is a "close shot" (= HOOK_MAX_FT,
                                   # the range of Steeple's hook); layups count at any range, dunks never
+# P10-22 (the Fathers' perks): cross_win_mult in cross_beat_check() (_perk_cross_roll), pass_safe_mult in pick_mult();
+# the others in main.gd (mid_shot_bonus, contested_dunk_bonus, strip_guard_mult, steal_window_mult)
+const PERK_CROSS_RATE_MAX := 0.9  # cross_win_mult: the beat share its second roll is sized on is capped here
+const PERK_PASS_SAVED_TEXT := "saved by the look"   # ball._no_look_log's text for a pick-off only the passer's
+                                  # pick_mult stopped (a pass_safe_mult perk counts those, see sig_log)
 var perk_id := ""                 # legends_data PERKS id ("" = none)
 var perk_key := ""                # the sim key it changes (close_shot_bonus, block_window_mult, ...)
 var perk_value := 0.0
@@ -803,6 +808,14 @@ func cross_beat_check() -> void:
 	var iso: float = Twists.value("cross_beat_mult", 1.0)   # ISO BALL; 1.0 without a twist: no extra roll
 	if iso != 1.0:
 		beaten = _iso_cross_roll(beaten, iso, best)
+	var cw: float = perk("cross_win_mult", 1.0) if perk_key != "" else 1.0   # P10-22 handle; 1.0: no extra roll
+	if cw != 1.0:
+		var was_beaten := beaten
+		beaten = _perk_cross_roll(beaten, cw, iso, best)
+		if beaten and not was_beaten:
+			game.stat("perk_cross_beats_t%d" % team)   # beats only the perk gave (in cross_beats_t<team> too)
+			perk_log("crossover beats %s from %.1f ft (x%.2f)" % [best.pname if best.pname != "" else best.pid,
+					best_d / game.FT, cw])
 	var second := false
 	if signature == SIG_DOUBLE_CROSS and not beaten:
 		# P10-17 double crossover: a second move at DOUBLE_CROSS_EXTRA (eased against a human like the wrong-way lean)
@@ -850,6 +863,22 @@ func _iso_cross_roll(beaten: bool, mult: float, def_p) -> bool:
 		return false
 	game.stat("iso_cross_beats_t%d" % team)   # beats the twist added (in cross_beats_t<team> too)
 	return true
+
+# P10-22 handle (cross_win_mult perk): like _iso_cross_roll, a crossover that did not beat the man gets a second roll
+# at (x - 1) * b / (1 - b), but b is the beat share after ISO BALL (CROSS_ISO_BASE_RATE x the twist's cross_beat_mult,
+# capped at PERK_CROSS_RATE_MAX), so the perk and the twist stack as about iso x perk beats; Ankles' double crossover
+# rolls after both. Against a human defender eased like the wrong-way lean. x < 1: a beat stands at chance x. Never
+# called without the perk (no extra random number).
+func _perk_cross_roll(beaten: bool, mult: float, iso: float, def_p) -> bool:
+	if mult < 1.0:
+		return beaten and game.rng.randf() < mult
+	if beaten:
+		return true
+	var b: float = clampf(CROSS_ISO_BASE_RATE * iso, 0.0, PERK_CROSS_RATE_MAX)
+	var extra: float = clampf((mult - 1.0) * b / (1.0 - b), 0.0, 1.0)
+	if game.is_human(def_p) and not game.is_human(self):
+		extra *= Difficulty.value(team, "cross_beat_human", 1.0)
+	return game.rng.randf() < extra
 
 # Moves the drawn dribble hand (hand_x) toward dribble_side; the ball is centered while shooting or in the air.
 # Out of a move, the handler slowly switches hands away from the nearest defender.
@@ -1226,6 +1255,12 @@ func contests_me(o, reach_ft: float, since: float) -> bool:
 
 # a move fired: counts sig_<id>_t<team> (in the stats printout) and, in test runs, prints a SIGNATURE line
 func sig_log(id: String, what: String) -> void:
+	if id == SIG_NO_LOOK and signature != SIG_NO_LOOK:
+		# P10-22: ball._no_look_log fires for any pick_mult under 1.0; without the no-look it is his pass_safe_mult
+		# perk, which counts (perk_log) only the pick-offs it stopped
+		if what.contains(PERK_PASS_SAVED_TEXT):
+			perk_log(what.replace("no-look pass", "pass").replace(PERK_PASS_SAVED_TEXT, "saved by the perk"))
+		return
 	game.stat("sig_%s_t%d" % [id, team])
 	if _sig_print:
 		print("SIGNATURE %s %s (team %d, %d-%d): %s" % [id, pname if pname != "" else pid, team,
@@ -1276,8 +1311,12 @@ func chase_down_reach(shooter) -> float:
 	return CHASE_DOWN_REACH_FT if signature == SIG_CHASE_DOWN and is_behind(shooter) else 0.0
 
 # ball.gd: x this on the interception chance of my pass (NO_LOOK_PICK_MULT for the no-look passer, else 1.0)
+# P10-22 blind_pass: x his pass_safe_mult perk (1.0 without it), so it stacks with the no-look and works on lobs too
 func pick_mult() -> float:
-	return NO_LOOK_PICK_MULT if signature == SIG_NO_LOOK else 1.0
+	var m: float = NO_LOOK_PICK_MULT if signature == SIG_NO_LOOK else 1.0
+	if perk_key != "":
+		m *= perk("pass_safe_mult", 1.0)
+	return m
 
 # P10-17: the fadeaway's timing, from format.json's "fadeaway" extra (its "fade" frames, "fade_ft", release and "ms"),
 # else the constants above: "ft" the slide, "start" the windup fraction it starts at (its first frame / the release
