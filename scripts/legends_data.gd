@@ -30,6 +30,9 @@ extends RefCounted
 #   finale               {"target", "legends": [3 ids], "label"}: the era finale (opens once all 6 are beaten)
 #   intro_scene          story_text.gd scene played the first time the chapter opens
 #   finale_scenes        {"before", "after"}: story_text.gd scenes around the finale
+#   challenge_avg,       optional (P10-02): this chapter's CHALLENGE_AVG, MATE_DROP and FINALE_STAGE_AVG; a row
+#   mate_drop,           without one uses that constant (Chapter 1 has none, so its games are exactly Phase 9's).
+#   finale_stage_avg     Read through challenge_avg(ch) / mate_drop(ch) / finale_stage_avg(ch)
 #
 # LEGENDS rows (keys shared with cities.gd PLAYERS where they overlap, so Cities.player(id) can return them):
 #   name, full           short name (plates, HUD) and full name ("Ezekiel \"Steeple\" Oakhurst")
@@ -69,6 +72,9 @@ const MATE_DROP := 14               # his 2 legend teammates play this much unde
 const DRAFT_TIER := 20              # L7 a: a drafted legend = stage average + this, shaped (like a boss's +20)
 const FINALE_STAGE_AVG := 52        # the finale's base (+ DRAFT_TIER, shaped): P9-26 78 -> 52, so the finale legends
                                     # keep their shapes under the 95 cap (78 + 20 put nearly every stat at 95)
+const CHAPTER_AVG_RANGE := [30, 90]          # a row's optional challenge_avg must be in this range (self_test)
+const CHAPTER_DROP_RANGE := [0, 30]          # ... its mate_drop
+const CHAPTER_FINALE_RANGE := [30, 78]       # ... its finale_stage_avg (78 = the last trip stage)
 const RATING_CAP := 95              # = Trip.BOSS_CAP: no legend stat above this (also with the LEGEND bonus)
 const RATING_MIN := 1               # no legend stat below this (shapes go down to -20)
 const SPEC_MIN := 15                # a shape of +15 or more makes the stat one of his "spec" stats
@@ -314,15 +320,113 @@ const NAMECHECK_PROBES := [
 
 static var notes: Array = []        # self_test(): things that fall back for now (art or story not merged yet)
 
+# ---------------------------------------------------------------------------------------------------- test data hook
+# P10-02: a test-only stand-in for the rows, so the multi-chapter paths are tested before a second chapter's real data
+# is merged (Legends.self_test(): set_test_data(two_chapter_test_data()), then clear_test_data()). Never set in a game;
+# empty = the shipped CHAPTERS / LEGENDS. Every getter below reads the rows through chapter_rows() / legend_rows();
+# the name check and self_test() read the shipped consts only.
+static var _test_chapters: Array = []
+static var _test_legends: Dictionary = {}
+
+const TEST_CHAPTER := "fathers"     # two_chapter_test_data(): the chapter row it builds (a stand-in, not the real one)
+const TEST_PREFIX := "lg_zz_"       # its legend ids: lg_zz_1 .. lg_zz_6 (never a shipped id)
+const TEST_CHALLENGE_AVG := 70      # its per-chapter rating keys (all unlike the defaults, so the test sees them)
+const TEST_MATE_DROP := 10
+const TEST_FINALE_STAGE_AVG := 56
+
+static func set_test_data(data: Dictionary) -> void:
+	_test_chapters = (data.get("chapters", []) as Array).duplicate(true)
+	_test_legends = (data.get("legends", {}) as Dictionary).duplicate(true)
+
+static func clear_test_data() -> void:
+	_test_chapters = []
+	_test_legends = {}
+
+static func test_data_on() -> bool:
+	return not _test_chapters.is_empty() or not _test_legends.is_empty()
+
+static func chapter_rows() -> Array:
+	return _test_chapters if not _test_chapters.is_empty() else CHAPTERS
+
+static func legend_rows() -> Dictionary:
+	return _test_legends if not _test_legends.is_empty() else LEGENDS
+
+# The shipped rows with TEST_CHAPTER replaced by a built stand-in: 6 legends lg_zz_1..6 (copies of the first built
+# chapter's: shapes, challenges, perks; names "ZZ ONE".. "ZZ SIX"), its finale (the copies of the first chapter's
+# finale three), the per-chapter keys TEST_*, a look, twist and music that don't exist (so the fallbacks play: gym,
+# none, the first chapter's fallback_music) and story scenes that don't exist (skipped).
+# Returns {"chapters": [...], "legends": {...}} for set_test_data().
+static func two_chapter_test_data() -> Dictionary:
+	var src: Dictionary = {}
+	for row in CHAPTERS:
+		if bool(row.get("built", false)):
+			src = row
+			break
+	var words: Array = ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX"]
+	var map: Dictionary = {}
+	var src_ids: Array = src.get("legends", [])
+	for i in src_ids.size():
+		map[str(src_ids[i])] = TEST_PREFIX + str(i + 1)
+	var legends: Dictionary = {}
+	for id in LEGENDS:
+		if str(LEGENDS[id].get("chapter", "")) != TEST_CHAPTER:   # the real row's legends (once built) step aside
+			legends[id] = (LEGENDS[id] as Dictionary).duplicate(true)
+	var new_ids: Array = []
+	for i in src_ids.size():
+		var old: String = str(src_ids[i])
+		var nid: String = str(map[old])
+		var p: Dictionary = (LEGENDS[old] as Dictionary).duplicate(true)
+		var word: String = str(words[i]) if i < words.size() else str(i + 1)
+		p["name"] = "ZZ " + word
+		p["first"] = "Test"
+		p["last"] = "Standin"
+		p["full"] = "Test \"%s\" Standin" % str(p["name"]).capitalize()
+		p["chapter"] = TEST_CHAPTER
+		p["unlock_scene"] = nid + "_unlock"
+		var c: Dictionary = p.get("challenge", {})
+		var mates: Array = []
+		for m in c.get("mates", []):
+			mates.append(str(map.get(str(m), str(m))))
+		c["mates"] = mates
+		p["challenge"] = c
+		legends[nid] = p
+		new_ids.append(nid)
+	var fin_src: Dictionary = src.get("finale", {})
+	var fin_ids: Array = []
+	for id in fin_src.get("legends", []):
+		fin_ids.append(str(map.get(str(id), str(id))))
+	var chapters: Array = []
+	for row in CHAPTERS:
+		var r: Dictionary = (row as Dictionary).duplicate(true)
+		if str(row.get("id", "")) == TEST_CHAPTER:
+			r["built"] = true
+			r["rules"] = "ZZ RULES"
+			r["twist"] = "zz_no_twist"
+			r["look"] = "zz_no_look"
+			r["music"] = "zz_no_music"
+			r["fallback_music"] = str(src.get("fallback_music", ""))
+			r["crew"] = {"name": "ZZ CREW", "style": str((src.get("crew", {}) as Dictionary).get("style", "")),
+				"colors": ((src.get("crew", {}) as Dictionary).get("colors", []) as Array).duplicate(),
+				"ui_color": Color(0.2, 0.4, 0.8)}
+			r["legends"] = new_ids
+			r["finale"] = {"target": int(fin_src.get("target", 21)), "legends": fin_ids, "label": "ZZ FINALE"}
+			r["intro_scene"] = "zz_intro"
+			r["finale_scenes"] = {"before": "zz_finale_before", "after": "zz_finale_after"}
+			r["challenge_avg"] = TEST_CHALLENGE_AVG
+			r["mate_drop"] = TEST_MATE_DROP
+			r["finale_stage_avg"] = TEST_FINALE_STAGE_AVG
+		chapters.append(r)
+	return {"chapters": chapters, "legends": legends}
+
 # ---------------------------------------------------------------------------------------------------- getters
 
 # a legend's data ({} for an unknown id)
 static func legend(id: String) -> Dictionary:
-	return LEGENDS.get(id, {})
+	return legend_rows().get(id, {})
 
 # a chapter's row ({} for an unknown id)
 static func chapter(id: String) -> Dictionary:
-	for row in CHAPTERS:
+	for row in chapter_rows():
 		if str(row.get("id", "")) == id:
 			return row
 	return {}
@@ -330,7 +434,7 @@ static func chapter(id: String) -> Dictionary:
 # every chapter id, in timeline order
 static func chapter_ids() -> Array:
 	var out: Array = []
-	for row in CHAPTERS:
+	for row in chapter_rows():
 		out.append(str(row.get("id", "")))
 	return out
 
@@ -341,7 +445,7 @@ static func chapter_of(legend_id: String) -> String:
 # the ids of the chapters that are built (playable), in timeline order
 static func built_chapters() -> Array:
 	var out: Array = []
-	for row in CHAPTERS:
+	for row in chapter_rows():
 		if bool(row.get("built", false)):
 			out.append(str(row.get("id", "")))
 	return out
@@ -352,7 +456,7 @@ static func is_built(chapter_id: String) -> bool:
 # a chapter's legend ids in plaque order (every built chapter's in timeline order for "")
 static func legend_ids(chapter_id: String = "") -> Array:
 	var out: Array = []
-	for row in CHAPTERS:
+	for row in chapter_rows():
 		if chapter_id == "" or str(row.get("id", "")) == chapter_id:
 			for id in row.get("legends", []):
 				out.append(str(id))
@@ -360,15 +464,26 @@ static func legend_ids(chapter_id: String = "") -> Array:
 
 # a known legend id (an "lg_" id with a row here)
 static func is_legend_id(id: String) -> bool:
-	return id.begins_with(ID_PREFIX) and LEGENDS.has(id)
+	return id.begins_with(ID_PREFIX) and legend_rows().has(id)
 
-# the most tokens there are: every built challenge and finale at TOKEN_MAX
+# a chapter has a finale (every built chapter has one; self_test checks it)
+static func has_finale(chapter_id: String) -> bool:
+	return not (chapter(chapter_id).get("finale", {}) as Dictionary).is_empty()
+
+# the most tokens one chapter gives: its challenges and its finale at TOKEN_MAX (0 for a chapter that isn't built)
+static func chapter_max_tokens(chapter_id: String) -> int:
+	if not is_built(chapter_id):
+		return 0
+	var n: int = legend_ids(chapter_id).size()
+	if has_finale(chapter_id):
+		n += 1
+	return n * TOKEN_MAX
+
+# the most tokens there are: every built chapter's chapter_max_tokens()
 static func max_tokens() -> int:
 	var n: int = 0
 	for ch in built_chapters():
-		n += legend_ids(ch).size() * TOKEN_MAX
-		if not (chapter(ch).get("finale", {}) as Dictionary).is_empty():
-			n += TOKEN_MAX
+		n += chapter_max_tokens(str(ch))
 	return n
 
 # the tokens a win on this level gives (0 for an unknown level)
@@ -381,7 +496,7 @@ static func challenge(legend_id: String) -> Dictionary:
 
 # the challenge's opponents: [the legend, his 2 mates]
 static func challenge_team(legend_id: String) -> Array:
-	if not LEGENDS.has(legend_id):
+	if not legend_rows().has(legend_id):
 		return []
 	var out: Array = [legend_id]
 	for m in challenge(legend_id).get("mates", []):
@@ -402,6 +517,16 @@ static func perk_of(legend_id: String) -> Dictionary:
 
 # ---------------------------------------------------------------------------------------------------- ratings
 
+# the chapter's rating keys (P10-02): its row's value, else the constant (an unknown chapter: the constant)
+static func challenge_avg(chapter_id: String) -> int:
+	return int(chapter(chapter_id).get("challenge_avg", CHALLENGE_AVG))
+
+static func mate_drop(chapter_id: String) -> int:
+	return int(chapter(chapter_id).get("mate_drop", MATE_DROP))
+
+static func finale_stage_avg(chapter_id: String) -> int:
+	return int(chapter(chapter_id).get("finale_stage_avg", FINALE_STAGE_AVG))
+
 # a legend's five stats at a level: avg + his shape on each stat, each in RATING_MIN..RATING_CAP ({} for an unknown id)
 static func shaped(legend_id: String, avg: int) -> Dictionary:
 	var p: Dictionary = legend(legend_id)
@@ -413,22 +538,25 @@ static func shaped(legend_id: String, avg: int) -> Dictionary:
 		out[s] = clampi(avg + int(shape.get(s, 0)), RATING_MIN, RATING_CAP)
 	return out
 
-# the challenge legend (L3 b): CHALLENGE_AVG + his shape + bonus (Difficulty.rating_bonus(level), LEGEND), capped
+# the challenge legend (L3 b): his chapter's challenge_avg() + his shape + bonus (Difficulty.rating_bonus(level),
+# LEGEND), capped
 static func challenge_ratings(legend_id: String, bonus: int = 0) -> Dictionary:
-	return shaped(legend_id, CHALLENGE_AVG + bonus)
+	return shaped(legend_id, challenge_avg(chapter_of(legend_id)) + bonus)
 
-# one of his 2 legend teammates: MATE_DROP under CHALLENGE_AVG, his own shape, + bonus, capped
+# one of his 2 legend teammates (always of the same chapter, self_test checks it): his chapter's mate_drop() under
+# its challenge_avg(), his own shape, + bonus, capped
 static func mate_ratings(legend_id: String, bonus: int = 0) -> Dictionary:
-	return shaped(legend_id, CHALLENGE_AVG - MATE_DROP + bonus)
+	var ch: String = chapter_of(legend_id)
+	return shaped(legend_id, challenge_avg(ch) - mate_drop(ch) + bonus)
 
 # a drafted legend on the Road Trip (L7 a): stage average + DRAFT_TIER, shaped, capped (trip.gd passes the stage
 # reached's Cities.stage_avg())
 static func draft_ratings(legend_id: String, stage_avg: int) -> Dictionary:
 	return shaped(legend_id, stage_avg + DRAFT_TIER)
 
-# a finale legend: the drafted rule at the last stage (FINALE_STAGE_AVG + DRAFT_TIER), shaped, + bonus, capped
+# a finale legend: the drafted rule at his chapter's finale_stage_avg() (+ DRAFT_TIER), shaped, + bonus, capped
 static func finale_ratings(legend_id: String, bonus: int = 0) -> Dictionary:
-	return shaped(legend_id, FINALE_STAGE_AVG + DRAFT_TIER + bonus)
+	return shaped(legend_id, finale_stage_avg(chapter_of(legend_id)) + DRAFT_TIER + bonus)
 
 # ---------------------------------------------------------------------------------------------------- name check
 
@@ -530,6 +658,16 @@ static func name_check() -> String:
 # music (P9-16). Story scenes are checked strictly once story_text.gd has the chapter's intro scene (P9-14).
 static func self_test() -> String:
 	notes = []
+	# the shipped rows only: a test data hook left on is put aside for the check and back after
+	var kept_chapters: Array = _test_chapters
+	var kept_legends: Dictionary = _test_legends
+	clear_test_data()
+	var why: String = _self_test_rows()
+	_test_chapters = kept_chapters
+	_test_legends = kept_legends
+	return why
+
+static func _self_test_rows() -> String:
 	var why: String = _check_chapters()
 	if why != "":
 		return why
@@ -573,6 +711,16 @@ static func _check_chapters() -> String:
 			return "chapter %s: gates must rise along the timeline" % ch
 		last_stars = int(gate.stars)
 		last_tokens = maxi(last_tokens, int(gate.tokens))
+		# P10-02: the optional per-chapter rating keys, when there, are whole numbers in range
+		for opt in [["challenge_avg", CHAPTER_AVG_RANGE], ["mate_drop", CHAPTER_DROP_RANGE],
+				["finale_stage_avg", CHAPTER_FINALE_RANGE]]:
+			var k: String = str(opt[0])
+			if not row.has(k):
+				continue
+			var v = row[k]
+			var lim: Array = opt[1]
+			if not (v is int) or int(v) < int(lim[0]) or int(v) > int(lim[1]):
+				return "chapter %s: %s must be a whole number in %d..%d" % [ch, k, int(lim[0]), int(lim[1])]
 		if not bool(row.built):
 			if (row.legends as Array).size() > 0 or not (row.finale as Dictionary).is_empty():
 				return "chapter %s is not built but has legends or a finale" % ch
@@ -633,8 +781,9 @@ static func _check_chapters() -> String:
 		return "Chapter 1 (grand) must be built"
 	if seen_legends.size() != LEGENDS.size():
 		return "%d legends in LEGENDS but %d in chapters" % [LEGENDS.size(), seen_legends.size()]
-	if max_tokens() != 21:
-		return "max_tokens() is %d, want 21 (6 challenges + 1 finale, x3)" % max_tokens()
+	var want_max: int = built_chapters().size() * 7 * TOKEN_MAX
+	if max_tokens() != want_max:
+		return "max_tokens() is %d, want %d (6 challenges + 1 finale, x3, per built chapter)" % [max_tokens(), want_max]
 	return ""
 
 static func _check_legends() -> String:
