@@ -263,7 +263,10 @@ func _update_block_jump(delta: float) -> void:
 	if phase != _watch_phase:
 		_watch_phase = phase
 		_jump_wait = -1.0
-		if phase != "" and p.position.distance_to(s.position) < CPU_JUMP_FT * game.FT:
+		var reach_ft: float = CPU_JUMP_FT
+		if phase == "rim" and p.signature == p.SIG_CHASE_DOWN and p.is_behind(s):
+			reach_ft = p.CHASE_DOWN_JUMP_FT   # P10-17: the chase-down man goes up at a rim move from behind
+		if phase != "" and p.position.distance_to(s.position) < reach_ft * game.FT:
 			_jump_wait = game.rng.randf_range(Difficulty.value(p.team, "jump_react_min", CPU_JUMP_REACT_MIN),
 					Difficulty.value(p.team, "jump_react_max", CPU_JUMP_REACT_MAX))
 	if _jump_wait < 0.0:
@@ -333,8 +336,8 @@ static func rim_blocker(g, shooter, kind: String):
 	for d in g.teams[1 - shooter.team]:
 		if d.block_jump_t < 0.0 or d.stumble_t > 0.0:
 			continue   # only a defender in a block jump can block (no dice for the ones on the floor)
-		if d.position.distance_to(shooter.position) > (RIM_BLOCK_REACH_FT + _reach_bonus(g, d)) * g.FT:
-			continue
+		if d.position.distance_to(shooter.position) > (RIM_BLOCK_REACH_FT + _reach_bonus(g, d) + d.chase_down_reach(shooter)) * g.FT:
+			continue   # (P10-17 chase_down: more reach from behind; + 0 for everyone else)
 		var tim := _jump_timing(d)
 		if tim == "wait" and not dunk:
 			continue   # still rising: a layup can be blocked on the way up (check_jump_shot_block)
@@ -344,10 +347,17 @@ static func rim_blocker(g, shooter, kind: String):
 		_count_try(g, d, good)
 		_perk_block_check(d, good, kind)
 		var chance: float = d.block_chance(good) * (DUNK_BLOCK_MULT if dunk else 1.0)
+		var base_chance: float = chance
+		chance = _chase_chance(d, shooter, chance)   # P10-17 chase_down from behind; the same chance for everyone else
 		var roll: float = g.rng.randf()
-		if roll < chance * shooter.sig_block_mult(kind):   # P9-20 hook: x1.0 for everyone else
+		var sm: float = shooter.sig_block_mult(kind)   # P9-20 hook, P10-17 shoulder: x1.0 for everyone else
+		if roll < chance * sm:
+			_chase_log(g, d, shooter, true, roll >= base_chance * sm, kind)
+			_shoulder_log(g, shooter, d, sm, true, kind)
 			clear_pending_fouls(g, shooter)   # blocked: no foul on this shot
 			return d
+		_chase_log(g, d, shooter, false, false, kind)
+		_shoulder_log(g, shooter, d, sm, false, kind)
 		if roll < chance:
 			_sig_escape(g, shooter, d)   # his layup went over a block that would have been
 		if not good:
@@ -361,10 +371,38 @@ static func rim_blocker(g, shooter, kind: String):
 # ---------------- signature moves (P9-20) ----------------
 # Only for a player whose "signature" (player.gd) is the move; everyone else plays today's rules.
 
-# the hook man's shot got past a block try that would have stopped anyone else (counted, logged)
+# the hook (or P10-17 shoulder) man's shot got past a block try that would have stopped anyone else (counted, logged)
 static func _sig_escape(g, shooter, d) -> void:
-	g.stat("sig_hook_escapes_t%d" % shooter.team)
-	shooter.sig_log(shooter.SIG_HOOK, "over the block try of %s" % (d.pname if d.pname != "" else d.pid))
+	var sig: String = str(shooter.signature)
+	g.stat("sig_%s_escapes_t%d" % [sig, shooter.team])
+	shooter.sig_log(sig, "%s the block try of %s" % ["through" if sig == shooter.SIG_SHOULDER else "over",
+			d.pname if d.pname != "" else d.pid])
+
+# P10-17 chase_down: his block chance at `shooter` from behind (x CHASE_DOWN_MULT, at most 1.0); `chance` for anyone else
+static func _chase_chance(d, shooter, chance: float) -> float:
+	var m: float = d.chase_down_mult(shooter)
+	return chance if m == 1.0 else minf(1.0, chance * m)
+
+# P10-17 chase_down: a block try of his from behind (counted, logged; `extra`: only the chase-down made it a block)
+static func _chase_log(g, d, shooter, blocked: bool, extra: bool, what: String) -> void:
+	if d.chase_down_mult(shooter) == 1.0:
+		return
+	if blocked:
+		g.stat("sig_chase_down_blocks_t%d" % d.team)
+	if extra:
+		g.stat("sig_chase_down_extra_t%d" % d.team)
+	d.sig_log(d.SIG_CHASE_DOWN, "chase-down try from behind on %s's %s: %s" % [
+			shooter.pname if shooter.pname != "" else shooter.pid, what,
+			("blocked (only from behind)" if extra else "blocked") if blocked else "missed"])
+
+# P10-17 shoulder: a block try at his close shot or dunk (block chance x SHOULDER_BLOCK_MULT; counted, logged)
+static func _shoulder_log(g, shooter, d, sm: float, blocked: bool, what: String) -> void:
+	if sm == 1.0 or str(shooter.signature) != shooter.SIG_SHOULDER:
+		return
+	if not blocked:
+		g.stat("sig_shoulder_holds_t%d" % shooter.team)
+	shooter.sig_log(shooter.SIG_SHOULDER, "%s through %s's block try (chance x%.2f): %s" % [what,
+			d.pname if d.pname != "" else d.pid, sm, "blocked anyway" if blocked else "not blocked"])
 
 # Gate's blocks stay in play: right after main.block_shot knocked the ball loose (away from him, often out of
 # bounds), a keep_block blocker tips it instead to the most open teammate within KEEP_TIP_MAX_FT (at least
@@ -536,7 +574,7 @@ static func check_jump_shot_block(g) -> void:
 	for d in g.teams[1 - ball.shooter.team]:
 		if d.block_jump_t < 0.0 or d.def.rolled_shot == g.shot_serial:
 			continue
-		if d.position.distance_to(ball.position) > (JUMPER_BLOCK_REACH_FT + _reach_bonus(g, d)) * g.FT:
+		if d.position.distance_to(ball.position) > (JUMPER_BLOCK_REACH_FT + _reach_bonus(g, d) + d.chase_down_reach(ball.shooter)) * g.FT:
 			continue
 		var tim := _jump_timing(d)
 		if tim == "wait":
@@ -546,12 +584,21 @@ static func check_jump_shot_block(g) -> void:
 		_count_try(g, d, good)
 		_perk_block_check(d, good, "layup" if layup else "jumper")
 		var c: float = d.block_chance(good) * (LAYUP_AIR_BLOCK_MULT if layup else 1.0)
+		var base_c: float = c
+		var shooter = ball.shooter
+		c = _chase_chance(d, shooter, c)   # P10-17 chase_down from behind; the same chance for everyone else
 		var roll: float = g.rng.randf()
-		if roll < c * ball.shooter.sig_block_mult(ball.shot_kind):   # P9-20 hook: x1.0 for everyone else
+		var sm: float = shooter.sig_block_mult(ball.shot_kind)   # P9-20 hook, P10-17 shoulder: x1.0 for everyone else
+		var what: String = "layup" if layup else "jumper"
+		if roll < c * sm:
+			_chase_log(g, d, shooter, true, roll >= base_c * sm, what)
+			_shoulder_log(g, shooter, d, sm, true, what)
 			g.stat("layup_air_blocks" if layup else "jumper_blocks")
 			g.block_shot(d)
 			keep_block(g, d)   # P9-20: a keep_block blocker's swat stays in play
 			return
+		_chase_log(g, d, shooter, false, false, what)
+		_shoulder_log(g, shooter, d, sm, false, what)
 		if roll < c:
 			_sig_escape(g, ball.shooter, d)   # the hook went over a block that would have been
 		var why: String = _early_reason(d, ball.shooter)

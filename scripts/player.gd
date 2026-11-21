@@ -92,7 +92,45 @@ const OUTLET_MIN_FT := 34.0       # an outlet: an outlet passer's pass this long
 const OUTLET_OPEN_FT := 8.0       # CPU outlet passer in his backcourt: a teammate this open in the frontcourt ...
 const OUTLET_HOOP_FT := 30.0      # ... and this close to the hoop, with at most OUTLET_AHEAD opponents between him
 const OUTLET_AHEAD := 0           # and the hoop, gets the long pass
+# ---- P10-17 the Fathers' signature moves (owner F4 b; legends_data.gd ids). Same model: "" = today's game.
+const SIG_CRADLE := "cradle"              # Rooftop: his dunks slip part of a contest (drawn as CRADLE_STYLE)
+const SIG_DOUBLE_CROSS := "double_cross"  # Ankles: his crossovers beat the man more often, more ankle-breaker falls
+const SIG_FADEAWAY := "fadeaway"          # Midrange: jumpers inside the arc lose less to a contest, the fadeaway frames
+const SIG_SHOULDER := "shoulder"          # Freight: his close shots and dunks are harder to block
+const SIG_NO_LOOK := "no_look"            # Eyes Closed: his passes are harder to intercept (ball.gd asks pick_mult)
+const SIG_CHASE_DOWN := "chase_down"      # Lockbox: his block tries from behind work more often (defense.gd)
+const CRADLE_KEEP := 0.5          # a cradle dunk keeps this fraction of main's rim contest penalty (0 = none)
+const CRADLE_STYLE := "dunk_windmill"     # the existing dunk look his dunks are drawn with (the ball rocked in the arm)
+const CRADLE_CPU_LAYUP := 0.1     # CPU cradle man entering LAYUP_RANGE: chance he pulls up for the layup (he dunks)
+const DOUBLE_CROSS_EXTRA := 0.35  # a crossover of his that did not beat the man gets a second roll at this chance
+const DOUBLE_CROSS_FALL_FT := 3.5 # a beaten man this close falls (ankle-breaker; ANKLE_BREAK_FT for everyone else) ...
+const DOUBLE_CROSS_FALL_PCT := 60 # ... this % of them (ANKLE_BREAK_PCT); drawing only, by the same hash
+const DOUBLE_CROSS_CPU_CHANCE := 0.12  # CPU double-crosser: CPU_CROSS_CHANCE per decision becomes this
+const FADE_KEEP := 0.5            # a fadeaway keeps this fraction of main's jumper contest penalty
+const FADE_MAX_FT := 20.0         # a jumper of his this close to the rim (and inside the arc) is a fadeaway; 20 + the
+                                  # slide before the release stays inside the 22 ft corner arc
+const FADE_FT := 1.5              # the slide back in the air (owner); format.json's fadeaway "fade_ft" wins
+const FADE_FRAMES := [6, 11]      # the slide's frames (format.json "fade"), release frame FADE_RELEASE ...
+const FADE_RELEASE := 8
+const FADE_MS := [100, 120, 60, 60, 70, 60, 60, 60, 60, 120, 80, 90, 120]   # ... and its frame times (format.json "ms")
+const FADE_CPU_CHANCE := 0.4      # CPU fadeaway man inside FADE_MAX_FT, inside the arc, a defender within
+const FADE_CPU_GUARD_FT := 6.0    # this: chance per decision he rises over him
+const SHOULDER_BLOCK_MULT := 0.5  # block chance x this on his layups, dunks and jumpers inside SHOULDER_CLOSE_FT
+const SHOULDER_CLOSE_FT := 14.0   # (= PERK_CLOSE_FT, the game's "close shot")
+const SHOULDER_CPU_LAYUP := 0.75  # CPU shoulder man entering LAYUP_RANGE with a man on him: chance he goes up through him
+const NO_LOOK_PICK_MULT := 0.5    # interception chance x this on his passes (lobs too)
+const NO_LOOK_CPU_PASS := 0.3     # CPU no-look passer: CPU_PASS_CHANCE per decision becomes this
+const CHASE_DOWN_MULT := 1.6      # his block chance x this on a try from behind the shooter (capped at 1.0)
+const CHASE_DOWN_REACH_FT := 1.5  # ... and this much more reach (rim and jumper blocks)
+const CHASE_DOWN_DOT := -0.2      # "from behind": cosine of me-from-the-shooter to the shooter's hoop direction under this
+const CHASE_DOWN_JUMP_FT := 9.0   # CPU chase-down man: jumps at a rim move from behind this close (CPU_JUMP_FT otherwise)
 var signature := ""               # P9-20: his move id ("" = none)
+var fade_shot := false            # P10-17: the current / last jumper is a fadeaway (drawn with the fadeaway frames)
+var fade_dir := Vector2.ZERO      # the slide's way (unit vector, away from the hoop)
+var fade_left := 0.0              # sim px of the slide still to go
+var fade_air_t := 0.0             # seconds he is still in the air after the release (from the frame times)
+var fade_air_rate := 0.0          # sim px per second of the slide left after the release (lands FADE_FT back)
+static var _fade_cache := {}      # the fadeaway timing from format.json (or the constants), read once
 var hook_shot := false            # the current / last jumper is a hook (drawn with the hook frames; harder to block)
 var long_dunk := false            # this dunk took off beyond DUNK_RANGE (glides further; drawn two-handed)
 var _sig_print := false           # test runs (any user argument) print a SIGNATURE line when a move fires
@@ -502,6 +540,8 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		shot_elapsed += delta
 		if has_ball() and is_closely_contested():
 			shot_contest_t += delta
+		if fade_shot and has_ball():
+			_fade_slide(delta, _fade_windup())   # P10-17: the fadeaway leaves the floor and slides back
 		if not has_ball():
 			shooting = false
 		elif is_human:
@@ -512,6 +552,10 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 			cpu_shot_time -= delta
 			if cpu_shot_time <= 0.0:
 				release_shot()
+	elif fade_air_t > 0.0:
+		fade_air_t = maxf(0.0, fade_air_t - delta)   # P10-17: still in the air after the fadeaway's release
+		_fade_slide(delta, -1.0)
+		velocity = Vector2.ZERO
 	elif ft_frozen():
 		desired = ft_stand(delta, is_human)   # free throws: walk to the spot and stand (the shooter shoots from it)
 	elif is_human:
@@ -759,11 +803,27 @@ func cross_beat_check() -> void:
 	var iso: float = Twists.value("cross_beat_mult", 1.0)   # ISO BALL; 1.0 without a twist: no extra roll
 	if iso != 1.0:
 		beaten = _iso_cross_roll(beaten, iso, best)
+	var second := false
+	if signature == SIG_DOUBLE_CROSS and not beaten:
+		# P10-17 double crossover: a second move at DOUBLE_CROSS_EXTRA (eased against a human like the wrong-way lean)
+		var dx: float = DOUBLE_CROSS_EXTRA
+		if game.is_human(best) and not game.is_human(self):
+			dx *= Difficulty.value(team, "cross_beat_human", 1.0)
+		beaten = game.rng.randf() < dx
+		second = beaten
 	if not beaten:
+		if signature == SIG_DOUBLE_CROSS:
+			sig_log(SIG_DOUBLE_CROSS, "double crossover read by %s" % (best.pname if best.pname != "" else best.pid))
 		return
 	best.stumble(CROSS_STUN)
 	best.view_crossed(self, best_d / game.FT)   # drawing only: a close one is an ankle-breaker (he falls)
 	game.stat("cross_beats_t%d" % team)
+	if signature == SIG_DOUBLE_CROSS:
+		if second:
+			game.stat("sig_double_cross_extra_t%d" % team)   # beats only the second move gave
+		sig_log(SIG_DOUBLE_CROSS, "%s beats %s from %.1f ft%s" % ["double crossover" if second else "crossover",
+				best.pname if best.pname != "" else best.pid, best_d / game.FT,
+				", he falls" if best._v_fall else ""])
 	if game.is_human(best):
 		game.stat("human_cross_beaten")
 		if best.assist_on:
@@ -1003,6 +1063,8 @@ func start_shot() -> void:
 	if has_ball() and not shooting and rim_kind == "":
 		cpu_three_try = false
 		hook_shot = false
+		fade_shot = false
+		fade_air_t = 0.0
 		if fake_t > 0.0:
 			end_pump_fake()   # out of a pump fake straight into the real shot
 			game.stat("pump_then_shoot_t%d" % team)
@@ -1013,6 +1075,11 @@ func start_shot() -> void:
 		shooting = true
 		shot_charge = 0.0
 		hook_shot = signature == SIG_HOOK and d_ft <= HOOK_MAX_FT and not at_free_throw()   # P9-20
+		fade_shot = signature == SIG_FADEAWAY and d_ft <= FADE_MAX_FT and not at_free_throw() \
+				and not game.is_three(position, game.attack_hoop(team))   # P10-17
+		if fade_shot:
+			fade_dir = (position - game.attack_hoop(team)).normalized()
+			fade_left = float(_fade_timing()["ft"]) * game.FT
 		cpu_shot_time = game.rng.randf_range(CPU_WINDUP_MIN, CPU_WINDUP_MAX)
 		if _cpu_catch_t <= CPU_CATCH_SHOT_T and not game.is_human(self) and not at_free_throw():
 			cpu_shot_time = game.rng.randf_range(CPU_CATCH_WINDUP_MIN, CPU_CATCH_WINDUP_MAX)   # catch and shoot
@@ -1076,6 +1143,18 @@ func release_shot() -> void:
 			sig_log(SIG_DEEP_SET, "set shot from %.1f ft (odds x%.2f)" % [position.distance_to(hoop) / game.FT, dm])
 	if counted and hook_shot:
 		sig_log(SIG_HOOK, "hook shot from %.1f ft" % (position.distance_to(hoop) / game.FT))
+	if counted and fade_shot:
+		# P10-17 fadeaway: all but FADE_KEEP of the contest (not on top of the late-closeout ease), then the rest of
+		# the slide in the air
+		var late: float = CLOSEOUT_SOFT_MULT if game.openness(self) < CLOSEOUT_FT \
+				and (shot_contest_t < shot_grace or not is_closely_contested()) else 1.0
+		var fm: float = contest_keep_mult(FADE_KEEP, false)
+		if fm > late:
+			quality *= fm / late
+		fade_air_t = maxf(float(_fade_timing()["air"]), 0.05)
+		fade_air_rate = fade_left / fade_air_t
+		sig_log(SIG_FADEAWAY, "fadeaway from %.1f ft, %.1f ft slid before the release (odds x%.2f)" % [
+				position.distance_to(hoop) / game.FT, float(_fade_timing()["ft"]) - fade_left / game.FT, maxf(fm / late, 1.0)])
 	if cpu_three_try and counted and not three:
 		game.stat("cpu_threes_inside")   # a CPU 2 that drifted inside the arc during the windup (worth 1)
 	var two_src := ""
@@ -1165,13 +1244,86 @@ func dunk_reach() -> float:
 func twist_dunk_range() -> float:
 	return DUNK_RANGE * Twists.value("dunk_range_mult", 1.0)
 
-# defense.gd: x this on a block try at my shot of `kind` ("" jumper, "layup", "dunk"); 1.0 for everyone but the hook man
+# defense.gd: x this on a block try at my shot of `kind` ("" jumper, "layup", "dunk"); 1.0 for everyone but the hook
+# man and the shoulder man (P10-17: his layups, dunks and jumpers inside SHOULDER_CLOSE_FT)
 func sig_block_mult(kind: String) -> float:
+	if signature == SIG_SHOULDER:
+		if kind == "layup" or kind == "dunk":
+			return SHOULDER_BLOCK_MULT
+		if kind == "" and game.ball.shot_start.distance_to(game.attack_hoop(team)) <= SHOULDER_CLOSE_FT * game.FT:
+			return SHOULDER_BLOCK_MULT
+		return 1.0
 	if signature != SIG_HOOK:
 		return 1.0
 	if kind == "layup" or (kind == "" and hook_shot):
 		return HOOK_BLOCK_MULT
 	return 1.0
+
+# P10-17 chase_down: true when I (a defender) am behind `shooter`, on the far side from the hoop he attacks
+func is_behind(shooter) -> bool:
+	var r: Vector2 = position - shooter.position
+	if r.length() < 0.1:
+		return false
+	var to_hoop: Vector2 = game.attack_hoop(shooter.team) - shooter.position
+	return to_hoop.length() > 0.1 and r.normalized().dot(to_hoop.normalized()) < CHASE_DOWN_DOT
+
+# defense.gd: x this on my block chance at `shooter` (CHASE_DOWN_MULT for the chase-down man from behind, else 1.0)
+func chase_down_mult(shooter) -> float:
+	return CHASE_DOWN_MULT if signature == SIG_CHASE_DOWN and is_behind(shooter) else 1.0
+
+# defense.gd: extra block reach in feet at `shooter` (CHASE_DOWN_REACH_FT for the chase-down man from behind, else 0)
+func chase_down_reach(shooter) -> float:
+	return CHASE_DOWN_REACH_FT if signature == SIG_CHASE_DOWN and is_behind(shooter) else 0.0
+
+# ball.gd: x this on the interception chance of my pass (NO_LOOK_PICK_MULT for the no-look passer, else 1.0)
+func pick_mult() -> float:
+	return NO_LOOK_PICK_MULT if signature == SIG_NO_LOOK else 1.0
+
+# P10-17: the fadeaway's timing, from format.json's "fadeaway" extra (its "fade" frames, "fade_ft", release and "ms"),
+# else the constants above: "ft" the slide, "start" the windup fraction it starts at (its first frame / the release
+# frame, as the drawn windup runs), "rate" feet per second (the slide over its frames' time), "air" the seconds from
+# the release to the landing frame. Read once (static data, the same for every sheet).
+static func _fade_timing() -> Dictionary:
+	if not _fade_cache.is_empty():
+		return _fade_cache
+	var row: Dictionary = (Sheets.extra_anims(Sheets.v2_format()).get(SIG_FADEAWAY, {}) as Dictionary)
+	var fr = row.get("fade", FADE_FRAMES)
+	var ms = row.get("ms", FADE_MS)
+	var a: int = int(fr[0]) if fr is Array and (fr as Array).size() == 2 else int(FADE_FRAMES[0])
+	var b: int = int(fr[1]) if fr is Array and (fr as Array).size() == 2 else int(FADE_FRAMES[1])
+	var rel: int = int(row.get("release", FADE_RELEASE))
+	if not (ms is Array) or (ms as Array).size() <= b or a >= b or rel <= a or rel > b:
+		a = int(FADE_FRAMES[0])
+		b = int(FADE_FRAMES[1])
+		rel = FADE_RELEASE
+		ms = FADE_MS
+	var ft: float = float(row.get("fade_ft", FADE_FT))
+	var t_all := 0.0
+	for i in range(a, b):
+		t_all += float(ms[i]) / 1000.0
+	var t_air := 0.0
+	for i in range(rel, b):
+		t_air += float(ms[i]) / 1000.0
+	_fade_cache = {"ft": ft, "start": float(a) / float(rel), "rate": ft / maxf(t_all, 0.05), "air": t_air}
+	return _fade_cache
+
+# how far through the windup this jumper is (0..1): the human's meter, the CPU's windup clock
+func _fade_windup() -> float:
+	if game.is_human(self):
+		return clampf(shot_charge, 0.0, 1.0)
+	return shot_elapsed / maxf(shot_elapsed + maxf(cpu_shot_time, 0.0), 0.01)
+
+# the fadeaway's slide back (a sim move): from the windup fraction "start" on, at "rate", until fade_left is used up
+# (in the air after the release, windup < 0: the rest of it spread over fade_air_rate, so he lands 1.5 ft back)
+func _fade_slide(delta: float, windup: float) -> void:
+	var tm: Dictionary = _fade_timing()
+	if fade_left <= 0.0 or (windup >= 0.0 and windup < float(tm["start"])):
+		return
+	var rate: float = fade_air_rate if windup < 0.0 else float(tm["rate"]) * game.FT
+	var step: float = minf(fade_left, rate * delta)
+	fade_left -= step
+	position = game.clamp_to_court(position + fade_dir * step)
+	game.stat("sig_fadeaway_slide_frames_t%d" % team)
 
 # deep set: main.shot_probability's long base with the falloff moved DEEP_SET_EXTRA_FT out, over today's (>= 1.0)
 func deep_set_mult() -> float:
@@ -1184,15 +1336,20 @@ func deep_set_mult() -> float:
 
 # finger roll: undoes all but FINGER_ROLL_KEEP of main.shot_probability's rim contest (1.0 when nobody contests)
 func finger_roll_mult() -> float:
+	return contest_keep_mult(FINGER_ROLL_KEEP, true)
+
+# undoes all but `keep` of main.shot_probability's contest penalty on this shot (rim: the dunk/layup mults, else the
+# jumper's); 1.0 when nobody contests. P10-17: the cradle dunk (rim) and the fadeaway (jumper) use it too
+func contest_keep_mult(keep: float, rim: bool) -> float:
 	var cont: float = game.openness(self)
 	var pen: float = 1.0
 	if cont < game.CONTEST_TIGHT_FT:
-		pen = game.RIM_CONTEST_TIGHT_MULT
+		pen = game.RIM_CONTEST_TIGHT_MULT if rim else game.CONTEST_TIGHT_MULT
 	elif cont < game.CONTEST_NEAR_FT:
-		pen = game.RIM_CONTEST_NEAR_MULT
+		pen = game.RIM_CONTEST_NEAR_MULT if rim else game.CONTEST_NEAR_MULT
 	if pen >= 1.0:
 		return 1.0
-	return lerpf(1.0 / pen, 1.0, FINGER_ROLL_KEEP)
+	return lerpf(1.0 / pen, 1.0, keep)
 
 # CPU outlet passer with the ball in his backcourt: the long pass to a teammate who is open near the hoop with at most
 # OUTLET_AHEAD opponents between him and it (no dice: he sees it, he throws it)
@@ -1320,6 +1477,10 @@ func release_rim_shot() -> void:
 		if fr > 1.0:
 			soft = maxf(soft, fr)   # P9-20 finger roll: slips past the contest (not on top of the soft-contest ease)
 			sig_log(SIG_FINGER_ROLL, "finger roll past a contest (odds x%.2f)" % fr)
+	if signature == SIG_CRADLE and rim_kind == "dunk":
+		var cm: float = contest_keep_mult(CRADLE_KEEP, true)
+		soft = maxf(soft, cm)   # P10-17 cradle: slips part of the contest (not on top of the soft-contest ease)
+		sig_log(SIG_CRADLE, "cradle dunk from %.1f ft (odds x%.2f)" % [d_ft, maxf(cm, 1.0)])
 	game.release_shot(self, target / base * rim_quality * fire_mult * alley_mult * soft)
 	count_pump_and_score()
 	if ball.state == ball.SHOT:
@@ -1625,6 +1786,10 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		var lay_p: float = CPU_LAYUP_CHANCE if open_ft < CPU_LAYUP_GUARD_FT else CPU_LAYUP_OPEN_CHANCE
 		if signature == SIG_FINGER_ROLL:
 			lay_p = FINGER_ROLL_CPU_LAYUP   # P9-20: the finger roller goes up for it
+		elif signature == SIG_CRADLE:
+			lay_p = CRADLE_CPU_LAYUP        # P10-17: the cradle man keeps going for the dunk
+		elif signature == SIG_SHOULDER and open_ft < CPU_LAYUP_GUARD_FT:
+			lay_p = SHOULDER_CPU_LAYUP      # P10-17: the shoulder man goes up through the man on him
 		if game.rng.randf() < lay_p:
 			start_shot()
 			return
@@ -1648,8 +1813,12 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 			and game.rng.randf() < HOOK_CPU_CHANCE:
 		game.stat("cpu_hooks_t%d" % team)
 		start_shot()   # P9-20: the hook over the man on him
+	elif signature == SIG_FADEAWAY and dist_ft > LAYUP_RANGE and dist_ft <= FADE_MAX_FT and not three \
+			and open_ft < FADE_CPU_GUARD_FT and game.rng.randf() < FADE_CPU_CHANCE:
+		game.stat("cpu_fadeaways_t%d" % team)
+		start_shot()   # P10-17: the fadeaway over the man on him
 	elif step_side != 0.0 and open_ft < CPU_CROSS_FT and dist_ft > LAYUP_RANGE and cross_cd <= 0.0 \
-			and not lane_open(hoop) and game.rng.randf() < CPU_CROSS_CHANCE:
+			and not lane_open(hoop) and game.rng.randf() < (DOUBLE_CROSS_CPU_CHANCE if signature == SIG_DOUBLE_CROSS else CPU_CROSS_CHANCE):
 		# crossover: cut back the other way, behind a defender sliding with the sidestep
 		cpu_side = -step_side
 		cpu_side_t = CPU_CROSS_COMMIT
@@ -1674,7 +1843,7 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		start_shot()
 	elif open_ft > CPU_OPEN_SHOT_FT and dist_ft < CPU_OPEN_SHOT_RANGE and game.rng.randf() < CPU_OPEN_SHOT_CHANCE:
 		start_shot()
-	elif game.rng.randf() < CPU_PASS_CHANCE:
+	elif game.rng.randf() < (NO_LOOK_CPU_PASS if signature == SIG_NO_LOOK else CPU_PASS_CHANCE):
 		var best = null
 		var best_open := open_ft + CPU_PASS_OPEN_EDGE
 		for mate in game.teams[team]:
@@ -2353,6 +2522,7 @@ var _v_celebrate_b := false
 var _v_texmem_frames := -1
 var _v_slide_hold := 0.0
 var _v_hook_seen := -1            # game.shot_serial of the last hook counted in anim_hook
+var _v_fade_seen := -1            # game.shot_serial of the last fadeaway counted in anim_fadeaway
 
 # the sheet ids to try, in order: team 0 his _crew recolor, his own sheet, then his slot's Quick Game sheet. A Quick
 # Game team (P6-T3, "own_colors" in the dict) wears its own colors on either side: no _crew recolor.
@@ -2396,14 +2566,17 @@ func _build_view_v2(sh: Dictionary) -> void:
 
 # called by the handler's cross_beat_check right after this defender was beaten (drawing only)
 func view_crossed(by, d_ft: float) -> void:
-	if d_ft > ANKLE_BREAK_FT:
+	var dc: bool = str(by.signature) == SIG_DOUBLE_CROSS   # P10-17: his crossovers drop more men
+	if d_ft > (DOUBLE_CROSS_FALL_FT if dc else ANKLE_BREAK_FT):
 		return
 	var h: int = absi(hash([by.team, by.index, team, index, game.shot_serial, int(game.score[0]), int(game.score[1])]))
-	if h % 100 >= ANKLE_BREAK_PCT:
+	if h % 100 >= (DOUBLE_CROSS_FALL_PCT if dc else ANKLE_BREAK_PCT):
 		return
 	_v_fall = true
 	_v_getup_t = -1.0
 	game.stat("ankle_breakers")
+	if dc:
+		game.stat("sig_double_cross_falls_t%d" % by.team)
 
 # a pass left my hands: which throw it looks like (ball.gd picks it, so the ball flies the same way)
 func _v2_on_pass() -> void:
@@ -2478,6 +2651,11 @@ func _v2_phase_x(anim: String, p: float) -> float:
 # P9-20: a hook shot plays the sheet's "hook" frames when it carries them (Sheets.has_anim; P9-04c extra pages), else
 # the normal jump shot. Drawing only: hook_shot is the sim's.
 func _v2_shot_anim() -> String:
+	if fade_shot and Sheets.has_anim(_v_fmt, SIG_FADEAWAY):
+		if shooting and _v_fade_seen != game.shot_serial:
+			_v_fade_seen = game.shot_serial   # P10-17: Midrange's fadeaway frames (P10-14 extra pages)
+			game.stat("anim_fadeaway")
+		return SIG_FADEAWAY
 	if hook_shot and Sheets.has_anim(_v_fmt, "hook"):
 		if shooting and _v_hook_seen != game.shot_serial:
 			_v_hook_seen = game.shot_serial
@@ -2491,6 +2669,10 @@ func _v2_dunk_style() -> String:
 		return "dunk_alley"
 	if long_dunk:
 		return "dunk_two"   # P9-20: the power drop-step ends in a two-hand dunk
+	if signature == SIG_CRADLE:
+		return CRADLE_STYLE   # P10-17: the cradle dunk
+	if signature == SIG_SHOULDER:
+		return "dunk_two"   # P10-17: the shoulder-in power dunk, two hands
 	var roll: int = absi(hash([team, index, pid, game.shot_serial, int(game.score[0]), int(game.score[1])])) % 100
 	var fast: bool = turbo or since_turbo < TURBO_DUNK_WINDOW
 	var great: bool = rating("finishing") >= WINDMILL_FINISH or str(pdata.get("tier", "")) == "boss"

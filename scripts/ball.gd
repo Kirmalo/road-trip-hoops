@@ -111,6 +111,8 @@ const PASS_SPEED := 720.0
 # P9-20 outlet (Quarterback): a pass of player.OUTLET_MIN_FT or more by a passer whose signature is "outlet"
 const OUTLET_SPEED_MULT := 1.35   # flies this much faster than PASS_SPEED (a full-court strike)
 const OUTLET_PICK_MULT := 0.35    # interception chance x this along its way (thrown over the defense)
+const PICK_CHANCE := 0.15         # a defender near a pass's lane picks it off with this chance (once per pass); the
+                                  # passer's pick_mult() (P10-17 no_look, player.gd NO_LOOK_PICK_MULT) scales it
 const GRAVITY := 900.0
 
 func setup(g) -> void:
@@ -330,11 +332,15 @@ func update(delta: float) -> void:
 					continue
 				if p.position.distance_to(position) < 20.0 and passer.position.distance_to(position) > 60.0:
 					intercept_checked[p] = true
-					if game.rng.randf() < 0.15 * (OUTLET_PICK_MULT if outlet else 1.0):
+					var pick_roll: float = game.rng.randf()
+					var pm: float = _pick_mult()   # P10-17 no_look: x NO_LOOK_PICK_MULT, x1.0 for everyone else
+					if pick_roll < PICK_CHANCE * (OUTLET_PICK_MULT if outlet else 1.0) * pm:
+						_no_look_log(p, pm, true, false)
 						game.show_message("PICKED OFF!")
 						game.stat("intercepts")
 						hold(p)
 						return
+					_no_look_log(p, pm, false, pick_roll < PICK_CHANCE * (OUTLET_PICK_MULT if outlet else 1.0))
 		SHOT:
 			shot_t += delta / shot_time
 			if shot_t >= 1.0:
@@ -480,12 +486,28 @@ func _update_lob(delta: float) -> void:
 				continue
 			if p.position.distance_to(position) < 20.0 and passer.position.distance_to(position) > 60.0:
 				intercept_checked[p] = true
-				if game.rng.randf() < 0.15:
+				var lob_roll: float = game.rng.randf()
+				var lpm: float = _pick_mult()   # P10-17 no_look (his lobs too)
+				_no_look_log(p, lpm, lob_roll < PICK_CHANCE * lpm, lob_roll >= PICK_CHANCE * lpm and lob_roll < PICK_CHANCE)
+				if lob_roll < PICK_CHANCE * lpm:
 					game.show_message("PICKED OFF!")
 					game.stat("intercepts")
 					game.stat("alleyoop_picks")
 					hold(p)
 					return
+
+# the passer's interception multiplier (P10-17 no_look; 1.0 for everyone else, and for a passer without pick_mult())
+func _pick_mult() -> float:
+	return float(passer.pick_mult()) if passer != null and passer.has_method("pick_mult") else 1.0
+
+# P10-17 no_look: a pick-off try at his pass (counted, logged); `saved`: anyone else's pass would have been picked off
+func _no_look_log(p, pm: float, picked: bool, saved: bool) -> void:
+	if pm == 1.0 or passer == null or not passer.has_method("sig_log"):
+		return
+	if saved:
+		game.stat("sig_no_look_saves_t%d" % passer.team)
+	passer.sig_log(passer.SIG_NO_LOOK, "%s pass past %s's reach (pick chance x%.2f): %s" % ["lob" if lob else "no-look",
+			p.pname if p.pname != "" else p.pid, pm, "picked off" if picked else ("saved by the look" if saved else "through")])
 
 func _hoop_index() -> int:
 	return 0 if shot_hoop.x < game.COURT_W / 2 else 1
