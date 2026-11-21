@@ -362,11 +362,14 @@ const PERKS := {
 	"quick_pass": {"key": "pass_speed_mult", "value": 1.05, "text": "Passes 5% faster"},
 	# Chapter 2 (F5 a, the board's contract; data only here, P10-22 hooks them). The two "on him" keys make the other
 	# side's chance smaller, so their value is under 1.0 (default 1.0 = today's game)
-	"rise_up": {"key": "contested_dunk_bonus", "value": 0.015, "text": "Contested dunks +1.5%"},
-	"handle": {"key": "cross_win_mult", "value": 1.05, "text": "Crossovers beat the defender 5% more often"},
+	# P10-26 QA (docs/qa/phase10-ramp.md): at the F5 a sizes rise_up, handle and blind_pass were worth only 0.2-0.6 of
+	# "2 stat points" (handle and blind_pass fired in 1-6 of 30 games), so rise_up 0.015 -> 0.025, handle 1.05 -> 1.15,
+	# blind_pass 0.95 -> 0.85; pull_up, strong_hold and quick_hands measured about 2 stat points and stay
+	"rise_up": {"key": "contested_dunk_bonus", "value": 0.025, "text": "Contested dunks +2.5%"},
+	"handle": {"key": "cross_win_mult", "value": 1.15, "text": "Crossovers beat the defender 15% more often"},
 	"pull_up": {"key": "mid_shot_bonus", "value": 0.015, "text": "Jumpers inside the arc +1.5%"},
 	"strong_hold": {"key": "strip_guard_mult", "value": 0.95, "text": "5% harder to strip"},
-	"blind_pass": {"key": "pass_safe_mult", "value": 0.95, "text": "Passes 5% harder to intercept"},
+	"blind_pass": {"key": "pass_safe_mult", "value": 0.85, "text": "Passes 15% harder to intercept"},
 	"quick_hands": {"key": "steal_window_mult", "value": 1.05, "text": "Steal timing window 5% wider"},
 }
 
