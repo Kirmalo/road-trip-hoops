@@ -69,10 +69,10 @@ extends RefCounted
 # order: THE GRANDFATHERS, then THE FATHERS), each with its "chapter" and that chapter's ui_color. LEGEND_LIMIT counts
 # the legends of every chapter together (one Grandfather or one Father starts, never both); one legend and one boss
 # still start together. Nothing new is saved (version 2; a Father is a plain "lg_" draft entry like a Grandfather).
-# The --best-roster sim (and end_of_trip_crew(true)) counts every legend of every built chapter as draftable (P10-N1,
-# coordinator: a real end-of-trip player may have both eras unlocked), so a Chapter 1 --challenge --best-roster run may
-# field a Father; never one of that challenge's own opponents (_sim_avoid). docs/qa/phase9-*.md were measured before
-# the Fathers existed (their best crews held a Grandfather).
+# The --best-roster sim counts every legend of every built chapter as draftable; end_of_trip_crew(true) in a legends
+# game (P10-N1, coordinator's measurement rule, P10-23) only those of the chapters up to and including the
+# challenge's own (_sim_chapters: a Chapter 1 run Grandfathers only, as Phase 9 measured; a Chapter 2 run Grandfathers
+# or Fathers), never one of that challenge's own opponents (_sim_avoid). Test path only: the real draft is unchanged.
 # Mentors (P9-23, owner L8 a): roster_player() adds "perk" (legends.gd perks_for(): {"id", "key", "value", "text",
 # "mentor"}) to a player an unlocked legend trains, only on a loaded trip (never the --city crews without a trip, never
 # the in-memory ramp sims: _perks_off). The sims give no perk: P9-30 measured the bound with --perk on top instead
@@ -167,6 +167,8 @@ static var boss_repair: Array = []  # P8-14b: boss starters the last load benche
                                     # (P9-21: legend starters over LEGEND_LIMIT too)
 static var _sim_legends := false    # P9-21: the --best-roster sim: every legend of a built chapter is draftable
 static var _sim_avoid: Array = []   # P9-21: end_of_trip_crew(): legend ids the sim never drafts (the challenge's own)
+static var _sim_chapters: Array = []   # P10-N1: end_of_trip_crew() in a legends game: the chapters the sim may draft
+                                      # a legend from (up to the challenge's own); [] = every built chapter
 static var _legends_override := ""  # P9-21: "all" / "none" = act as if every / no legend is unlocked (self_test only)
 static var _legends_script: GDScript = null   # legends.gd, loaded once at run time
 static var _perks_off := false      # P9-23: the in-memory ramp sims (_sim_roster) field no mentor perks
@@ -991,9 +993,10 @@ static func _test_roster_match(city_id: String, n: int, best: bool) -> Dictionar
 
 # P9-21 (board "Trip additions"): the 3 player dicts (you first) that --expected-roster (best false) or --best-roster
 # (true) would start in the New York final, for the --challenge balance runs (P9-26). The expected crew never has a
-# legend (no star slots); the best one may have one (with one boss) of any built chapter (P10-N1: a Chapter 1
-# challenge's best crew may hold a Father), never one of `avoid` (default: the opponents of Flow.match when it is a
-# legends game, so never the challenge's own legend or his teammates). Played in memory like the ramp sims;
+# legend (no star slots); the best one may have one (with one boss) of a built chapter (P10-N1: in a legends
+# game only of the chapters up to the challenge's own, so a Chapter 1 best crew holds a Grandfather), never one of
+# `avoid` (default: the opponents of Flow.match when it is a legends game, so never the challenge's own legend or his
+# teammates). Played in memory like the ramp sims;
 # the trip state before the call (a loaded trip too) comes back exactly, nothing is saved. [] when it can't be built.
 static func end_of_trip_crew(best: bool, avoid: Array = []) -> Array:
 	var keep: Dictionary = _snapshot()
@@ -1006,6 +1009,13 @@ static func end_of_trip_crew(best: bool, avoid: Array = []) -> Array:
 			for pd in ((teams as Array)[1] as Dictionary).get("players", []):
 				skip.append(str((pd as Dictionary).get("id", "")))
 	_sim_avoid = skip
+	_sim_chapters = []
+	var mch: String = str(Flow.match.get("chapter", ""))
+	if str(Flow.match.get("mode", "")) == LEGENDS_MODE and mch != "" and LegendsData.chapter_ids().has(mch):
+		for cid in LegendsData.chapter_ids():
+			_sim_chapters.append(str(cid))
+			if str(cid) == mch:
+				break
 	var ny: String = _tournament_id()
 	var out: Array = []
 	if ny != "" and _sim_roster(ny, maxi(1, _rounds(ny).size()), best):
@@ -1014,9 +1024,10 @@ static func end_of_trip_crew(best: bool, avoid: Array = []) -> Array:
 		var lines: Array = []
 		for pd in out:
 			lines.append("%s %s" % [str(pd.get("id", "")), _stat_line(pd.get("ratings", {}))])
-		print("TRIP END CREW %s | %s | avoid %s" % ["best" if best else "expected", ", ".join(PackedStringArray(lines)),
-				str(skip)])
+		print("TRIP END CREW %s | %s | avoid %s | chapters %s" % ["best" if best else "expected",
+				", ".join(PackedStringArray(lines)), str(skip), str(_sim_chapters) if not _sim_chapters.is_empty() else "all"])
 	_sim_avoid = []
+	_sim_chapters = []
 	_restore(keep)
 	return out
 
@@ -1516,7 +1527,7 @@ static func legend_available(id: String) -> bool:
 	if _legends_override != "":
 		return _legends_override == "all"
 	if _sim_legends:
-		return true
+		return _sim_chapters.is_empty() or _sim_chapters.has(LegendsData.chapter_of(id))
 	var ls: GDScript = _legends()
 	if ls == null or not ls.has_method("is_unlocked"):
 		return false
