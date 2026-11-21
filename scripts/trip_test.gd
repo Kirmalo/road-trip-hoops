@@ -51,6 +51,14 @@ extends Node
 #     auto_step keeps the picks). The driver never makes a legend YOU (checked at every tip-off).
 #   - TRIP END fails when a legend run missed one of these (the refusal only with 2+ slots and 2+ legends open).
 #   The pick test's "newest recruit" is the newest roster player who joined as a recruit (never a drafted one).
+# Phase 10 (P10-24), two eras in the draft (Trip.legends_rows(): one LEGENDS row per chapter, its "chapter" key):
+#   - the first legend draft signs the first legend of the Fathers row (chapter "fathers"), the second one the first of
+#     the Grandfathers row ("grand"), LEGEND_DRAFT_CHAPTERS; a chapter without a row then: the first legend offered.
+#     The draft screen must show him in his own chapter's row.
+#   - ONE LEGEND tries a Grandfather then a Father (when both are on the roster): refused, LEGEND_LIMIT counts every era
+#   - LEGEND + BOSS starts the Father (when one is on the roster); TRIP END checks all three ("TRIP legend eras")
+#   - P10-B1: a lineup visit that runs the pick test and then the first draft (a resumed trip with an open slot):
+#     OPEN SLOT saves the tapped picks, so the starters and YOU the legend draft must keep are those picks
 
 const Flow = preload("res://scripts/flow.gd")
 const Trip = preload("res://scripts/trip.gd")
@@ -75,6 +83,8 @@ const REPLAY_AFTER := "memphis"   # P8-23: replay this city's first won game fro
 const ALL_GAMES := 24             # games that pay at TRIP END (Stars.all_keys(): 8 cities x 3)
 const MAPSHOT_FLAG := "--mapshot" # trip_map.gd's test: it drives its own replay on the first map
 const LEGEND_DRAFTS := 2          # P9-29: legends a legend run drafts (one per open slot; the 2nd tests the refusal)
+const LEGEND_DRAFT_CHAPTERS := ["fathers", "grand"]   # P10-24: the chapter row each legend draft picks from, in order
+                                  # (that row's first legend; no such row then: the first legend offered)
 
 # --- the run (static: survives reload_current_scene) ---
 static var _started := false
@@ -114,6 +124,11 @@ static var _lg_keep := {}         # before a legend draft: {"human", "starters"}
 static var _lg_refused := false   # ONE LEGEND checked
 static var _lg_boss_recruit := "" # the boss the recruit screen signed for LEGEND + BOSS ("" = not yet, "-" = none)
 static var _lg_boss_state := 0    # 0 not yet, 1 picked by taps (the next game checks), 2 played and checked
+static var _draft_row_ch := ""    # P10-24: the chapter row the driver's legend pick must sit in on the draft screen
+static var _lg_offered := {}      # P10-24: chapter -> true for every chapter row a legend draft was offered
+static var _lg_chapters: Array = []   # P10-24: the chapter of each legend the driver drafted, in order
+static var _lg_refused_eras: Array = []   # P10-24: the chapters of the two legends the refusal tried together
+static var _lg_boss_ch := ""      # P10-24: the chapter of the legend who started next to the boss
 
 var main                          # main.gd (Flow sets it)
 var _screen := ""
@@ -277,8 +292,9 @@ func _start_game() -> void:
 		_pick_want = []
 		if _lg_boss_state == 1:
 			_lg_boss_state = 2
-			print("TRIP legend + boss start: ok | %s (you), legend %s, boss %s" % [str(mine[0]), str(mine[1]),
-					str(mine[2])])
+			_lg_boss_ch = Trip.LegendsData.chapter_of(str(mine[1]))
+			print("TRIP legend + boss start: ok | %s (you), legend %s (chapter %s), boss %s" % [str(mine[0]),
+					str(mine[1]), Trip.LegendsData.chapter_of(str(mine[1])), str(mine[2])])
 	if mine.size() > 0 and Trip.is_legend(str(mine[0])):
 		_fail("the driver made a legend YOU (%s): a legend run keeps you on a player you picked" % str(mine[0]))
 		return
@@ -529,11 +545,28 @@ func _draft_test() -> void:
 		return
 	_draft_before = Trip.drafted_ids()
 	_draft_pick = ""
+	_draft_row_ch = ""
 	if _lg_mode:
-		_draft_pick = str(_legend_pool()[0])
-		_lg_keep = {"human": Trip.human, "starters": Trip.starters.duplicate()}
-		print("TRIP legend draft %d: %s from the LEGENDS row | you play %s | starters %s" % [_lg_drafts + 1,
-				_draft_pick, Trip.human, str(Trip.starters)])
+		var want_ch: String = str(LEGEND_DRAFT_CHAPTERS[_lg_drafts]) if _lg_drafts < LEGEND_DRAFT_CHAPTERS.size() else ""
+		var offered: Array = _offered_chapters()
+		var pick: Dictionary = _legend_pick(want_ch)
+		_draft_pick = str(pick.get("id", ""))
+		_draft_row_ch = str(pick.get("chapter", ""))
+		# P10-B1: OPEN SLOT saves the lineup's picks first (a pick test on this same visit may have changed them), so
+		# the starters and YOU that must survive the draft are the picks it saves, not Trip.starters before the tap
+		var keep_st: Array = Trip.starters.duplicate()
+		var picks = node.get("_picks")
+		if picks is Array and (picks as Array).size() == Trip.STARTERS and bool(node.call("lineup_ok")):
+			keep_st = (picks as Array).duplicate()
+		var keep_you: String = str(keep_st[0]) if keep_st.size() > 0 else Trip.human
+		_lg_keep = {"human": keep_you, "starters": keep_st}
+		print("TRIP legend draft %d: %s from the LEGENDS row of chapter %s (wanted %s; rows offered %s) | you play %s | starters %s" % [
+				_lg_drafts + 1, _draft_pick, _draft_row_ch, want_ch if want_ch != "" else "-", str(offered), keep_you,
+				str(keep_st)])
+		if _draft_pick == "" or (want_ch != "" and offered.has(want_ch) and _draft_row_ch != want_ch):
+			_fail("legend draft %d: the %s row was offered but the pick '%s' is from '%s'" % [_lg_drafts + 1, want_ch,
+					_draft_pick, _draft_row_ch])
+			return
 	print("TRIP draft: OPEN SLOT tapped | slots %d, open %d | pool %d players | drafted before %s" % [
 			Trip.slot_count(), Trip.open_slots(), Trip.draft_pool().size(), str(_draft_before)])
 	_draft_wait = true
@@ -574,6 +607,7 @@ func _check_draft() -> void:
 		_fail("the legend draft did not sign %s to the bench (or it changed the starters or who you play)" % want)
 		return
 	_lg_drafts += 1
+	_lg_chapters.append(Trip.LegendsData.chapter_of(want))
 
 # ---------------- Phase 9 checks (P9-29): a drafted legend ----------------
 
@@ -584,6 +618,30 @@ static func _legend_pool() -> Array:
 		if bool((p as Dictionary).get("legend", false)):
 			out.append(str((p as Dictionary).get("id", "")))
 	return out
+
+# P10-24: the chapters of the draft's LEGENDS rows now (Trip.legends_rows(): one row per chapter, its "chapter")
+static func _offered_chapters() -> Array:
+	var out: Array = []
+	for row in Trip.legends_rows():
+		var ch: String = str((row as Dictionary).get("chapter", ""))
+		if not out.has(ch) and ((row as Dictionary).get("players", []) as Array).size() > 0:
+			out.append(ch)
+			_lg_offered[ch] = true
+	return out
+
+# P10-24: the first legend of the LEGENDS row whose "chapter" is ch, else the first legend of the first row:
+# {"id", "chapter"} ({} = no legend offered)
+static func _legend_pick(ch: String) -> Dictionary:
+	var rows: Array = Trip.legends_rows()
+	for row in rows:
+		var pl: Array = (row as Dictionary).get("players", [])
+		if str((row as Dictionary).get("chapter", "")) == ch and pl.size() > 0:
+			return {"id": str((pl[0] as Dictionary).get("id", "")), "chapter": ch}
+	for row in rows:
+		var pl: Array = (row as Dictionary).get("players", [])
+		if pl.size() > 0:
+			return {"id": str((pl[0] as Dictionary).get("id", "")), "chapter": str((row as Dictionary).get("chapter", ""))}
+	return {}
 
 # the legends on the roster (roster order)
 static func _roster_legends() -> Array:
@@ -622,6 +680,20 @@ func _draft_pick_step() -> void:
 	if not bool(node.call("tap_player", _draft_pick)):
 		_fail("the draft screen has no card for %s (the LEGENDS row)" % _draft_pick)
 		return
+	# P10-24: his card sits in his chapter's LEGENDS row on the screen (the row's "chapter")
+	var row_ch := "?"
+	var crews = node.get("_crews")
+	if crews is Array:
+		for row in crews:
+			for pl in (row as Dictionary).get("players", []):
+				if str((pl as Dictionary).get("id", "")) == _draft_pick:
+					row_ch = str((row as Dictionary).get("chapter", "-"))
+	var his_ch: String = Trip.LegendsData.chapter_of(_draft_pick)
+	print("TRIP draft row of %s on the screen: chapter %s (his %s, wanted %s)" % [_draft_pick, row_ch, his_ch,
+			_draft_row_ch])
+	if row_ch != _draft_row_ch or row_ch != his_ch:
+		_fail("the draft screen shows %s in the '%s' row, not his chapter's (%s)" % [_draft_pick, row_ch, his_ch])
+		return
 	var hl = node.get("_hint")
 	var hint: String = (hl as Label).text if hl is Label else ""
 	var says: bool = hint.contains(Trip.LEGEND_RULE)
@@ -656,6 +728,19 @@ func _legend_refusal_test() -> void:
 	var lgs: Array = _roster_legends()
 	var l1: String = str(lgs[0])
 	var l2: String = str(lgs[1])
+	# P10-24: with legends of two eras on the roster, a Grandfather next to a Father (LEGEND_LIMIT counts all chapters)
+	for id in lgs:
+		if Trip.LegendsData.chapter_of(str(id)) == "grand":
+			l1 = str(id)
+			break
+	for id in lgs:
+		if str(id) != l1 and Trip.LegendsData.chapter_of(str(id)) != Trip.LegendsData.chapter_of(l1):
+			l2 = str(id)
+			break
+	if l2 == l1:
+		l2 = str(lgs[1]) if str(lgs[0]) == l1 else str(lgs[0])
+	_lg_refused_eras = [Trip.LegendsData.chapter_of(l1), Trip.LegendsData.chapter_of(l2)]
+	print("TRIP one legend: %s (chapter %s) then %s (chapter %s)" % [l1, _lg_refused_eras[0], l2, _lg_refused_eras[1]])
 	var orig: Array = (node.get("_picks") as Array).duplicate()
 	if orig.size() != Trip.STARTERS or Trip.is_legend(str(orig[0])):
 		_fail("the lineup's picks %s are not 3 with a non-legend YOU" % str(orig))
@@ -719,7 +804,13 @@ func _legend_boss_test() -> void:
 	if node == null or not node.has_method("tap_player"):
 		_fail("no lineup screen for the legend + boss lineup")
 		return
-	var want: Array = [str(Cities.START_CREW[0]), str(_roster_legends()[0]), _roster_boss()]
+	var lgs: Array = _roster_legends()
+	var lg: String = str(lgs[0])
+	for id in lgs:   # P10-24: a Father when one is on the roster
+		if Trip.LegendsData.chapter_of(str(id)) == "fathers":
+			lg = str(id)
+			break
+	var want: Array = [str(Cities.START_CREW[0]), lg, _roster_boss()]
 	for id in (node.get("_picks") as Array).duplicate():
 		node.call("tap_player", str(id))   # bench everyone
 	for id in want:
@@ -877,6 +968,25 @@ func _legend_end_checks() -> bool:
 		return false
 	if _lg_boss_state != 2:
 		_fail("a legend run never started a legend next to a boss")
+		return false
+	# P10-24: two eras. A Father offered at the first legend draft is drafted first, a Grandfather then second; with
+	# both on the roster the refusal tried one of each, and a drafted Father is the one who started next to the boss
+	var two_eras: bool = _lg_offered.has("fathers") and _lg_offered.has("grand")
+	var eras_ok: bool = true
+	if _lg_offered.has("fathers") and (_lg_chapters.is_empty() or str(_lg_chapters[0]) != "fathers"):
+		eras_ok = false
+	if two_eras and _lg_chapters.size() >= 2 and str(_lg_chapters[1]) != "grand":
+		eras_ok = false
+	if _lg_chapters.has("fathers") and _lg_chapters.has("grand") and _lg_refused \
+			and not (_lg_refused_eras.has("grand") and _lg_refused_eras.has("fathers")):
+		eras_ok = false
+	if _lg_chapters.has("fathers") and _lg_boss_ch != "fathers":
+		eras_ok = false
+	print("TRIP legend eras at the end | rows offered %s | drafted %s | one legend tried %s | legend + boss %s | %s" % [
+			str(_lg_offered.keys()), str(_lg_chapters), str(_lg_refused_eras), _lg_boss_ch if _lg_boss_ch != "" else "-",
+			"ok" if eras_ok else "WRONG"])
+	if not eras_ok:
+		_fail("the legend run did not draft / refuse / start the two eras as P10-24 asks")
 		return false
 	return true
 
