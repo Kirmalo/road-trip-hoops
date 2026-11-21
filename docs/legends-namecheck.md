@@ -1,4 +1,4 @@
-# Legends name check (P9-07)
+# Legends name check (P9-07; Chapter 2: P10-11)
 
 The hard rule (`docs/legends-plan.md` part 1): every legend is our own character. No legend's full name, nickname
 or "first last" may match a real NBA or ABA player or a famous real basketball nickname, closely or exactly. This
@@ -36,12 +36,56 @@ also Nance is 1 letter away), Bodie **Ferreira** (a real player Rolando Ferreira
 real players; Keon Ridley (Riley), Calloway Briggs (Braggs) and Atlas Varga (Verga, Varda) are 1 letter from real
 surnames. None is a full-name or nickname match. Swap or keep at the Phase 10 name check; the owner decides.
 
+## Chapter 2, the Fathers (P10-11): passes after 3 swaps, shown to the owner
+
+Checked 2026-11-21 by gameplay-programmer A, against the same NBA list (step 1 below, 5,198 NBA and 1,228 WNBA entries)
+and the lists below extended with the 2000s era (the players and nicknames of the years the Fathers look comes from,
+and the streetball mixtape tour names of the time). Owner answer F1 a: the six of the plan, new surnames for Rooftop
+and Eyes Closed, the looks spread, names and numbers shown to the owner.
+
+| Legend (id) | Full name | Exact match | Close matches looked at | Verdict |
+|---|---|---|---|---|
+| `lg_rooftop` | Dorian "Rooftop" **Ashcombe** (was Vance) | none | no surname within 2 letters; first name shared with Dorian Finney-Smith (first name only, a different player type) | **new surname** (Vance is Gene Vance's, and 1 letter from Nance) |
+| `lg_ankles` | Tremaine "Ankles" Pettaway | none | no surname within 2 letters; first name shared with Tremaine Fowlkes (first name only) | keep |
+| `lg_midrange` | Darnell "Midrange" Kingsley | none | Tinsley (Jamaal Tinsley, a 2000s guard) and Kinsey are 2 letters away; first name shared with Darnell Hillman, Jackson, Mee, Valentine | keep |
+| `lg_freight` | Bartholomew "Freight" Thackeray | none | Thacker (Tom Thacker) 2 letters away; no Bartholomew in the list | keep |
+| `lg_eyes_closed` | Keon "Eyes Closed" **Pemberton** (was Ridley) | none | no surname within 2 letters; first name shared with Keon Clark, Ellis, Johnson (first name only; none a passer of note) | **new surname** (Ridley is 1 letter from Riley: Pat Riley, Eric Riley) |
+| `lg_lockbox` | **Corwin** "Lockbox" Hollister (was Shane) | none | no surname within 2 letters; no Corwin in the list | **new first name**: "Shane" + a lockdown wing defender with a buzz cut points at Shane Battier, the best-known lockdown wing of the 2000s (the hard rule's "combination" case). **Owner: keep Corwin, or say if Shane stays** |
+
+No nickname of the six (Rooftop, Ankles, Midrange, Freight, Eyes Closed, Lockbox) is a known real player's nickname,
+none holds one as a word, and none is a first or last name in the NBA list. Their bios, looks, signature texts and
+challenge lines name no real player and use no listed nickname or trademarked move name.
+
+### The look spread (the board's hard rule)
+The small quick crossover guard with cornrows, a single arm sleeve and a headband is one famous real player's look, so
+those parts never meet on one legend: **Ankles** (small, quick crossover guard) has short twists and a headband, no
+cornrows and no arm sleeve; **Rooftop** (tall lanky wing, the approved look sample) has the cornrows and a left arm
+sleeve, no headband; **Lockbox** (rangy wing, buzz cut) has a right arm sleeve, no headband; **Freight** (huge center)
+has a headband and a goatee; **Midrange** a fade and a leg sleeve; **Eyes Closed** (the approved sample) a durag,
+wristbands and a leg sleeve. P10-14 / P10-15 follow these looks (`look` in `legends_data.gd`).
+
+### Numbers (placeholders until the owner approves them)
+Rooftop **27** (the approved sample's), Ankles **16**, Midrange **28**, Freight **48**, Eyes Closed **14** (the
+approved sample's), Lockbox **36**. None is in `NUMBER_AVOID` or used by Chapter 1 (18, 54, 9, 46, 19, 12).
+`NUMBER_AVOID` reviewed for the era: added 2, 5, 10, 11, 15, 20, 21, 22, 31, 41, 42, 44, 50, 55 (the numbers the
+2000s' and the earlier stars made famous); it is now 0, 1, 2, 3, 5, 6, 8, 10, 11, 13, 15, 20, 21, 22, 23, 24, 30,
+31, 32, 33, 34, 35, 41, 42, 44, 45, 50, 55, 99.
+
+### Cautions for the other Phase 10 tasks
+- Move names stay plain words: "cradle dunk", "double crossover", "turnaround fadeaway", "shoulder-in", "no-look
+  pass", "chase-down block". Never "killer crossover", "UTEP two-step", "the shammgod" or any shoe or brand name
+  (no "AND1", no "Jumpman"); never a mixtape tour's name.
+- Never call Ankles "the answer", Rooftop "Air ..." or anyone "Mr. Big Shot", "Sheed", "Franchise", "the Truth".
+- The kits are the made-up `ERA2_*` palettes; a legend's kit never copies a real team's colors (crews.json says how).
+- Probes added to the data test: Dorian Vance, Keon Ridley, Shane Battier, "THE ANSWER", "BIG SHOT" must fail.
+
 ## How the check was made
 1. **Every NBA player**: the static player list in `nba_api` 1.12.0 (PyPI; its data file says "last updated Oct 21
    2026"), 6,426 entries (every NBA player since 1946, plus some WNBA). Read as text, never run. For each legend:
    same surname, same "first last", same first name, surnames within 1 and 2 letters (edit distance), and the
    nickname as a first or last name. Results in the table above.
-2. **ABA-only players and nicknames**: the web player indexes (basketball-reference, Wikipedia) could not be reached
+2. **ABA-only players and nicknames** (and, for Chapter 2, the 2000s nicknames and the streetball tour names; the
+   web was again out of reach on 2026-11-21): the web player indexes (basketball-reference, Wikipedia) could not be reached
    from the build machine, so the ABA stars and the famous nicknames below come from the team's knowledge. It is the
    list a fan would think of first; it is not exhaustive. The owner, or anyone with a browser, can add to it: a name
    added here and in `legends_data.gd` is checked on the next `--legendtest`.
@@ -70,7 +114,13 @@ goat, the goat, hook, destroyer, pee wee, skip to my lou, hot sauce, professor, 
 meadowlark, curly, goose, sweet lou, mikan, kareem, the hook, hammer, black hole, manimal, white mamba, the kid, big
 shamrock, the mule, the bus, big baby, birdman, the claw, klaw, steady eddie, mr triple double, the stopper, the
 general, the hammer, dr k, mr basketball, big red, air georgia, sky, j kidd, mutombo, sleepy floyd, world b free,
-world, pops, bobo, smush, tmac, t mac, sweet pea, rainman, the dream team, the jet, mr fundamentals
+world, pops, bobo, smush, tmac, t mac, sweet pea, rainman, the dream team, the jet, mr fundamentals;
+P10-11, the 2000s: sheed, big ben, rip, franchise, stevie franchise, manu, big z, ak47, ak 47, captain jack, j rich,
+candy man, grindfather, tru warrior, hibachi, krypto nate, kryptonate, j will, big shot, baby shaq, baby jordan, bonzi,
+peja, stat, big three, main event, bone collector, escalade, sik wit it, spyda, go get it, air up there, black widow,
+high octane, headache, dribbling machine, ao, god shammgod, shammgod, killer crossover, utep two step, cat, the mayor,
+bubba chuck, human joystick, jumpman, big nasty, boston strangler, k mart, kmart, chosen one, lob city, sky walker,
+dr dunkenstein, slim
 
 (Streetball and touring-team legends are in on purpose: "famous real basketball nicknames" is wider than the NBA.)
 
@@ -97,7 +147,22 @@ Tatum, Lou Dunbar; the early game: Neil Johnston, Bill Sharman, Tom Heinsohn, K.
 DeBusschere, Bill Bradley, Wally Szczerbiak, Chet Walker, Gus Johnson, Jack Twyman, Maurice Stokes, Bob Davies, Max
 Zaslofsky, Joe Fulks, Jim Pollard, Vern Mikkelsen, Slater Martin, Cliff Hagan, Ed Macauley, Frank Selvy, Tom Gola,
 Guy Rodgers, Walt Bellamy, Dick Barnett, Cazzie Russell, Lou Hudson, Bob Love, Jerry Sloan, Norm Van Lier, Tiny
-Archibald.
+Archibald. P10-11: the Phase 9 heads-up surnames Gene Vance, Larry Nance, Pat Riley, Eric Riley; the 2000s: Rasheed
+Wallace, Chauncey Billups, Richard Hamilton, Tayshaun Prince, Shane Battier, Tony Allen, Bruce Bowen, Ron Artest, Metta
+World Peace, Stephen Jackson, Jason Terry, Jason Richardson, Gilbert Arenas, Stephon Marbury, Steve Francis, Baron
+Davis, Jason Williams, Antoine Walker, Shawn Marion, Amare Stoudemire, Elton Brand, Jermaine O'Neal, Peja Stojakovic,
+Mike Bibby, Andrei Kirilenko, Zydrunas Ilgauskas, Michael Redd, Rashard Lewis, Ben Gordon, Gerald Wallace, Josh Smith,
+Nate Robinson, Jamal Crawford, Lamar Odom, Michael Finley, Glenn Robinson, Latrell Sprewell, Kenyon Martin, Desmond
+Mason, Cuttino Mobley, Larry Hughes, Jamaal Tinsley, Steve Smith, Raja Bell, Ricky Davis, Corey Maggette, Bonzi Wells,
+Brad Miller, Sam Cassell, Mike Miller, Joe Johnson, Chris Bosh, Deron Williams, Rajon Rondo, Andre Iguodala, Monta
+Ellis, Tyson Chandler, Marcus Camby, Theo Ratliff, Tim Hardaway, Mitch Richmond, Glen Rice, Allan Houston, Antawn
+Jamison, Shareef Abdur-Rahim, Darius Miles, Quentin Richardson, Kirk Hinrich, Andre Miller, Mike Dunleavy, Caron
+Butler, Luol Deng, Josh Howard, Richard Jefferson, Vlade Divac, Predrag Stojakovic, Hedo Turkoglu, Emeka Okafor, Al
+Jefferson, Kevin Martin, Jalen Rose, Eddie Jones, Keith Van Horn, Derek Fisher, Robert Horry, Bobby Jackson, Mo
+Williams, Chucky Atkins, Eric Snow, Aaron McKie, Derrick Coleman, Nick Van Exel, Damon Stoudamire, Jerry Stackhouse,
+Rod Strickland, Terrell Brandon, Kenny Anderson, Derek Anderson, Brent Barry, Jason Kapono, Fred Jones, Dee Brown,
+Harold Miner, God Shammgod; streetball mixtape tours: Grayson Boucher, Philip Champion, Aaron Owens, Waliyy Dixon, Troy
+Jackson, Shane Woney.
 
 The full NBA list (step 1) is too long to copy into the game; it was checked once here, and the table above is its
 result. A new legend gets a row in the table and the same step-1 check before his art is made.
