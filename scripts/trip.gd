@@ -65,11 +65,20 @@ extends RefCounted
 # file has him unlocked (he was when he was drafted). The save stays version 2 (a drafted legend is a plain roster
 # entry). A save with more legend starters is repaired on load like the bosses. end_of_trip_crew(best): the New York
 # final's three of --expected-roster / --best-roster, for the --challenge balance runs (P9-26).
+# Two eras (P10-19): draft_pool_by_crew() gives one LEGENDS row per built chapter with a legend to draft (timeline
+# order: THE GRANDFATHERS, then THE FATHERS), each with its "chapter" and that chapter's ui_color. LEGEND_LIMIT counts
+# the legends of every chapter together (one Grandfather or one Father starts, never both); one legend and one boss
+# still start together. Nothing new is saved (version 2; a Father is a plain "lg_" draft entry like a Grandfather).
+# The --best-roster sim (and end_of_trip_crew(true)) counts every legend of every built chapter as draftable (P10-N1,
+# coordinator: a real end-of-trip player may have both eras unlocked), so a Chapter 1 --challenge --best-roster run may
+# field a Father; never one of that challenge's own opponents (_sim_avoid). docs/qa/phase9-*.md were measured before
+# the Fathers existed (their best crews held a Grandfather).
 # Mentors (P9-23, owner L8 a): roster_player() adds "perk" (legends.gd perks_for(): {"id", "key", "value", "text",
 # "mentor"}) to a player an unlocked legend trains, only on a loaded trip (never the --city crews without a trip, never
-# the in-memory ramp sims: _perks_off; they give no perk, P9-30 measured with --perk). The pairs live in legends.json, never here, so a
-# NEW TRIP keeps them; a pupil not on this trip's roster just has no effect. legends.gd strips "perk" from your side in
-# a challenge (Road Trip games only). P9-24 reads it in play.
+# the in-memory ramp sims: _perks_off). The sims give no perk: P9-30 measured the bound with --perk on top instead
+# (docs/qa/phase9-ramp.md). The pairs live in legends.json, never here, so a NEW TRIP keeps them; a pupil not on this
+# trip's roster just has no effect. legends.gd strips "perk" from your side in a challenge (Road Trip games only).
+# P9-24 reads it in play.
 
 const Flow = preload("res://scripts/flow.gd")
 const Cities = preload("res://scripts/cities.gd")
@@ -119,11 +128,13 @@ const BOSS_LIMIT := 1               # P8-14b (owner): at most this many bosses a
 const BOSS_RULE := "ONLY ONE BOSS CAN START"   # starters_ok()'s reason for too many bosses (the lineup shows it)
 const LegendsData = preload("res://scripts/legends_data.gd")   # P9-21: legend rows and the L7 a rule (preloads nothing)
 const LEGENDS_PATH := "res://scripts/legends.gd"   # P9-21: is_unlocked(); loaded at run time (it preloads trip.gd)
-const LEGEND_LIMIT := 1             # P9-21 (owner): at most this many legends among the starters (a boss may start too)
+const LEGEND_LIMIT := 1             # P9-21 (owner): at most this many legends among the starters, all chapters together
+                                    # (P10-19; a boss may start too)
 const LEGEND_RULE := "ONLY ONE LEGEND CAN START"   # starters_ok()'s reason for too many legends (the lineup shows it)
-const LEGENDS_ROW := "legends"      # P9-21: draft_pool_by_crew()'s legends row ("city"; its "round" is 0)
-const LEGENDS_ROW_NAME := "LEGENDS" # that row's name on the DRAFT screen
-const LEGENDS_ROW_COLOR := Color(0.77, 0.35, 0.16)   # that row's band while no built chapter gives a ui_color
+const LEGENDS_ROW := "legends"      # P9-21: draft_pool_by_crew()'s legends rows ("city"; "round" 0; P10-19: one per
+                                    # chapter, its "chapter" says which)
+const LEGENDS_ROW_NAME := "LEGENDS" # those rows' name on the DRAFT screen
+const LEGENDS_ROW_COLOR := Color(0.77, 0.35, 0.16)   # a legends row's band when its chapter gives no ui_color
 const LEGENDS_MODE := "legends"     # Flow.match.mode of a challenge (end_of_trip_crew() skips its opponents)
 const UNLOCK_NONE_FLAG := "--legends-unlock-none"   # with --best-roster: no legends in the sim (the Phase 8 bound)
 
@@ -817,7 +828,8 @@ static func _sim_roster(city_id: String, n: int, best: bool) -> bool:
 	new_trip(DEFAULT_LEVEL)
 	_slots_override = BEST_ROSTER_SLOTS if best else 0
 	_perks_off = true   # P9-23: the sims field no mentor perks (P9-30 measured the bound with --perk instead)
-	# P9-21: the best crew may draft any legend (as if all were unlocked; --legends-unlock-none: none, the P8 bound)
+	# P9-21: the best crew may draft any legend (as if all were unlocked; --legends-unlock-none: none, the P8 bound).
+	# P10-N1: any built chapter's, the Fathers too (a real end-of-trip player may have both eras unlocked)
 	_sim_legends = best and not OS.get_cmdline_user_args().has(UNLOCK_NONE_FLAG)
 	var games: int = maxi(1, _rounds(city_id).size()) if is_tournament(city_id) else GAMES_PER_CITY
 	var want: int = clampi(n, 1, games)
@@ -979,8 +991,9 @@ static func _test_roster_match(city_id: String, n: int, best: bool) -> Dictionar
 
 # P9-21 (board "Trip additions"): the 3 player dicts (you first) that --expected-roster (best false) or --best-roster
 # (true) would start in the New York final, for the --challenge balance runs (P9-26). The expected crew never has a
-# legend (no star slots); the best one may have one (with one boss), never one of `avoid` (default: the opponents of
-# Flow.match when it is a legends game, so never the challenge's own legend). Played in memory like the ramp sims;
+# legend (no star slots); the best one may have one (with one boss) of any built chapter (P10-N1: a Chapter 1
+# challenge's best crew may hold a Father), never one of `avoid` (default: the opponents of Flow.match when it is a
+# legends game, so never the challenge's own legend or his teammates). Played in memory like the ramp sims;
 # the trip state before the call (a loaded trip too) comes back exactly, nothing is saved. [] when it can't be built.
 static func end_of_trip_crew(best: bool, avoid: Array = []) -> Array:
 	var keep: Dictionary = _snapshot()
@@ -1563,26 +1576,43 @@ static func draft_pool_by_crew() -> Array:
 			r.erase("ids")
 			r["players"] = players
 			out.append(r)
-	# P9-21: the unlocked legends not on the roster, one row after the crews
-	var lps: Array = []
+	# P9-21: the unlocked legends not on the roster after the crews; P10-19: one row per chapter (timeline order),
+	# each with its "chapter" and that chapter's colour (legends_rows())
+	out.append_array(legends_rows())
+	return out
+
+# P10-19: the draft's LEGENDS rows, one per built chapter with a legend to draft now (timeline order; a legend whose
+# chapter isn't built, which no shipped row has, gets a last row of his own chapter): {"city": LEGENDS_ROW, "round": 0,
+# "name": LEGENDS_ROW_NAME, "chapter", "style": "", "color" (the chapter's ui_color, else LEGENDS_ROW_COLOR),
+# "players": [player dicts with "legend": true, "chapter"]}
+static func legends_rows() -> Array:
+	var by_ch: Dictionary = {}
+	var order: Array = LegendsData.built_chapters().duplicate()
 	for id in _legend_pool_ids():
+		var ch: String = LegendsData.chapter_of(id)
 		var lpd: Dictionary = player_dict(id, _start_ratings(id), true)
 		lpd["city"] = LEGENDS_ROW
 		lpd["crew"] = LEGENDS_ROW_NAME
 		lpd["boss"] = false
 		lpd["legend"] = true
-		lpd["chapter"] = LegendsData.chapter_of(id)
-		lps.append(lpd)
-	if lps.size() > 0:
-		var col: Color = LEGENDS_ROW_COLOR
-		for ch in LegendsData.built_chapters():
-			var cc = (LegendsData.chapter(str(ch)).get("crew", {}) as Dictionary).get("ui_color", null)
-			if cc is Color:
-				col = cc
-				break
-		out.append({"city": LEGENDS_ROW, "round": 0, "name": LEGENDS_ROW_NAME, "style": "", "color": col,
-			"players": lps})
+		lpd["chapter"] = ch
+		if not by_ch.has(ch):
+			by_ch[ch] = []
+			if not order.has(ch):
+				order.append(ch)
+		(by_ch[ch] as Array).append(lpd)
+	var out: Array = []
+	for ch in order:
+		if not by_ch.has(ch):
+			continue
+		out.append({"city": LEGENDS_ROW, "round": 0, "name": LEGENDS_ROW_NAME, "chapter": str(ch), "style": "",
+			"color": chapter_color(str(ch)), "players": by_ch[ch]})
 	return out
+
+# P10-19: a chapter's colour (its crew's ui_color in legends_data.gd), LEGENDS_ROW_COLOR when it has none
+static func chapter_color(chapter_id: String) -> Color:
+	var cc = (LegendsData.chapter(chapter_id).get("crew", {}) as Dictionary).get("ui_color", null)
+	return cc if cc is Color else LEGENDS_ROW_COLOR
 
 # the draft pool as one list (player dicts, crews in route order); the same with no open slot (the screen shows it)
 static func draft_pool() -> Array:
@@ -2562,19 +2592,29 @@ static func _check_legends() -> bool:
 			and not draft("lg_steeple"), "legends: none unlocked, none in the pool") and ok
 	_legends_override = "all"
 	var rows: Array = draft_pool_by_crew()
-	var last: Dictionary = rows[rows.size() - 1] if rows.size() > 0 else {}
-	ok = _check(rows.size() == 1 and str(last.get("city", "")) == LEGENDS_ROW and str(last.get("name", "")) == LEGENDS_ROW_NAME
-			and (last.get("players", []) as Array).size() == LegendsData.legend_ids().size()
-			and bool(last.players[0].get("legend", false)) and not bool(last.players[0].get("boss", true))
-			and str(last.players[0].get("signature", "")) != "",
-			"legends: all unlocked, a LEGENDS row before any crew is beaten") and ok
+	var chs: Array = LegendsData.built_chapters()
+	var rows_ok: bool = rows.size() == chs.size() and rows.size() > 0
+	var seen_ids: Array = []
+	for i in rows.size():
+		var row: Dictionary = rows[i]
+		var ch: String = str(chs[i]) if i < chs.size() else "?"
+		var pls: Array = row.get("players", [])
+		rows_ok = rows_ok and str(row.get("city", "")) == LEGENDS_ROW and str(row.get("name", "")) == LEGENDS_ROW_NAME
+		rows_ok = rows_ok and str(row.get("chapter", "")) == ch and row.get("color", null) == chapter_color(ch)
+		rows_ok = rows_ok and pls.size() == LegendsData.legend_ids(ch).size() and pls.size() > 0
+		for pd in pls:
+			rows_ok = rows_ok and bool(pd.get("legend", false)) and not bool(pd.get("boss", true))
+			rows_ok = rows_ok and str(pd.get("chapter", "")) == ch and str(pd.get("signature", "")) != ""
+			seen_ids.append(str(pd.get("id", "")))
+	rows_ok = rows_ok and seen_ids == LegendsData.legend_ids()
+	ok = _check(rows_ok, "legends: all unlocked, one LEGENDS row per chapter %s before any crew is beaten" % str(chs)) and ok
 	for i in GAMES_PER_CITY:
 		record_result({"won": true})
 	finish_points()
 	recruit("ht_boss")
 	rows = draft_pool_by_crew()
-	ok = _check(rows.size() == 2 and str(rows[0].city) == "hometown" and str(rows[1].city) == LEGENDS_ROW,
-			"legends: the row comes after the beaten crews") and ok
+	ok = _check(rows.size() == 1 + chs.size() and str(rows[0].city) == "hometown" and str(rows[1].city) == LEGENDS_ROW
+			and str(rows[rows.size() - 1].city) == LEGENDS_ROW, "legends: the rows come after the beaten crews") and ok
 	var want: Dictionary = legend_ratings("lg_steeple", 2)
 	var rule_ok := true
 	for st in Ratings.STATS:
@@ -2599,6 +2639,21 @@ static func _check_legends() -> bool:
 			and starters_ok(["lg_steeple", "lg_gate", "ud_jojo"]) == LEGEND_RULE
 			and not set_starters(["ud_jojo", "lg_gate", "lg_steeple"]) and set_starters(["lg_steeple", "ht_boss", "ud_jojo"])
 			and human == "lg_steeple", "legends: one legend + one boss start, two legends refused") and ok
+	# P10-19: a legend of another chapter fills a third slot; the limit counts both eras together
+	var other: String = _other_era_legend("lg_steeple")
+	if other != "":
+		var row_chs: Array = []   # both eras still have a row (each has legends left to draft)
+		for row in draft_pool_by_crew():
+			if str(row.get("city", "")) == LEGENDS_ROW:
+				row_chs.append(str(row.get("chapter", "")))
+		ok = _check(draft(other) and drafted_ids() == ["lg_steeple", "lg_gate", other]
+				and starters_ok(["lg_steeple", other, "ud_jojo"]) == LEGEND_RULE
+				and starters_ok([other, "ht_boss", "ud_jojo"]) == ""
+				and not set_starters(["ud_jojo", other, "lg_steeple"]) and starters[0] == "lg_steeple"
+				and set_starters(["ud_jojo", other, "ht_boss"]) and set_starters(["lg_steeple", "ht_boss", "ud_jojo"])
+				and row_chs == [LegendsData.chapter_of("lg_steeple"), LegendsData.chapter_of(other)],
+				"legends: %s (%s) drafted; %s + %s refused, %s + a boss start" % [other, LegendsData.chapter_of(other),
+				"lg_steeple", other, other]) and ok
 	record_result({"won": true})
 	ok = _check(player_points("lg_steeple") == POINTS_CITY_GAME and str(match_for().teams[0].players[0].id) == "lg_steeple",
 			"legends: a legend starter plays and earns points") and ok
@@ -2610,7 +2665,8 @@ static func _check_legends() -> bool:
 	var d: Dictionary = JSON.parse_string(JSON.stringify(to_dict()))
 	d["version"] = Save.VERSION
 	_legends_override = "none"
-	ok = _check(from_dict(d) and _digest() == dg and drafted_ids() == ["lg_steeple", "lg_gate"] and loaded_version == 2
+	var want_drafts: Array = ["lg_steeple", "lg_gate"] + ([other] if other != "" else [])
+	ok = _check(from_dict(d) and _digest() == dg and drafted_ids() == want_drafts and loaded_version == 2
 			and Save.VERSION == 2 and not d.has("legends"), "legends: kept by a version 2 save (also when not unlocked)") and ok
 	# two legend starters in a save (a hand edit): the first stays, the strongest non-boss non-legend comes in
 	var bd: Dictionary = d.duplicate(true)
@@ -2626,6 +2682,14 @@ static func _check_legends() -> bool:
 	ok = _check(from_dict(bd) and starters == ["lg_gate", "ud_deuce", strongest] and boss_repair == ["lg_steeple"]
 			and boss_repair_note().begins_with(LEGEND_RULE) and not boss_repair_note().contains(BOSS_RULE),
 			"legends: a save with 2 legend starters repaired (%s)" % boss_repair_note()) and ok
+	if other != "":
+		var xd: Dictionary = d.duplicate(true)
+		xd["starters"] = [other, "ud_deuce", "lg_steeple"]
+		xd["human"] = "ud_deuce"
+		ok = _check(from_dict(xd) and starters.size() == STARTERS and starters.has(other) and starters.has("ud_deuce")
+				and starters.has(strongest) and boss_repair == ["lg_steeple"]
+				and human == "ud_deuce" and boss_repair_note().begins_with(LEGEND_RULE),
+				"legends: a save with a legend of each era starting repaired (%s)" % boss_repair_note()) and ok
 	_legends_override = ""
 	# the sims: the expected crew never has a legend; the best one may have one, legal, never an avoided one
 	expected_roster("new_york", 3)
@@ -2668,6 +2732,13 @@ static func _check_legends() -> bool:
 	saving = was
 	_reset()
 	return ok
+
+# P10-19: the first legend (data order) of another built chapter than `id`'s ("" = only one chapter is built)
+static func _other_era_legend(id: String) -> String:
+	for lid in LegendsData.legend_ids():
+		if LegendsData.chapter_of(str(lid)) != LegendsData.chapter_of(id) and LegendsData.is_built(LegendsData.chapter_of(str(lid))):
+			return str(lid)
+	return ""
 
 # ids are a legal three by the boss and legend limits (no roster check: end_of_trip_crew()'s crew is a sim's)
 static func _legal_ids(ids: Array) -> bool:
