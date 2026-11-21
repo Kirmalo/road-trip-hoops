@@ -73,8 +73,9 @@ const CHALLENGE_AVG := 66           # the challenge legend's stat average before
                                     # P9-26 QA: 80 -> 66, docs/qa/phase9-challenges.md)
 const MATE_DROP := 14               # his 2 legend teammates play this much under CHALLENGE_AVG (P9-26: 8 -> 14)
 const DRAFT_TIER := 20              # L7 a: a drafted legend = stage average + this, shaped (like a boss's +20)
-const FINALE_STAGE_AVG := 52        # the finale's base (+ DRAFT_TIER, shaped): P9-26 78 -> 52, so the finale legends
-                                    # keep their shapes under the 95 cap (78 + 20 put nearly every stat at 95)
+const FINALE_STAGE_AVG := 55        # the finale's base (+ DRAFT_TIER, shaped): P9-26 78 -> 52, so the finale legends
+                                    # keep their shapes under the 95 cap (78 + 20 put nearly every stat at 95);
+                                    # owner after P10-23: 52 -> 55, Chapter 1's finale a bit harder (Hard 50% of 80)
 const CHAPTER_AVG_RANGE := [30, 90]          # a row's optional challenge_avg must be in this range (self_test)
 const CHAPTER_DROP_RANGE := [0, 30]          # ... its mate_drop
 const CHAPTER_FINALE_RANGE := [30, 78]       # ... its finale_stage_avg (78 = the last trip stage)
@@ -138,9 +139,9 @@ const CHAPTERS := [
 		"finale": {"target": 21, "legends": ["lg_rooftop", "lg_midrange", "lg_freight"], "label": "FATHERS FINALE"},
 		"intro_scene": "legends_fathers_intro",
 		"finale_scenes": {"before": "legends_fathers_finale_before", "after": "legends_fathers_finale_after"},
-		# F6 a: a step harder than Chapter 1 (CHALLENGE_AVG 66, MATE_DROP 14, FINALE_STAGE_AVG 52). P10-23
+		# F6 a: a step harder than Chapter 1 (CHALLENGE_AVG 66, MATE_DROP 14, FINALE_STAGE_AVG 52, 55 after P10-23). P10-23
 		# (docs/qa/phase10-challenges.md): 69 / 14 / 56 (from the 69 / 13 / 52 guesses), Eyes Closed from 0-1 (was 0-2),
-		# Lockbox min 3 (was 6): the expected crew meets Normal ~63%, Hard ~44%
+		# Lockbox min 6 (owner, after P10-23 measured 3: keep 6, the hardest challenge on purpose)
 		"challenge_avg": 69, "mate_drop": 14, "finale_stage_avg": 56,
 	},
 	{
@@ -339,8 +340,8 @@ const LEGENDS := {
 		"shape": {"speed": 5, "shooting": -10, "finishing": -5, "defense": 20, "stamina": -10},
 		"spec": ["defense"], "steal_bias": 14, "block_bias": 10,
 		"signature": {"id": "chase_down", "text": "Chase-down block: his blocks from behind work more often"},
-		"challenge": {"type": "score", "target": 11, "min": 3, "mates": ["lg_ankles", "lg_midrange"],
-			"line": "SCORE 3 POINTS YOURSELF ON LOCKBOX AND WIN (TO 11)"},
+		"challenge": {"type": "score", "target": 11, "min": 6, "mates": ["lg_ankles", "lg_midrange"],
+			"line": "SCORE 6 POINTS YOURSELF ON LOCKBOX AND WIN (TO 11)"},
 		"perk": "quick_hands",
 		"colors": ["ERA2_CHARCOAL", "ERA2_TANGERINE"],
 		"look": "rangy wing, light skin, brown buzz cut, no headband, charcoal right arm sleeve, charcoal tank with tangerine trim, baggy charcoal shorts, white crew socks",

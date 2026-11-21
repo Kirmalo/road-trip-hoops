@@ -116,6 +116,7 @@ tablet with a joystick and two buttons.
 | Phase 10 look check | Fathers look sample v1 (docs/art/legends_fathers_sample_v1.*, Rooftop and Eyes Closed) approved as shown (owner); kit colors may still change per legend so they read on the blacktop. Midrange's turnaround fadeaway (docs/art/fadeaway_v1.gif) approved as shown, with the 1.5 ft slide back in the air (owner) |
 | Phase 10 names and numbers | Dorian "Rooftop" Ashcombe #27, Tremaine "Ankles" Pettaway #16, Darnell "Midrange" Kingsley #28, Bartholomew "Freight" Thackeray #48, Keon "Eyes Closed" Pemberton #14, Corwin "Lockbox" Hollister #36 (Corwin replaces Shane: name check). Approved by the owner |
 | On fire: bonus | Bigger green zone on the shot meter, stamina doesn't drain, flaming ball trail |
+| Phase 10 tuning (after P10-23) | Lockbox keeps the owner's 6 points (P10-23 measured 3; the score goal is meant to be the hardest, met about 17% or less in tests). Eyes Closed starts 0-1 (P10-23). Chapter 1's finale a bit harder: `FINALE_STAGE_AVG` 52 -> 55 (Hard had won 50% of 80 games, aim 35-50) |
 
 ## Technical constraints
 - Godot 4.3+ (GDScript), GL Compatibility renderer, 1280x720 landscape. See `CLAUDE.md` for code conventions.
