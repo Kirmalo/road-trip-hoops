@@ -196,7 +196,7 @@ Everything below (Tasks by wave).
   checked: open by stars or tokens as the data says); `--legends-chapter <id>` plays only that one (gate forced open for
   the run, nothing saved); the forced loss / broken goal retries apply per chapter; on today's data the output is the
   Phase 9 run plus one line; LEGENDS END on every level | none
-- **P10-10** | Credits catch-up (P9-33 leftovers)
+- **P10-10** | DONE (coordinator, 86b4882: CREDITS rows, CREDITS_LIST, How to Play line) | Credits catch-up (P9-33 leftovers)
   | gameplay-programmer D | `CREDITS.md`, `scripts/title.gd` (`CREDITS_LIST`), `scripts/howto.gd` (one trip-page line)
   | the Phase 9 art rows (legend sheets, portraits, OLD GYM, Legends UI: generated, our own) and the How to Play line on
   legends in the draft; `CREDITS.md` and `CREDITS_LIST` in step; `--titletest` passes | none
