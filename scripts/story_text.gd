@@ -28,6 +28,11 @@ extends RefCounted
 # scenes (they are not about a trip city). Grandfathers-and-grandkids banter; Tank's grandpa is in the crowd.
 # Name check cautions (docs/legends-namecheck.md): Steeple is STEEPLE, Ezekiel or "the big fella", never by a
 # short form of Ezekiel; his move is the "hook shot", nothing else.
+# Legends, Chapter 2 (P10-16): the Fathers, the generation between the Grandfathers and the kids; they grew up
+# watching the old men in the wood gym (theme only, no families) and moved outside: the night park court, ISO BALL.
+# Their running joke: the shorts (Tank's grandpa says they are too long). Cautions (docs/legends-namecheck.md
+# "Chapter 2"): move names stay plain words (cradle dunk, double crossover, turnaround fadeaway, shoulder-in, no-look
+# pass, chase-down block); never "the answer", "the truth", "franchise", "big shot", "Air ...", no brand or tour name.
 
 const SCENES := {
 	# the title's NEW TRIP, before the map
@@ -381,6 +386,141 @@ const SCENES := {
 		{"who": "narrator", "side": "left",
 			"text": "And so the Grandfathers gave the {crew} the keys to the old gym, and kept a spare. CHAPTER 1: DONE."},
 	],
+
+	# ---------------- Legends, Chapter 2: the Fathers (P10-16) ----------------
+	# the first time the chapter opens: the night park court, the six, the deal, a hint of the ISO BALL rules
+	"legends_fathers_intro": [
+		{"who": "narrator", "side": "left",
+			"text": "Across town, the old park court has new lights. A boom box is up loud, and the shorts are very, very long."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math: those shorts are forty percent of that man. Is that a basketball outfit or a tent?"},
+		{"who": "lg_rooftop", "side": "right",
+			"text": "Dorian Ashcombe. Rooftop. We grew up sneaking into the old wood gym to watch the old men. Then we moved outside."},
+		{"who": "lg_eyes_closed", "side": "right",
+			"text": "Keon Pemberton. Eyes Closed. I'm looking right at you, by the way. You just can't tell."},
+		{"who": "ud_tank", "side": "left",
+			"text": "My grandpa says shorts that long are just pants that gave up halfway."},
+		{"who": "lg_midrange", "side": "right", "mood": "happy",
+			"text": "Your grandpa never had to hide a crossover in all this cloth. Out here it's ISO BALL: one man, one move."},
+		{"who": "lg_rooftop", "side": "right", "mood": "happy",
+			"text": "Same deal the old men gave us: beat each of us at his own game and we'll teach you. Then our best three come."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "Crossovers that stick, dunks from further out, a higher arc, all under the lights. My knee's sweating already."},
+	],
+
+	# Rooftop's challenge won (2 blocks or steals on him, and win, to 15)
+	"lg_rooftop_unlock": [
+		{"who": "lg_rooftop", "side": "right",
+			"text": "Twice you took it off me. In the AIR. Nobody bothers me up there. There's no room up there for two."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "I didn't jump, Mr. Ashcombe. I just stood where you were going to land."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math: you hung up there about three seconds. I timed it. I also had time to buy a pretzel."},
+		{"who": "lg_rooftop", "side": "right", "mood": "happy",
+			"text": "Ha! My mother used to hide the ladder. Find me in the Hall and I'll teach your crew to dunk through a hand."},
+	],
+
+	# Ankles' challenge won (reach 11 before his crew gets 10)
+	"lg_ankles_unlock": [
+		{"who": "lg_ankles", "side": "right",
+			"text": "Eleven before ten. I keep a list of every man I ever sat down, and not one of you made it today."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "Close, though. On that second crossover my knee went left and the rest of me went right."},
+		{"who": "lg_ankles", "side": "right",
+			"text": "Fine. You're on the list. Small print, at the bottom, next to a mailbox."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Can I be on the list? In big print? I'll fall down right now. Look. I'm falling."},
+		{"who": "lg_ankles", "side": "right", "mood": "happy",
+			"text": "Get up, kid. Find me in the Hall, and I'll teach you a crossover that puts the other guy on the floor."},
+	],
+
+	# Midrange's challenge won (he starts on fire, win to 15)
+	"lg_midrange_unlock": [
+		{"who": "lg_midrange", "side": "right",
+			"text": "I was on fire. I cleared out the whole side, waved everybody away... and you still won. Rude."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "You waved your OWN teammates away! Freight went and sat in the bleachers!"},
+		{"who": "lg_midrange", "side": "right", "mood": "happy",
+			"text": "Twenty years my coach told me not to take that shot. I took it anyway. It went in. That's my whole story."},
+		{"who": "lg_midrange", "side": "right",
+			"text": "Come by the Hall. I'll teach your shooters a pull-up from the spot nobody guards anymore."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "Inside the arc? Mr. Kingsley, my knee and I have been living there all trip."},
+	],
+
+	# Freight's challenge won (hold him under 7, to 15)
+	"lg_freight_unlock": [
+		{"who": "lg_freight", "side": "right",
+			"text": "Under seven. In my own driveway. Nobody parks in my driveway."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "I didn't park, sir. I just stood there with my hazards on."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math says you weigh about as much as {van}. With us inside. And the cooler."},
+		{"who": "lg_freight", "side": "right", "mood": "happy",
+			"text": "Ha! Your van's got good taste. See me in the Hall, and I'll teach your bigs to keep the ball when hands come."},
+	],
+
+	# Eyes Closed's challenge won (start down 0-2, come back, to 15)
+	"lg_eyes_closed_unlock": [
+		{"who": "lg_eyes_closed", "side": "right",
+			"text": "Down two before the tip, and you came back. I saw the whole thing. Well. I heard it."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "Down two is how we start every morning, Mr. Pemberton. We're used to it."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Who are you even talking to? You're looking at the hot dog stand."},
+		{"who": "lg_eyes_closed", "side": "right", "mood": "happy",
+			"text": "I'm talking to you, kid. Find me in the Hall and I'll teach your passes to sneak past the hands."},
+		{"who": "lg_eyes_closed", "side": "right",
+			"text": "Old Quarterback showed me that one at the wood gym, back when I was your size. Don't tell him I got better."},
+	],
+
+	# Lockbox's challenge won (score 6 points yourself on him, and win, to 11)
+	"lg_lockbox_unlock": [
+		{"who": "lg_lockbox", "side": "right",
+			"text": "Six points. You, yourself, on me. I walked you from one free-throw line to the other, and you still got six."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Mr. Hollister, you never shot. Not ONCE. Is that even allowed?"},
+		{"who": "lg_lockbox", "side": "right",
+			"text": "I'm never in a hurry to shoot. I'm only in a hurry to make you miss."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "Then teach us that. We've been on the wrong end of quick hands since Indiana."},
+		{"who": "lg_lockbox", "side": "right", "mood": "happy",
+			"text": "Find me in the Hall. I'll give your crew quicker hands. Bring patience. I'm not in a hurry."},
+	],
+
+	# before the Fathers finale (the Kings against Rooftop, Midrange and Freight, to 21)
+	"legends_fathers_finale_before": [
+		{"who": "narrator", "side": "left",
+			"text": "Every light on the park court is on. The boom box has new batteries. The whole block brought lawn chairs."},
+		{"who": "lg_rooftop", "side": "right",
+			"text": "We picked our three: me, Midrange and Freight. ISO BALL, to twenty-one, under the lights."},
+		{"who": "lg_midrange", "side": "right", "mood": "happy",
+			"text": "Don't take it personal when I wave my teammates away. I do it to everybody."},
+		{"who": "lg_freight", "side": "right",
+			"text": "My driveway's open tonight, kids. Come on in. You just can't leave."},
+		{"who": "ud_tank", "side": "left",
+			"text": "Grandpa came. He brought a lawn chair and a pair of shorts he calls \"sensible\". They are very short."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math: we beat each of them once. All three at once is... the napkin just says \"yikes\"."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "They grew up chasing the old men. We grew up chasing them. {crew}, ball up."},
+	],
+
+	# the finale won: the end of Chapter 2
+	"legends_fathers_finale_after": [
+		{"who": "lg_rooftop", "side": "right", "mood": "happy",
+			"text": "That's the game. We used to sneak into the wood gym to watch the old men. Now some kids sneak up on us."},
+		{"who": "lg_freight", "side": "right", "mood": "happy",
+			"text": "First time anybody ever backed me out of my own driveway. Felt kind of nice, honestly."},
+		{"who": "lg_midrange", "side": "right", "mood": "happy",
+			"text": "You took the shot nobody told you to take. Then you took it again. You're ready."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "Knee's sore, legs are gone, and I don't care. Best night under the lights I ever had."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "Grandpa says he's proud of everybody. He also says your shorts are still too long."},
+		{"who": "narrator", "side": "left",
+			"text": "And so the Fathers left the park lights on for the {crew}, and turned the boom box down. Some. CHAPTER 2: DONE."},
+	],
 }
 
 # The recruit's joining line (owner Q4: "the recruit joins with a funny line"): recruit.gd shows it with his portrait
@@ -423,6 +563,13 @@ const RECRUIT_LINES := {
 	"lg_boxcar": "Thirty years in the rail yard. A van ride across the country? That's a nap with a view.",
 	"lg_velvet": "I pack light: one silk tank top, one headband, and a finger roll you'll be telling grandkids about.",
 	"lg_quarterback": "I'll see the open man before he does. Somebody save me the front seat. I call the plays.",
+	# Legends, the Fathers (P10-16; plain move names only, see the Chapter 2 cautions at the top)
+	"lg_rooftop": "I'd ride on the roof of the van, but my mother would hide the ladder. Feed me lobs and look up.",
+	"lg_ankles": "Bring me the best defender in every city. I've got room on my list. Lots of room.",
+	"lg_midrange": "Clear out the left side and I'll take it from there. The left side of the van too. I like the window.",
+	"lg_freight": "I'll take the back seat. All of the back seat. Need a road block in the paint? I'm the road block.",
+	"lg_eyes_closed": "Don't worry, I'm watching the road. You can't tell, but I am. Somebody else should still drive.",
+	"lg_lockbox": "I'll guard their best man in every city. And the snacks. Nobody gets the snacks past me.",
 }
 
 # a recruit's joining line ("" for a player without one)
