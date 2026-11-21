@@ -9,6 +9,9 @@ extends Node
 #   stop      block or steal on the legend "count" times (any of your 3) and win; a win with fewer: failed
 #   race      reach the game's target before his team reaches "their_target" (that ends the game: failed)
 #   comeback  the game starts at "start_score" [you, them]; win
+#   score     (P10-13) YOU (the human's own player, Flow.match.human = Trip.human, the first of BLUE; BLUE player 0 in
+#             --autoplay) score at least "min" of your team's points (free throws too) and win; judged at the end
+#             like stop (never breaks early): a win with fewer is failed ("YOU SCORED 4 OF 6")
 # A HUD line under the top bar shows the goal and its count ("HOLD STEEPLE UNDER 6: 3"); a broken goal ends the game
 # at once as a loss (main.end_challenge(false)), the line then says "CHALLENGE FAILED: <why>". The verdict
 # (verdict(), {"type", "met", "why"}) goes to Flow.last_result["challenge"] when the game ends (main.on_game_over), so
@@ -19,6 +22,7 @@ extends Node
 # Test: -- --autoplay --challenge <legend id> prints "CHALLENGE <id> <level> met|failed <score> | ..." (main.gd).
 
 const LegendsData = preload("res://scripts/legends_data.gd")
+const Flow = preload("res://scripts/flow.gd")   # score: Flow.match.human, your own player's id
 
 # ---------------------------------------------------------------------------------------------------- tuning
 const LINE_TOP := 56.0              # screen px: top of the goal line (just under the 54 px HUD bar)
@@ -35,6 +39,7 @@ const LINE_FLASH_TIME := 0.6        # seconds the line flashes after its count c
 const FT_LABEL_TOP := 90.0          # in a challenge game main.gd's "FREE THROW 1 OF 2" line moves under the goal line
 const FIRE_POPUP_RISE := 5.0        # ft over the legend's head for the "ON FIRE!" popup at tip-off
 const DEFAULT_COOL_MISSES := 2      # fire: when the row has no cool_misses (= main.FIRE_MISSES)
+const DEFAULT_SCORE_MIN := 6        # score: when the row has no min (owner F3 a: Lockbox starts at 6, QA tunes the row)
 
 var game                            # main.gd
 var data := {}                      # Flow.match.challenge: {"type", "legend", "name", "target", ...the type's numbers}
@@ -47,6 +52,9 @@ var count := 0                      # stop
 var their_target := 0               # race
 var start_score: Array = [0, 0]     # comeback
 var cool_misses := DEFAULT_COOL_MISSES   # fire
+var score_min := DEFAULT_SCORE_MIN  # score: the points you must score yourself
+var you = null                      # score: your own player (team 0)
+var your_points := 0                # score: your own points this game (free throws too)
 var legend_points := 0              # his points this game (free throws too)
 var stops := 0                      # blocks and steals on him by your side
 var cooled := false                 # fire: he cooled down at least once
@@ -71,6 +79,7 @@ func start(root: Control) -> void:
 	count = _num("count", 0)
 	their_target = _num("their_target", 0)
 	cool_misses = maxi(1, _num("cool_misses", DEFAULT_COOL_MISSES))
+	score_min = maxi(1, _num("min", DEFAULT_SCORE_MIN))
 	var ss = data.get("start_score", [0, 0])
 	if ss is Array and (ss as Array).size() == 2:
 		start_score = [int(ss[0]), int(ss[1])]
@@ -79,6 +88,13 @@ func start(root: Control) -> void:
 			legend = p
 	if legend == null and not game.teams[1].is_empty():
 		legend = game.teams[1][0]   # the match puts the legend first
+	var human_id: String = str(Flow.match.get("human", ""))
+	if human_id != "":
+		for p in game.teams[0]:
+			if str(p.pid) == human_id:
+				you = p
+	if you == null and not game.teams[0].is_empty():
+		you = game.teams[0][0]      # the match puts you first (--autoplay: BLUE player 0)
 	match type:
 		"comeback":
 			# the start score: set before any basket, like a game picked up at that score (rules.gd still decides
@@ -142,6 +158,8 @@ func line_text() -> String:
 			return "REACH %d BEFORE %s'S CREW GETS %d" % [int(game.rules.target), legend_name, their_target]
 		"comeback":
 			return "COME BACK FROM %d-%d: WIN TO %d" % [int(start_score[0]), int(start_score[1]), int(game.rules.target)]
+		"score":
+			return "SCORE %d ON %s: %d" % [score_min, legend_name, your_points]
 	return str(data.get("line", ""))
 
 func _refresh() -> void:
@@ -166,7 +184,13 @@ func _process(delta: float) -> void:
 
 # a basket or free throw by p is about to be added (before rules.add_score, so a game-ending point is counted)
 func count_points(p, pts: int) -> void:
-	if p == null or p != legend:
+	if p == null:
+		return
+	if p == you and type == "score":
+		your_points += pts
+		game.stat_add("challenge_your_points", pts)
+		_flash = LINE_FLASH_TIME
+	if p != legend:
 		return
 	legend_points += pts
 	game.stat_add("challenge_legend_points", pts)
@@ -223,6 +247,8 @@ func verdict(winner: int) -> Dictionary:
 		why = "LOST %d-%d" % [int(game.score[0]), int(game.score[1])]
 	if why == "" and type == "stop" and stops < count:
 		why = "ONLY %d OF %d STOPS ON %s" % [stops, count, legend_name]   # won the game, but not the goal
+	if why == "" and type == "score" and your_points < score_min:
+		why = "YOU SCORED %d OF %d" % [your_points, score_min]             # won the game, but not the goal
 	var met: bool = winner == 0 and why == ""
 	if broken == "" and why != "":
 		broken = why
@@ -248,4 +274,7 @@ func summary() -> String:
 			return "race: to %d before %d" % [int(game.rules.target), their_target]
 		"comeback":
 			return "comeback: from %d-%d" % [int(start_score[0]), int(start_score[1])]
+		"score":
+			return "score: you (%s) %d of %d pts (min %d), %s scored %d" % [str(you.pid) if you != null else "-",
+					your_points, int(game.score[0]), score_min, legend_id, legend_points]
 	return type
