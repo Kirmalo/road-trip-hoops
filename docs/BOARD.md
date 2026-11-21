@@ -291,7 +291,7 @@ Everything below (Tasks by wave).
   works | P10-19
 
 ### Wave 5
-- **P10-25** | Back test and title test for Chapter 2
+- **P10-25** | DONE (gameplay-programmer, `--backtest` steps 32-45: Chapter 2 view, Hall on a Fathers plaque (back to the chapter view and to CREW, the mentor picker), a Fathers challenge pause, resume and QUIT; BACKTEST OK as before, with `--stars 36` and `--tokens 12`; `--titletest` OK, also `--stars 36 --legends-unlock-all`) | Back test and title test for Chapter 2
   | gameplay-programmer C | `scripts/main.gd` (the `--backtest` table only)
   | the Chapter 2 view goes to the timeline, a Chapter 2 challenge pauses, resumes and QUITs to its chapter view, the
   Hall from a Chapter 2 plaque goes back; BACKTEST OK; `--titletest` passes | P10-22 merged (main.gd), P10-18, P10-03

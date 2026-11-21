@@ -200,6 +200,7 @@ const BACKTEST_GAME_WAIT := 1200     # most frames to wait in a game for the pau
 const BACKTEST_STARS := 12          # the star total --backtest plays with (P8-24: one roster slot open for DRAFT)
 const BACKTEST_LEGEND_STARS := 24   # the star total from the Legends steps on (P9-28): Chapter 1's gate
 const BACKTEST_CHAPTER := "grand"    # the chapter the Legends steps open (its first legend is the challenge)
+const BACKTEST_CHAPTER2 := "fathers" # P10-25: the Chapter 2 steps (its gate's stars are forced if it isn't open)
 static var _backtest_node: Node = null   # the --backtest driver (on the root, survives the reloads)
 # rebound stats: every missed field goal ends as an offensive rebound (the shooting team holds it
 # first), a defensive rebound or out of bounds; a putback is a shot by the rebounding team within PUTBACK_SECS
@@ -2575,7 +2576,8 @@ func _update_hud() -> void:
 # back request the way the engine does (propagated from the root) and checks where it landed. Trip screens use the
 # test save (user://trip_test.json). Prints BACKTEST lines, then BACKTEST OK (exit 0) or BACKTEST FAILED (exit 1).
 # P9-28: the Legends screens too (tour, Hall, the mentor picker, a challenge game and its QUIT); they never write the
-# Legends file (saving off, unlocks and stars for this run only).
+# Legends file (saving off, unlocks and stars for this run only). P10-25: the same for Chapter 2 (BACKTEST_CHAPTER2;
+# the run gets that chapter's gate stars if neither --stars nor --tokens opens it).
 #   godot --headless --path . --fixed-fps 60 --quit-after 20000 -- --backtest
 class BackTest extends Node:
 	const FlowS = preload("res://scripts/flow.gd")
@@ -2630,6 +2632,29 @@ class BackTest extends Node:
 		{"go": "", "action": "quit", "expect": "legends", "did": "", "chapter": BACKTEST_CHAPTER, "paused": false},
 		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
 		{"go": "", "expect": "title", "did": "escape"},
+		# P10-25: Chapter 2. "ch": the chapter the step opens and plays (default BACKTEST_CHAPTER); "at_chapter": the
+		# tour's chapter() when the request goes out (the view really opened, no gate redirect); "pick_first": the Hall
+		# opens on that chapter's first plaque ("pick"), checked when the request goes out
+		{"go": "legends", "legends": true, "ch": BACKTEST_CHAPTER2, "args": {"chapter": BACKTEST_CHAPTER2},
+				"at_chapter": BACKTEST_CHAPTER2, "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "", "expect": "title", "did": "escape"},
+		{"go": "hall", "legends": true, "ch": BACKTEST_CHAPTER2, "pick_first": true,
+				"args": {"back": "legends", "back_args": {"chapter": BACKTEST_CHAPTER2}},
+				"expect": "legends", "did": "escape", "chapter": BACKTEST_CHAPTER2},
+		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "hall", "legends": true, "ch": BACKTEST_CHAPTER2, "pick_first": true, "args": {"back": "crew"},
+				"expect": "crew", "did": "escape"},
+		{"go": "hall", "legends": true, "ch": BACKTEST_CHAPTER2, "pick_first": true, "args": {"back": "legends"},
+				"prep": "mentor_picker", "expect": "hall", "did": "escape", "closed": "_picker"},
+		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "", "expect": "title", "did": "escape"},
+		{"go": "game", "legends": true, "challenge": true, "ch": BACKTEST_CHAPTER2, "expect": "game", "did": "pause",
+				"paused": true},
+		{"go": "", "expect": "game", "did": "resume", "paused": false},
+		{"go": "", "expect": "game", "did": "pause", "paused": true},
+		{"go": "", "action": "quit", "expect": "legends", "did": "", "chapter": BACKTEST_CHAPTER2, "paused": false},
+		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "", "expect": "title", "did": "escape"},
 		# "countdown": the request goes out during the 3-2-1 (P8-31), and the pause holds the count
 		{"go": "game", "trip": true, "expect": "game", "did": "pause", "paused": true, "countdown": true},
 		{"go": "", "expect": "game", "did": "resume", "paused": false},
@@ -2642,6 +2667,7 @@ class BackTest extends Node:
 	var _errors := 0
 	var _prep_ok := true     # the step's "prep" opened what it should
 	var _count_t := -1.0     # the countdown's time when the request went out (-1 = not counting)
+	var _at := ""            # P10-25: the tour's chapter() / the Hall's pick when the request went out (_at_now())
 
 	func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
@@ -2670,6 +2696,7 @@ class BackTest extends Node:
 						if node != null and node.has_method("_show_panel"):
 							node.call("_show_panel", st["panel"])
 					_prep_ok = _prep(st)
+					_at = _at_now(st)
 					_count_t = _countdown_t()
 					_did = ""
 					if str(st.get("action", "")) == "quit":
@@ -2695,16 +2722,23 @@ class BackTest extends Node:
 		if bool(st.get("beaten", false)):
 			_beat_hometown()
 		if bool(st.get("legends", false)):
-			_open_legends()
+			_open_legends(_ch(st))
+		var args: Dictionary = (st.get("args", {}) as Dictionary).duplicate(true)
+		if bool(st.get("pick_first", false)):   # P10-25: the Hall opens on the chapter's first plaque
+			args["pick"] = _first_legend(_ch(st))
 		if to == FlowS.GAME:
 			if bool(st.get("quick", false)):
 				MenuS.start_done = false   # the start panel (level, court) shows
 				FlowS.match = {}
 			elif bool(st.get("challenge", false)):   # P9-28: the chapter's first challenge
-				FlowS.match = LegendsS.match_for_challenge(_first_legend(), "normal")
+				FlowS.match = LegendsS.match_for_challenge(_first_legend(_ch(st)), "normal")
 			else:
 				FlowS.match = TripS.match_for()
-		FlowS.go(to, st.get("args", {}))
+		FlowS.go(to, args)
+
+	# P10-25: the chapter a step opens and plays
+	func _ch(st: Dictionary) -> String:
+		return str(st.get("ch", BACKTEST_CHAPTER))
 
 	# P8-24: the trip wins Hometown's 3 games, spends no points and signs the first recruit (now in Chicago, County
 	# Line in the draft pool, Hometown replayable), with BACKTEST_STARS so a draft slot is open. Only once a run.
@@ -2729,19 +2763,37 @@ class BackTest extends Node:
 
 	# P9-28: the chapter open (BACKTEST_LEGEND_STARS), every legend unlocked (so a mentor can train), the chapter's
 	# intro seen (the chapter view opens without its story), and the Legends file never written. This run only.
-	func _open_legends() -> void:
+	# P10-25: ch is the chapter the step opens; one still shut (Chapter 2 without --stars 36 or --tokens 12) gets its
+	# gate's stars for this run.
+	func _open_legends(ch: String = BACKTEST_CHAPTER) -> void:
 		if StarsS.force_total < BACKTEST_LEGEND_STARS:
 			StarsS.force_total = BACKTEST_LEGEND_STARS
 		LegendsS.load_state()
 		LegendsS.saving = false
 		LegendsS.unlock_override = "all"
-		var intro: String = str(LegendsDataS.chapter(BACKTEST_CHAPTER).get("intro_scene", ""))
+		if not LegendsS.chapter_open(ch):
+			var gate_stars: int = int((LegendsDataS.chapter(ch).get("gate", {}) as Dictionary).get("stars", 0))
+			if StarsS.force_total < gate_stars:
+				StarsS.force_total = gate_stars
+		var intro: String = str(LegendsDataS.chapter(ch).get("intro_scene", ""))
 		if intro != "" and not LegendsS.seen.has(intro):
 			LegendsS.seen.append(intro)
+		print("BACKTEST legends: chapter %s open %s | stars %d tokens %d" % [ch, str(LegendsS.chapter_open(ch)),
+				StarsS.total(), LegendsS.tokens_total()])
 
-	func _first_legend() -> String:
-		var ids: Array = LegendsDataS.legend_ids(BACKTEST_CHAPTER)
+	func _first_legend(ch: String = BACKTEST_CHAPTER) -> String:
+		var ids: Array = LegendsDataS.legend_ids(ch)
 		return str(ids[0]) if not ids.is_empty() else ""
+
+	# P10-25: what the screen shows when the request goes out: the tour's chapter() ("at_chapter") or the Hall's
+	# picked plaque ("pick_first"); "" when the step checks neither
+	func _at_now(st: Dictionary) -> String:
+		var node: Node = FlowS.current_screen()
+		if st.has("at_chapter"):
+			return str(node.call("chapter")) if node != null and node.has_method("chapter") else "?"
+		if bool(st.get("pick_first", false)):
+			return str(node.get("_pick")) if node != null else "?"
+		return ""
 
 	# the pause panel's QUIT, both taps (the first arms QUIT?)
 	func _quit_game() -> void:
@@ -2775,7 +2827,7 @@ class BackTest extends Node:
 				node.call("open_picker", "hometown")
 				return node.get("_picker") != null
 			"mentor_picker":   # P9-28: the Hall's mentor picker, for the chapter's first legend
-				node.call("open_picker", _first_legend())
+				node.call("open_picker", _first_legend(_ch(STEPS[_i])))
 				return node.get("_picker") != null
 		return false
 
@@ -2820,8 +2872,16 @@ class BackTest extends Node:
 			what += " | %s opened %s" % [str(st["prep"]), str(_prep_ok)]
 			ok = ok and _prep_ok
 		if bool(st.get("challenge", false)):   # P9-28: the game is the legends challenge
-			what += " | legends game %s (%s)" % [str(FlowS.in_legends()), str(FlowS.match.get("key", ""))]
-			ok = ok and FlowS.in_legends()
+			what += " | legends game %s (%s, chapter %s)" % [str(FlowS.in_legends()), str(FlowS.match.get("key", "")),
+					FlowS.legends_chapter()]
+			ok = ok and FlowS.in_legends() and FlowS.legends_chapter() == _ch(st)
+		if st.has("at_chapter"):   # P10-25: the chapter view was open when the request went out
+			what += " | chapter at the request '%s'" % _at
+			ok = ok and _at == str(st["at_chapter"])
+		if bool(st.get("pick_first", false)):   # P10-25: the Hall opened on that plaque
+			var want: String = _first_legend(_ch(st))
+			what += " | hall pick at the request %s (want %s)" % [_at, want]
+			ok = ok and want != "" and _at == want
 		if st.has("action"):
 			what += " | %s tapped" % str(st["action"]).to_upper()
 		if st.has("chapter"):   # P9-28: the tour's chapter view ("" = the timeline)
