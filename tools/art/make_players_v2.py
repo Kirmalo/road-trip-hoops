@@ -38,11 +38,14 @@ Usage:  python3 tools/art/make_players_v2.py [--only ID[,ID...] | --all] [--jobs
         [--out-dir DIR]              (write the sheet files, cards and render cache under DIR: a scratch run)
         [--hook-preview [ID]]        (only docs/art/hook_shot_v1.gif, the hook next to the jump shot; no files)
         [--hook-strip ID DIR]        (a still strip of the hook in 5 directions to DIR)
+        [--extra-preview NAME [ID]]  (P10-04b: only that extra's preview gif, e.g. fadeaway: docs/art/fadeaway_v1.gif)
+        [--extra-strip NAME ID DIR]  (a still strip of that extra in 5 directions to DIR)
         [--legends-strip]            (P9-09: only docs/art/legends_grand.png, the six lg_ sheets with the hook, from
                                      the written files; the sheets themselves: --only <the LEGENDS ids>)
-Extra animations (P9-04b): EXTRA (the hook shot) is rendered only for the sheets it names (lg_* ids, a crews.json
-"extra": [...] list, --extra-sheets), onto extra pages <id>_x<N>.png with the same palettes, and listed in
-format.json's "extra" section; every other sheet's files stay exactly as before.
+Extra animations (P9-04b): EXTRA (the hook shot; P10-04b the turnaround fadeaway) is rendered only for the sheets
+that carry it (EXTRA_CREWS: the hook on crew "GR"; a crews.json "extra": [...] list; --extra-sheets [name:]id,...),
+onto extra pages <id>_x<N>.png with the same palettes, and listed in format.json's "extra" section (only the extras
+some sheet carries); every other sheet's files stay exactly as before. A sheet may carry several extras.
 Output: assets/players2/format.json, hands.json, palettes.json, <id>_p<N>.png, palettes/<id>.png, cards/<id>.png;
         docs/art/players_preview_v3.png, docs/art/players_v3_moves.gif (the underdogs),
         docs/art/players_preview_v4.png (--all: one strip per crew)
@@ -125,14 +128,18 @@ def chest(D, r, up=7.0, fwd=3.0):
 #   hL, hR: ("w", x, y, z) world | ("sh", out, up, fwd) from that side's shoulder (out = away from the body) |
 #           ("ball", dx, dy, dz) from the ball | ("chest", x, y, z) from the chest point (spine turned);
 #   pL, pR: elbow pole directions; kp: knee pole forward component;
+#   yaw (P10-04b): the whole body turned this many degrees from the facing direction (0 = facing it; the fadeaway's
+#   turnaround). Body space turns with it, so feet, hands and the ball are given in the turned body; a planted foot
+#   is found with body_of_world(). 0 everywhere else, so every other animation renders exactly as before;
 #   ball: None | ("w", x, y, z) | ("hR"/"hL", dx, dy, dz) from that hand | ("mid", dx, dy, dz) between the hands |
 #         ("chest", x, y, z).
 
 BASE = {"h": 0.93, "root": (0.0, 0.0), "lean": 4.0, "twist": 0.0, "head_up": 6.0, "head_yaw": 0.0, "shrug": 0.0,
+        "yaw": 0.0,
         "fL": None, "fR": None, "hL": ("sh", 1.3, -12.2, 1.2), "hR": ("sh", 1.3, -12.2, 1.2),
         "pL": (1.0, -0.2, -0.3), "pR": (-1.0, -0.2, -0.3), "kp": 1.0, "ball": None}
 
-NUM = ["py", "lean", "twist", "head_up", "head_yaw", "shrug", "kp"]
+NUM = ["py", "lean", "twist", "head_up", "head_yaw", "shrug", "kp", "yaw"]
 VEC = ["root3", "fL", "fR", "hL", "hR", "pL", "pR"]
 
 
@@ -147,7 +154,7 @@ def resolve(D, spec):
     r["py"] = spec["py"] if "py" in spec else PY(D, spec["h"])
     rt = spec["root"]
     r["root"] = np.array([rt[0], 0.0, rt[1]])
-    for k in ("lean", "twist", "head_up", "head_yaw", "shrug", "kp"):
+    for k in ("lean", "twist", "head_up", "head_yaw", "shrug", "kp", "yaw"):
         r[k] = float(spec[k])
     for side in ("L", "R"):
         f = spec["f" + side]
@@ -309,6 +316,8 @@ def rig_pose(D, r):
     for side in ("L", "R"):
         S.set_hand(p, side, r["h" + side] - root, r["py"], tuple(P.unit(*r["p" + side])))
     p["_root"] = root
+    if abs(r["yaw"]) > 1e-9:      # P10-04b: the body turned from the facing direction (render_frame turns the camera)
+        p["_yaw"] = r["yaw"]
     ball = None if r["ball"] is None else np.asarray(r["ball"], float) - root
     return p, ball
 
@@ -322,6 +331,8 @@ def mirror_pose(p, ball):
             q[k] = -v
         elif k == "_root":
             q[k] = np.array([-v[0], v[1], v[2]])
+        elif k == "_yaw":
+            q[k] = -v
         elif k[-2:] in ("_L", "_R"):
             base, side = k[:-2], k[-1]
             k2 = base + "_" + ("R" if side == "L" else "L")
@@ -1076,18 +1087,115 @@ def k_hook(D):
     ]
 
 
-# name -> definition, fps, ms, events (as ANIMS)
+def body_of_world(yaw, x, z):
+    """P10-04b: a floor point of the unturned body (the facing frame) -> (x, z) in the body turned by `yaw` degrees
+    (the rig's yaw field), so a planted foot stays where it is while the body turns over it."""
+    v = P.rot_y(math.radians(-yaw)) @ np.array([x, 0.0, z])
+    return float(v[0]), float(v[2])
+
+
+def turned(yaw, x, z):
+    """The other way round: (x, z) in the body turned by `yaw` -> the unturned frame."""
+    v = P.rot_y(math.radians(yaw)) @ np.array([x, 0.0, z])
+    return float(v[0]), float(v[2])
+
+
+FADE_YAWS = [-180.0, -172.0, -128.0, -72.0, -22.0, -6.0]   # the turn, frames 0-5 (through -90: the face shows on E)
+FADE_FT = 1.5            # how far back he drifts over the "fade" frames (an event: the game moves him, not the art)
+
+
+def k_fadeaway(D):
+    """Turnaround fadeaway jumper (P10-04b, F4 b: Midrange's signature move), off the left hand like today's jump
+    shot. 0 in the post, back to the hoop (the facing direction), the ball chinned; 1 a look over the right
+    shoulder; 2-3 the pivot on the left foot (the yaw field turns the whole body 180 degrees, the face toward the
+    camera on the E rows) with the right foot swinging round off the floor; 4 square to the hoop, the dip and the
+    ball to the set point; 5 takeoff; 6-7 rising and leaning back, knees up, feet out in front (the fade); 8 release
+    at the top; 9 follow-through high while drifting back; 10 coming down; 11 land a step back, still leaning back;
+    12 settle. The pelvis ends over the floor point (no jump in the sprite at the end): the step back itself is the
+    game's (events fade, fade_ft). Feet leave the floor 5-10 (the game adds the jump)."""
+    hw = D["hw"]
+    piv = (0.9, 0.9)                          # the left (pivot) foot's spot from the pelvis, in the turned body
+    yaws = FADE_YAWS
+    pw = turned(yaws[0], *piv)                # its floor spot (unturned frame; the pelvis starts over the floor point)
+    free0 = turned(yaws[0], -hw - 2.6, -1.2)  # the right foot in the post stance
+
+    def turn_at(i, free_lift=0.0, free_body=None):
+        y = yaws[i]
+        sp = turned(y, *piv)
+        rx, rz = body_of_world(y, pw[0] - sp[0], pw[1] - sp[1])     # the pelvis turns round the planted left foot
+        fx, fz = body_of_world(y, *pw)
+        if free_body is None:
+            gx, gz = body_of_world(y, *free0)
+        else:
+            gx, gz = rx + free_body[0], rz + free_body[1]
+        return {"yaw": y, "root": (rx, rz), "fL": F(fx, fz, turn=0.3),
+                "fR": F(gx, gz, ANK + free_lift, -0.3 if free_lift else 0.0, 0.3)}
+    shot = lambda bx, by, bz: {"ball": ("chest", bx, by, bz), "hL": ("ball", 0.3, -(BR + 0.2), -1.6),
+                               "hR": ("ball", -(BR + 0.4), 0.0, 0.2)}
+    end = turn_at(4, free_body=(-hw - 1.9, -0.4))        # square: both feet planted for the gather and takeoff
+    endw = turned(yaws[4], end["fR"][0], end["fR"][2])
+    rootw = turned(yaws[4], *end["root"])
+
+    def planted(i):
+        k = turn_at(i)
+        gx, gz = body_of_world(yaws[i], *endw)
+        k["fR"] = F(gx, gz, turn=0.3)
+        return k
+
+    def air(u, v, back, toe=0.8):
+        """In the air (square, yaw 0): the pelvis eases from where the turn left it back over the floor point
+        (back 0..1); the knees up and the feet out in front of the hips (the fade)."""
+        rx, rz = rootw[0] * (1 - back), rootw[1] * (1 - back)
+        return {"yaw": 0.0, "root": (rx, rz),
+                "fL": F(rx + hw * 0.9, rz + 2.2 + 0.6 * u, ANK + u, -toe, 0.15),
+                "fR": F(rx - hw * 0.9, rz + 1.2 + 0.6 * v, ANK + v, -toe, 0.2)}
+    return [
+        (0.0, K(turn_at(0), two(0.3), h=0.76, lean=20, twist=0, head_up=14, head_yaw=-18,
+                   ball=("chest", 0.0, 0.5, 6.0), pL=(1, -0.6, -0.3), pR=(-1, -0.6, -0.3))),
+        (1.0, K(turn_at(1), h=0.72, lean=22, twist=10, head_up=16, head_yaw=-52, shrug=0.3,
+                   ball=("chest", 0.6, 0.0, 6.2))),
+        (2.0, K(turn_at(2, 2.4, (-hw - 2.2, 1.8)), h=0.74, lean=16, twist=18, head_up=18, head_yaw=-34,
+                   ball=("chest", 0.8, 1.0, 6.0))),
+        (3.0, K(turn_at(3, 2.0, (-hw - 2.0, 0.6)), h=0.75, lean=12, twist=10, head_up=18, head_yaw=-12,
+                   ball=("chest", 0.6, 1.5, 5.6))),
+        (4.0, K(end, shot(0.8, 2.0, 5.0), h=0.70, lean=10, twist=0, head_up=16, head_yaw=0, shrug=0.0,
+                   pL=(1, -1, 0.0), pR=(-1, -0.8, -0.3))),
+        (5.0, K(planted(5), shot(1.4, 11.5, 2.6), h=0.92, lean=2, head_up=18, shrug=0.6, pL=(0.6, -1, 0.0),
+                   pR=(-1, -0.6, 0.2))),
+        (6.0, K(air(1.6, 1.2, 0.2), shot(1.2, 14.0, 2.0), h=0.95, lean=-6, head_up=20, shrug=1.0)),
+        (7.0, K(air(3.2, 2.6, 0.4), shot(1.0, 16.0, 1.6), h=0.93, lean=-12, head_up=22, shrug=1.5)),
+        (8.0, K(air(3.8, 3.2, 0.55), h=0.92, lean=-15, head_up=22, shrug=1.9, ball=("chest", 0.8, 20.0, 5.4),
+                   hL=("ball", 0.2, -(BR + 0.6), -2.0), hR=("sh", 3.0, 6.0, 6.0), pL=(0.4, -1, 0.2))),
+        (9.0, K(air(3.4, 2.8, 0.7), ball=None, lean=-15, hL=("sh", 0.0, 12.8, 5.0), hR=("sh", 3.2, 3.0, 5.0),
+                   shrug=1.7)),
+        (10.0, K(air(1.6, 1.2, 0.85), h=0.90, lean=-9, shrug=1.1, hL=("sh", 0.4, 10.5, 6.0),
+                    hR=("sh", 3.0, -3.0, 5.0))),
+        (11.0, K(yaw=0.0, root=(0.0, 0.0), fL=F(hw + 1.6, 1.8, turn=0.25), fR=F(-hw - 1.6, 0.2, turn=0.3),
+                    h=0.78, lean=-3, head_up=16, shrug=0.5, hL=("sh", 1.2, -2.0, 7.0), hR=("sh", 2.4, -8.0, 4.0),
+                    pL=(1, -0.6, -0.3), pR=(-1, -0.4, -0.4))),
+        (12.0, K(h=0.88, lean=4, head_up=10, shrug=0.0, hL=("sh", 1.4, -11.0, 2.0), hR=("sh", 1.5, -11.5, 1.8))),
+    ]
+
+
+# name -> definition, fps, ms, events (as ANIMS). Each extra keeps its start in the extra column space (EXTRA order)
+# on every sheet, so a new one goes at the end: the sheets carrying the earlier ones keep their columns.
 EXTRA = [
     ("hook", keyed(k_hook, 11), 0.0, [70, 80, 70, 50, 50, 60, 60, 120, 90, 90, 110],
      {"gather": [0, 2], "takeoff": 3, "top": 5, "release": 6, "follow": [7, 8], "air": [3, 8], "land": 9,
       "hand": "R"}),
+    ("fadeaway", keyed(k_fadeaway, 13), 0.0, [100, 120, 60, 60, 70, 60, 60, 60, 60, 120, 80, 90, 120],
+     {"post": [0, 1], "turn": [1, 4], "gather": [4, 5], "takeoff": 5, "rise": [6, 7], "top": 7, "release": 8,
+      "follow": [9, 10], "air": [5, 10], "land": 11, "fade": [6, 11], "fade_ft": FADE_FT, "hand": "L"}),
 ]
 EXTRA_ANIM = {a[0]: a for a in EXTRA}
-# who carries an extra: every sheet whose id starts with one of these (the era rule: all legend sheets carry the
-# hook), plus any crews.json player listing it in "extra": [names]. --extra-sheets id,... adds ids for one run.
-EXTRA_PREFIX = {"hook": ("lg_",)}
+# Who carries an extra is data (P10-04b): EXTRA_CREWS names the crews.json crews whose sheets carry it (Chapter 1's
+# "GR" sheets carry the hook; the Fathers' crew is added to "fadeaway" when their sheets are made, P10-08), and any
+# crews.json player can list it in "extra": [names] (a sheet may carry several: each keeps its own columns).
+# --extra-sheets id,... makes those sheets carry every extra this run; --extra-sheets name:id,... only that extra.
+EXTRA_CREWS = {"hook": ("GR",), "fadeaway": ()}
 EXTRA_FORCE = set()
 PREVIEW_LIFT["hook"] = [0, 0, 0, 4, 12, 17, 18, 15, 7, 0, 0]
+PREVIEW_LIFT["fadeaway"] = [0, 0, 0, 0, 0, 3, 9, 15, 17, 15, 8, 0, 0]
 HOOK_GIF = os.path.join(ROOT, "docs", "art", "hook_shot_v1.gif")
 HOOK_BODY = "ht_a1"      # the preview body: a wiry center (as the hook-shot legend), a drafted player in his colors
 
@@ -1105,9 +1213,11 @@ def extras_for(sid, players=None):
     listed = set(pb.get("extra", [])) | set(p.get("extra", []))
     raw = {e["id"]: e for e in json.load(open(M.CREWS))["players"]}
     listed |= set(raw.get(base, {}).get("extra", []))
+    crew = pb.get("crew", raw.get(base, {}).get("crew"))
     out = []
     for name, d, fps, ms, ev in EXTRA:
-        if name in listed or base in EXTRA_FORCE or sid in EXTRA_FORCE or base.startswith(EXTRA_PREFIX.get(name, ())):
+        forced = bool(EXTRA_FORCE & {base, sid, name + ":" + base, name + ":" + sid})
+        if name in listed or forced or (crew is not None and crew in EXTRA_CREWS.get(name, ())):
             out.append(name)
     return out
 
@@ -1153,56 +1263,89 @@ def extra_format(players=None):
     players = players if players is not None else players_v2()
     cols, total = extra_columns([a[0] for a in EXTRA])
     out = {}
+    used = 0       # extra_cols: the columns the carried extras use (an extra nobody carries yet adds none)
     for name, d, fps, ms, ev in EXTRA:
         sheets = extra_sheets(name, players)
         if not sheets:
             continue
         start, n = cols[name]
+        used = max(used, start + n)
         e = {"start": start, "frames": n, "fps": fps, "loop": bool(d["loop"]), "ms": ms}
         e.update(ev)
         e["sheets"] = sheets
         out[name] = e
-    return out, total
+    return out, used
 
 
-def hook_preview(sid=HOOK_BODY, path=HOOK_GIF):
-    """docs/art/hook_shot_v1.gif for the owner's look check: one body in the 5 drawn directions, the hook shot
-    (top row) next to today's jump shot (bottom row), at game speed twice, then once at 1/3 speed. Renders in this
-    process only: nothing is written to assets/ or the cache."""
+FADE_GIF = os.path.join(ROOT, "docs", "art", "fadeaway_v1.gif")
+FADE_BODY = "ny_s2"      # the preview body: a lanky wing, short hair (as the fadeaway legend), a drafted player
+ART_PX_FT = 12.0 / 2.0   # previews: one foot of court in art px (FT = 12 screen px, sheets drawn 2x)
+PREVIEWS = {             # --extra-preview NAME: the extra, the move it stands in for, the gif, its body and titles
+    "hook": {"vs": "shoot", "path": HOOK_GIF, "body": HOOK_BODY, "tag": "P9-04b hook shot preview",
+             "title": "HOOK SHOT (new, legend sheets only)"},
+    "fadeaway": {"vs": "shoot", "path": FADE_GIF, "body": FADE_BODY, "tag": "P10-04b turnaround fadeaway preview",
+                 "title": "TURNAROUND FADEAWAY (new, Fathers sheets only)",
+                 "note": "drifts back %.1f ft (the game moves him; the art stays over his spot)" % FADE_FT},
+}
+
+
+def preview_drift(name, k, yaw):
+    """Previews only: (dx, dy) art px of the step back an extra's "fade" / "fade_ft" events ask the game for (frame
+    k, direction yaw); (0, 0) for everything else."""
+    ev = (EXTRA_ANIM.get(name) or ANIM[name])[4]
+    if "fade" not in ev:
+        return 0, 0
+    f0, f1 = ev["fade"]
+    u = min(1.0, max(0.0, (k - f0) / float(f1 - f0)))
+    u = u * u * (3 - 2 * u)
+    v = S.cam_matrix(yaw) @ np.array([0.0, 0.0, -1.0])        # backward, from the facing direction
+    d = ev.get("fade_ft", 0.0) * ART_PX_FT * u
+    return int(round(v[0] * d)), int(round(-v[1] * d))
+
+
+def extra_preview(name, sid=None, path=None):
+    """The owner's look check of an extra (PREVIEWS): one body in the 5 drawn directions, the extra (top row) next
+    to the move it stands in for (bottom row), at game speed twice, then once at 1/3 speed. Renders in this process
+    only: nothing is written to assets/ or the cache. hook: docs/art/hook_shot_v1.gif, fadeaway:
+    docs/art/fadeaway_v1.gif (with the step back drawn as the game would move him)."""
+    pv = PREVIEWS[name]
+    sid = sid or pv["body"]
+    path = path or pv["path"]
     p = [q for q in players_v2() if q["id"] == sid][0]
     D = dims_of(p)
     rows = []
-    for name in ("hook", "shoot"):
-        poses = anim_poses(name, D)
+    for nm in (name, pv["vs"]):
+        poses = anim_poses(nm, D)
         row = {}
         probs = []
         for dname, yaw in DIRS:
             seq = []
             for k, (pose, ball) in enumerate(poses):
                 img, rec = render_frame(p, pose, ball, yaw, "focus")
-                probs += check(img, rec, "%s %s %s %d" % (sid, name, dname, k))
+                probs += check(img, rec, "%s %s %s %d" % (sid, nm, dname, k))
                 seq.append((img, rec))
             row[dname] = seq
-        rows.append((name, row, probs))
+        rows.append((nm, row, probs))
+    drifts = any("fade" in (EXTRA_ANIM.get(nm) or ANIM[nm])[4] for nm, _, _ in rows)
     Z = 2
     top = 30
-    pad = 6
+    pad = 6 + (2 * int(FADE_FT * ART_PX_FT) * Z if drifts else 0)     # room for the step back
     head = 22
     lab = 18
     cw, ch = FW * Z, (FH + top) * Z
     W = 120 + len(DIRS) * (cw + pad)
     H = head + 2 * (ch + lab + pad)
-    titles = {"hook": "HOOK SHOT (new, legend sheets only)", "shoot": "jump shot (today)"}
+    titles = {name: pv["title"], pv["vs"]: "jump shot (today)" if pv["vs"] == "shoot" else pv["vs"] + " (today)"}
 
-    def ms_of(name):
-        return (EXTRA_ANIM.get(name) or ANIM[name])[3]
+    def ms_of(nm):
+        return (EXTRA_ANIM.get(nm) or ANIM[nm])[3]
     span = max(sum(ms_of(n)) for n, _, _ in rows) + 350          # each holds its last frame, then a pause
     frames, durs = [], []
     for speed, tag in ((1, "game speed"), (1, "game speed"), (3, "1/3 speed")):
         cuts = {0}
-        for name, _, _ in rows:
+        for nm, _, _ in rows:
             t = 0
-            for ms in ms_of(name):
+            for ms in ms_of(nm):
                 t += ms * speed
                 cuts.add(t)
         cuts = sorted(c for c in cuts if c < span * speed)
@@ -1211,21 +1354,24 @@ def hook_preview(sid=HOOK_BODY, path=HOOK_GIF):
             bg = S.floor_bg(W, H)
             dr = ImageDraw.Draw(bg)
             dr.rectangle([0, 0, W, head - 4], fill=(28, 26, 38, 255))
-            S.label(dr, (6, 3), "P9-04b hook shot preview: %s, %s (S SE E NE N; W side = mirrors)" % (sid, tag), 13)
-            for r, (name, row, _) in enumerate(rows):
-                ms = ms_of(name)
+            S.label(dr, (6, 3), "%s: %s, %s (S SE E NE N; W side = mirrors)%s" % (
+                pv["tag"], sid, tag, ("; " + pv["note"]) if pv.get("note") else ""), 13)
+            for r, (nm, row, _) in enumerate(rows):
+                ms = ms_of(nm)
                 k, acc = 0, 0
                 while k < len(ms) - 1 and acc + ms[k] * speed <= t0:
                     acc += ms[k] * speed
                     k += 1
                 y0 = head + r * (ch + lab + pad)
-                S.label(dr, (6, y0 + 2), "%s  %d/%d" % (titles[name], k + 1, len(ms)), 12)
-                lift = PREVIEW_LIFT[name][k]
-                for c, (dname, _) in enumerate(DIRS):
+                S.label(dr, (6, y0 + 2), "%s  %d/%d" % (titles[nm], k + 1, len(ms)), 12)
+                lift = PREVIEW_LIFT[nm][k]
+                for c, (dname, yaw) in enumerate(DIRS):
                     img, rec = row[dname][k]
                     cell = S.compose_frame(img, rec, lift=lift, ball_spin=k, top=top)
                     x0 = 120 + c * (cw + pad)
-                    bg.alpha_composite(cell.resize((cw, ch), Image.NEAREST), (x0, y0 + lab))
+                    dx, dy = preview_drift(nm, k, yaw)
+                    xc = x0 + (pad - 6) // 2
+                    bg.alpha_composite(cell.resize((cw, ch), Image.NEAREST), (xc + dx * Z, y0 + lab + dy * Z))
                     S.label(dr, (x0 + 4, y0 + lab + 4), dname, 12, (200, 196, 214))
             frames.append(bg)
             durs.append(max(20, int(round((t1 - t0) / 10.0)) * 10))
@@ -1233,22 +1379,31 @@ def hook_preview(sid=HOOK_BODY, path=HOOK_GIF):
     return path, len(frames), [pr for _, _, pr in rows for pr in pr]
 
 
-def hook_strip(sid, path, Z=3):
-    """A still contact strip of the hook (5 rows, frames numbered) for checking poses; scratch use only."""
+def hook_preview(sid=HOOK_BODY, path=HOOK_GIF):
+    """docs/art/hook_shot_v1.gif (P9-04b): extra_preview("hook")."""
+    return extra_preview("hook", sid, path)
+
+
+def extra_strip(name, sid, path, Z=3):
+    """A still contact strip of an extra (5 rows, frames in order) for checking poses; scratch use only."""
     p = [q for q in players_v2() if q["id"] == sid][0]
     D = dims_of(p)
-    poses = anim_poses("hook", D)
+    poses = anim_poses(name, D)
     n = len(poses)
     W, H = n * FW * Z, len(DIRS) * (FH + S.TOP) * Z
     bg = S.floor_bg(W, H)
     for r, (dname, yaw) in enumerate(DIRS):
         for k, (pose, ball) in enumerate(poses):
             img, rec = render_frame(p, pose, ball, yaw, "focus")
-            cell = S.compose_frame(img, rec, lift=PREVIEW_LIFT["hook"][k], ball_spin=k)
+            cell = S.compose_frame(img, rec, lift=PREVIEW_LIFT[name][k], ball_spin=k)
             bg.alpha_composite(cell.resize((FW * Z, (FH + S.TOP) * Z), Image.NEAREST),
                                (k * FW * Z, r * (FH + S.TOP) * Z))
     bg.convert("RGB").save(path)
     return path
+
+
+def hook_strip(sid, path, Z=3):
+    return extra_strip("hook", sid, path, Z)
 
 
 # ----------------------------------------------------------------------------- frames
@@ -1280,6 +1435,7 @@ def anim_poses(name, D):
 def render_frame(p, pose, ball, yaw, expr):
     pose = dict(pose)
     root = pose.pop("_root", np.zeros(3))
+    yaw = yaw + pose.pop("_yaw", 0.0)      # P10-04b: a turned body = the camera turned the other way round it
     C = S.cam_matrix(yaw)
     rc = C @ root
     ox = FW / 2.0 + rc[0] * SCALE
@@ -1764,6 +1920,10 @@ def write_format():
                               "column (extra_cols in all, pages of page_cols, the same rows and palettes as the "
                               "normal pages). Events as above, plus top (the ball over the head). hook: right-hand "
                               "hook shot, left shoulder to the hoop.")
+        if "fadeaway" in extra:    # P10-04b: only once a sheet carries it (today's format.json stays as it is)
+            fmt["_help_extra"] += (" fadeaway: turnaround fadeaway jumper off the left hand; post (back to the hoop), "
+                                   "turn (the pivot), rise, top; fade [first, last] = the frames over which the game "
+                                   "moves him fade_ft feet back (the art stays over his floor point).")
         fmt["extra_cols"] = xcols
         fmt["extra"] = extra
     with open(os.path.join(OUT_DIR, "format.json"), "w") as f:
@@ -2093,7 +2253,7 @@ def draft_strip(path=DRAFT_STRIP):
 # ----------------------------------------------------------------------------- P9-09: the Grandfathers sheets
 # The six legend sheets (crews.json crew "GR", ids lg_*; original characters, numbers approved by the owner) are ordinary
 # 'draft': true entries: era colors, a _crew recolor in your colors (crew_recolor "GR") and the _crew_j1..3 star
-# jerseys; every lg_ sheet carries the hook extra pages (EXTRA_PREFIX). Rebuild: --only <the LEGENDS ids> (one comma
+# jerseys; every crew "GR" sheet carries the hook extra pages (EXTRA_CREWS). Rebuild: --only <the LEGENDS ids> (one comma
 # list), then --legends-strip (docs/art/legends_grand.png, read from the written files: what the game draws).
 LEGENDS = ["lg_steeple", "lg_gate", "lg_set_shot", "lg_boxcar", "lg_velvet", "lg_quarterback"]
 LEGENDS_STRIP = os.path.join(ROOT, "docs", "art", "legends_grand.png")
@@ -2195,7 +2355,9 @@ def _extra_args(argv):
     """P9-04b: --extra-sheets id,... (these sheets carry every EXTRA this run), --out-dir DIR (write the sheet files,
     cards and the render cache under DIR instead of assets/players2 and build/players2_rgba: a scratch run),
     --hook-preview [ID] (only docs/art/hook_shot_v1.gif, default body HOOK_BODY; writes nothing else),
-    --hook-strip ID DIR (a still strip of the hook to DIR; scratch)."""
+    --hook-strip ID DIR (a still strip of the hook to DIR; scratch). P10-04b: --extra-sheets name:id,... (only that
+    extra), --extra-preview NAME [ID] (only that extra's PREVIEWS gif, e.g. fadeaway: docs/art/fadeaway_v1.gif),
+    --extra-strip NAME ID DIR (a still strip of that extra to DIR; scratch)."""
     global OUT_DIR, CARD_DIR, PAL_DIR, CACHE
     if "--extra-sheets" in argv:
         EXTRA_FORCE.update(argv[argv.index("--extra-sheets") + 1].split(","))
@@ -2204,10 +2366,15 @@ def _extra_args(argv):
         CARD_DIR = os.path.join(OUT_DIR, "cards")
         PAL_DIR = os.path.join(OUT_DIR, "palettes")
         CACHE = os.path.join(OUT_DIR, "_rgba")
-    if "--hook-preview" in argv:
-        i = argv.index("--hook-preview")
-        sid = argv[i + 1] if i + 1 < len(argv) and not argv[i + 1].startswith("--") else HOOK_BODY
-        path, n, probs = hook_preview(sid)
+    if "--hook-preview" in argv or "--extra-preview" in argv:
+        if "--hook-preview" in argv:
+            i = argv.index("--hook-preview")
+            name = "hook"
+        else:
+            i = argv.index("--extra-preview") + 1
+            name = argv[i]
+        sid = argv[i + 1] if i + 1 < len(argv) and not argv[i + 1].startswith("--") else PREVIEWS[name]["body"]
+        path, n, probs = extra_preview(name, sid)
         for p_ in probs:
             print("CHECK", p_)
         print("wrote %s: %d frames, %d bytes; checks: %d problem(s)" % (path, n, os.path.getsize(path), len(probs)))
@@ -2215,6 +2382,11 @@ def _extra_args(argv):
     if "--hook-strip" in argv:
         i = argv.index("--hook-strip")
         print("wrote", hook_strip(argv[i + 1], os.path.join(argv[i + 2], "hook_%s.png" % argv[i + 1])))
+        return True
+    if "--extra-strip" in argv:
+        i = argv.index("--extra-strip")
+        nm, sid, d = argv[i + 1], argv[i + 2], argv[i + 3]
+        print("wrote", extra_strip(nm, sid, os.path.join(d, "%s_%s.png" % (nm, sid))))
         return True
     return False
 
