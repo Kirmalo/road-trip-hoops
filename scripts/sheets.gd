@@ -130,6 +130,7 @@ const ALIASES := {
 	"celebrate": ["celebrate_a"],
 	# P9-04c extras: a sheet without the extra plays the normal animation
 	"hook": ["shoot"],
+	"fadeaway": ["shoot"],   # P10: Midrange's extra; any other sheet plays the jump shot
 }
 
 static var v2_dir := V2_DIR           # tests point this at a scratch folder (then clear_cache())
