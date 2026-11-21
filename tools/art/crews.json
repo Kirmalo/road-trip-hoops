@@ -28,7 +28,15 @@
     "(made up, no real team's colors); legend sheets are added by P9-09. Look sample: make_players.py --legends-sample.",
     "P9-09: the six Grandfathers legends are crew 'GR' (ids lg_*, original characters, numbers approved by the owner), each",
     "'draft': true (a _crew recolor through crew_recolor 'GR' and the _crew_j1..3 jerseys); every lg_ sheet carries the",
-    "hook extra pages. Kits match the P9-10 portraits. Contact sheet: make_players_v2.py --legends-strip."
+    "hook extra pages. Kits match the P9-10 portraits. Contact sheet: make_players_v2.py --legends-strip.",
+    "Phase 10 (P10-04) era parts for the Fathers (Legends Chapter 2), drawn in make_players.py 'Phase 10 era parts':",
+    "baggy: true (knee-length baggy shorts, wider, with a side panel in shorts_trim), socks: 'crew' (short crew socks",
+    "with one band at the top, stripe_pal), hair durag (a cloth cap tied at the back with two tails, rag_pal; no hair",
+    "shows), and the older parts the era reuses as they are: sleeve L | R (the arm sleeve), tight L | R (the leg shooting",
+    "sleeve; under baggy shorts it shows from the knee down), wrist (wristbands), cornrows (+ braids), goatee, headband.",
+    "Era colors are the ERA2_* palettes (made up; no pair that is a real team's colors, e.g. never purple with gold,",
+    "orange, teal or silver). Hard rule: the era parts are spread over the six legends; no legend wears the cornrows +",
+    "single arm sleeve + headband set on a small quick guard. Look sample: make_players.py --legends-sample fathers."
   ],
   "palettes": {
     "BLUE": ["#78b8ff", "#2f74e0", "#1f479e", "#172a66"],
@@ -76,7 +84,15 @@
     "ERA_CRIMSON": ["#ff8a84", "#d02a36", "#8e1828", "#520c1a"],
     "ERA_LEMON": ["#fff8b0", "#ffd83a", "#c89c18", "#7a5a0c"],
     "ERA_NAVY": ["#6474b0", "#2e3a70", "#1c244a", "#0e122a"],
-    "ERA_WHITE": ["#ffffff", "#f6f4ee", "#d0cabe", "#8c8678"]
+    "ERA_WHITE": ["#ffffff", "#f6f4ee", "#d0cabe", "#8c8678"],
+    "ERA2_SEAFOAM": ["#bff6dc", "#5cc8a0", "#2e8a6c", "#16503e"],
+    "ERA2_CHARCOAL": ["#70707c", "#3e3e4a", "#26262e", "#121218"],
+    "ERA2_ICE": ["#ffffff", "#e2f2f6", "#a8c8d4", "#607e8e"],
+    "ERA2_BRICK": ["#ee8e7c", "#ac3c30", "#74241e", "#421210"],
+    "ERA2_TANGERINE": ["#ffc480", "#ff8c22", "#c25c12", "#70320a"],
+    "ERA2_STEEL": ["#b0bccc", "#6e7c92", "#485468", "#262e3c"],
+    "ERA2_CITRUS": ["#f4ff9c", "#cee03c", "#92a222", "#525c10"],
+    "ERA2_GRAPE": ["#c488dc", "#7e3ca2", "#52226e", "#2c103e"]
   },
   "skins": {
     "deep": ["#a86e4c", "#7e4c32", "#573024", "#381c1e"],
