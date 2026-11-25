@@ -553,7 +553,7 @@ Everything below (Tasks by wave).
   to Kings / Runners. `--autoplay` grandfathers,present 21-16 (7:51, SIGNATURE hook / finger_roll / outlet, no PERK),
   present,fathers 21-17, kings,grandfathers (normal) 21-13, kings,runners 15-21 (7:21); `--humantest` fathers,grandfathers
   22-18; `--triptest-data` (+ `--load`) TRIPDATA OK; nothing written in the test runs.
-- **P11-34** (P8 b and the owner's follow-up) | Era teams and era courts on the Quick Game panel
+- **P11-34** (P8 b and the owner's follow-up) | REVIEW | Era teams and era courts on the Quick Game panel
   | gameplay-programmer D | `scripts/menu.gd` (`quick_courts()`, `quick_twist()`, the team and court button lines),
   `scripts/court_looks.gd` (the "never in quick_courts()" comments on the era rows only; the rows' data unchanged)
   | the COURT list adds each era look (OLD GYM, NIGHT PARK, the Present arena) once its era team is open
@@ -564,6 +564,15 @@ Everything below (Tasks by wave).
   CLAUDE.md "never in the Quick Game COURT list" rule is replaced (P11-29 writes it); Phase 10 COURT and team lists
   unchanged with no legend unlocked; checked with P11-33 merged | P11-32 merged, P11-06 merged (the `era_present` row),
   P11-12 merged (the `era_present` twist)
+  Result: `quick_courts()` adds `open_era_looks()` (each open era team's `EraTeams.look_of()`, timeline order) after the
+  city courts, before MIDNIGHT / GOLD HALL; `quick_twist()` asks `era_twist()` first (the chapter's twist only while
+  that era team is open, so `--court era_grand` alone plays twist none, with `--unlock-all` or the era open OLD
+  SCHOOL); `twist_line()` puts the twist name in front of a banner without one (SPACE THE FLOOR's); team buttons
+  already read `EraTeams.info()` (name, era color). court_looks.gd: era comments rewritten, NIGHT PARK's `"music"`
+  `blacktop` -> `legends_fathers` (the one data change, the coordinator's call), `music()` plays the chapter's
+  `fallback_music` while an era track file is missing (checked: `newyork`). Lists with no legend unlocked: gym,
+  blacktop / Kings, Runners (Phase 10). `--autoplay` grandfathers-present on BIG STAGE 19-22 (10:06), fathers-
+  grandfathers on NIGHT PARK 19-22 (8:54), Kings-Runners 19-21 (10:47); `--humantest` on OLD GYM 21-14; LEGENDTEST OK.
 
 ### Wave 5
 - **P11-25** | Back test and title test for Chapter 3

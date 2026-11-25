@@ -208,8 +208,9 @@ static func twist_line(twist_id: String) -> String:
 		return ""
 	var banner: String = str(Twists.info(twist_id).get("banner", ""))
 	var cut: int = banner.find(":")
-	if cut < 0:
-		return banner
+	if cut < 0:   # a banner without its "Name:" (P11-34: era_present's) gets the twist's name in front
+		var tname: String = str(Twists.info(twist_id).get("name", ""))
+		return banner if tname == "" or banner == "" else "%s: %s" % [tname.to_upper(), banner]
 	return banner.substr(0, cut).to_upper() + banner.substr(cut)
 
 # ---------------- Quick Game teams (P6-T3) ----------------
