@@ -222,6 +222,14 @@ Everything below (Tasks by wave).
   `court_looks.gd` row (name proposed "NEW ARENA", music `newyork` until P11-20). Checked angled and flat shots;
   not in the COURT list (`--menushot --unlock-all --stars 72`); `--era` rewrites the older era files byte for byte.
   Teal is a first guess until P11-05's palettes.
+- **P11-15** (art B): `make_portraits_v2.py --legends present` writes the six Present portraits, neutral and happy
+  (`assets/portraits/lg_deep_end|toolbox|stretch|switch|skylight|zigzag[_happy].png`, 12 files, 167 KB) and
+  `docs/art/legends_present_portraits.png` (283 KB). New kit parts: `crop` (line-up), `manbun` (low bun, faded
+  undercut), `boxed_beard` (short, straight cheek line), `thin_mustache`; high-top fade = `flattop(fade=True)`. Looks:
+  Deep End waves + thin mustache; Toolbox low man bun, clean-shaven; Stretch dark crop + boxed beard; Switch bald +
+  boxed beard; Skylight high-top fade; Zigzag curls, no headband. Kits teal + coral on graphite / ink / white
+  (`PRESENT_PALETTES` in the script, only where crews.json lacks that name); `present_kit()` takes P11-14's crews.json
+  colors on a rerun. Older portraits unchanged (the new parts are opt-in).
 - **P11-05** | Present era parts and a look sample | art-audio-integrator A | `make_players.py` "Phase 11 era parts"
   (modern_shorts, tights both/L/R, knee_sleeve, socks low, hair crop / waves / hightop_fade / manbun (a low bun),
   boxed_beard, thin_mustache; no older sheet changes: 0 of 121 sheets use them), `ERA3_*` palettes in `crews.json`

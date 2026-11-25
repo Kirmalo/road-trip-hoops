@@ -15,6 +15,7 @@ Usage:  python3 tools/art/make_portraits_v2.py              every portrait + the
         python3 tools/art/make_portraits_v2.py --sample     also redraw the approved sample sheet
         python3 tools/art/make_portraits_v2.py --legends    only the Grandfathers (LG below) + their contact sheet
         python3 tools/art/make_portraits_v2.py --legends fathers   only the Fathers (LG2 below) + their sheet
+        python3 tools/art/make_portraits_v2.py --legends present   only the Present (LG3 below) + their sheet
                                                             (kit colors follow their crews.json sheets if present)
         python3 tools/art/make_portraits_v2.py ht_g1 ...    a quick row of those characters (ROW_OUT), writes nothing
 Output: assets/portraits/<id>.png           288 x 336 (the 96 x 112 contract at 3x), base portrait
@@ -24,6 +25,7 @@ Output: assets/portraits/<id>.png           288 x 336 (the 96 x 112 contract at 
                                             New York crews, specs in P6 below)
         docs/art/legends_portraits.png      the six Grandfathers of Legends Chapter 1 (P9-10, specs in LG below)
         docs/art/legends_fathers_portraits.png   the six Fathers of Legends Chapter 2 (P10-15, specs in LG2)
+        docs/art/legends_present_portraits.png   the six Present legends of Legends Chapter 3 (P11-15, specs in LG3)
 Needs:  Pillow, numpy
 """
 import json
@@ -1574,6 +1576,74 @@ def shut_eyes(cv, T, skin, head):
         cv.ink(cv.line(F([(-9, -5), (0, -7), (9, -5)]), 1.0, taper=(0.5, 0.5)))
 
 
+# Phase 11 (P11-15) parts for the Present: a close crop with a sharp line-up, a low man bun over a faded undercut,
+# a short boxed beard (a straight cheek line, trimmed close) and a thin mustache. The high-top fade is the flat-top
+# with faded sides (flattop(fade=True)); waves and curls are the older parts.
+
+def crop(cv, T, hair):
+    """A close crop: a buzz cut with a crisp barber's line-up at the front and round the temple."""
+    hm = buzz_hair(cv, T, hair)
+    cv.ink(cv.line(T([(6, -52), (26, -56), (48, -50), (60, -47)]), 1.3, taper=(0.5, 0.3)) &
+           cv.samp(hm, 0, -2, fill=False))
+    cv.ink(cv.line(T([(-6, -40), (-9, -16)]), 1.1, taper=(0.4, 0.4)) & cv.samp(hm, 1.5, 0, fill=False))
+    return hm
+
+
+def manbun(cv, T, hair):
+    """A low man bun: the top pulled straight back into a small bun at the back of the head, the sides faded."""
+    buzz_hair(cv, T, hair, sparse=True)                     # the faded undercut
+    sc = T.scale()
+    top = cv.poly(T([(-60, -34), (-56, -62), (-26, -88), (14, -92), (44, -80), (60, -58), (61, -48), (48, -51),
+                     (26, -58), (6, -56), (-16, -52), (-40, -44)]))
+    cv.cel(top, hair, shadow=cv.crescent(top, 7), hi=cv.sheen(top, 3, 3), ink=2.0, dots=False)
+    for x, y in ((56, -52), (40, -60), (22, -62), (4, -58), (-14, -54), (-32, -48)):
+        m = cv.line(T([(x, y), ((x - 62) / 2, (y - 76) / 2 - 4), (-62, -46)]), 1.0, taper=(0.4, 0.4)) & top
+        cv.rgb[m & ~cv.k] = hair["dp"]
+    bm = cv.ellipse(*T([(-70, -42)])[0], 14 * sc, 12 * sc)
+    cv.cel(bm, hair, shadow=cv.crescent(bm, 5), hi=cv.sheen(bm, 1.5, 2.0), ink=2.0, dots=True, dot_sp=3.0)
+    for a0 in (0.3, 2.0, 3.6):
+        pts = [(-70 + 10 * math.cos(a0 + t), -42 + 8 * math.sin(a0 + t)) for t in np.linspace(0, 2.0, 8)]
+        cv.rgb[cv.line(T(pts), 1.0, taper=(0.4, 0.4)) & bm & ~cv.k] = hair["dp"]
+    cv.ink(cv.line(T([(-58, -52), (-56, -42), (-58, -32)]), 2.2, taper=(0.2, 0.2)))     # the hair tie
+    return top
+
+
+def boxed_beard(cv, T, hair, skin, expr):
+    """A short boxed beard: close along the jaw and chin, a straight cut cheek line, a short mustache joined to it."""
+    bpts = T([(-12, -10), (-6, 10), (6, 26), (20, 36), (32, 42, 0), (40, 54), (50, 61), (60, 59), (66, 54, 0),
+              (69, 61), (68, 70), (63, 77, 0), (51, 82), (32, 79, 0), (14, 72), (0, 64), (-12, 54), (-20, 44),
+              (-15, 30), (-12, 14), (-13, -10, 0)])
+    bm = cv.poly(bpts)
+    if expr == "happy":                 # the open grin shows through
+        bm &= ~cv.poly(T([(30, 39), (68, 37), (69, 46), (58, 57), (46, 60), (32, 49)]))
+    else:
+        bm &= ~cv.poly(T([(36, 45), (50, 44), (66, 44), (64, 50), (50, 52), (38, 50)]))
+    sh = cv.crescent(bm, 8) | cv.poly(T([(-22, 44), (-8, 56), (14, 70), (40, 80), (64, 76), (50, 90), (0, 84),
+                                         (-22, 52)]))
+    cv.cel(bm, hair, shadow=sh, hi=None, ink=1.4, dots=True, dot_sp=2.6)
+    # trimmed short: the skin shows through in a fine stipple, more on the lit cheek
+    st = cv.dots(np.full(bm.shape, 0.5, np.float32), 2.0, 0.52, 21) & bm & ~cv.k
+    cv.rgb[st & ~sh] = skin["sh"]
+    cv.rgb[st & sh] = hair["lt"]
+    # the cut line on the cheek: a crisp edge, the barber's mark
+    cv.ink(cv.line(T([(-12, -10), (-6, 10), (6, 26), (20, 36), (32, 42)]), 1.4, taper=(0.3, 0.3)))
+    draw_mouth(cv, T, skin, expr, beard=True)
+    dy = -3.5 if expr == "happy" else 0.0
+    mo = cv.poly(T([(33, 46 + dy, 0), (40, 41 + dy), (52, 38.5 + dy), (63, 38.5 + dy), (70, 42 + dy),
+                    (69, 45 + dy, 0), (60, 43 + dy), (50, 43.5 + dy), (40, 45.5 + dy)]))
+    cv.cel(mo, hair, shadow=cv.crescent(mo, 2), hi=cv.sheen(mo, 0.6, 1.0), ink=1.4, dots=False)
+    return bm
+
+
+def thin_mustache(cv, T, hair, expr):
+    """A thin, neat mustache: a narrow line over the upper lip, no beard."""
+    dy = -3.5 if expr == "happy" else 0.0
+    mo = cv.poly(T([(38, 44 + dy, 0), (46, 40.5 + dy), (55, 39.5 + dy), (64, 40 + dy), (69, 42.5 + dy, 0),
+                    (63, 42.5 + dy), (55, 42 + dy), (46, 43 + dy)]))
+    cv.cel(mo, hair, shadow=None, hi=cv.sheen(mo, 0.4, 0.8), ink=1.0, dots=False)
+    return mo
+
+
 def cast_member(s):
     """A draw function from a spec (see P6 below): body and top, head, beard, hair, extras."""
 
@@ -1621,7 +1691,7 @@ def cast_member(s):
             durag_tails(cv, T, P(s["rag"]))
         beard = s.get("beard")
         head = face(cv, T, Tn, skin, expr, jaw=jaw, chin=s.get("chin", 0), crown=s.get("crown", 0),
-                    beard=bool(beard), brow_col=s.get("brow") or (hair["dp"] if hair else (20, 12, 14)),
+                    beard=bool(beard) or "boxed_beard" in ex, brow_col=s.get("brow") or (hair["dp"] if hair else (20, 12, 14)),
                     brow_w=s.get("brow_w", 1.0), neck=False, nose=s.get("nose", 0.0), wide=s.get("wide", 0.0),
                     lips=s.get("lips", False), iris=s.get("iris", (60, 36, 30)), mouth=not s.get("goatee"))
         if expr in ex.get("eyes_shut", ()):
@@ -1636,6 +1706,10 @@ def cast_member(s):
             gold_grin(cv, T, P(ex["gold_grin"]), expr)
         if beard:
             beard_and_hair(cv, T, P(beard), skin, expr, grey=True)
+        if "boxed_beard" in ex:
+            boxed_beard(cv, T, P(ex["boxed_beard"]), skin, expr)
+        if "thin_mustache" in ex:
+            thin_mustache(cv, T, P(ex["thin_mustache"]), expr)
         if "chops" in ex:
             mutton_chops(cv, T, P(ex["chops"]), head, expr)
         if "mustache" in ex:
@@ -1652,6 +1726,10 @@ def cast_member(s):
             fade_hair(cv, T, hair)
         elif style == "durag":
             durag(cv, T, P(s["rag"]))
+        elif style == "crop":
+            crop(cv, T, hair)
+        elif style == "manbun":
+            manbun(cv, T, hair)
         elif style == "waves":
             waves(cv, T, hair)
         elif style == "part":
@@ -1975,6 +2053,80 @@ def fathers_kit(players, pal, skins):
                 spec[dst] = v
 
 
+# Phase 11 (P11-15): the six Present legends (Legends Chapter 3, P1 a and the names row). Original characters from
+# the kit's parts; looks from the approved look sample (docs/art/legends_present_sample_v1.png: Deep End's waves and
+# thin mustache, Toolbox's low man bun, clean-shaven) and the board's fixed table (Stretch a dark crop and a boxed
+# beard, never blond; Switch bald with a boxed beard; Skylight a high-top fade; Zigzag slim with curls, no headband).
+# The hard rule spreads the era parts: no beard on the step-back shooter, no headband anywhere, the twists stay
+# Ankles'. Era colors teal + coral (VISION "Phase 11 look check"), on graphite, ink and white. Knee sleeves and tights
+# sit below the bust. Base mood neutral, plus happy.
+# The era palettes are kept here (PRESENT_PALETTES, added only where crews.json has no row of that name), so the
+# portraits do not depend on crews.json; when crews.json has a player with the same id (P11-14), his skin, hair and
+# kit colors win (present_kit(), the same keys as the Fathers'), so a rerun follows the sheets.
+PRESENT_PALETTES = {
+    "ERA3_TEAL": ["#a4f2e6", "#2ec2b2", "#17837a", "#0b4644"],
+    "ERA3_CORAL": ["#ffc8b4", "#ff7d62", "#cc4c3e", "#6e2622"],
+    "ERA3_GRAPHITE": ["#8c92a2", "#545a6a", "#343844", "#1c1e26"],
+    "ERA3_INK": ["#5a5e6c", "#2a2c36", "#1a1b22", "#0c0c10"],
+    "ERA3_LIGHT": ["#ffffff", "#e8f0ff", "#b8c4e8", "#6c78a0"],
+}
+LG3 = {
+    # step-back shooter: lean guard, short waves, a thin mustache (no beard, no mouthguard)
+    "lg_deep_end": dict(name="DEEP END", skin="brown", top="tank", top_pal="ERA3_GRAPHITE", trim_pal="ERA3_TEAL",
+                        broad=0.92, sx=0.92, sy=1.02, cy=138, jaw=-2, chin=1, nose=0.5, wide=0.6, lips=True,
+                        tilt=3.0, hair="waves", hair_pal="HAIR_BLACK", brow=(16, 8, 10),
+                        extras={"thin_mustache": "HAIR_BLACK"}),
+    # point-forward: big and strong, a low man bun over a faded undercut, clean-shaven
+    "lg_toolbox": dict(name="TOOLBOX", skin="light", top="tank", top_pal="ERA3_CORAL", trim_pal="ERA3_GRAPHITE",
+                       broad=1.18, sx=1.08, sxn=1.18, cy=134, jaw=5, chin=2, crown=-1, nose=1.0, wide=0.5, tilt=1.0,
+                       hair="manbun", hair_pal="HAIR_BROWN", brow_w=1.3, iris=(96, 110, 80)),
+    # stretch big: medium build, close-cropped dark hair (never blond), a short boxed beard
+    "lg_stretch": dict(name="STRETCH", skin="tan", top="tank", top_pal="ERA3_LIGHT", trim_pal="ERA3_TEAL",
+                       broad=1.02, sx=0.96, sy=1.08, sxn=1.02, cy=134, jaw=2, chin=2, crown=1, nose=1.5, wide=0.3,
+                       tilt=2.0, hair="crop", hair_pal="HAIR_DARK", brow=(22, 14, 14), brow_w=1.2,
+                       extras={"boxed_beard": "HAIR_DARK"}),
+    # two-way wing: long and lean, bald, a short boxed beard, bare arms
+    "lg_switch": dict(name="SWITCH", skin="deep", top="tank", top_pal="ERA3_TEAL", trim_pal="ERA3_LIGHT",
+                      broad=0.96, sx=0.94, sy=1.06, sxn=0.98, cy=136, jaw=1, chin=2, wide=0.9, lips=True, tilt=2.0,
+                      hair="bald", brow=(14, 8, 10), brow_w=1.2, extras={"boxed_beard": "HAIR_BLACK"}),
+    # rim-running big: athletic, a squared high-top over faded sides
+    "lg_skylight": dict(name="SKYLIGHT", skin="umber", top="tank", top_pal="ERA3_INK", trim_pal="ERA3_CORAL",
+                        broad=1.14, sx=1.06, sxn=1.14, cy=138, jaw=4, chin=1, crown=-1, wide=1.1, lips=True,
+                        tilt=1.0, hair="flattop", hair_pal="HAIR_BLACK", flat_top=-108, fade=True, seed=19,
+                        brow=(14, 8, 10), brow_w=1.3),
+    # slasher: slim, short curls, no headband (the knee sleeve is below the bust)
+    "lg_zigzag": dict(name="ZIGZAG", skin="tan", top="tank", top_pal="ERA3_LIGHT", trim_pal="ERA3_CORAL",
+                      broad=0.9, sx=0.92, sy=1.0, cy=140, jaw=-3, chin=0, nose=0.5, wide=0.4, tilt=4.0,
+                      hair="curls", hair_pal="HAIR_INK", curl_rx=58.0, curl_ry=46.0, seed=58, brow=(20, 12, 14)),
+}
+LG3_RIM = (150, 240, 222)
+LG3_SHEET = os.path.join(ROOT, "docs", "art", "legends_present_portraits.png")
+LG3_ANCHOR = {"flattop": 110, "manbun": 230, "curls": 160}
+for _pid, _s in LG3.items():
+    CAST[_pid] = (_s["name"], cast_member(_s), LG3_RIM, [("neutral", ""), ("happy", "_happy")],
+                  LG3_ANCHOR.get(_s["hair"], P6_ANCHOR.get(_s["hair"], 250)))
+CREW_CARD["LG3"] = (30, 150, 140)
+
+
+def present_kit(players, pal, skins):
+    """The Present's era palettes (only those crews.json lacks) and, when their crews.json sheets exist (P11-14),
+    the sheets' kit colors; prints what changed. Never writes crews.json."""
+    for k, v in PRESENT_PALETTES.items():
+        pal.setdefault(k, v)
+    for pid, spec in LG3.items():
+        p = players.get(pid)
+        if not p:
+            continue
+        for src, dst in FATHERS_KIT_KEYS.items():
+            v = p.get(src)
+            if not isinstance(v, str) or dst not in spec or v not in (skins if dst == "skin" else pal):
+                continue
+            if spec.get(dst) != v:
+                print("kit", pid, dst, spec.get(dst), "->", v)
+                spec[dst] = v
+
+
+
 # ----------------------------------------------------------------------------- the sample sheet
 
 def font(sz, bold=False):
@@ -2043,20 +2195,23 @@ def save(img, path):
 def main():
     pal, skins, players = load()
     argv = sys.argv[1:]
-    legends_only = None            # "--legends": the Grandfathers; "--legends fathers": the Fathers (P10-15)
+    # "--legends": the Grandfathers; "--legends fathers": the Fathers (P10-15); "--legends present" (P11-15)
+    legends_only = None
+    tables = {"grand": LG, "fathers": LG2, "present": LG3}
     for i, a in enumerate(argv):
         if a == "--legends":
             legends_only = "grand"
-            if i + 1 < len(argv) and argv[i + 1] in ("fathers", "grand"):
+            if i + 1 < len(argv) and argv[i + 1] in tables:
                 legends_only = argv[i + 1]
         elif a.startswith("--legends="):
             legends_only = a.split("=", 1)[1] or "grand"
-    if legends_only not in (None, "grand", "fathers"):
-        sys.exit("unknown --legends chapter: %s (grand, fathers)" % legends_only)
+    if legends_only not in (None,) + tuple(tables):
+        sys.exit("unknown --legends chapter: %s (grand, fathers, present)" % legends_only)
     args = [a for k, a in enumerate(argv) if not a.startswith("--")
-            and not (k > 0 and argv[k - 1] == "--legends" and a in ("fathers", "grand"))]
+            and not (k > 0 and argv[k - 1] == "--legends" and a in tables)]
     sample = "--sample" in sys.argv
     fathers_kit(players, pal, skins)
+    present_kit(players, pal, skins)
     if args:
         # quick look at some characters: a row of their moods, nothing written to assets/
         made = [portrait(pid, e, pal, skins) for pid in args for e, _ in CAST[pid][3]]
@@ -2069,7 +2224,7 @@ def main():
     made = {}
     total = 0
     for pid, (name, _, _, moods, _) in CAST.items():
-        if legends_only and pid not in (LG if legends_only == "grand" else LG2):
+        if legends_only and pid not in tables[legends_only]:
             continue
         for expr, suf in moods:
             img = portrait(pid, expr, pal, skins)
@@ -2079,10 +2234,12 @@ def main():
             total += os.path.getsize(path)
             print("wrote", pid + suf + ".png", os.path.getsize(path))
     print("total bytes", total)
-    if legends_only != "fathers":
+    if legends_only in (None, "grand"):
         legends_sheet(made, pal, skins)
-    if legends_only != "grand":
+    if legends_only in (None, "fathers"):
         fathers_sheet(made, pal, skins)
+    if legends_only in (None, "present"):
+        present_sheet(made, pal, skins)
     if legends_only:
         return
     if sample:
@@ -2129,6 +2286,22 @@ def fathers_sheet(made, pal, skins):
                        "The rim? That's just a step, young blood.", "I'm going somewhere higher."),
                       (("ud_jojo", "happy"), ("lg_eyes_closed", "happy"), "right", "EYES CLOSED",
                        "Don't watch my eyes. Watch your hands.", "The ball's already on its way.")])
+
+
+def present_sheet(made, pal, skins):
+    """docs/art/legends_present_portraits.png (P11-15): the six Present legends, two story mock-ups and every mood.
+    The mock-ups' crew portraits are drawn here when --legends present did not make them (nothing more is written);
+    the mock-up lines are only for the look check (Chapter 3's story is in scripts/story_text.gd)."""
+    for key in (("ud_deuce", "focus"), ("ud_jojo", "happy")):
+        if key not in made:
+            made[key] = portrait(key[0], key[1], pal, skins)
+    full_sheet(made, crews=[("LEGENDS CHAPTER 3: THE PRESENT", "LG3", list(LG3))], path=LG3_SHEET,
+               heading="Story portraits, the Present (P11-15) - drawn comic style v2, 288 x 336 (shown 1:1); "
+                       "the first of each legend is the base portrait",
+               mocks=[(("ud_deuce", "focus"), ("lg_deep_end", "neutral"), "right", "DEEP END",
+                       "You backed off a step. Thanks.", "That's all the room I need."),
+                      (("ud_jojo", "happy"), ("lg_toolbox", "happy"), "right", "TOOLBOX",
+                       "Point guard? Forward? Yes.", "Whatever the play needs, I've got it in the box.")])
 
 
 def full_sheet(made, crews=None, mocks=None, path=FULL_SHEET,
