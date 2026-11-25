@@ -30,7 +30,9 @@ extends CanvasLayer
 # (Difficulty.restore_fullscreen(), from _input here and in pause.gd).
 # Desktop testing: Escape = BACK. Test: -- --titletest walks every screen and button (LOCKER and back too; checks the
 # STARS tab and the level pickers; add --stars 72 for LEGEND; LEGENDS locked or open, e.g. --stars 0 / --stars 24,
-# and CREW's HALL OF LEGENDS with --legends-unlock-all; screenshots with xvfb), puts every
+# and CREW's HALL OF LEGENDS with --legends-unlock-all; screenshots with xvfb), on QUICK GAME taps YOUR TEAM,
+# OPPONENT and COURT round their lists and checks the era teams and era courts offered (P11-35: none with
+# --legends-unlock-none, all with --legends-unlock-all, each era court with its twist line), puts every
 # setting back and restores settings.cfg byte for byte at the end.
 
 const UI = preload("res://scripts/ui_kit.gd")
@@ -1002,6 +1004,7 @@ const TEST_HOWTO_WAIT := 1.0   # s on the How to Play screen before paging (its 
 const TEST_HOWTO_PAGE := 0.5   # s on the next page before BACK
 const TEST_MUSIC_VOL := 0.3    # where the test moves the MUSIC slider (and back)
 const TEST_SHOT_DELAY := 0.2   # s after the locked LEGENDS tap before its screenshot (the line is drawn by then)
+const TEST_MENU_WAIT := 1.0    # s after a Quick Game panel tap (the game reloads back to the panel) before the next look
 
 static var _test_errors := 0
 
@@ -1399,13 +1402,131 @@ static func _test_quick_game(tree: SceneTree) -> void:
 			_check(bool(ctl_lh), "the touch controls are not left-handed")
 		_shot("quick_start")
 		Difficulty.set_left_handed(false)   # back to how it was (a test run never saves it)
-		_test_restore_settings_file()
-		if _test_errors > 0:
-			print("TITLE TEST FAILED: %d errors" % _test_errors)
-			tree.quit(1)
-			return
-		print("TITLE TEST DONE")
-		tree.quit())
+		_test_quick_eras(tree, func():
+			_test_restore_settings_file()
+			if _test_errors > 0:
+				print("TITLE TEST FAILED: %d errors" % _test_errors)
+				tree.quit(1)
+				return
+			print("TITLE TEST DONE")
+			tree.quit()))
+
+# P11-35 (P8 b): the era teams and era courts on the Quick Game panel. The lists hold exactly the open era teams
+# (era_teams.gd open_ids(), after the crews) and their courts (after the city courts, before the star reward
+# courts, each with its chapter's twist); --legends-unlock-none: none; --legends-unlock-all: every era team. Then
+# YOUR TEAM, OPPONENT and COURT are tapped round their whole lists (each tap reloads the game back to the panel),
+# checking each button line, the era team's color and the era court's twist line (screenshots of the era ones with
+# xvfb). The picks and the court are put back after (settings.cfg itself by _test_restore_settings_file()).
+static func _test_quick_eras(tree: SceneTree, then: Callable) -> void:
+	var et: GDScript = MenuScript._era_teams()
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var all_ids: Array = et.call("ids") if et != null else []
+	var open: Array = et.call("open_ids") if et != null else []
+	var teams: Array = Difficulty.quick_teams()
+	var courts: Array = MenuScript.quick_courts()
+	var listed: Array = []
+	for t in teams:
+		if all_ids.has(str(t)):
+			listed.append(str(t))
+	var era_looks: Array = []
+	for l in courts:
+		if _test_era_of_look(et, str(l)) != "":
+			era_looks.append(str(l))
+	print("TITLE TEST era teams: %s open of %s | YOUR TEAM list %s | COURT list %s" % [str(open), str(all_ids),
+			", ".join(PackedStringArray(teams)), ", ".join(PackedStringArray(courts))])
+	_check(listed == open, "the team lists show era teams %s, not the open ones %s" % [str(listed), str(open)])
+	for t in listed:
+		_check(teams.find(t) >= teams.size() - listed.size(), "era team %s is not after the crews" % t)
+	_check(era_looks == MenuScript.open_era_looks() and era_looks.size() == open.size(),
+			"COURT shows era courts %s for the open era teams %s" % [str(era_looks), str(open)])
+	var rewards: Array = MenuScript.Cosmetics.open_court_looks()
+	for l in era_looks:
+		var tw: String = MenuScript.era_twist(l)
+		print("TITLE TEST era court %s (%s): twist %s, music %s, line '%s'" % [l, str(MenuScript.Looks.LOOKS[l].get(
+				"name", l)), tw, str(MenuScript.Looks.LOOKS[l].get("music", "")), MenuScript.twist_line(tw)])
+		_check(tw != "" and tw == str(et.call("twist_of_look", l)), "era court %s brings twist '%s'" % [l, tw])
+		_check(MenuScript.twist_line(tw) != "", "era court %s has no twist line" % l)
+		for r in rewards:
+			_check(courts.find(l) < courts.find(r), "era court %s is after the reward court %s" % [l, r])
+		_check(MenuScript.city_of_look(l) == "", "era court %s is a city court" % l)
+	if args.has("--legends-unlock-none") and not args.has("--unlock-all"):
+		_check(open.is_empty() and era_looks.is_empty(), "--legends-unlock-none still offers an era team or court")
+	if args.has("--legends-unlock-all") and not args.has("--unlock-none"):
+		_check(not all_ids.is_empty() and open == all_ids, "--legends-unlock-all leaves era teams %s closed" % str(all_ids))
+	var keep_teams: Array = MenuScript.team_picks.duplicate()
+	var keep_court: String = MenuScript.Looks.current
+	var n_teams: int = teams.size() if teams.size() >= 2 else 0   # the panel ignores a team tap with fewer than 2
+	var seen: Array = [[], [], []]
+	_test_walk(tree, 0, n_teams, seen[0], func():
+		_test_walk_done("YOUR TEAM", seen[0], teams, open)
+		_test_walk(tree, 1, n_teams, seen[1], func():
+			_test_walk_done("OPPONENT", seen[1], teams, open)
+			_test_walk(tree, 2, courts.size(), seen[2], func():
+				_test_walk_done("COURT", seen[2], courts, era_looks)
+				MenuScript.team_picks = keep_teams
+				MenuScript.Looks.set_current(keep_court)
+				then.call())))
+
+# the era team of a court look ("" for every other look, or without era_teams.gd)
+static func _test_era_of_look(et: GDScript, look: String) -> String:
+	return str(et.call("era_of_look", look)) if et != null else ""
+
+# one look at the Quick Game panel (what = 0 YOUR TEAM, 1 OPPONENT, 2 COURT), then `left` more taps on that button,
+# each followed by TEST_MENU_WAIT s for the reload
+static func _test_walk(tree: SceneTree, what: int, left: int, seen: Array, then: Callable) -> void:
+	var game: Node = tree.current_scene
+	var menu = game.get("menu") if game != null else null
+	if menu == null or not bool(menu.get("showing")):
+		_check(false, "the Quick Game panel is not up (walk %d, %d taps left)" % [what, left])
+		then.call()
+		return
+	var et: GDScript = MenuScript._era_teams()
+	var b: Button = null
+	if what < 2:
+		var id: String = str(MenuScript.quick_team_ids()[what])
+		b = (menu.get("_team_btns") as Array)[what]
+		var info: Dictionary = Difficulty.team_info(id)
+		var want: String = "%s\n%s" % ["YOUR TEAM" if what == 0 else "OPPONENT", str(info.get("name", id))]
+		_check(b.text == want, "the team button reads '%s', not '%s'" % [b.text.replace("\n", " / "),
+				want.replace("\n", " / ")])
+		if et != null and bool(et.call("is_era_id", id)):
+			var sb := b.get_theme_stylebox("normal") as StyleBoxFlat
+			var col: Color = info.get("color", Color.BLACK)
+			_check(sb != null and sb.bg_color.is_equal_approx(col.darkened(MenuScript.TEAM_DARKEN)),
+					"the %s button is not in era team %s's color" % [want.split("\n")[0], id])
+			print("TITLE TEST %s: %s (%s, color %s)" % [want.split("\n")[0], id, str(info.get("name", "")),
+					col.to_html(false)])
+			_shot("quick_era_team_%d_%s" % [what, id])
+		seen.append(id)
+	else:
+		var look: String = MenuScript.Looks.current
+		b = menu.get("_court_btn")
+		var want_c: String = "COURT: " + str(MenuScript.Looks.look().get("name", look))
+		_check(b.text == want_c, "the court button reads '%s', not '%s'" % [b.text, want_c])
+		var line: String = (menu.get("_twist_lbl") as Label).text
+		_check(line == MenuScript.twist_line(MenuScript.quick_twist()), "the twist line on %s reads '%s'" % [look, line])
+		if _test_era_of_look(et, look) != "":
+			_check(line != "" and MenuScript.quick_twist() == str(et.call("twist_of_look", look)),
+					"era court %s plays twist %s ('%s')" % [look, MenuScript.quick_twist(), line])
+			print("TITLE TEST COURT: %s, twist %s, line '%s'" % [want_c, MenuScript.quick_twist(), line])
+			_shot("quick_era_court_" + look)
+		seen.append(look)
+	if left <= 0:
+		then.call()
+		return
+	b.emit_signal("pressed")
+	tree.create_timer(TEST_MENU_WAIT).timeout.connect(func(): _test_walk(tree, what, left - 1, seen, then))
+
+# a button's walk went round its whole list (back where it started) and showed every era entry offered
+static func _test_walk_done(what: String, seen: Array, list: Array, eras: Array) -> void:
+	print("TITLE TEST %s cycle: %s" % [what, " > ".join(PackedStringArray(seen))])
+	if list.size() < 2 or seen.is_empty():
+		return
+	_check(seen[0] == seen[seen.size() - 1], "%s did not come back to %s" % [what, str(seen[0])])
+	for x in list:
+		_check(seen.has(x), "%s never showed %s" % [what, str(x)])
+	for x in eras:
+		_check(seen.has(x), "%s never showed the era entry %s" % [what, str(x)])
 
 
 # The title art: sunset sky in flat bands, sun, cornfield, the road with sliding dashes, the van with a ball on the
