@@ -2064,8 +2064,9 @@ def fathers_kit(players, pal, skins):
 # portraits do not depend on crews.json; when crews.json has a player with the same id (P11-14), his skin, hair and
 # kit colors win (present_kit(), the same keys as the Fathers'), so a rerun follows the sheets.
 PRESENT_PALETTES = {
-    "ERA3_TEAL": ["#a4f2e6", "#2ec2b2", "#17837a", "#0b4644"],
-    "ERA3_CORAL": ["#ffc8b4", "#ff7d62", "#cc4c3e", "#6e2622"],
+    "ERA3_TEAL": ["#b4fbff", "#22c8d0", "#138e9c", "#0a5260"],
+    "ERA3_DEEP_TEAL": ["#5ec4d4", "#16788e", "#0e5064", "#072c3a"],
+    "ERA3_CORAL": ["#ffc4b2", "#ff7e68", "#d24c44", "#7c2426"],
     "ERA3_GRAPHITE": ["#8c92a2", "#545a6a", "#343844", "#1c1e26"],
     "ERA3_INK": ["#5a5e6c", "#2a2c36", "#1a1b22", "#0c0c10"],
     "ERA3_LIGHT": ["#ffffff", "#e8f0ff", "#b8c4e8", "#6c78a0"],
@@ -2081,23 +2082,23 @@ LG3 = {
                        broad=1.18, sx=1.08, sxn=1.18, cy=134, jaw=5, chin=2, crown=-1, nose=1.0, wide=0.5, tilt=1.0,
                        hair="manbun", hair_pal="HAIR_BROWN", brow_w=1.3, iris=(96, 110, 80)),
     # stretch big: medium build, close-cropped dark hair (never blond), a short boxed beard
-    "lg_stretch": dict(name="STRETCH", skin="tan", top="tank", top_pal="ERA3_LIGHT", trim_pal="ERA3_TEAL",
+    "lg_stretch": dict(name="STRETCH", skin="light", top="tank", top_pal="ERA3_LIGHT", trim_pal="ERA3_TEAL",
                        broad=1.02, sx=0.96, sy=1.08, sxn=1.02, cy=134, jaw=2, chin=2, crown=1, nose=1.5, wide=0.3,
                        tilt=2.0, hair="crop", hair_pal="HAIR_DARK", brow=(22, 14, 14), brow_w=1.2,
                        extras={"boxed_beard": "HAIR_DARK"}),
     # two-way wing: long and lean, bald, a short boxed beard, bare arms
-    "lg_switch": dict(name="SWITCH", skin="deep", top="tank", top_pal="ERA3_TEAL", trim_pal="ERA3_LIGHT",
+    "lg_switch": dict(name="SWITCH", skin="deep", top="tank", top_pal="ERA3_INK", trim_pal="ERA3_TEAL",
                       broad=0.96, sx=0.94, sy=1.06, sxn=0.98, cy=136, jaw=1, chin=2, wide=0.9, lips=True, tilt=2.0,
                       hair="bald", brow=(14, 8, 10), brow_w=1.2, extras={"boxed_beard": "HAIR_BLACK"}),
     # rim-running big: athletic, a squared high-top over faded sides
-    "lg_skylight": dict(name="SKYLIGHT", skin="umber", top="tank", top_pal="ERA3_INK", trim_pal="ERA3_CORAL",
+    "lg_skylight": dict(name="SKYLIGHT", skin="umber", top="tank", top_pal="ERA3_DEEP_TEAL", trim_pal="ERA3_LIGHT",
                         broad=1.14, sx=1.06, sxn=1.14, cy=138, jaw=4, chin=1, crown=-1, wide=1.1, lips=True,
                         tilt=1.0, hair="flattop", hair_pal="HAIR_BLACK", flat_top=-108, fade=True, seed=19,
                         brow=(14, 8, 10), brow_w=1.3),
     # slasher: slim, short curls, no headband (the knee sleeve is below the bust)
     "lg_zigzag": dict(name="ZIGZAG", skin="tan", top="tank", top_pal="ERA3_LIGHT", trim_pal="ERA3_CORAL",
                       broad=0.9, sx=0.92, sy=1.0, cy=140, jaw=-3, chin=0, nose=0.5, wide=0.4, tilt=4.0,
-                      hair="curls", hair_pal="HAIR_INK", curl_rx=58.0, curl_ry=46.0, seed=58, brow=(20, 12, 14)),
+                      hair="curls", hair_pal="HAIR_BROWN", curl_rx=58.0, curl_ry=46.0, seed=58, brow=(20, 12, 14)),
 }
 LG3_RIM = (150, 240, 222)
 LG3_SHEET = os.path.join(ROOT, "docs", "art", "legends_present_portraits.png")

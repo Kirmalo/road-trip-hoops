@@ -65,7 +65,7 @@ and the Hall; so Chapter 3 is mostly data, art, story and one era twist):
   | Ozren "Stretch" Halvorsen, stretch big, **shaggy hair** | seven-foot European shooting big with shaggy hair is one famous big's look (and another's type) | first name **Sigurd** (owner after P11-02); close-cropped dark hair (never blond), a short boxed beard, medium build; no one-leg fadeaway |
   | **Idris** "Switch" Achterberg, two-way wing, long arms, short twists | "Idris" points at a famous actor; the quiet long-armed wing who steals and runs is one famous current forward's type | first name **Ellery**; bald with a short beard, bare arms (twists stay Ankles') |
   | Bodie "Skylight" **Ferreira**, rim-running big | Ferreira is a real player's surname (Rolando Ferreira, flagged in Phase 9) | surname **Castellano**; high-top fade kept |
-  | **Santi** "Zigzag" Moreau, slasher, **headband** | "Santi" is how a current player is known (first name only, allowed, but very current); the headband is already Ankles' and Freight's | first name **Lucien**; curly hair, a knee sleeve, no headband |
+  | **Santi** "Zigzag" Moreau, slasher, **headband** | "Santi" is how a current player is known (first name only, allowed, but very current); the headband is already Ankles' and Freight's | first name **Bastien** (was Lucien; VISION "Phase 11 Zigzag first name"); curly hair, a knee sleeve, no headband |
 - **Chapters 1-2 and the rest of the game play exactly as in Phase 10.** No game-sim change outside P11-12 (SPACE THE
   FLOOR), P11-17 (signature moves) and P11-22 (mentor perks); the era teams (P11-32..34) only add Quick Game choices, a
   Quick Game with the Phase 10 crews and courts plays as before. Every new hook is a
@@ -353,7 +353,7 @@ Everything below (Tasks by wave).
   | the lists extended with today's players (NBA and WNBA stars of about 2015-2026), their nicknames, and their famous
   celebrations and slogans (as words that must never appear); `NUMBER_AVOID` reviewed for the era (numbers a shipped
   legend wears stay legal: they passed their own check); the six chosen names (P1 a: Calloway "Deep End" Whitlock, Theo
-  "Toolbox" Lindqvist, Ozren (now Sigurd) "Stretch" Halvorsen, Ellery "Switch" Achterberg, Bodie "Skylight" Castellano, Lucien
+  "Toolbox" Lindqvist, Ozren (now Sigurd) "Stretch" Halvorsen, Ellery "Switch" Achterberg, Bodie "Skylight" Castellano, Bastien
   "Zigzag" Moreau; first, last and nickname each) run through step 1 (every NBA and WNBA player) and the lists, the
   flagged draft names (Briggs, Swiss Knife, Idris, Ferreira, Santi) kept as probes that must fail; a table like Chapter
   2's with each verdict; the look combinations checked in words (the board's six risky sets, on the chosen looks); a
@@ -660,7 +660,7 @@ Everything below (Tasks by wave).
   970; one line on the Quick Game panel, two in the pause panel), the step-back and a Euro-step, the Hall's three rows
   and picker, the draft's three rows pass. Plate ink: no change needed (3.4:1; optional `plate_text` "#fff3e8").
   Bugs P11-B1, P11-B2. 5 `--autoplay` 9:25 mean, 53%; 2 `--humantest` 21-13.
-- **P11-B1** | Story portraits of Switch and Skylight wear the wrong kits (Low-medium, art)
+- **P11-B1** | REVIEW (portrait rows now match crews.json: Switch ink/teal, Skylight deep teal/white, Stretch light skin, Zigzag brown curls; the teal and coral ramps follow the sheets, so all 12 Present portraits and the contact sheet were redrawn, no other chapter touched; the Present `"look"` texts fixed; LEGENDTEST OK) | Story portraits of Switch and Skylight wear the wrong kits (Low-medium, art)
   | art (portraits) | `tools/art/make_portraits_v2.py` (lines 2089, 2093, Stretch's row), `assets/portraits/lg_switch*`,
   `lg_skylight*`, `lg_stretch*`, `docs/art/legends_present_portraits.png`
   | cause: the portrait rows differ from `tools/art/crews.json` (888, 896, 878): Switch teal/light (sheet ink/teal),
