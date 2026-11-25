@@ -281,7 +281,8 @@ def build(p, pose, expr="focus", portrait=False):
     mass = p["mass"]
     legk, tk = p["leg"], p["torso"]
     thigh_len, shin_len = 8.6 * legk, 8.3 * legk
-    upper_len, fore_len = 6.7 * (0.5 + 0.5 * legk), 6.2 * (0.5 + 0.5 * legk)
+    arm_k = p.get("arm_len", 1.0)   # P11-14: long arms (default 1: every older sheet as before)
+    upper_len, fore_len = 6.7 * (0.5 + 0.5 * legk) * arm_k, 6.2 * (0.5 + 0.5 * legk) * arm_k
     sw = 5.4 * W           # half shoulder width
     hw = 2.3 * W           # half hip width
     ANK = 1.75

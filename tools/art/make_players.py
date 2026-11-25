@@ -842,6 +842,9 @@ P.build = build_era2
 #                         undercut; the hair tie in band_pal when given (no headband: that needs headband: true)
 #   boxed_beard: true     a short, trimmed beard: a straight cheek line, the jaw strap, chin and mustache
 #   thin_mustache: true   a thin line over the lip (no beard)
+#   hair "curls"          (P11-14) short tight curls: a low rounded mound over the top, bumpy at the edge, with the
+#                         twists' knot texture (never a headband: Zigzag's look, the hard rule's spread)
+#   arm_len: 1.08         (P11-14, pixel3d.build) upper and fore arm this much longer (default 1: everyone else)
 # Era palettes are the ERA3_* rows of crews.json. tools/art/make_players.py --legends-sample present draws the owner's
 # look sample (docs/art/legends_present_sample_v1.png and .gif); nothing in assets/ is written by it.
 
@@ -855,7 +858,10 @@ ERA3_KNEE_BAND = 0.05       # the darker band at each end of the sleeve
 ERA3_LINEUP_Y = 1.45        # head-local height of the straight front hairline (crop, waves, hightop fade)
 ERA3_WAVE_CROWN = (0.0, 4.3, -0.8)   # head-local centre of the wave rings
 ERA3_WAVE_STEP = 1.7        # ring spacing (head-local units; about 2 px in the frame)
-ERA3_HAIR = ("crop", "waves", "hightop_fade", "manbun")
+ERA3_HAIR = ("crop", "waves", "hightop_fade", "manbun", "curls")
+ERA3_CURL_BUMPS = ((1.9, 4.35, 0.9), (-1.9, 4.35, 0.9), (0.0, 4.75, 0.2), (2.9, 3.4, -0.9), (-2.9, 3.4, -0.9),
+                   (1.3, 4.4, -2.0), (-1.3, 4.4, -2.0), (0.0, 3.3, -3.4))   # P11-14 curls: head-local bump centres
+ERA3_CURL_R = 1.05
 ERA3_KEYS = ("modern_shorts", "tights", "knee_sleeve", "boxed_beard", "thin_mustache")
 
 _P10_BUILD = P.build
@@ -954,6 +960,8 @@ def build_era3(p, pose, expr="focus", portrait=False):
                     dd = math.sqrt((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2)
                     return "hair-1" if (dd / ERA3_WAVE_STEP) % 1.0 < 0.42 else "hair"
                 return "hair"
+        if style == "curls" and y > hl + 0.1:
+            return "hair"
         if style == "manbun" and y > hl + 0.15:
             return "skin+1" if ax > 2.55 and y < 2.0 else "hair"     # the faded undercut
         if p.get("boxed_beard") and z > -0.4:
@@ -974,6 +982,11 @@ def build_era3(p, pose, expr="focus", portrait=False):
     if style == "hightop_fade":    # a squared block on top, cut flat
         prims.append(P.ell(H(0, 3.2, -0.15), Rh, HX - 0.3, 3.0, HZ - 0.25, "hair", "hair",
                            clip=(H(0, 5.6, 0), Rh @ P.unit(0, -1.0, 0))))
+    if style == "curls":           # a low mound of tight curls, a few bumps round its edge for the outline
+        prims.append(P.ell(H(0, 1.25, -0.4), Rh, HX + 0.55, HY + 0.4, HZ + 0.5, "hair_tw", "hair",
+                           clip=(H(0, 0.55, 0), Rh @ P.unit(0, 1.0, -0.6))))
+        for bx, by, bz in ERA3_CURL_BUMPS:
+            prims.append(P.Sphere(H(bx, by, bz), ERA3_CURL_R, "hair_tw", "hair"))
     if style == "manbun":          # the hair pulled back over the top, and a low bun at the back of the head
         prims.append(P.ell(H(0, 0.9, -0.4), Rh, HX + 0.2, HY + 0.12, HZ + 0.25, "hair", "hair",
                            clip=(H(0, 1.5, 0), Rh @ P.unit(0, 1.0, -0.35))))
@@ -1728,18 +1741,18 @@ PRESENT_SAMPLE = [
                  "mid-thigh shorts, low socks",
      dict(_ERA3_KIT, id="lg_sample_deep_end", crew="B", number=26, role="step-back shooter", name="Deep End",
           body="lanky_guard", skin="brown", hair="waves", hair_pal="HAIR_BLACK", thin_mustache=True, tights="R",
-          tight_pal="ERA3_INK", top_pal="ERA3_GRAPHITE", trim_pal="ERA3_MINT", shorts_pal="ERA3_GRAPHITE",
-          shorts_trim="ERA3_MINT", shoe_acc="ERA3_MINT", sole_pal="ERA3_GRAPHITE")),
+          tight_pal="ERA3_INK", top_pal="ERA3_GRAPHITE", trim_pal="ERA3_TEAL", shorts_pal="ERA3_GRAPHITE",
+          shorts_trim="ERA3_TEAL", shoe_acc="ERA3_TEAL", sole_pal="ERA3_GRAPHITE")),
     ("TOOLBOX", "point-forward: big and strong, low man bun (no headband), clean-shaven, mid-thigh shorts, low socks",
      dict(_ERA3_KIT, id="lg_sample_toolbox", crew="B", number=38, role="point-forward", name="Toolbox",
           body="champion", body_tweak={"mass": -0.08}, skin="light", hair="manbun", hair_pal="HAIR_BROWN",
           band_pal="ERA3_GRAPHITE",
-          top_pal="ERA3_MAGENTA", trim_pal="ERA3_GRAPHITE", shorts_pal="ERA3_MAGENTA", shorts_trim="ERA3_GRAPHITE",
-          shoe_acc="ERA3_MAGENTA", sole_pal="ERA3_GRAPHITE")),
+          top_pal="ERA3_CORAL", trim_pal="ERA3_GRAPHITE", shorts_pal="ERA3_CORAL", shorts_trim="ERA3_GRAPHITE",
+          shoe_acc="ERA3_CORAL", sole_pal="ERA3_GRAPHITE")),
 ]
 # your colors (a drafted legend wears them, like a _crew recolor): era palette names swapped
-PRESENT_SAMPLE_CREW = {"ERA3_GRAPHITE": "BLUE", "ERA3_MAGENTA": "BLUE", "ERA3_EMBER": "BLUE", "ERA3_AQUA": "BLUE",
-                       "ERA3_INK": "NAVY", "ERA3_MINT": "GOLD", "ERA3_LIGHT": "WHITE"}
+PRESENT_SAMPLE_CREW = {"ERA3_GRAPHITE": "BLUE", "ERA3_CORAL": "BLUE", "ERA3_DEEP_TEAL": "BLUE",
+                       "ERA3_INK": "NAVY", "ERA3_TEAL": "GOLD", "ERA3_LIGHT": "WHITE"}
 PRESENT_PARTS_CHECK = [  # (label, entry): the other era parts on plain bodies, spread as the hard rule asks
     ("stretch: dark crop, boxed beard, tights", dict(_ERA3_KIT, id="era3_part_1", crew="B", number=4,
                                                      body="wiry_center",
@@ -1749,17 +1762,17 @@ PRESENT_PARTS_CHECK = [  # (label, entry): the other era parts on plain bodies, 
                                             shoe_acc="ERA3_INK", sole_pal="ERA3_INK")),
     ("wing: bald, boxed beard", dict(_ERA3_KIT, id="era3_part_2", crew="B", number=7, body="lanky_wing",
                                      skin="deep", hair="bald", hair_pal="HAIR_BLACK", boxed_beard=True,
-                                     top_pal="ERA3_EMBER", trim_pal="ERA3_LIGHT", shorts_pal="ERA3_EMBER",
-                                     shorts_trim="ERA3_LIGHT", shoe_acc="ERA3_EMBER", sole_pal="ERA3_EMBER")),
+                                     top_pal="ERA3_CORAL", trim_pal="ERA3_LIGHT", shorts_pal="ERA3_CORAL",
+                                     shorts_trim="ERA3_LIGHT", shoe_acc="ERA3_CORAL", sole_pal="ERA3_CORAL")),
     ("big: high-top fade, left tights", dict(_ERA3_KIT, id="era3_part_3", crew="B", number=9, body="power_forward",
                                              skin="umber", hair="hightop_fade", hair_pal="HAIR_BLACK", tights="L",
-                                             tight_pal="ERA3_LIGHT", top_pal="ERA3_AQUA", trim_pal="ERA3_INK",
-                                             shorts_pal="ERA3_AQUA", shorts_trim="ERA3_INK", shoe_acc="ERA3_AQUA",
+                                             tight_pal="ERA3_LIGHT", top_pal="ERA3_DEEP_TEAL", trim_pal="ERA3_INK",
+                                             shorts_pal="ERA3_DEEP_TEAL", shorts_trim="ERA3_INK", shoe_acc="ERA3_DEEP_TEAL",
                                              sole_pal="ERA3_INK")),
     ("guard: crop, knee sleeve", dict(_ERA3_KIT, id="era3_part_4", crew="B", number=2, body="slim_guard",
                                       skin="light", hair="crop", hair_pal="HAIR_BROWN", knee_sleeve="L",
-                                      knee_pal="ERA3_LIGHT", top_pal="ERA3_GRAPHITE", trim_pal="ERA3_AQUA",
-                                      shorts_pal="ERA3_GRAPHITE", shorts_trim="ERA3_AQUA", shoe_acc="ERA3_AQUA",
+                                      knee_pal="ERA3_LIGHT", top_pal="ERA3_GRAPHITE", trim_pal="ERA3_DEEP_TEAL",
+                                      shorts_pal="ERA3_GRAPHITE", shorts_trim="ERA3_DEEP_TEAL", shoe_acc="ERA3_DEEP_TEAL",
                                       sole_pal="ERA3_GRAPHITE")),
 ]
 PRESENT_ANIMS = ["idle", "run", "run_dribble", "shoot"]

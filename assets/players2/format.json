@@ -629,7 +629,7 @@
    ]
   }
  },
- "_help_extra": "extra (P9-04b): animations only some sheets carry (sheets = the base sheets; a recolor or star jersey carries what its pages' sheet carries). Their frames are on extra pages <sheet>_x<N>.png after the normal pages: start = the logical extra column (extra_cols in all, pages of page_cols, the same rows and palettes as the normal pages). Events as above, plus top (the ball over the head). hook: right-hand hook shot, left shoulder to the hoop. fadeaway: turnaround fadeaway jumper off the left hand; post (back to the hoop), turn (the pivot), rise, top; fade [first, last] = the frames over which the game moves him fade_ft feet back (the art stays over his floor point).",
+ "_help_extra": "extra (P9-04b): animations only some sheets carry (sheets = the base sheets; a recolor or star jersey carries what its pages' sheet carries). Their frames are on extra pages <sheet>_x<N>.png after the normal pages: start = the logical extra column (extra_cols in all, pages of page_cols, the same rows and palettes as the normal pages). Events as above, plus top (the ball over the head). hook: right-hand hook shot, left shoulder to the hoop. fadeaway: turnaround fadeaway jumper off the left hand; post (back to the hoop), turn (the pivot), rise, top; fade [first, last] = the frames over which the game moves him fade_ft feet back (the art stays over his floor point). stepback: step-back jumper off the left hand; plant, hop, then today's jumper; fade [first, last] = the frames over which the game slides him fade_ft feet back. eurostep: Euro-step into today's right-hand layup; steps [first, second]; euro_path = [frame, feet to his left] points the game moves him through, eased.",
  "extra_cols": 24,
  "extra": {
   "hook": {
@@ -732,6 +732,109 @@
    "hand": "L",
    "sheets": [
     "lg_midrange"
+   ]
+  },
+  "stepback": {
+   "start": 0,
+   "frames": 12,
+   "fps": 0.0,
+   "loop": false,
+   "ms": [
+    70,
+    60,
+    60,
+    70,
+    70,
+    60,
+    50,
+    50,
+    60,
+    120,
+    100,
+    120
+   ],
+   "floor": 1,
+   "plant": 1,
+   "hop": [
+    2,
+    3
+   ],
+   "gather": [
+    2,
+    5
+   ],
+   "rise": [
+    6,
+    7
+   ],
+   "release": 8,
+   "follow": [
+    9,
+    11
+   ],
+   "air": [
+    6,
+    10
+   ],
+   "fade": [
+    1,
+    4
+   ],
+   "fade_ft": 2.0,
+   "hand": "L",
+   "sheets": [
+    "lg_deep_end"
+   ]
+  },
+  "eurostep": {
+   "start": 0,
+   "frames": 13,
+   "fps": 0.0,
+   "loop": false,
+   "ms": [
+    70,
+    80,
+    70,
+    80,
+    60,
+    50,
+    50,
+    50,
+    60,
+    60,
+    60,
+    80,
+    100
+   ],
+   "gather": 0,
+   "steps": [
+    1,
+    3
+   ],
+   "takeoff": 5,
+   "release": 8,
+   "air": [
+    5,
+    10
+   ],
+   "land": 11,
+   "euro_path": [
+    [
+     0,
+     0.0
+    ],
+    [
+     2,
+     -1.5
+    ],
+    [
+     4,
+     0.9
+    ]
+   ],
+   "hand": "R",
+   "sheets": [
+    "lg_zigzag"
    ]
   }
  }

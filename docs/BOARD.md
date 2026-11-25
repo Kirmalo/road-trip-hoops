@@ -359,7 +359,7 @@ Everything below (Tasks by wave).
   game; banner and pause line read; twists `none`, `era_grand`, `era_fathers` unchanged | none (P2 answered a): **can
   start now**
 - **P11-13** | ~~The `deep` goal type~~: **dropped** (P3 a: the six challenges use the existing goal types)
-- **P11-14** | The six Present sheets
+- **P11-14** | REVIEW | The six Present sheets
   | art-audio-integrator A | `tools/art/make_players_v2.py`, `tools/art/crews.json`, `assets/players2/` (pages,
   palettes, `palettes.json`, cards, `format.json`'s `"extra"`), `scripts/sheets.gd` (`ALIASES` rows `stepback` ->
   `shoot`, `eurostep` -> `layup` only)
@@ -370,6 +370,11 @@ Everything below (Tasks by wave).
   (`has_anim()` true only there; on any other sheet they draw the jumper / the layup); `--anim-test` ANIM OK on every
   sheet, the extra pages included; strip `docs/art/legends_present.png`; download growth reported | P11-05 and P11-05b
   approved at the look check, P11-11's name check (ids)
+  Result: six sheets (crew "PR", numbers 26/38/49/29/52/58), kits teal / coral on graphite, ink, white (ERA3_TEAL,
+  ERA3_DEEP_TEAL, ERA3_CORAL; magenta, mint, ember, aqua dropped; no kit wears teal and coral together); new parts
+  hair `curls` (Zigzag) and `arm_len` (Switch, 1.08; pixel3d, default 1). The new extras get their own lane at extra
+  column 0 (`EXTRA_LANE`), so they sit on x0; anim_test's overlap check now only flags extras one sheet carries
+  together. Hook / fadeaway files unchanged; ANIM OK (also `--anim-fake-v2`); about 3.1 MB added
 - **P11-15** | The Present portraits
   | art-audio-integrator B | `tools/art/make_portraits_v2.py` (`--legends present`), `assets/portraits/lg_*.png`,
   `docs/art/legends_present_portraits.png`
