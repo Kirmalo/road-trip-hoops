@@ -188,6 +188,12 @@ Everything below (Tasks by wave).
   built rows and scrolls to the bottom (934 px list, scroll 354 = the end, the Chapter 4 locked row under it); the
   mentor picker with a full trip roster scrolls. With the shipped data every screen is the same as in Phase 10.
   `--backtest` BACKTEST OK (clean copy, and again with the stand-in on: the same 63 steps).
+- **P11-03** (gameplay-programmer B) | `LegendsData.stand_in_test_data(chapter_id)` (`two_chapter_test_data()` its
+  `"fathers"` wrapper, the same rows byte for byte; other rows get ids `lg_zz_<chapter>_1..6`); `Legends.self_test()`:
+  the shipped walk is now `_check_chapter_walk()` over any number of built chapters, plus `_check_three_chapters()`
+  (stand-in Present: gates 48 stars / 30 real tokens, max tokens 63, finales, unlocks, the swap and mentors over three
+  eras, round trip); no "present" / two-chapter count left in the tests' expectations. Shipped matches (56 JSON dumps)
+  and `--legends-test` / `--legends-test-two` output identical to 7dae4fa; `--legendtest` LEGENDTEST OK
 
 ## Done
 
