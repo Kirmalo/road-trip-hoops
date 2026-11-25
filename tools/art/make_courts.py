@@ -2862,7 +2862,7 @@ def era_fathers_backdrop(seed=62):
 # bleachers) and not Memphis' soul gym (an old packed gym): here cool ash-grey wide planks under a clear gloss, a dark
 # charcoal bowl, black seats, cool white light, and ribbon boards in the era colour (teal, a first guess until the
 # P11-05 look check) with a coral accent; fans hold up phone lights.
-#   era_present  (name proposed: NEW ARENA)  wide 8-texel ash planks in cool greige with a fine seam, staggered
+#   era_present  (BIG STAGE, owner)  wide 8-texel ash planks in cool greige with a fine seam, staggered
 #                            joints, a bright gloss edge and long soft light streaks (the arena lights in the varnish);
 #                            a near-black roof with a light ring, a dim upper deck, a teal ribbon board with white
 #                            slashes (rows ~65-69, at the HUD band's lower edge), a lower bowl of black seats with LED
@@ -3051,7 +3051,7 @@ ERA_LOOKS = {
                     "logo": ("#f0a83a", 0.72), "apron": "#3e3838", "backdrop": "fence", "wall": "#3a1c30",
                     "wall_dark": "#160e1c", "backboard": "glass", "board_square": "#ffe6a0",
                     "pole": "#342c34", "rim": "#f06a1e", "net": ("#fff4e4", 0.85)},
-    "era_present": {"name": "NEW ARENA", "music": "newyork", "floor": "#b3aa9e", "floor_stripe": "#b3aa9e",
+    "era_present": {"name": "BIG STAGE", "music": "newyork", "floor": "#b3aa9e", "floor_stripe": "#b3aa9e",
                     "stripe_ft": 0, "speckle": 0, "line": ("#ffffff", 0.95), "paint": ("#16a8a0", 0.80),
                     "logo": ("#20232b", 0.78), "apron": "#20232b", "backdrop": "bleachers", "wall": "#181a21",
                     "wall_dark": "#0e1015", "backboard": "glass", "board_square": "#ffffff",
