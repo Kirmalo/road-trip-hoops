@@ -7,7 +7,7 @@ extends RefCounted
 # Everything comes from LegendsData.CHAPTERS / LEGENDS: an era team exists for every built chapter row with a crew,
 # ERA_TEAM_MIN+ legends and a lineup of 3 (no chapter id in the logic; the Present's team appears by itself once its
 # row is built). Its id is the crew name in lower case with "_", a leading "the_" dropped (grandfathers, fathers).
-#   open      ERA_TEAM_MIN of the chapter's legends unlocked in the Legends file (Legends.is_unlocked(), legends.gd
+#   open      (finale pick, owner) the team's own three unlocked; (shape pick) ERA_TEAM_MIN of the chapter's legends unlocked in the Legends file (Legends.is_unlocked(), legends.gd
 #             loaded at run time; missing = no era teams). Never the trip save, never stars. --legends-unlock-all /
 #             -none act through Legends.is_unlocked(); --unlock-all opens every era team, --unlock-none closes them
 #             (--unlock-all wins, as in Difficulty.team_unlocked()). Nothing is ever saved.
@@ -148,6 +148,16 @@ static func is_open(id: String) -> bool:
 		return false
 	if not (_test_unlocked is Array) and _legends() == null:
 		return false
+	if ERA_PICK == "finale":
+		# owner (VISION "Phase 11 era teams"): the team opens once its own three (the finale three) are unlocked,
+		# so Quick Game never plays a legend you haven't unlocked
+		var three: Array = _pick(_row(id), false)
+		if three.size() != ERA_TEAM_SIZE:
+			return false
+		for lid in three:
+			if not _unlocked(str(lid)):
+				return false
+		return true
 	return unlocked_count(id) >= ERA_TEAM_MIN
 
 # ---------------------------------------------------------------------------------------------------- lineup
@@ -357,9 +367,22 @@ static func _check_rows(errs: Array, tag: String) -> void:
 		_test_unlocked = legs.slice(0, ERA_TEAM_MIN - 1)
 		if is_open(eid):
 			errs.append("%s %s: open with %d unlocked" % [tag, eid, ERA_TEAM_MIN - 1])
-		_test_unlocked = legs.slice(0, ERA_TEAM_MIN)
-		if not is_open(eid):
-			errs.append("%s %s: closed with %d unlocked" % [tag, eid, ERA_TEAM_MIN])
+		if ERA_PICK == "finale":
+			# its three unlocked opens it; two of them plus every other legend of the era does not
+			_test_unlocked = want.duplicate()
+			if not is_open(eid):
+				errs.append("%s %s: closed with its three unlocked" % [tag, eid])
+			var others: Array = []
+			for lid in legs:
+				if str(lid) != str(want[0]):
+					others.append(lid)
+			_test_unlocked = others
+			if is_open(eid):
+				errs.append("%s %s: open without %s" % [tag, eid, str(want[0])])
+		else:
+			_test_unlocked = legs.slice(0, ERA_TEAM_MIN)
+			if not is_open(eid):
+				errs.append("%s %s: closed with %d unlocked" % [tag, eid, ERA_TEAM_MIN])
 		if ERA_PICK != "finale" and lineup(eid) != legs.slice(0, ERA_TEAM_MIN):
 			errs.append("%s %s: %d unlocked, lineup %s" % [tag, eid, ERA_TEAM_MIN, str(lineup(eid))])
 		_test_unlocked = legs.duplicate()
