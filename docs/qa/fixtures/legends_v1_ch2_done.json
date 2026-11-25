@@ -1,0 +1,62 @@
+{
+	"finales": [
+		"grand",
+		"fathers"
+	],
+	"mentors": {
+		"lg_ankles": "ht_boss",
+		"lg_gate": "ud_deuce"
+	},
+	"seen": [
+		"legends_grand_intro",
+		"lg_steeple_unlock",
+		"lg_gate_unlock",
+		"lg_set_shot_unlock",
+		"lg_boxcar_unlock",
+		"lg_velvet_unlock",
+		"lg_quarterback_unlock",
+		"legends_grand_finale_before",
+		"legends_grand_finale_after",
+		"legends_fathers_intro",
+		"lg_rooftop_unlock",
+		"lg_ankles_unlock",
+		"lg_midrange_unlock",
+		"lg_freight_unlock",
+		"lg_eyes_closed_unlock",
+		"lg_lockbox_unlock",
+		"legends_fathers_finale_before",
+		"legends_fathers_finale_after"
+	],
+	"serial": 40,
+	"tokens": {
+		"fin:fathers": 3,
+		"fin:grand": 3,
+		"lg:lg_ankles": 3,
+		"lg:lg_boxcar": 3,
+		"lg:lg_eyes_closed": 3,
+		"lg:lg_freight": 3,
+		"lg:lg_gate": 3,
+		"lg:lg_lockbox": 3,
+		"lg:lg_midrange": 3,
+		"lg:lg_quarterback": 3,
+		"lg:lg_rooftop": 3,
+		"lg:lg_set_shot": 3,
+		"lg:lg_steeple": 3,
+		"lg:lg_velvet": 3
+	},
+	"unlocked": [
+		"lg_steeple",
+		"lg_gate",
+		"lg_set_shot",
+		"lg_boxcar",
+		"lg_velvet",
+		"lg_quarterback",
+		"lg_rooftop",
+		"lg_ankles",
+		"lg_midrange",
+		"lg_freight",
+		"lg_eyes_closed",
+		"lg_lockbox"
+	],
+	"version": 1
+}

@@ -171,13 +171,14 @@ Everything below (Tasks by wave).
   | Result: 5 samples `docs/audio_preview/present_a..e_*.ogg` (30 s, -20 LUFS, 232-288 KB each, 1.26 MB total): The Bass of the
   Future (CC0), Royal run (CC0), 8-Bit Hero Quest (CC-BY 4.0), Techno DRIVE!!! v2.5 (CC-BY 4.0), TECHNOCADE (CC-BY 3.0);
   list in `LIST.md` "Legends: Present"; the owner picks one
+- **P11-01** Phase 10 save fixtures: `docs/qa/fixtures/` legends_v1_ch2_mid / _ch2_done, trip_v2_father, settings_v2_48, make_ / check_fixtures_v4 (README "Phase 10 save fixtures"); scripted like P10-01, not a test-driver stop (README says why)
 
 ## Done
 
 ## Tasks by wave
 
 ### Wave 1 (no owner answer needed; P11-05b only if P4 picks an animation)
-- **P11-01** | Phase 10 save fixtures
+- **P11-01** | REVIEW (qa-balance-tester: 4 fixtures + make/check scripts v4 from 83520f8; CHECK OK, trip resume TRIP END x2, challenge and legends-test runs OK, files unchanged) | Phase 10 save fixtures
   | qa-balance-tester | `docs/qa/fixtures/` (new files only): `legends_v1_ch2_mid.json` (Chapter 1 closed, 3 Fathers
   beaten, a Fathers mentor), `legends_v1_ch2_done.json` (both chapters closed, 42 tokens), `trip_v2_father.json` (a
   drafted Father starting next to a boss, a Grandfather on the bench, a mentored player), `settings_v2_48.cfg` (48

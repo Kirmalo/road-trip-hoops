@@ -125,3 +125,59 @@ own fresh `XDG_DATA_HOME`):
   crew trip, "STEEPLE SITS: DEX PLAYS", `sea_g1` in for him): a1dc3c7 11-10 met (Velvet 2 pts), 9fa3283 10-11 failed;
   exit 0, the test trip and Legends files unchanged byte for byte. `-- --legends-test --target 3` on the trip fixture
   (9fa3283; it erases the Legends test file first): LEGENDS END, crew trip, the swap line, 10 games, trip unchanged.
+
+# Phase 10 save fixtures (P11-01)
+
+Saves written by the Phase 10 build (commit `83520f8`; its `scripts/` are identical to `7dae4fa`), so Phase 11 can test
+that every Phase 10 save loads (`legends.json` version 1 with both chapters, a `trip.json` version 2 with a drafted
+Father, `settings.cfg` with 48 stars, the Chapter 3 star gate). Same rules as above: the exact bytes `save.gd`,
+`legends_save.gd` and `ConfigFile` wrote, don't edit them by hand. To test one, copy it to `user://legends.json` (any
+test run: `legends_test.json`), `trip.json` (`trip_test.json`) / `settings.cfg` (`settings_test.cfg`). They go on with
+the P10-01 owner's story (story D -> E): his three Phase 9 files are what the Phase 10 build first opened.
+`legends_v1_ch2_mid.json` is the Legends file during `trip_v2_father.json` and `settings_v2_48.cfg` (the trip calls did
+not touch it, checked byte for byte); `legends_v1_ch2_done.json` is the same file later (the trip did not move, checked
+byte for byte).
+
+| File | State | How it was made |
+|---|---|---|
+| `legends_v1_ch2_mid.json` | Chapter 1 closed (21/21, `finales ["grand"]`, from `legends_v1_ch1_done.json`); the Fathers intro seen; ROOFTOP won with 1 stop first (goal broken: nothing) then on Normal (2), ANKLES on Hard (3), MIDRANGE lost once then won on Normal (2): 9 unlocked, 28 tokens (Fathers 7, on two levels); mentors GATE -> Deuce (`block_timing`) and ANKLES -> MAYOR (`ht_boss`, a starter, `handle`); 13 scenes seen | scripted story E |
+| `trip_v2_father.json` | Normal. From `trip_v2_legend.json`: MIDRANGE (`lg_midrange`) drafted from the Fathers' LEGENDS row into slot 3 (via "draft", 0 points, 93/95/93/89/89 + steal 89 / block 83); starters Deuce (you), MIDRANGE, MAYOR (one legend + one boss, no repair); STEEPLE (`lg_steeple`, a Grandfather) on the bench; Deuce and MAYOR mentored. Los Angeles won (one loss in game 2), TREY (`la_g1`) recruited: 13 players, record 21-3, paid 21, every point spent; then Hometown 1-3 and Chicago 1-3 replayed on Hard from the map (stars only, marker cleared, the trip did not move). On the map before New York round 1, slot 4 open. CONTINUE -> map | scripted story E |
+| `settings_v2_48.cfg` | The owner's `settings.cfg` at that moment: 48 stars (Hometown and Chicago 3 each, the other 15 games 2), 4 slots (slot 4 and `van_2` at 48), LEGEND closed; LOCKER picks `jersey_2` / `ball_2` / `van_2`; level normal, music on, sfx 0.9, music 0.7, full screen, right-handed, Quick Game court `midnight`, Kings vs `boardwalk_bombers`; 7 courts and 7 crews unlocked (Hometown to Los Angeles) | scripted story E |
+| `legends_v1_ch2_done.json` | Later: FREIGHT broken first (hold goal: nothing) then won on Hard, EYES CLOSED on Hard, LOCKBOX lost once then won on Hard ("MIDRANGE SITS: TREY PLAYS"), ROOFTOP and MIDRANGE replayed on Hard (best 2 -> 3), ANKLES replayed on Easy (best 3 kept), the Fathers finale's before scene, the finale won on Hard: all 12 unlocked, 42/42 tokens, `finales ["grand", "fathers"]` (both chapters closed), 18 scenes seen, the same two mentors | scripted story E, later |
+
+How they were made (2026-11-25, Godot 4.3 stable):
+- A copy of the Phase 10 build: `git archive 83520f8`, with only `config/name` in `project.godot` changed ("RTH P1101
+  Fixtures") and its own fresh `XDG_DATA_HOME`.
+- `make_fixtures_v4.gd.txt` (rename to `.gd`, put it in that copy's root), run
+  `FIXTURE_IN=<repo>/docs/qa/fixtures FIXTURE_OUT=<dir> godot --headless --path <copy> -s res://make_fixtures_v4.gd`.
+  It wipes the copy's files, puts the P10-01 `settings_v2_36.cfg`, `legends_v1_ch1_done.json` and `trip_v2_legend.json`
+  in as `user://settings.cfg`, `legends.json`, `trip.json`, loads them as the game does (`Trip.continue_trip()`,
+  `Legends.load_state()`), then makes the calls the screens make, as `make_fixtures_v3` does (plus `start_replay` for
+  the replays). No user arguments, so the build writes the owner's file names, as on the tablet.
+- Why scripted and not a `--legends-test` / `--trip-test` stop (the board row's wording): `--legends-test` erases its
+  Legends file first and plays every chapter to the end, and the trip driver picks its own lineups, drafts and levels;
+  neither can stop on a half-done Chapter 2 with a chosen mentor, or on a trip with a chosen Father starting. The
+  script runs the same game code the screens call, as P10-01 did; both test drivers then ran on the fixtures (below).
+
+Checked in the Phase 10 build (`83520f8`), each run in its own copy (own `config/name`, own fresh `XDG_DATA_HOME`):
+- `check_fixtures_v4.gd.txt` (same way, `FIXTURE_DIR=<dir>`, no user args: the owner's file names): the settings give
+  48 stars, 4 slots, LEGEND closed, the 3 picks, normal, 7 courts, MIDNIGHT open, Chapters 1-2 open; each Legends file
+  loads as saved (`to_dict()` == the file minus version / serial): mid 28 tokens (grand 21, fathers 7), 9 unlocked,
+  Chapter 1 closed, the Fathers finale locked; done 42 (21 + 21), 12 unlocked, both closed; both give Deuce GATE's
+  `block_timing` and MAYOR ANKLES' `handle`; the trip loads as saved, version 2, CONTINUE -> map (New York), drafts
+  `ht_boss` + `lg_steeple` + `lg_midrange`, starters Deuce + MIDRANGE + MAYOR legal, STEEPLE on the bench, no repair,
+  1 open slot, MAYOR's perk on the trip, none on MIDRANGE, two LEGENDS rows in the draft (grand: GATE, SET SHOT,
+  BOXCAR, VELVET, QUARTERBACK; fathers: ROOFTOP, ANKLES), Lockbox's challenge and the Fathers finale "MIDRANGE SITS:
+  TREY PLAYS"; loading writes nothing (the files byte for byte). CHECK OK.
+- `trip_v2_father.json` as `trip_test.json`, `settings_v2_48.cfg` as `settings_test.cfg`, then `-- --trip-test --target
+  3 --trip-resume` (exit 0, no `SCRIPT ERROR`, `ERROR` or `WARNING` lines, no `--stars`): with `legends_v1_ch2_mid.json`
+  as `legends_test.json`: TRIP END complete, 5 games, record 24-4, ROOFTOP drafted from the Fathers row into slot 4 (the
+  one-legend hint), MIDRANGE and MAYOR starting all the way, every game >= 2 stars, 55 stars; with
+  `legends_v1_ch2_done.json`: TRIP END complete, 4 games, 24-3, a `PERK handle MAYOR` line in play. The Legends test
+  file byte for byte the same after both runs.
+- With the trip: `-- --autoplay --challenge freight` on `legends_v1_ch2_mid.json` (a real CPU game to 15, Normal, crew
+  trip, MIDRANGE plays for you): met 15-8, Freight 1 pt; `-- --autoplay --challenge fin:fathers` on
+  `legends_v1_ch2_done.json` (to 21, "MIDRANGE SITS: TREY PLAYS"): failed 17-21 (lost; the finale has no goal). Exit 0,
+  the trip, settings and Legends test files unchanged byte for byte. `-- --legends-test --target 3` on the trip fixture
+  (it erases the Legends test file first): LEGENDS END, crew trip, the swap line, 20 games, grand 14/21, fathers 14/21,
+  exit 0, the trip unchanged.

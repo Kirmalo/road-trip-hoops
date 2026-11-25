@@ -1,0 +1,162 @@
+extends SceneTree
+# P11-01 check: the Phase 10 fixtures in FIXTURE_DIR load in this build, under the owner's file names (no user args):
+# settings_v2_48.cfg as user://settings.cfg, legends_v1_ch2_mid.json / legends_v1_ch2_done.json as user://legends.json,
+# trip_v2_father.json as user://trip.json. Each loaded state must be the file's own (minus version / serial), and the
+# stars, slots, picks, gates, tokens per chapter, unlocks, finales, both mentors and their perks, the drafted Father
+# starting next to a boss with a Grandfather on the bench (no repair), the draft's two LEGENDS rows and a Fathers
+# challenge's swap line are read back. Loading writes nothing (files byte for byte).
+#   FIXTURE_DIR=/abs/dir godot --headless --path <copy> -s res://check_fixtures_v4.gd
+
+const Trip = preload("res://scripts/trip.gd")
+const Save = preload("res://scripts/save.gd")
+const Difficulty = preload("res://scripts/difficulty.gd")
+const Stars = preload("res://scripts/stars.gd")
+const Cosmetics = preload("res://scripts/cosmetics.gd")
+const Legends = preload("res://scripts/legends.gd")
+const LegendsSave = preload("res://scripts/legends_save.gd")
+const LegendsData = preload("res://scripts/legends_data.gd")
+
+var ok := true
+var dir := ""
+
+func _bytes(p: String) -> PackedByteArray:
+	if not FileAccess.file_exists(p):
+		return PackedByteArray()
+	var f: FileAccess = FileAccess.open(p, FileAccess.READ)
+	var b: PackedByteArray = f.get_buffer(f.get_length())
+	f.close()
+	return b
+
+func _copy(name: String, dst: String) -> bool:
+	var b: PackedByteArray = _bytes(dir.path_join(name))
+	if b.is_empty():
+		print("CHECK %s: MISSING" % name)
+		ok = false
+		return false
+	var w: FileAccess = FileAccess.open(dst, FileAccess.WRITE)
+	w.store_buffer(b)
+	w.close()
+	return true
+
+func _want(cond: bool, what: String) -> void:
+	if not cond:
+		ok = false
+		print("CHECK   FAILED: %s" % what)
+
+func _same_json(a, b) -> bool:
+	return JSON.stringify(a, "", true) == JSON.stringify(b, "", true)
+
+func _file_dict_raw(name: String) -> Dictionary:
+	var d = JSON.parse_string(_bytes(dir.path_join(name)).get_string_from_utf8())
+	return d if d is Dictionary else {}
+
+func _file_dict(name: String) -> Dictionary:
+	var out: Dictionary = _file_dict_raw(name).duplicate(true)
+	out.erase("version")
+	out.erase("serial")
+	return out
+
+func _initialize() -> void:
+	dir = OS.get_environment("FIXTURE_DIR")
+	print("CHECK files: trip %s legends %s settings %s" % [Save.path(), LegendsSave.path(), Difficulty.SAVE_PATH])
+	Save.erase()
+	LegendsSave.erase()
+	_copy("settings_v2_48.cfg", Difficulty.SAVE_PATH)
+	_copy("legends_v1_ch2_mid.json", LegendsSave.path())
+	_copy("trip_v2_father.json", Save.path())
+	_check_settings()
+	_check_legends("legends_v1_ch2_mid.json", 28, 21, 7,
+			LegendsData.legend_ids("grand") + ["lg_rooftop", "lg_ankles", "lg_midrange"], ["grand"])
+	_check_trip()
+	_want(_bytes(Save.path()) == _bytes(dir.path_join("trip_v2_father.json")), "trip.json unchanged by loading")
+	_want(_bytes(LegendsSave.path()) == _bytes(dir.path_join("legends_v1_ch2_mid.json")), "legends.json (mid) unchanged")
+	_copy("legends_v1_ch2_done.json", LegendsSave.path())
+	_check_legends("legends_v1_ch2_done.json", 42, 21, 21,
+			LegendsData.legend_ids("grand") + LegendsData.legend_ids("fathers"), ["grand", "fathers"])
+	var pk: Dictionary = Trip.roster_player("ht_boss").get("perk", {})
+	print("CHECK trip with legends_v1_ch2_done.json: MAYOR's perk %s | Fathers finale match %s" % [str(pk.get("id", "")),
+			Legends.match_line(Legends.match_for_finale("fathers", "hard"))])
+	_want(str(pk.get("id", "")) == "handle", "ch2_done: MAYOR keeps ANKLES' perk on the trip")
+	_want(_bytes(LegendsSave.path()) == _bytes(dir.path_join("legends_v1_ch2_done.json")), "legends.json (done) unchanged")
+	_want(_bytes(Save.path()) == _bytes(dir.path_join("trip_v2_father.json")), "trip.json still unchanged")
+	Save.erase()
+	LegendsSave.erase()
+	DirAccess.remove_absolute(Difficulty.SAVE_PATH)
+	print("CHECK %s" % ("OK" if ok else "FAILED"))
+	quit(0 if ok else 1)
+
+func _check_settings() -> void:
+	Cosmetics._reset_cache()
+	Difficulty.load_saved()
+	var picks: Array = [Cosmetics.picked("jersey"), Cosmetics.picked("ball"), Cosmetics.picked("van")]
+	print("CHECK settings_v2_48.cfg: stars %d slots %d legend %s | picks %s | courts %d %s | open reward courts %s | level %s | left-handed %s | fullscreen %s | chapters open grand %s fathers %s" % [
+			Stars.real_total(), Stars.slots(), Stars.legend_open(), str(picks), Difficulty.unlocked_cities().size(),
+			str(Difficulty.unlocked_cities()), str(Cosmetics.open_court_looks()), Difficulty.level_name(),
+			Difficulty.left_handed_saved(), Difficulty.fullscreen_saved(), Legends.chapter_open("grand"),
+			Legends.chapter_open("fathers")])
+	_want(Stars.real_total() == 48, "48 stars")
+	_want(Stars.slots() == 4, "4 slots")
+	_want(not Stars.legend_open(), "LEGEND closed")
+	_want(picks == ["jersey_2", "ball_2", "van_2"], "picks")
+	_want(Difficulty.level_name() == "normal", "level")
+	_want(Difficulty.unlocked_cities().size() == 7, "7 courts")
+	_want(Legends.chapter_open("grand") and Legends.chapter_open("fathers"), "Chapters 1-2 open at 48 stars")
+
+func _check_legends(name: String, want_tokens: int, want_grand: int, want_fathers: int, want_unlocked: Array,
+		want_finales: Array) -> void:
+	Legends.load_state(true)
+	var same: bool = _same_json(Legends.to_dict(), _file_dict(name))
+	var pd: Dictionary = Legends.perks_for("ud_deuce")
+	var pm: Dictionary = Legends.perks_for("ht_boss")
+	print("CHECK %s: same state %s | tokens %d (grand %d / %d, fathers %d / %d) | unlocked %d %s | finales %s, done grand %s fathers %s, fathers finale open %s | mentors %s, perks Deuce %s MAYOR %s | seen %d" % [
+			name, same, Legends.real_tokens_total(), Legends.chapter_tokens("grand"), Legends.chapter_max_tokens("grand"),
+			Legends.chapter_tokens("fathers"), Legends.chapter_max_tokens("fathers"), Legends.unlocked_ids().size(),
+			str(Legends.unlocked_ids()), str(Legends.finales), Legends.chapter_done("grand"),
+			Legends.chapter_done("fathers"), Legends.finale_open("fathers"), str(Legends.mentors),
+			str(pd.get("id", "")), str(pm.get("id", "")), Legends.seen.size()])
+	_want(same, name + " loads as saved")
+	_want(Legends.real_tokens_total() == want_tokens, name + " tokens")
+	_want(Legends.chapter_tokens("grand") == want_grand and Legends.chapter_tokens("fathers") == want_fathers,
+			name + " tokens per chapter")
+	_want(Legends.unlocked_ids() == want_unlocked, name + " unlocks")
+	_want(Legends.chapter_done("grand") and Legends.chapter_done("fathers") == want_finales.has("fathers"),
+			name + " chapters closed")
+	_want(Legends.finale_open("fathers") == want_finales.has("fathers"), name + " Fathers finale open")
+	_want(Legends.mentor_of("ud_deuce") == "lg_gate" and str(pd.get("id", "")) == "block_timing", name + " GATE -> Deuce")
+	_want(Legends.mentor_of("ht_boss") == "lg_ankles" and str(pm.get("id", "")) == "handle", name + " ANKLES -> MAYOR")
+
+func _check_trip() -> void:
+	var loaded: bool = Trip.continue_trip()
+	var same: bool = loaded and _same_json(Trip.to_dict(), _file_dict("trip_v2_father.json"))
+	var st: Array = Trip.starters
+	var mayor: Dictionary = Trip.roster_player("ht_boss")
+	var mid: Dictionary = Trip.roster_player("lg_midrange")
+	var rows: Array = Trip.draft_pool_by_crew()
+	var legend_rows: Array = []
+	for row in rows:
+		if str((row as Dictionary).get("city", "")) == Trip.LEGENDS_ROW:
+			var ids: Array = []
+			for p in (row as Dictionary).get("players", []):
+				ids.append(str((p as Dictionary).get("id", "")))
+			legend_rows.append([str((row as Dictionary).get("chapter", "")), ids])
+	var m: Dictionary = Legends.match_for_challenge("lg_freight", "normal")
+	var m2: Dictionary = Legends.match_for_challenge("lg_lockbox", "normal")
+	print("CHECK trip_v2_father.json: loaded %s, same state %s, CONTINUE -> %s | level %s city %s game %d phase %s | roster %d drafted %s | starters %s you %s (legends %d bosses %d, rule '%s') | bench legend steeple %s | repair %s | open slots %d | perks MAYOR %s, Midrange %s | Midrange %s %s | legend rows %s | freight challenge note '%s' | lockbox challenge note '%s'" % [
+			loaded, same, Trip.resume_screen(), Trip.level, Trip.city, Trip.game, Trip.phase, Trip.roster_ids().size(),
+			str(Trip.drafted_ids()), str(st), Trip.human, Trip.legend_count(st), Trip.boss_count(st),
+			Trip.starters_ok(st), Trip.roster_ids().has("lg_steeple") and not st.has("lg_steeple"),
+			str(Trip.boss_repair), Trip.open_slots(), str(mayor.get("perk", {}).get("id", "")),
+			str(mid.get("perk", {}).get("id", "")), str(mid.get("tier", "")), str(mid.get("ratings", {})),
+			str(legend_rows), str(m.get("note", "")), str(m2.get("note", ""))])
+	_want(same, "trip loads as saved")
+	_want(int(_file_dict_raw("trip_v2_father.json").get("version", 0)) == Save.VERSION, "trip version 2")
+	_want(Trip.resume_screen() == "map" and Trip.phase == "map" and Trip.city == "new_york", "CONTINUE -> map, NY")
+	_want(Trip.drafted_ids() == ["ht_boss", "lg_steeple", "lg_midrange"], "drafts")
+	_want(st == ["ud_deuce", "lg_midrange", "ht_boss"] and Trip.human == "ud_deuce", "starters Father + boss, Deuce you")
+	_want(Trip.roster_ids().has("lg_steeple") and not st.has("lg_steeple"), "STEEPLE on the bench")
+	_want(Trip.starters_ok(st) == "" and Trip.boss_repair.is_empty(), "lineup legal, no repair")
+	_want(Trip.open_slots() == 1, "one open slot (slot 4)")
+	_want(str(mayor.get("perk", {}).get("id", "")) == "handle", "MAYOR's perk on the trip")
+	_want(not mid.has("perk"), "a legend has no perk")
+	_want(legend_rows.size() == 2, "two LEGENDS rows in the draft")
+	_want(str(m2.get("note", "")).begins_with("MIDRANGE SITS"), "Midrange sits in Lockbox's challenge")
