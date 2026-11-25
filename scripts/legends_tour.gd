@@ -692,8 +692,21 @@ func _on_hall() -> void:
 	if _busy or _arm_t > 0.0:
 		return
 	_stat("legends_hall")
-	var ba: Dictionary = {"chapter": _chapter} if _chapter != "" else {}
-	_go(HALL_SCREEN, {"back": SELF_SCREEN, "back_args": ba})
+	if _chapter == "":
+		_go(HALL_SCREEN, {"back": SELF_SCREEN, "back_args": {}})
+		return
+	# P11-37: from a chapter view the Hall opens on this era's row: its first unlocked legend (data order) picked,
+	# else its first plaque (locked: the detail says how to unlock him); hall.gd scrolls the list to the pick
+	var ids: Array = LegendsData.legend_ids(_chapter)
+	var pk: String = str(ids[0]) if not ids.is_empty() else ""
+	for id in ids:
+		if Legends.is_unlocked(str(id)):
+			pk = str(id)
+			break
+	var to_args := {"back": SELF_SCREEN, "back_args": {"chapter": _chapter}}
+	if pk != "":
+		to_args["pick"] = pk
+	_go(HALL_SCREEN, to_args)
 
 # BACK: the chapter view goes to the timeline, the timeline to the title
 func _on_back() -> void:

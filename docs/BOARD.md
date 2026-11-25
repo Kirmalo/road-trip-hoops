@@ -231,6 +231,12 @@ Everything below (Tasks by wave).
   placeholder, magenta / graphite), each in your colors, next to today's ud_deuce; parts row (Stretch dark crop +
   boxed beard + tights, bald + boxed beard wing, high-top fade + one-leg tights, crop + knee sleeve). Renderer
   checks 0 problems; `--anim-test` ANIM OK; nothing in `assets/` changed. Waiting for the owner's look check.
+- **P11-37** (gameplay C): `legends_tour.gd` `_on_hall()` only: from a chapter view HALL passes `"pick"` = the
+  chapter's first unlocked legend in data order (none unlocked: its first plaque, the locked detail; hall.gd's existing
+  `_scroll_to_pick()` brings the row into view) and `"back_args"` the chapter; the timeline's HALL as before. From the
+  data (`LegendsData.legend_ids(chapter)`), no chapter id. `--backtest` BACKTEST OK (Fathers view -> Hall picks
+  lg_rooftop, BACK to the Fathers view), `--legends-test` LEGENDS END (20 games, 28/42 tokens); xvfb shots: Grandfathers
+  view -> Steeple picked, Fathers view -> Rooftop picked.
 
 ## Done
 - **P11-01** (qa, merged) Phase 10 save fixtures: `docs/qa/fixtures/` legends_v1_ch2_mid / _ch2_done, trip_v2_father, settings_v2_48, make_ / check_fixtures_v4 (README "Phase 10 save fixtures"); scripted like P10-01, not a test-driver stop (README says why)
