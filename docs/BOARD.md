@@ -155,6 +155,13 @@ Everything below (Tasks by wave).
 ## Doing
 
 ## Review
+- **P11-07** (art D): `frame_present.png` (56 x 88, 3541 B), `pin_present.png` (854 B), `pin_present_done.png` (876 B),
+  listed in `ui.json` (`frames.present`, `pins.present.open/done`); preview `docs/art/legends_ui.png` (Chapter 3 row).
+  Made-up modern arena: graphite glass band, magenta LED strip, centre-hung screen crest (bars only), magenta plate,
+  dark stands with a magenta light ribbon, glossy floor, spotlight. First-guess era colors `ERA3_MAGENTA` /
+  `_GRAPHITE` / `_LIGHT` / `_FLOOR` in the script; it reads crews.json's `ERA3_*` of those names when P11-05 adds them
+  (else change `PRESENT_PAL`), rerun after the look check. Chapters 1-2 files and `timeline.png` byte for byte
+  unchanged; the Chapter 3 timeline panel is still the dimmed hint (recolor once P11-06's court lands). `--legendtest` OK.
 
 ## Done
 

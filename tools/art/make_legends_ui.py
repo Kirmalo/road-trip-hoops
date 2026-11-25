@@ -123,6 +123,37 @@ def era2(name):
 FENCE, CHAIN, ORANGE2 = era2("ERA2_FENCE"), era2("ERA2_CHAIN"), era2("ERA2_ORANGE")
 LAMP, NIGHT, ASPHALT = era2("ERA2_LAMP"), era2("ERA2_NIGHT"), era2("ERA2_ASPHALT")
 
+# Chapter 3, the Present (P11-07): a made-up modern arena. A first guess until the owner's look check of P11-05's era
+# palettes: when tools/art/crews.json has the ERA3_* names below in "palettes", they are used instead (rerun this
+# script after the look check; if P11-05 picks other names, point PRESENT_PAL at them). Hot magenta LED trim (the era
+# colour: name plate, the open pin, the light ribbon), graphite glass for the frame band and the dark stands, cool
+# white arena light, a glossy pale floor. Kept away from GOLD HALL's gold, MIDNIGHT's navy and cyan, Chapter 1's rust
+# and cream and Chapter 2's seafoam and charcoal; magenta with graphite is no real team's colour pair.
+ERA3 = {
+    "ERA3_MAGENTA": ["#ff9ad8", "#e8409c", "#a8206e", "#5c0e3c"],   # LED trim, light .. dark
+    "ERA3_GRAPHITE": ["#8c92a2", "#545a6a", "#343844", "#1c1e26"],  # glass / graphite band, stands
+    "ERA3_LIGHT": ["#ffffff", "#e8f0ff", "#b8c4e8", "#6c78a0"],     # cool white arena light, chrome bevel
+    "ERA3_FLOOR": ["#f6dcae", "#e4bc84", "#c4925a", "#8c6036"],     # glossy pale arena floor
+}
+PRESENT_PAL = {"magenta": "ERA3_MAGENTA", "graphite": "ERA3_GRAPHITE", "light": "ERA3_LIGHT", "floor": "ERA3_FLOOR"}
+
+
+def era3(key):
+    """One Present palette as 4 RGB tuples: crews.json's "palettes" entry if P11-05 wrote it, else the guess above."""
+    name = PRESENT_PAL[key]
+    try:
+        with open(os.path.join(HERE, "crews.json")) as fh:
+            pals = json.load(fh).get("palettes", {})
+    except (OSError, ValueError):
+        pals = {}
+    row = pals.get(name)
+    if not (isinstance(row, list) and len(row) >= 4):
+        row = ERA3[name]
+    return [H_(c) for c in row[:4]]
+
+
+MAGENTA, GRAPHITE, LIGHT3, FLOOR3 = era3("magenta"), era3("graphite"), era3("light"), era3("floor")
+
 
 def mix(a, b, t):
     return tuple(int(round(a[k] * (1 - t) + b[k] * t)) for k in range(3))
@@ -368,7 +399,7 @@ def padlock(cv, x, y, body, dark):
 def pin_image(kind, state):
     """state: open, done or locked. The open pin wears its era's metal (Grandfathers brass, Fathers park-green
     fence steel); done is gold for every era, locked grey."""
-    rp = {"open": FENCE if kind == "fathers" else BRASS, "done": GOLD, "locked": STEEL}[state]
+    rp = {"open": {"fathers": FENCE, "present": MAGENTA}.get(kind, BRASS), "done": GOLD, "locked": STEEL}[state]
     cv = Canvas(PIN_W, PIN_H)
     cx, cy, r = 16, 15, 13
     tip = PIN_ANCHOR
@@ -395,8 +426,15 @@ def pin_image(kind, state):
     face = H_("#3a2a24") if state != "locked" else H_("#3a3a44")
     if kind == "fathers" and state != "locked":
         face = ASPHALT[3]                                     # a night blacktop behind the chain-net hoop
+    if kind == "present" and state != "locked":
+        face = GRAPHITE[2]                                    # dark arena glass behind the modern ball
     cv.disk(cx, cy, 9, face)
     cv.disk(cx, cy, 8, mix(face, (0, 0, 0), 0.25))
+    if kind == "present" and state != "locked":               # an LED ring of dots round the ball
+        for k in range(12):
+            a = k * math.pi / 6 + math.pi / 12
+            cv.put(cx + round(math.cos(a) * 8), cy + round(math.sin(a) * 8),
+                   MAGENTA[0] if k % 2 == 0 else LIGHT3[1])
     if kind == "fathers" and state != "locked":               # a pool of pole light under the net
         for y in range(cy + 2, cy + 9):
             for x in range(cx - 8, cx + 9):
@@ -602,6 +640,89 @@ def window_backing_fathers(cv):
         cv.blend(x, floor_y + 2, (236, 236, 228), 0.65)
 
 
+def window_backing_present(cv):
+    """A modern arena (made up, no real one): dark tiered stands with seat rows and a few phone lights, a light
+    ribbon of abstract magenta stripes along the fascia (no word, logo or sponsor), a glossy pale floor that mirrors
+    the ribbon and a cool white spotlight where he stands."""
+    wx, wy, ww, wh = WINDOW
+    floor_y = wy + 51
+    rib0, rib1 = wy + 30, wy + 34                              # the ribbon board rows
+    for y in range(wy, wy + wh):
+        for x in range(wx, wx + ww):
+            if y < wy + 6:                                     # the dark roof with a catwalk light line
+                c = mix(GRAPHITE[3], (0, 0, 0), 0.35)
+                if y == wy + 4:
+                    c = mix(c, LIGHT3[3], 0.5)
+            elif y < rib0:                                     # upper stands: seat rows, lighter toward the court
+                t = (y - wy - 6) / float(rib0 - wy - 6)
+                c = mix(mix(GRAPHITE[3], (0, 0, 0), 0.25), GRAPHITE[2], t * 0.7)
+                if (y - wy) % 3 == 0:
+                    c = mix(c, GRAPHITE[1], 0.35)              # seat row edges
+                elif (x * 5 + y * 3) % 11 == 0:
+                    c = mix(c, MAGENTA[3], 0.5)                # fans in the era colour
+                if (x * 7 + y * 11) % 61 == 0:
+                    c = LIGHT3[1]                              # phone lights
+            elif y <= rib1:                                    # the ribbon: magenta with abstract white dashes
+                c = MAGENTA[1] if rib0 < y < rib1 else MAGENTA[3]
+                if y == rib0 + 1:
+                    c = MAGENTA[0]
+                if y == rib0 + 2 and (x - wx) % 10 in (2, 3, 4):
+                    c = LIGHT3[0]
+            elif y < floor_y:                                  # lower bowl and the courtside apron
+                c = mix(GRAPHITE[3], GRAPHITE[2], 0.5 if (y - rib1) % 3 else 0.9)
+                if y == floor_y - 1:
+                    c = GRAPHITE[3]
+            else:                                              # glossy floor: long boards, a mirrored glow
+                k = 1 if ((x - wx) // 7 + (y - floor_y) // 2) % 3 else 2
+                c = FLOOR3[k]
+                if (y - floor_y) % 3 == 2:
+                    c = mix(c, FLOOR3[3], 0.35)
+                if y - floor_y in (1, 2):
+                    c = mix(c, MAGENTA[1], 0.28)               # the ribbon's reflection in the gloss
+            cv.put(x, y, c)
+    for x in range(wx, wx + ww):                               # a painted line across the floor behind him
+        cv.blend(x, floor_y + 4, MAGENTA[1], 0.55)
+    mid = wx + ww / 2 - 0.5
+    for y in range(wy, floor_y):                               # the spotlight's cone from the roof
+        for x in range(wx, wx + ww):
+            half = 3 + (y - wy) * 0.34
+            if abs(x - mid) < half:
+                cv.blend(x, y, LIGHT3[1], 0.08 + 0.06 * (1 - abs(x - mid) / half))
+    for y in range(floor_y, wy + wh):                          # its pool of light on the floor
+        for x in range(wx, wx + ww):
+            d = ((x - mid) / 16.0) ** 2 + ((y - (wy + 56)) / 4.0) ** 2
+            if d < 0.55:
+                cv.blend(x, y, LIGHT3[0], 0.40)
+            elif d < 1:
+                cv.blend(x, y, LIGHT3[1], 0.26 if (x + y) % 2 == 0 else 0.16)   # dithered edge
+            elif d < 1.5:
+                cv.blend(x, y, (10, 8, 16), 0.15)
+
+
+def glass_band(cv):
+    """The Present frame band: smooth graphite glass with diagonal sheen stripes and an LED strip running round."""
+    wx, wy, ww, wh = WINDOW
+    px, py, pw, ph = PLATE
+    for y in range(7, FRAME_H - 4):
+        for x in range(3, FRAME_W - 4):
+            inside = wx - 2 <= x <= wx + ww + 1 and wy - 2 <= y <= wy + wh + 1
+            plate = px - 1 <= x <= px + pw and py - 1 <= y <= py + ph
+            if inside or plate:
+                continue
+            c = mix(GRAPHITE[1], GRAPHITE[2], (y - 7) / float(FRAME_H - 11))
+            s = (x + y) % 40
+            if s in (0, 1, 2):
+                c = mix(c, GRAPHITE[0], 0.55)                  # glass sheen stripes
+            elif s == 3:
+                c = mix(c, GRAPHITE[0], 0.25)
+            cv.put(x, y, c)
+    # the LED strip: down both sides of the window and across under it, every third texel a bright diode
+    x0, x1, y0, y1 = wx - 4, wx + ww + 2, wy, wy + wh + 2
+    pts = [(x0, y) for y in range(y0, y1)] + [(x, y1) for x in range(x0, x1 + 1)] + [(x1, y) for y in range(y1 - 1, y0 - 1, -1)]
+    for k, (x, y) in enumerate(pts):
+        cv.put(x, y, MAGENTA[0] if k % 3 == 0 else MAGENTA[1])
+
+
 def crest(cv, kind):
     """The top of the frame: a felt pennant with a star (era frame) or an iron padlock (locked)."""
     mid = FRAME_W // 2
@@ -628,6 +749,18 @@ def crest(cv, kind):
             cv.rect(bx, 2, bx + 1, 3, LAMP[1])
             cv.put(bx, 2, LAMP[0])
             cv.put(bx + 1, 3, LAMP[2])
+    elif kind == "present":                                   # a centre-hung screen: graphite box, LED bars only
+        cv.rect(mid - 9, 0, mid + 9, 5, INK)
+        cv.rect(mid - 8, 1, mid + 8, 4, GRAPHITE[3])
+        cv.rect(mid - 8, 1, mid + 8, 1, GRAPHITE[1])
+        cv.rect(mid - 7, 2, mid - 3, 3, MAGENTA[1])           # two magenta panels and a white middle strip
+        cv.rect(mid + 3, 2, mid + 7, 3, MAGENTA[1])
+        cv.rect(mid - 7, 2, mid - 3, 2, MAGENTA[0])
+        cv.rect(mid + 3, 2, mid + 7, 2, MAGENTA[0])
+        cv.rect(mid - 1, 2, mid + 1, 3, LIGHT3[1])
+        cv.rect(mid - 8, 4, mid + 8, 4, MAGENTA[2])           # the LED ring under the screen
+        for x in range(mid - 8, mid + 9, 3):
+            cv.put(x, 4, MAGENTA[0])
     else:
         cv.rect(mid - 6, 0, mid + 6, 6, INK)
         cv.rect(mid - 5, 1, mid + 5, 5, DARKSTEEL[1])
@@ -649,8 +782,9 @@ def chain_band(cv):
                 cv.put(x, y, FENCE[0] if (x + y) % 8 == 0 else FENCE[2])
 
 
-def plate_paint(cv, metal):
-    """Repaint the name plate in another colour (same shape as frame_border's)."""
+def plate_paint(cv, metal, screws=None):
+    """Repaint the name plate in another colour (same shape as frame_border's); screws: 4 tones (default CHAIN)."""
+    screws = screws or CHAIN
     px, py, pw, ph = PLATE
     cv.rect(px, py, px + pw - 1, py + ph - 1, metal[2])
     cv.rect(px, py, px + pw - 1, py, metal[0])
@@ -658,8 +792,8 @@ def plate_paint(cv, metal):
     cv.rect(px, py + ph - 1, px + pw - 1, py + ph - 1, metal[3])
     cv.rect(px + pw - 1, py, px + pw - 1, py + ph - 1, metal[3])
     for sx in (px + 2, px + pw - 3):
-        cv.put(sx, py + ph // 2, CHAIN[3])
-        cv.put(sx, py + ph // 2 - 1, CHAIN[0])
+        cv.put(sx, py + ph // 2, screws[3])
+        cv.put(sx, py + ph // 2 - 1, screws[0])
 
 
 def frame_image(kind):
@@ -673,6 +807,11 @@ def frame_image(kind):
         chain_band(cv)
         plate_paint(cv, ORANGE2)
         window_backing_fathers(cv)
+    elif kind == "present":
+        frame_border(cv, GRAPHITE, LIGHT3, True)
+        glass_band(cv)
+        plate_paint(cv, MAGENTA, LIGHT3)
+        window_backing_present(cv)
     else:
         wood = [H_("#5a5260"), H_("#433c48"), H_("#2f2a34"), H_("#1e1a22")]
         frame_border(cv, wood, DARKSTEEL, False)
@@ -680,7 +819,7 @@ def frame_image(kind):
     crest(cv, kind)
     # corner rosettes on the era frame / bolts on the locked one
     for (x, y) in ((2, 6), (FRAME_W - 5, 6), (2, FRAME_H - 5), (FRAME_W - 5, FRAME_H - 5)):
-        m = {"grand": BRASS, "fathers": CHAIN}.get(kind, DARKSTEEL)
+        m = {"grand": BRASS, "fathers": CHAIN, "present": LIGHT3}.get(kind, DARKSTEEL)
         cv.rect(x, y, x + 2, y + 2, m[2])
         cv.put(x, y, m[0])
         cv.put(x + 1, y + 1, m[1])
@@ -743,7 +882,7 @@ def preview(tl, pins, frames, sil):
     d.text((12, 708), "mock-up: header, labels and buttons drawn by the game (P9-18); pins and backdrop from "
                       "assets/legends/", font=font(14), fill=(190, 190, 200), anchor="lm")
     # hall pieces
-    hall_h = 1090
+    hall_h = 1530
     pv = Image.new("RGBA", (1280, 720 + hall_h), (24, 22, 34, 255))
     pv.alpha_composite(tour, (0, 0))
     d2 = ImageDraw.Draw(pv)
@@ -810,15 +949,48 @@ def preview(tl, pins, frames, sil):
     pv.alpha_composite(panel, (x, y))
     d2.text((x + panel.width // 2, y + panel.height + 14), "Chapter 2 open (mock-up)", font=font(15),
             fill=(220, 220, 230), anchor="mm")
-    # pins at 4x
-    x, y = 24, 1590
+    # Chapter 3, the Present (P11-07): the same row for its frame and pin. The timeline's Chapter 3 panel is still the
+    # dimmed hint until the era court (P11-06) is in and the panel is redrawn in colour
+    y = 1610
+    d2.rectangle([0, y - 34, 1279, y - 8], fill=(16, 14, 26))
+    d2.text((12, y - 21), "Chapter 3, the Present (P11-07, first guess of the era colours: magenta LED on graphite): "
+                          "frame_present, a stand-in card, the open pin on the (still dimmed) Chapter 3 panel",
+             font=font(16), fill=(235, 235, 245), anchor="lm")
+    stand3 = card_crop(Image.open(os.path.join(CARDS, "la_a1.png")).convert("RGBA"))
+    fr3 = frames["present"].copy()
+    fr3.alpha_composite(stand3, WINDOW[:2])
+    x = 24
+    for im, tag in ((frames["present"], "frame_present"), (fr3, "+ card")):
+        pv.alpha_composite(im.resize((FRAME_W * 2, FRAME_H * 2), Image.NEAREST), (x, y))
+        d2.text((x + FRAME_W, y + FRAME_H * 2 + 14), tag, font=font(15), fill=(220, 220, 230), anchor="mm")
+        x += FRAME_W * 2 + 24
+    x += 10
+    pv.alpha_composite(fr3.resize((FRAME_W * 4, FRAME_H * 4), Image.NEAREST), (x, y))
+    for (px0, sc) in ((24 + FRAME_W * 2 + 24, 2), (x, 4)):
+        cxp = px0 + (PLATE[0] + PLATE[2] / 2) * sc
+        cyp = y + (PLATE[1] + PLATE[3] / 2) * sc
+        nm.text((cxp, cyp), "DEEP END", font=font(8 * sc), fill=(255, 250, 230), anchor="mm", stroke_width=2,
+                stroke_fill=(0, 0, 0))
+    x += FRAME_W * 4 + 40
+    panel = tl.crop((panel_x(2) - 2, py0, panel_x(2) + PANEL_W + 2, py1)).convert("RGBA")
+    panel = panel.resize((panel.width * 2, panel.height * 2), Image.NEAREST)
+    pin3 = pins["present_open"].resize((PIN_W * 2, PIN_H * 2), Image.NEAREST)
+    panel.alpha_composite(pin3, ((PANEL_W // 2 + 2 - PIN_ANCHOR[0]) * 2, (RAIL_Y - py0 - PIN_ANCHOR[1]) * 2))
+    dp = ImageDraw.Draw(panel)
+    label(dp, (panel.width // 2, (RAIL_Y - py0 + 22) * 2), "PRESENT", 30, (255, 150, 215))
+    label(dp, (panel.width // 2, (RAIL_Y - py0 + 36) * 2), "PLAY", 22, (120, 230, 120))
+    pv.alpha_composite(panel, (x, y))
+    d2.text((x + panel.width // 2, y + panel.height + 14), "Chapter 3 open (mock-up)", font=font(15),
+            fill=(220, 220, 230), anchor="mm")
+    # pins at 3x
+    x, y = 24, 2030
     for key in ("grand_open", "grand_done", "grand_locked", "fathers_open", "fathers_done", "fathers_locked",
-                "present_locked", "next_locked"):
-        big = pins[key].resize((PIN_W * 4, PIN_H * 4), Image.NEAREST)
+                "present_open", "present_done", "present_locked", "next_locked"):
+        big = pins[key].resize((PIN_W * 3, PIN_H * 3), Image.NEAREST)
         pv.alpha_composite(big, (x, y))
-        d2.text((x + PIN_W * 2, y + PIN_H * 4 + 12), "pin_" + key.replace("_open", ""), font=font(15),
+        d2.text((x + PIN_W * 3 // 2, y + PIN_H * 3 + 12), "pin_" + key.replace("_open", ""), font=font(13),
                 fill=(220, 220, 230), anchor="mm")
-        x += PIN_W * 4 + 26
+        x += PIN_W * 3 + 30
     pv.convert("RGB").save(PREVIEW, optimize=True)
     print("wrote", os.path.relpath(PREVIEW, ROOT))
 
@@ -835,11 +1007,14 @@ def main():
         "next_locked": pin_image("next", "locked"),
         "fathers_open": pin_image("fathers", "open"),
         "fathers_done": pin_image("fathers", "done"),
+        "present_open": pin_image("present", "open"),
+        "present_done": pin_image("present", "done"),
     }
-    frames = {"grand": frame_image("grand"), "fathers": frame_image("fathers"), "locked": frame_image("locked")}
+    frames = {"grand": frame_image("grand"), "fathers": frame_image("fathers"), "locked": frame_image("locked"),
+              "present": frame_image("present")}
     sil = silhouette_image()
     files = {"timeline.png": tl, "frame_grand.png": frames["grand"], "frame_locked.png": frames["locked"],
-             "frame_fathers.png": frames["fathers"], "silhouette.png": sil}
+             "frame_fathers.png": frames["fathers"], "frame_present.png": frames["present"], "silhouette.png": sil}
     for k, im in pins.items():
         files["pin_" + k.replace("_open", "") + ".png"] = im
     for fn, im in files.items():
@@ -861,10 +1036,12 @@ def main():
         "pin_size": [PIN_W, PIN_H], "pin_anchor": list(PIN_ANCHOR),
         "pins": {"grand": {"open": "pin_grand.png", "done": "pin_grand_done.png", "locked": "pin_grand_locked.png"},
                  "fathers": {"open": "pin_fathers.png", "done": "pin_fathers_done.png",
-                             "locked": "pin_fathers_locked.png"}, "present": {"locked": "pin_present_locked.png"},
+                             "locked": "pin_fathers_locked.png"}, "present": {"open": "pin_present.png", "done": "pin_present_done.png",
+                             "locked": "pin_present_locked.png"},
                  "next": {"locked": "pin_next_locked.png"}},
         "frame_size": [FRAME_W, FRAME_H],
-        "frames": {"grand": "frame_grand.png", "fathers": "frame_fathers.png", "locked": "frame_locked.png"},
+        "frames": {"grand": "frame_grand.png", "fathers": "frame_fathers.png", "present": "frame_present.png",
+                   "locked": "frame_locked.png"},
         "window": list(WINDOW), "card_crop": list(CARD_CROP), "name_plate": list(PLATE),
         "silhouette": "silhouette.png",
     }
