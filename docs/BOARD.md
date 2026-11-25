@@ -653,7 +653,7 @@ Everything below (Tasks by wave).
   `cradle` extra on his sheet only), `scripts/player.gd` (the `CRADLE_STYLE` line only)
   | a preview gif first for the owner; `--anim-test` ANIM OK; `--challenge rooftop` shows `anim_cradle`; nothing else
   changes | the owner's answer, P11-14 and P11-22 merged
-- **P11-35** (P8 b) | Title test and menu shots for the era teams
+- **P11-35** (P8 b) | REVIEW | Title test and menu shots for the era teams
   | gameplay-programmer F | `scripts/title.gd` (the `--titletest` driver only)
   | `--titletest` on QUICK GAME: with no legend unlocked (`--legends-unlock-none`) no era team or era court is offered;
   with `--legends-unlock-all` YOUR TEAM and OPPONENT cycle through the three era teams and COURT through the three era
@@ -661,6 +661,15 @@ Everything below (Tasks by wave).
   `--menushot` shots with `--quick-teams grandfathers,present --court era_present` and `--quick-teams fathers,kings
   --court era_fathers` (no `main.gd` change; if one is needed, after P11-25 is merged); TITLETEST passes both ways, the
   shots in the report | P11-33, P11-34 merged
+  | Result: `_test_quick_eras()` after the QUICK GAME checks: the lists hold exactly `EraTeams.open_ids()` (after the
+  crews) and their looks (after the city courts, before MIDNIGHT / GOLD HALL, each with its twist and line), then YOUR
+  TEAM, OPPONENT and COURT are tapped round their whole lists (button line, era color, twist line per stop; shots
+  `hoops_quick_era_team_<side>_<id>` / `_court_<look>` under xvfb), picks and court put back. TITLETEST DONE plain and
+  `--legends-unlock-none` (Kings, Runners; gym, blacktop), `--legends-unlock-all --stars 48` (+3 teams, OLD GYM / NIGHT
+  PARK / BIG STAGE with OLD SCHOOL / ISO BALL / SPACE THE FLOOR), `--unlock-all --stars 72` (14 teams, 15 courts), and
+  xvfb over a seeded settings.cfg (era picks, BIG STAGE): put back byte for byte. `--menushot` (with
+  `--legends-unlock-all`, needed for the twist line) both pairs OK, no main.gd change. 3 `--autoplay` 21-20, 12-21,
+  22-17 (8:40-12:26), `--humantest` 21-14.
 - **P11-36** (P8 b) | QA: era team balance in Quick Game
   | qa-balance-tester | `docs/qa/phase11-quick-eras.md` (reports only; `ERA_PICK` or the average changed only with the
   owner's yes)
