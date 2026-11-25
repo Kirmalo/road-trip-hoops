@@ -608,12 +608,18 @@ Everything below (Tasks by wave).
   grandfathers on NIGHT PARK 19-22 (8:54), Kings-Runners 19-21 (10:47); `--humantest` on OLD GYM 21-14; LEGENDTEST OK.
 
 ### Wave 5
-- **P11-25** | Back test and title test for Chapter 3
+- **P11-25** | REVIEW | Back test and title test for Chapter 3
   | gameplay-programmer C | `scripts/main.gd` (the `--backtest` table only)
   | `BACKTEST_CHAPTER3` "present" like P10-25's steps: the Chapter 3 view goes to the timeline, the Hall on a Present
   plaque goes back to the chapter view and to CREW, the mentor picker closes, a Present challenge pauses, resumes and
   QUITs to its chapter view; the run opens Chapter 3's gate itself unless `--stars 48` / `--tokens 30` do; BACKTEST OK;
   `--titletest` passes (also `--stars 48 --legends-unlock-all`) | P11-22 merged (main.gd), P11-18, P11-04
+  | Result: `BACKTEST_CHAPTER3` "present" and a copy of the P10-25 Chapter 2 steps (16 steps, 62 in all): the Chapter 3
+  view (at the request 'present') BACK to the timeline and the title; the Hall picked on lg_deep_end BACK to the chapter
+  view, to CREW, the mentor picker closes; the lg_deep_end challenge pauses, resumes, QUITs to the Present view, BACK
+  twice. BACKTEST OK plain (the run forces 48 stars), with `--tokens 30` (stars 24, tokens 30) and `--stars 48`;
+  TITLETEST DONE plain and with `--stars 48 --legends-unlock-all` (three chapters open, 18 unlocked, settings.cfg put
+  back); 3 `--autoplay` 11-21, 21-20, 14-21 (9:03-10:35), `--humantest` 21-17.
 - **P11-26** | QA: the ramp with a Present legend and the new perks
   | qa-balance-tester | `docs/qa/phase11-ramp.md`; may tune the Present perk sizes in `scripts/legends_data.gd`
   | `--best-roster` with the strongest legal three (a legend of any era + a boss) plus the best perk of any chapter
