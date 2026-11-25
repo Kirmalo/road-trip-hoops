@@ -422,12 +422,15 @@ Everything below (Tasks by wave).
   `docs/art/legends_present_portraits.png`
   | neutral and happy for each, comic style v2, original faces from the kit's parts, kits matching P11-14's; no likeness
   (the report says how each face differs from the famous player of his type) | P11-11's name check, P11-05 approved
-- **P11-16** | Chapter 3 story
+- **P11-16** | REVIEW | Chapter 3 story
   | gameplay-programmer D | `scripts/story_text.gd`, `scripts/story.gd` (only if a lookup needs it)
   | the intro, 6 unlock scenes, the finale's before and after, 6 joining lines; light comedy with heart, the Present as
   the Fathers' "kids" grown up and the Grandfathers' grandkids (theme only, no real families), no real people, quotes,
   slogans, celebrations or trademarked move names; goal numbers as in the data; every scene the data names exists
-  (`--legendtest`) | P11-11
+  (`--legendtest`) | P11-11.
+  Result: the 9 scenes (BIG STAGE, the giant screen, Toolbox's screwdriver, Switch's few words, Tank's grandpa and
+  the shorts) and 6 joining lines in `story_text.gd`, no story.gd change; `--legendtest` OK with no scene NOTE;
+  `--legends-test --legends-chapter present` plays all 9 scenes, LEGENDS END (Hard, 3 chapters, too)
 - **P11-32** (P8 b) | REVIEW | Era teams: the logic
   | gameplay-programmer F | `scripts/era_teams.gd` (new, static `EraTeams`, loaded at run time by its callers; tuning
   `ERA_TEAM_MIN` 3 and `ERA_PICK` at the top)
