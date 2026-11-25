@@ -368,13 +368,17 @@ Everything below (Tasks by wave).
   | the Present card frame and pins in the approved style, era colors from P11-05's palettes (a first guess until the
   look check; rerun after it if they change); Chapters 1-2 files byte for byte unchanged | none
 ### Wave 2 (the answers are in; each task still waits for its wave 1 input. P11-13 dropped: P3 a needs no new goal type)
-- **P11-09** | Legends test driver: three chapters
+- **P11-09** | REVIEW | Legends test driver: three chapters
   | gameplay-programmer E | `scripts/legends_test.gd`
   | `--legends-test` plays every built chapter in data order and checks the next gate from the data (P7 a, 48 stars or
   30 tokens, no Chapter 2 finale needed: Chapter 3 opens after a Hard run of Chapters 1-2, 42 tokens; still locked
   after a Normal run, 28 tokens, unless `--stars 48`; the check reads the data, not these numbers); `--legends-test-three` (P11-03's stand-in)
   plays three chapters; `--legends-chapter present` works once the row is built; on today's data the output is the
-  Phase 10 run; LEGENDS END on every level | P11-03 merged
+  Phase 10 run; LEGENDS END on every level | P11-03 merged.
+  Result: `--legends-test-three` (the timeline's third row as `stand_in_test_data()`); LEGENDS END on Easy (1 chapter,
+  Chapter 2 locked at 9 tokens), Normal (2 chapters, Present locked at 28; 3 with `--stars 48`), Hard (3, opens at 42
+  tokens), Legend (3), trip crew + force loss, `--legends-chapter present`; default and `--legends-test-two` runs
+  byte for byte as before
 - **P11-11** | Chapter 3 data and the name check in the data
   | gameplay-programmer A | `scripts/legends_data.gd`, `docs/legends-namecheck.md`
   | P11-02's lists copied into `REAL_NAMES` / `REAL_NICKNAMES` (plus probes that must fail: the flagged draft names, a

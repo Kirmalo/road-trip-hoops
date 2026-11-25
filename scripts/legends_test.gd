@@ -7,7 +7,8 @@ extends Node
 #   timeline (the chapter is done; the next chapter's gate is checked against the data: open by its stars or tokens,
 #   locked, or not built) -> the next chapter from its timeline panel while it is open -> ... -> BACK to the title ->
 #   LEGENDS END
-# On today's data (only Chapter 1 built) that is the Phase 9 run plus one "LEGENDS gate" line.
+# On today's data (Chapters 1-2 built) that is the Phase 10 run: two chapters, then the "LEGENDS gate" line of the
+# Present (not built). Once its row is built (P11-11) the same run plays it too, when its gate is open by then.
 # On a screen it calls the screen's auto_step() (the default choice) every STEP_WAIT frames; on the title it taps
 # LEGENDS, on the chapter view it picks the run's level first (set_level), and taps HALL / BACK at the end.
 # Every game is decided at once (FORCE_FRAMES after tip-off), so the run is fast and deterministic:
@@ -28,6 +29,13 @@ extends Node
 #                                    --stars as its gate says, never saved; no next-chapter gate check)
 #   ... --legends-test-two           the stand-in second chapter (LegendsData.two_chapter_test_data(): "fathers", 6
 #                                    copies of Chapter 1's legends, gate 36 stars or 12 tokens) for the whole run
+#   ... --legends-test-three         P11-09: three built chapters: the shipped rows with the timeline's third row (the
+#                                    Present) built as a stand-in (LegendsData.stand_in_test_data(): 6 copies of
+#                                    Chapter 1's legends, lg_zz_present_1..6, its own gate from the data); wins over
+#                                    --legends-test-two. Chapter 3 opens by its gate like any other: after a Hard run
+#                                    of Chapters 1-2 by tokens, after a Normal one only with its stars (--stars 48)
+# Three chapters (P11-09): the same walk, chapter after chapter in data order, each next gate checked against the data
+# after the last chapter played; --legends-chapter <id> also takes the stand-in's id under --legends-test-three.
 # Per chapter: --legends-force-loss N counts that chapter's games (the Nth game of each chapter is lost), and the
 # GOAL_TESTS run once in each chapter. After every game the other chapters' tokens and finales must not move.
 # The crew: with a test trip save (e.g. after `--trip-test --target 3 --trip-stop-after chicago`) your trip's
@@ -66,6 +74,8 @@ const NO_TRIP_FLAG := "--legends-no-trip"
 const PLAY_FLAG := "--legends-play"
 const CHAPTER_FLAG := "--legends-chapter"   # P10-09: only this chapter (gate forced open, nothing saved)
 const TWO_FLAG := "--legends-test-two"      # P10-09: LegendsData.two_chapter_test_data() for the run
+const THREE_FLAG := "--legends-test-three"  # P11-09: the timeline's third row as a built stand-in for the run
+const THREE_ROW := 2                        # its index in LegendsData.chapter_ids() (the Present today)
 
 # --- the run (static: survives reload_current_scene) ---
 static var _started := false
@@ -148,7 +158,22 @@ func _begin() -> bool:
 			_force.append(int(part))
 	Save.use_test_file = true   # only ever the test trip save (Legends does the same in a test run)
 	LegendsSave.use_test_file = true
-	if cmd.has(TWO_FLAG):
+	if cmd.has(THREE_FLAG):
+		var rows: Array = LegendsData.chapter_ids()
+		if rows.size() <= THREE_ROW:
+			_fail("%s: only %d chapter rows" % [THREE_FLAG, rows.size()])
+			return false
+		var ch3: String = str(rows[THREE_ROW])
+		LegendsData.set_test_data(LegendsData.stand_in_test_data(ch3))
+		var built3: Array = LegendsData.built_chapters()
+		print("LEGENDS TEST three chapters (stand-in %s: %s) | built %s | gate %s | tokens max %d%s" % [ch3,
+				",".join(PackedStringArray(LegendsData.legend_ids(ch3))), str(built3),
+				JSON.stringify(LegendsData.chapter(ch3).get("gate", {})), LegendsData.max_tokens(),
+				" | %s ignored" % TWO_FLAG if cmd.has(TWO_FLAG) else ""])
+		if built3.size() < THREE_ROW + 1 or not built3.has(ch3):
+			_fail("%s: the stand-in did not build three chapters (built %s)" % [THREE_FLAG, str(built3)])
+			return false
+	elif cmd.has(TWO_FLAG):
 		LegendsData.set_test_data(LegendsData.two_chapter_test_data())
 		print("LEGENDS TEST two chapters (stand-in data) | built %s" % str(LegendsData.built_chapters()))
 	if cmd.has(NO_TRIP_FLAG):
