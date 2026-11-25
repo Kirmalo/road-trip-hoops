@@ -738,7 +738,11 @@ Everything below (Tasks by wave).
   COURT lists, the changed "never in the COURT list" rule for the era looks, `--quick-teams` era ids, what
   `--unlock-all` / `--legends-unlock-all` open); credits in step; no story line names a stale number | P11-23..P11-28,
   P11-33..P11-36
-- **P11-30** | Final Phase 11 QA
+- **P11-30** | REVIEW (release-ready, no new bugs; `docs/qa/phase11.md`, build 43b2cbc: 289 runs all exit 0; every
+  self test OK; `--trip-test` 4 levels + legends (Present row, one-legend rule) + resume; `--legends-test` 11 runs, three
+  chapters, 63/63 tokens on Hard / LEGEND; 13 Present challenge games, all six signatures and all six perks fire; 200
+  Kings vs Runners games: BLUE 48.5% SE 3.5 (no side lean, P11-36 item closed), 61 shots, 52.7%, 9:44, OREB 24.8%;
+  web build by touch to the title and a Quick Game, 0 console errors) | Final Phase 11 QA
   | qa-balance-tester | `docs/qa/phase11.md`, `docs/qa/phase11-final.png`
   | `--legends-test` on every level (three chapters), `--legends-chapter present`, `--trip-test` on every level (three-era
   legends), resume, backtest, titletest, legendtest, startest, cosmetictest, twisttest, ratingtest, anim-test (alone),
