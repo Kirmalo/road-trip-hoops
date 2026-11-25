@@ -644,7 +644,7 @@ Everything below (Tasks by wave).
   resets to the underdogs), 42/42 tokens, NICO "NO MENTOR" with no perk, game starts, TRIP END x3; its writes keep
   every Present key. 7 broken/newer legends.json variants: no crash; NEW TRIP keeps legends.json in both builds;
   owner's files untouched by 21 test runs. 5 `--autoplay` (9:50 mean, 52%), 2 `--humantest` 21-18. No bugs filed.
-- **P11-28** | QA: screens
+- **P11-28** | REVIEW | QA: screens
   | qa-balance-tester | `docs/qa/phase11-screens.md`, `docs/qa/phase11-screens.png`
   | xvfb screenshots: the timeline (Chapter 3 locked with its gate, open, all three finales won), the Chapter 3 view (crew
   and Kings, a drafted Present legend sitting), each Present challenge HUD line, the SPACE THE FLOOR banner, the era court
@@ -653,6 +653,24 @@ Everything below (Tasks by wave).
   the hard rule by eye on every screen, sheet and portrait (names, the look combinations of the board's table, kit
   colors against current teams); the Quick Game panel with an era team on each side and an era court (P11-35's
   shots); bugs filed as P11-Bn | P11-04, P11-14, P11-15, P11-16, P11-18, P11-19, P11-20, P11-34
+  | Result (`docs/qa/phase11-screens.md`, sheet `phase11-screens.png`, build b3c7adc): `--legends-test` Hard (three
+  chapters, 30 games, 21/21 each; Ch3 opened by 42 tokens), the Present only at 1600 left on a trip save (DEEP END SITS:
+  HONEY PLAYS), `--trip-test` at 1280 (TRIP END 24-0) and 1600 left (stop after Memphis), 7 HUD runs, 4 humantest
+  layouts, menus and titletest with era teams: every screen, HUD line, the SPACE THE FLOOR banner (fits: ends ~x 914 of
+  970; one line on the Quick Game panel, two in the pause panel), the step-back and a Euro-step, the Hall's three rows
+  and picker, the draft's three rows pass. Plate ink: no change needed (3.4:1; optional `plate_text` "#fff3e8").
+  Bugs P11-B1, P11-B2. 5 `--autoplay` 9:25 mean, 53%; 2 `--humantest` 21-13.
+- **P11-B1** | Story portraits of Switch and Skylight wear the wrong kits (Low-medium, art)
+  | art (portraits) | `tools/art/make_portraits_v2.py` (lines 2089, 2093, Stretch's row), `assets/portraits/lg_switch*`,
+  `lg_skylight*`, `lg_stretch*`, `docs/art/legends_present_portraits.png`
+  | cause: the portrait rows differ from `tools/art/crews.json` (888, 896, 878): Switch teal/light (sheet ink/teal),
+  Skylight ink/coral (sheet deep teal/light), Stretch skin tan (sheet light). Fix: ERA3_INK/ERA3_TEAL,
+  ERA3_DEEP_TEAL/ERA3_LIGHT, skin "light"; rerun `--legends present` | P11-28
+- **P11-B2** | The Present's teal LEGEND tags and draft band look like the Fathers' mint (Low, readability)
+  | gameplay or art (data only) | `scripts/legends_data.gd` line 158 (the Present crew `ui_color`)
+  | `#17a8a1` vs the Fathers `#5cc7a1` is 1.42:1 (lineup tags side by side), yellow LEGEND text on it 2.1:1. Proposed
+  `Color(0.04, 0.45, 0.52)` (`#0a7385`, still teal): 2.7:1 vs mint, text 3.9:1; also darkens the Quick Game team button.
+  Coordinator's / owner's yes first | P11-28
 - **P11-10** (only if the owner asked for it at the Phase 10 check-in) | Rooftop's cradle dunk with its own look
   | art-audio-integrator A | `tools/art/make_players_v2.py`, `assets/players2/lg_rooftop*` and `format.json` (a
   `cradle` extra on his sheet only), `scripts/player.gd` (the `CRADLE_STYLE` line only)
