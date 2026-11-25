@@ -522,6 +522,8 @@ Everything below (Tasks by wave).
   comment only. TRIPDATA OK (+ `--load`); check_fixtures v2-v4 CHECK OK (v1 differs as on the base, its catch-up);
   `--trip-test --legends-unlock-all --stars 24` TRIP END; `--legendtest` OK
 - **P11-21** | QA: the SPACE THE FLOOR era rules
+  and `--city` runs; save version 2; every fixture loads; `--triptest-data` (+ `--load`) TRIPDATA OK | P11-11, P11-07
+- **P11-21** | REVIEW (368 autoplay games, all ended, no errors: threes 17.7 -> 29.8 % of shots at 36.5 -> 41.8 %, off-ball players +1.6 ft from the hoop, 9.3 pull-ups off a cross at 55 % (not too strong, keep PULLUP_CPU_CHANCE 0.5 / PULLUP_WINDOW 1.0), rim attempts -29 %, inside crews 56 -> 46 % (1.6 SE); bands pass; none / era_grand / era_fathers match Phase 10; no tuning applied; spacing hook is radial, not the contract's sideways +1 ft cap: lead to decide) | QA: the SPACE THE FLOOR era rules
   | qa-balance-tester | `docs/qa/phase11-era.md`; may tune the `era_present` numbers in `scripts/twists.gd`
   | 64+ `--autoplay --twist era_present` games against 64 twist `none` (and 40 with `--court era_present`): each rule
   noticeable (long-shot makes, the off-ball spacing in feet, pull-ups after a crossover or spin), length, shots, FG%, the share of shots
