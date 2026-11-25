@@ -259,6 +259,9 @@ Everything below (Tasks by wave).
   names when P11-05 adds them (else change `PRESENT_PAL`), rerun after the look check if they change. Chapters 1-2
   files and `timeline.png` byte for byte unchanged; the Chapter 3 timeline panel is still the dimmed hint (recolor once
   P11-06's court lands). `--legendtest` OK.
+  Review (look-check follow-up): recolored teal + coral from the court's own ramps (the script's own values, crews.json
+  no longer read), the Chapter 3 timeline panel now shows BIG STAGE in colour, `era_present` named BIG STAGE; frame
+  3494 B, pins 884 / 869 B, Chapters 1-2 files and `ui.json` byte for byte unchanged; `--legendtest` OK.
 - **P11-08** (art E, merged) | Era music listening list
   | art-audio-integrator E | `docs/audio_preview/LIST.md` ("Legends: Present"), `docs/audio_preview/present_*.ogg`
   | 3-5 upbeat chiptune tracks with a modern arena feel (electro, trap-style drums, big synth hooks; not New York's,

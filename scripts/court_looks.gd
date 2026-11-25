@@ -398,9 +398,9 @@ const LOOKS := {
 	# ---- Phase 11 era court (P11-06; tools/art/make_courts.py --era present, --print-looks): the Legends Chapter 3
 	# court, a made-up modern arena (ash floor, teal key, dark bowl, abstract ribbon boards). No twist key (the legends
 	# match brings the era twist), no reward, not a city: never in quick_courts(). Music: an existing track until the
-	# era's own (P11-20). The name is a proposal for the owner's look check ----
+	# era's own (P11-20). Name BIG STAGE (owner, look check) ----
 	"era_present": {
-		"name": "NEW ARENA",
+		"name": "BIG STAGE",
 		"music": "newyork",
 		"floor_texture": "res://assets/courts/era_present_floor.png",
 		"floor_scale": 2.0,

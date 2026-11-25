@@ -3,14 +3,14 @@
 
 Original pixel art made here, nothing downloaded or traced. The Grandfathers art uses the P9-05 OLD GYM palette
 (make_courts.py: aged maple, dark wainscot wood, felt banners, late-day window light) and its court textures; the
-Fathers panel shows its NIGHT PARK court (era_fathers) in colour too; the later chapters (3-4) show only a dimmed,
-colourless hint of a court, a padlock and their gate (drawn by the game).
+Fathers panel shows its NIGHT PARK court (era_fathers) and the Present panel its BIG STAGE (era_present) in colour too;
+the last chapter (4) shows only a dimmed, colourless hint of a court, a padlock and its gate (drawn by the game).
 No names, letters, years of real seasons, teams, leagues, arenas or marks.
 
 Usage:  python3 tools/art/make_legends_ui.py
 Output (assets/legends/; texel = one pixel of these images, drawn at 2 canvas px per texel like the map):
   timeline.png            640 x 360 era tour backdrop (2x = 1280 x 720): rows 0..HEADER_H-1 kept for the screen
-                          header, four era panels left to right (1 Grandfathers and 2 Fathers in colour, 3-4 dimmed), a timeline
+                          header, four era panels left to right (1-3 in colour, 4 dimmed), a timeline
                           rail across them; no labels or pins baked in. On 1280 x 800 centre it (y + 40) and fill
                           the bars with "bar_bg".
   pin_grand.png           32 x 40 chapter pin, Chapter 1 open (brass medallion, an old laced ball)
@@ -66,7 +66,8 @@ CHAPTERS = [
     {"id": "grand", "court": "era_grand", "open": True},
     # Chapter 2 shows P10-05's NIGHT PARK (era_fathers) in colour like Chapter 1's OLD GYM; its x0 in court_scene()
     {"id": "fathers", "court": "era_fathers", "open": True},
-    {"id": "present", "court": "gold_hall", "open": False},
+    # Chapter 3 shows P11-06's BIG STAGE (era_present) in colour the same way (after the Phase 11 look check)
+    {"id": "present", "court": "era_present", "open": True},
     {"id": "next", "court": "midnight", "open": False},
 ]
 MARGIN, POST = 7, 6
@@ -123,36 +124,29 @@ def era2(name):
 FENCE, CHAIN, ORANGE2 = era2("ERA2_FENCE"), era2("ERA2_CHAIN"), era2("ERA2_ORANGE")
 LAMP, NIGHT, ASPHALT = era2("ERA2_LAMP"), era2("ERA2_NIGHT"), era2("ERA2_ASPHALT")
 
-# Chapter 3, the Present (P11-07): a made-up modern arena. A first guess until the owner's look check of P11-05's era
-# palettes: when tools/art/crews.json has the ERA3_* names below in "palettes", they are used instead (rerun this
-# script after the look check; if P11-05 picks other names, point PRESENT_PAL at them). Hot magenta LED trim (the era
-# colour: name plate, the open pin, the light ribbon), graphite glass for the frame band and the dark stands, cool
-# white arena light, a glossy pale floor. Kept away from GOLD HALL's gold, MIDNIGHT's navy and cyan, Chapter 1's rust
-# and cream and Chapter 2's seafoam and charcoal; magenta with graphite is no real team's colour pair.
+# Chapter 3, the Present (P11-07; recoloured after the Phase 11 look check): a made-up modern arena in the era colour
+# the owner picked, TEAL + CORAL (VISION "Phase 11 look check"; the magenta first guess is dropped). The colours live
+# here, not in crews.json (its ERA3_* palettes are not read): TEAL and CORAL are make_courts.py's era_present ribbon
+# board ramps and FLOOR its ash planks, so the frame, the pins and the timeline panel match BIG STAGE. Teal LED trim
+# (the open pin, the LED strip, the ribbon, the screen crest), a coral name plate and accents, graphite glass for the
+# band and the dark stands, cool white arena light. Kept away from GOLD HALL's gold, MIDNIGHT's navy and cyan,
+# Chapter 1's rust and cream and Chapter 2's park green and rim orange.
 ERA3 = {
-    "ERA3_MAGENTA": ["#ff9ad8", "#e8409c", "#a8206e", "#5c0e3c"],   # LED trim, light .. dark
-    "ERA3_GRAPHITE": ["#8c92a2", "#545a6a", "#343844", "#1c1e26"],  # glass / graphite band, stands
-    "ERA3_LIGHT": ["#ffffff", "#e8f0ff", "#b8c4e8", "#6c78a0"],     # cool white arena light, chrome bevel
-    "ERA3_FLOOR": ["#f6dcae", "#e4bc84", "#c4925a", "#8c6036"],     # glossy pale arena floor
+    "TEAL": ["#b8fff4", "#3ee0d0", "#16a8a0", "#0c6a68"],          # LED trim, light .. dark (= the court's TEAL)
+    "CORAL": ["#ffd0b8", "#ff7a5a", "#d8483a", "#8a2a2a"],         # the accent, name plate (= the court's CORAL)
+    "GRAPHITE": ["#8c92a2", "#545a6a", "#343844", "#1c1e26"],      # glass / graphite band, stands
+    "LIGHT": ["#ffffff", "#e8f0ff", "#b8c4e8", "#6c78a0"],         # cool white arena light, chrome bevel
+    "FLOOR": ["#d2ccc2", "#b5ada2", "#aba398", "#7e766e"],         # the court's cool ash planks, lit .. seam
 }
-PRESENT_PAL = {"magenta": "ERA3_MAGENTA", "graphite": "ERA3_GRAPHITE", "light": "ERA3_LIGHT", "floor": "ERA3_FLOOR"}
 
 
-def era3(key):
-    """One Present palette as 4 RGB tuples: crews.json's "palettes" entry if P11-05 wrote it, else the guess above."""
-    name = PRESENT_PAL[key]
-    try:
-        with open(os.path.join(HERE, "crews.json")) as fh:
-            pals = json.load(fh).get("palettes", {})
-    except (OSError, ValueError):
-        pals = {}
-    row = pals.get(name)
-    if not (isinstance(row, list) and len(row) >= 4):
-        row = ERA3[name]
-    return [H_(c) for c in row[:4]]
+def era3(name):
+    """One Present palette as 4 RGB tuples (this script's own values)."""
+    return [H_(c) for c in ERA3[name]]
 
 
-MAGENTA, GRAPHITE, LIGHT3, FLOOR3 = era3("magenta"), era3("graphite"), era3("light"), era3("floor")
+TEAL, CORAL, GRAPHITE = era3("TEAL"), era3("CORAL"), era3("GRAPHITE")
+LIGHT3, FLOOR3 = era3("LIGHT"), era3("FLOOR")
 
 
 def mix(a, b, t):
@@ -230,7 +224,7 @@ def court_scene(look, w, h):
     out = np.zeros((h, w, 3), np.uint8)
     top = BD_Y - PANEL_Y0
     bh = bd.shape[0]
-    x0 = {"era_grand": 150, "era_fathers": 92, "blacktop": 40, "gold_hall": 200, "midnight": 60}.get(look, 0)  # a busy part of each
+    x0 = {"era_grand": 150, "era_fathers": 92, "era_present": 150, "blacktop": 40, "gold_hall": 200, "midnight": 60}.get(look, 0)  # a busy part of each
     cols = [(x0 + x) % bd.shape[1] for x in range(w)]
     out[:top, :] = bd[0, cols][None, :, :]
     out[top:top + bh, :] = bd[:, cols][: max(0, min(bh, h - top))]
@@ -399,7 +393,7 @@ def padlock(cv, x, y, body, dark):
 def pin_image(kind, state):
     """state: open, done or locked. The open pin wears its era's metal (Grandfathers brass, Fathers park-green
     fence steel); done is gold for every era, locked grey."""
-    rp = {"open": {"fathers": FENCE, "present": MAGENTA}.get(kind, BRASS), "done": GOLD, "locked": STEEL}[state]
+    rp = {"open": {"fathers": FENCE, "present": TEAL}.get(kind, BRASS), "done": GOLD, "locked": STEEL}[state]
     cv = Canvas(PIN_W, PIN_H)
     cx, cy, r = 16, 15, 13
     tip = PIN_ANCHOR
@@ -434,7 +428,7 @@ def pin_image(kind, state):
         for k in range(12):
             a = k * math.pi / 6 + math.pi / 12
             cv.put(cx + round(math.cos(a) * 8), cy + round(math.sin(a) * 8),
-                   MAGENTA[0] if k % 2 == 0 else LIGHT3[1])
+                   CORAL[1] if k % 2 == 0 else LIGHT3[1])
     if kind == "fathers" and state != "locked":               # a pool of pole light under the net
         for y in range(cy + 2, cy + 9):
             for x in range(cx - 8, cx + 9):
@@ -642,7 +636,7 @@ def window_backing_fathers(cv):
 
 def window_backing_present(cv):
     """A modern arena (made up, no real one): dark tiered stands with seat rows and a few phone lights, a light
-    ribbon of abstract magenta stripes along the fascia (no word, logo or sponsor), a glossy pale floor that mirrors
+    ribbon of abstract teal stripes along the fascia (no word, logo or sponsor), a glossy pale floor that mirrors
     the ribbon and a cool white spotlight where he stands."""
     wx, wy, ww, wh = WINDOW
     floor_y = wy + 51
@@ -659,15 +653,17 @@ def window_backing_present(cv):
                 if (y - wy) % 3 == 0:
                     c = mix(c, GRAPHITE[1], 0.35)              # seat row edges
                 elif (x * 5 + y * 3) % 11 == 0:
-                    c = mix(c, MAGENTA[3], 0.5)                # fans in the era colour
+                    c = mix(c, TEAL[3], 0.5)                # fans in the era colour
                 if (x * 7 + y * 11) % 61 == 0:
                     c = LIGHT3[1]                              # phone lights
-            elif y <= rib1:                                    # the ribbon: magenta with abstract white dashes
-                c = MAGENTA[1] if rib0 < y < rib1 else MAGENTA[3]
+            elif y <= rib1:                                    # the ribbon: teal with abstract white dashes
+                c = TEAL[1] if rib0 < y < rib1 else TEAL[3]
                 if y == rib0 + 1:
-                    c = MAGENTA[0]
+                    c = TEAL[0]
                 if y == rib0 + 2 and (x - wx) % 10 in (2, 3, 4):
                     c = LIGHT3[0]
+                if rib0 < y < rib1 and (x - wx) % 20 in (12, 13, 14, 15):
+                    c = CORAL[0] if y == rib0 + 1 else CORAL[1]   # coral bars, like the court's ribbon board
             elif y < floor_y:                                  # lower bowl and the courtside apron
                 c = mix(GRAPHITE[3], GRAPHITE[2], 0.5 if (y - rib1) % 3 else 0.9)
                 if y == floor_y - 1:
@@ -678,10 +674,10 @@ def window_backing_present(cv):
                 if (y - floor_y) % 3 == 2:
                     c = mix(c, FLOOR3[3], 0.35)
                 if y - floor_y in (1, 2):
-                    c = mix(c, MAGENTA[1], 0.28)               # the ribbon's reflection in the gloss
+                    c = mix(c, TEAL[1], 0.28)               # the ribbon's reflection in the gloss
             cv.put(x, y, c)
     for x in range(wx, wx + ww):                               # a painted line across the floor behind him
-        cv.blend(x, floor_y + 4, MAGENTA[1], 0.55)
+        cv.blend(x, floor_y + 4, TEAL[1], 0.55)
     mid = wx + ww / 2 - 0.5
     for y in range(wy, floor_y):                               # the spotlight's cone from the roof
         for x in range(wx, wx + ww):
@@ -720,7 +716,7 @@ def glass_band(cv):
     x0, x1, y0, y1 = wx - 4, wx + ww + 2, wy, wy + wh + 2
     pts = [(x0, y) for y in range(y0, y1)] + [(x, y1) for x in range(x0, x1 + 1)] + [(x1, y) for y in range(y1 - 1, y0 - 1, -1)]
     for k, (x, y) in enumerate(pts):
-        cv.put(x, y, MAGENTA[0] if k % 3 == 0 else MAGENTA[1])
+        cv.put(x, y, TEAL[0] if k % 3 == 0 else TEAL[1])
 
 
 def crest(cv, kind):
@@ -753,14 +749,14 @@ def crest(cv, kind):
         cv.rect(mid - 9, 0, mid + 9, 5, INK)
         cv.rect(mid - 8, 1, mid + 8, 4, GRAPHITE[3])
         cv.rect(mid - 8, 1, mid + 8, 1, GRAPHITE[1])
-        cv.rect(mid - 7, 2, mid - 3, 3, MAGENTA[1])           # two magenta panels and a white middle strip
-        cv.rect(mid + 3, 2, mid + 7, 3, MAGENTA[1])
-        cv.rect(mid - 7, 2, mid - 3, 2, MAGENTA[0])
-        cv.rect(mid + 3, 2, mid + 7, 2, MAGENTA[0])
+        cv.rect(mid - 7, 2, mid - 3, 3, TEAL[1])           # two teal panels and a white middle strip
+        cv.rect(mid + 3, 2, mid + 7, 3, TEAL[1])
+        cv.rect(mid - 7, 2, mid - 3, 2, TEAL[0])
+        cv.rect(mid + 3, 2, mid + 7, 2, TEAL[0])
         cv.rect(mid - 1, 2, mid + 1, 3, LIGHT3[1])
-        cv.rect(mid - 8, 4, mid + 8, 4, MAGENTA[2])           # the LED ring under the screen
+        cv.rect(mid - 8, 4, mid + 8, 4, TEAL[2])           # the LED ring under the screen
         for x in range(mid - 8, mid + 9, 3):
-            cv.put(x, 4, MAGENTA[0])
+            cv.put(x, 4, CORAL[1])
     else:
         cv.rect(mid - 6, 0, mid + 6, 6, INK)
         cv.rect(mid - 5, 1, mid + 5, 5, DARKSTEEL[1])
@@ -810,7 +806,7 @@ def frame_image(kind):
     elif kind == "present":
         frame_border(cv, GRAPHITE, LIGHT3, True)
         glass_band(cv)
-        plate_paint(cv, MAGENTA, LIGHT3)
+        plate_paint(cv, CORAL, LIGHT3)
         window_backing_present(cv)
     else:
         wood = [H_("#5a5260"), H_("#433c48"), H_("#2f2a34"), H_("#1e1a22")]
@@ -949,12 +945,12 @@ def preview(tl, pins, frames, sil):
     pv.alpha_composite(panel, (x, y))
     d2.text((x + panel.width // 2, y + panel.height + 14), "Chapter 2 open (mock-up)", font=font(15),
             fill=(220, 220, 230), anchor="mm")
-    # Chapter 3, the Present (P11-07): the same row for its frame and pin. The timeline's Chapter 3 panel is still the
-    # dimmed hint until the era court (P11-06) is in and the panel is redrawn in colour
+    # Chapter 3, the Present (P11-07, teal + coral after the look check): the same row for its frame, pin and the
+    # timeline's Chapter 3 panel (BIG STAGE, era_present, in colour)
     y = 1610
     d2.rectangle([0, y - 34, 1279, y - 8], fill=(16, 14, 26))
-    d2.text((12, y - 21), "Chapter 3, the Present (P11-07, first guess of the era colours: magenta LED on graphite): "
-                          "frame_present, a stand-in card, the open pin on the (still dimmed) Chapter 3 panel",
+    d2.text((12, y - 21), "Chapter 3, the Present (P11-07, era colours teal + coral, court BIG STAGE): "
+                          "frame_present, a stand-in card, the open pin on the Chapter 3 panel",
              font=font(16), fill=(235, 235, 245), anchor="lm")
     stand3 = card_crop(Image.open(os.path.join(CARDS, "la_a1.png")).convert("RGBA"))
     fr3 = frames["present"].copy()
@@ -977,7 +973,7 @@ def preview(tl, pins, frames, sil):
     pin3 = pins["present_open"].resize((PIN_W * 2, PIN_H * 2), Image.NEAREST)
     panel.alpha_composite(pin3, ((PANEL_W // 2 + 2 - PIN_ANCHOR[0]) * 2, (RAIL_Y - py0 - PIN_ANCHOR[1]) * 2))
     dp = ImageDraw.Draw(panel)
-    label(dp, (panel.width // 2, (RAIL_Y - py0 + 22) * 2), "PRESENT", 30, (255, 150, 215))
+    label(dp, (panel.width // 2, (RAIL_Y - py0 + 22) * 2), "PRESENT", 30, (140, 240, 225))
     label(dp, (panel.width // 2, (RAIL_Y - py0 + 36) * 2), "PLAY", 22, (120, 230, 120))
     pv.alpha_composite(panel, (x, y))
     d2.text((x + panel.width // 2, y + panel.height + 14), "Chapter 3 open (mock-up)", font=font(15),
