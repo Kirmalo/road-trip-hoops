@@ -271,6 +271,15 @@ Everything below (Tasks by wave).
   data (`LegendsData.legend_ids(chapter)`), no chapter id. `--backtest` BACKTEST OK (Fathers view -> Hall picks
   lg_rooftop, BACK to the Fathers view), `--legends-test` LEGENDS END (20 games, 28/42 tokens); xvfb shots: Grandfathers
   view -> Steeple picked, Fathers view -> Rooftop picked.
+- **P11-18** (gameplay B): `legends.gd`: the game flow already read every chapter from the data (gate, intro, finale,
+  back to the chapter view, the swap), so no logic change was needed; `self_test()` now holds the three shipped chapters
+  (`SHIPPED_CHAPTERS` 3, `SHIPPED_GATES` 24 / 36 or 12 / 48 or 30 as test expectations, `_check_shipped_gates()`), and
+  the chapter walk adds: each chapter shut at the gate of the one before it, open at its own with no finale; the
+  tour's `_intro_scene()` / `_finale_before()` pick the Present's scenes once; `Flow.legends_args()` (pause QUIT, game
+  end) on the game's chapter; `parse_challenge()` per chapter and legend; the swap for all 18 legends (each drafted
+  Present legend sits in exactly his own games). Breaking the Present gate or its swap fails the test. `--legendtest`
+  OK; `--legends-test --difficulty hard` LEGENDS END (30 games, 63/63, Present opens by 42 tokens, its intro played);
+  `--legends-chapter present` END (14/21); 3 `--autoplay`, 1 `--humantest`, `--challenge lg_deep_end` (met 15-14).
 
 ## Done
 - **P11-01** (qa, merged) Phase 10 save fixtures: `docs/qa/fixtures/` legends_v1_ch2_mid / _ch2_done, trip_v2_father, settings_v2_48, make_ / check_fixtures_v4 (README "Phase 10 save fixtures"); scripted like P10-01, not a test-driver stop (README says why)
@@ -476,7 +485,7 @@ Everything below (Tasks by wave).
   End's jumper after his crossover flick is the step-back by itself, a human Zigzag's drive to the rim the Euro-step; without a
   Present legend on the court nothing changes (`--autoplay` stats, a Chapter 1 and a Chapter 2 `--challenge` pass);
   each move seen in a `--challenge` run | P11-12 merged (player.gd), P11-11, P11-14 (both extras)
-- **P11-18** | Chapter flow and the gate
+- **P11-18** | REVIEW | Chapter flow and the gate
   | gameplay-programmer B | `scripts/legends.gd`
   | the P7 a gate (48 stars or 30 tokens, no Chapter 2 finale needed); Chapter 3's intro on its first open; its finale closes it; the tour returns to the right chapter
   view after a Chapter 3 game, unlock or finale; drafted Present legends sit when they are opponents; `Legends.self_test()`
