@@ -79,6 +79,7 @@ const EXPECTED_FLAG := "--expected-roster"
 const BEST_FLAG := "--best-roster"
 const DIFFICULTY_FLAG := "--difficulty"
 const TRIP_PATH := "res://scripts/trip.gd"
+const ERA_TEAMS_PATH := "res://scripts/era_teams.gd"   # P11-33: legendtest() runs its self_test() (loaded at run time)
 const SELFTEST_PATH := "user://legends_progress_selftest.json"   # self_test()'s own Legends file, deleted after
 const SELFTEST_TRIP_LEVEL := "hard"   # self_test()'s scripted trip (in place of any left-over test trip, P9-28)
 const PERK_KEY := "perk"              # = Trip.PERK_KEY: a player dict's mentor perk; never on your side in a challenge
@@ -769,8 +770,15 @@ static func legendtest() -> bool:
 	print("LEGENDTEST save: %s" % ("OK" if why_save == "" else why_save))
 	var why_prog: String = self_test()
 	print("LEGENDTEST progress: %s" % ("OK" if why_prog == "" else why_prog))
+	# P11-33: the Quick Game era teams (era_teams.gd, loaded at run time; missing = nothing to check)
+	var why_era: String = ""
+	if ResourceLoader.exists(ERA_TEAMS_PATH):
+		var et: GDScript = load(ERA_TEAMS_PATH) as GDScript
+		why_era = str(et.call("self_test")) if et != null and et.has_method("self_test") else "era_teams.gd has no self_test()"
+		print("LEGENDTEST era teams %s: %s" % [str(et.call("ids")) if et != null and et.has_method("ids") else "[]",
+				"OK" if why_era == "" else why_era])
 	var all: Array = []
-	for w in [why, why_save, why_prog]:
+	for w in [why, why_save, why_prog, why_era]:
 		if str(w) != "":
 			all.append(str(w))
 	if not all.is_empty():

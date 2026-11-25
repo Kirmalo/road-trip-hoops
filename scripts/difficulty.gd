@@ -43,6 +43,10 @@ const KINGS := "cornfield_kings"            # crew ids: the crew name in lower c
 const RUNNERS := "bridge_runners"
 const ALWAYS_TEAMS := [KINGS, RUNNERS]
 const KINGS_UI_COLOR := Color(0.16, 0.3, 0.6)   # your crew's blue (cities.gd gives each city crew a ui_color)
+# P11-33 (owner P8 b): the era teams (era_teams.gd, loaded at run time: it loads this script, so no preload) join the
+# Quick Game lists after the crews once open (EraTeams.is_open(): its own three unlocked in the Legends file, or
+# --unlock-all; --unlock-none closes them). all_teams() stays the crews only (the trip's unlocks never see an era id).
+const ERA_TEAMS_PATH := "res://scripts/era_teams.gd"
 
 # P3-10 values (owner Q6: the CPU is less sharp, not slower: worse shooting, slower reactions, worse steal/block
 # timing, bites on fakes more, less help defense; speed and stamina stay Hard on every level). Each entry is
@@ -311,12 +315,29 @@ static func all_teams() -> Array:
 					"game": 3, "color": crew.get("ui_color", Color.GRAY)})
 	return out
 
-# one crew's entry of all_teams() ({} for an unknown id)
+# one crew's entry of all_teams(), or an era team's EraTeams.info() entry ("era": true, P11-33); {} for an unknown id
 static func team_info(id: String) -> Dictionary:
 	for t in all_teams():
 		if str((t as Dictionary)["id"]) == id:
 			return t
+	var et: GDScript = _era_teams()
+	if et != null and bool(et.call("is_era_id", id)):
+		return et.call("info", id)
 	return {}
+
+# era_teams.gd, or null when it is missing (then there are no era teams)
+static func _era_teams() -> GDScript:
+	if not ResourceLoader.exists(ERA_TEAMS_PATH):
+		return null
+	var g: GDScript = load(ERA_TEAMS_PATH) as GDScript
+	if g == null or not g.has_method("is_era_id") or not g.has_method("is_open") or not g.has_method("info"):
+		return null
+	return g
+
+# an era team id (never a crew id; never unlocked or saved here)
+static func is_era_team(id: String) -> bool:
+	var et: GDScript = _era_teams()
+	return et != null and bool(et.call("is_era_id", id))
 
 # the crew a won game unlocks (trip.gd): a city's crew (any n), or New York round n's crew; "" if none
 static func team_of(city_id: String, n: int) -> String:
@@ -330,7 +351,7 @@ static func team_of(city_id: String, n: int) -> String:
 
 # A beaten crew (trip.gd): a Quick Game team from now on. Saved at once; a crew already open changes nothing.
 static func unlock_team(id: String) -> void:
-	if id == "" or ALWAYS_TEAMS.has(id) or team_info(id).is_empty():
+	if id == "" or ALWAYS_TEAMS.has(id) or team_info(id).is_empty() or is_era_team(id):
 		return
 	var path: String = unlock_path()
 	var cfg := ConfigFile.new()
@@ -344,12 +365,15 @@ static func unlock_team(id: String) -> void:
 	print("TEAM UNLOCKED %s" % id)
 
 # open in Quick Game: always the Kings and the Bridge Runners; every known crew under --unlock-all, only those two
-# under --unlock-none; else the saved unlocks
+# under --unlock-none; else the saved unlocks. An era team: EraTeams.is_open() (the Legends file's rule and the same
+# two flags; never this file)
 static func team_unlocked(id: String) -> bool:
 	if ALWAYS_TEAMS.has(id):
 		return true
 	if team_info(id).is_empty():
 		return false
+	if is_era_team(id):
+		return bool(_era_teams().call("is_open", id))
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if args.has(UNLOCK_ALL_FLAG):
 		return true
@@ -360,13 +384,18 @@ static func team_unlocked(id: String) -> bool:
 		return false
 	return _as_ids(cfg.get_value(SAVE_SECTION, TEAM_UNLOCK_KEY, [])).has(id)
 
-# the crew ids the Quick Game pickers offer, in all_teams() order
+# the crew ids the Quick Game pickers offer, in all_teams() order, then the open era teams in timeline order (P11-33)
 static func quick_teams() -> Array:
 	var out: Array = []
 	for t in all_teams():
 		var id: String = str((t as Dictionary)["id"])
 		if team_unlocked(id):
 			out.append(id)
+	var et: GDScript = _era_teams()
+	if et != null and et.has_method("open_ids"):
+		for eid in et.call("open_ids"):
+			if not out.has(str(eid)):
+				out.append(str(eid))
 	return out
 
 static func _as_ids(v) -> Array:

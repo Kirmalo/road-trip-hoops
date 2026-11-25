@@ -92,6 +92,7 @@ const Stars = preload("res://scripts/stars.gd")            # key(city, n): the "
 const Looks = preload("res://scripts/court_looks.gd")      # which look ids exist (city look or its fallback)
 const StoryText = preload("res://scripts/story_text.gd")   # the data check: every scene a city names exists
 const DIFFICULTY_PATH := "res://scripts/difficulty.gd"     # loaded at call time: unlock_court() (P6-17) if it exists
+const ERA_TEAMS_PATH := "res://scripts/era_teams.gd"   # P11-33: an era id's Quick Game team (loaded at run time)
 const MUSIC_DIR := "res://assets/music/"                   # <music>.ogg (audio.gd); missing = the city's fallback
 const EXPECTED_ROSTER_FLAG := "--expected-roster"          # test flag (with --city): the crew a trip would have there
 const REPLAY_LABEL := "REPLAY - "   # P8-17: in front of a replay's match label ("REPLAY - CHICAGO - GAME 2 OF 3")
@@ -1261,6 +1262,13 @@ static func quick_team(crew_id: String) -> Dictionary:
 	var info: Dictionary = d.call("team_info", crew_id)
 	if info.is_empty():
 		return {}
+	if bool(info.get("era", false)):
+		# P11-33: an era team (era_teams.gd, loaded at run time): its three legends at average QUICK_AVG, own kit,
+		# signature moves kept, no perk; {} if the script is missing
+		if not ResourceLoader.exists(ERA_TEAMS_PATH):
+			return {}
+		var et: GDScript = load(ERA_TEAMS_PATH) as GDScript
+		return et.call("team", crew_id) if et != null and et.has_method("team") else {}
 	var cid: String = str(info.get("city", ""))
 	var ids: Array = QUICK_KINGS.duplicate()
 	var style := ""
