@@ -326,9 +326,9 @@ them for good. Every legend is a made-up character with his own name and looks, 
   Boxcar: dunks from a little further out; Velvet: contested layups +1.5%; Quarterback: passes 5% faster;
   Rooftop: contested dunks +2.5%; Ankles: crossovers beat the defender 15% more often; Midrange: jumpers inside the
   arc +1.5%; Freight: 5% harder to strip; Eyes Closed: passes 15% harder to intercept; Lockbox: steal timing window
-  5% wider; Deep End: jumpers right after his crossover +1.5%; Toolbox: a teammate's shot right after his pass
-  +1.5%; Stretch: jumpers right after a catch +1.5%; Switch: the man he guards shoots 1.5% worse; Skylight: reaches
-  rebounds 5% further; Zigzag: layups 5% harder to block.
+  5% wider; Deep End: jumpers right after his crossover +2.5%; Toolbox: a teammate's shot right after his pass
+  +1%; Stretch: jumpers right after a catch +1%; Switch: the man he guards shoots 0.5% worse; Skylight: reaches
+  rebounds 15% further; Zigzag: layups 20% harder to block.
   Each player has one mentor at most and each legend trains one player at a time. SWITCH moves him to another
   player and STOP TRAINING ends it (both ask first). Mentors coach your regular players only (a drafted legend can't
   be trained). Perks work in Road Trip games only, not in Quick Game or Legends games, and they stay when you start

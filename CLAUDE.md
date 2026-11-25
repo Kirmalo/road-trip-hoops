@@ -285,11 +285,10 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
     (`close_touch`, `deep_range`, `soft_layup`), the others 5% (`block_timing`, `long_dunk`, `quick_pass`); the Fathers'
     (P10-22, sizes after P10-26): `rise_up` (`contested_dunk_bonus` 0.025), `handle` (`cross_win_mult` 1.15), `pull_up`
     (`mid_shot_bonus` 0.015), `strong_hold` (`strip_guard_mult` 0.95, steals on him), `blind_pass` (`pass_safe_mult`
-    0.85, interceptions of his passes), `quick_hands` (`steal_window_mult` 1.05); the Present's (P5 a, P11-22; the
-    ramp's measure, P11-26, may still size them): `off_dribble` (`pullup_bonus` 0.015), `extra_pass`
-    (`assist_shot_bonus` 0.015), `catch_shoot` (`catch_shot_bonus` 0.015), `contest` (`guard_contest_bonus` 0.015, the
-    man he guards), `board_work` (`rebound_reach_mult` 1.05), `side_step` (`layup_block_mult` 0.95, blocks on his
-    layups).
+    0.85, interceptions of his passes), `quick_hands` (`steal_window_mult` 1.05); the Present's (P11-22, sizes after
+    P11-26, `docs/qa/phase11-ramp.md`): `off_dribble` (`pullup_bonus` 0.025), `extra_pass` (`assist_shot_bonus` 0.010),
+    `catch_shoot` (`catch_shot_bonus` 0.010), `contest` (`guard_contest_bonus` 0.005, the man he guards), `board_work`
+    (`rebound_reach_mult` 1.15), `side_step` (`layup_block_mult` 0.80, blocks on his layups).
   - `scripts/legends_save.gd` (static): `user://legends.json` (any test run `user://legends_test.json`), version 1,
     temp file + rename and the web sync file like `save.gd`: `{"tokens": {"lg:<id>" | "fin:<chapter>": 0..3},
     "unlocked", "seen", "finales", "mentors": {legend id: player id}}`. Missing, broken, oversized or not ours = {}; a

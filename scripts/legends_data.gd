@@ -485,12 +485,12 @@ const PERKS := {
 	"quick_hands": {"key": "steal_window_mult", "value": 1.05, "text": "Steal timing window 5% wider"},
 	# Chapter 3 (P5 a, the board's contract; data only here, P11-22 hooks them, P11-26 measures them). layup_block_mult
 	# is "on him" (block chance on his layups), so its value is under 1.0
-	"off_dribble": {"key": "pullup_bonus", "value": 0.015, "text": "Jumpers right after his crossover +1.5%"},
-	"extra_pass": {"key": "assist_shot_bonus", "value": 0.015, "text": "A teammate's shot right after his pass +1.5%"},
-	"catch_shoot": {"key": "catch_shot_bonus", "value": 0.015, "text": "Jumpers right after a catch +1.5%"},
-	"contest": {"key": "guard_contest_bonus", "value": 0.015, "text": "The man he guards shoots 1.5% worse"},
-	"board_work": {"key": "rebound_reach_mult", "value": 1.05, "text": "Reaches rebounds 5% further"},
-	"side_step": {"key": "layup_block_mult", "value": 0.95, "text": "Layups 5% harder to block"},
+	"off_dribble": {"key": "pullup_bonus", "value": 0.025, "text": "Jumpers right after his crossover +2.5%"},
+	"extra_pass": {"key": "assist_shot_bonus", "value": 0.010, "text": "A teammate's shot right after his pass +1%"},
+	"catch_shoot": {"key": "catch_shot_bonus", "value": 0.010, "text": "Jumpers right after a catch +1%"},
+	"contest": {"key": "guard_contest_bonus", "value": 0.005, "text": "The man he guards shoots 0.5% worse"},
+	"board_work": {"key": "rebound_reach_mult", "value": 1.15, "text": "Reaches rebounds 15% further"},
+	"side_step": {"key": "layup_block_mult", "value": 0.80, "text": "Layups 20% harder to block"},
 }
 
 # ---------------------------------------------------------------------------------------------------- name check
