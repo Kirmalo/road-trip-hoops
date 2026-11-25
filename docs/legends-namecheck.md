@@ -93,7 +93,7 @@ the lists below (P11-11 copied P11-02's additions into `REAL_NICKNAMES` / `REAL_
 | `lg_stretch` | **Sigurd** "Stretch" Halvorsen (was Ozren) | 49 | none | no Sigurd and no surname within 2 letters; "stretch" a plain basketball word | **pass** |
 | `lg_switch` | **Ellery** "Switch" Achterberg (was Idris) | 29 | none | none within 2 letters | **pass** |
 | `lg_skylight` | Bodie "Skylight" **Castellano** (was Ferreira) | 52 | none in the NBA / WNBA list | 1 letter from Nick Castellanos (a baseball player, not basketball); the owner kept it. Never shortened to "Sky" (listed) | **pass** (owner's call) |
-| `lg_zigzag` | **Lucien** "Zigzag" Moreau (was Santi) | 58 | none | Lucian Whitaker (first name, 1 letter); "Zigzag" one word, never hyphenated (a rolling-paper brand) | **pass** |
+| `lg_zigzag` | **Bastien** "Zigzag" Moreau (was Santi, then Lucien) | 58 | none | no first or last name within 2 letters of Bastien in the NBA / WNBA list; no first name within 2 letters in `cities.gd` or `legends_data.gd`; "Zigzag" one word, never hyphenated (a rolling-paper brand) | **pass** |
 
 The looks in the data follow the board's spread (none of the six risky sets on one legend): Deep End slim, a normal
 guard's height, waves, a thin mustache, **no beard, no mouthguard**, right-leg tights; Toolbox a **low** man bun,
@@ -105,6 +105,15 @@ worn by another legend (the look check swapped P11-02's Deep End 38 / Toolbox 26
 looks, signature texts, challenge lines and archetypes hold no listed name, nickname, celebration or slogan
 (the data test). Probes added: Calloway Briggs, Bodie Ferreira, "SWISS KNIFE", "STIFLE TOWER" and a bio holding
 "night night" (all fail, as they must).
+
+**Zigzag's first name (owner, after P11-27).** "Lucien" clashed with the New Orleans recruit Lucien Batiste
+(`cities.gd`), so it became **Bastien**, checked like P11-02 (step 1, the same `nba_api` 1.12.0 list, 6,426 entries,
+read as text; the lists; 1-2 letter distance) and against every first name in `cities.gd` and `legends_data.gd`:
+Bastien: no exact first or last name, nothing within 2 letters as a first name, no surname within 1, no game first
+name within 2 (pass). Runner-up **Anatole**: the same clean result (pass). Looked at and dropped: Etienne and Adrien
+(real surnames: Tyson Etienne, Jeff Adrien), Quentin and Silas (real players), Remy and Emile (2 letters from Ray /
+Trey and Milo in the game), Florian (2 from Dorian), Valentin and Mathis (1 letter from real surnames), Sacha and
+Lazare (1 letter from Sasha / Lazar, real players).
 
 ## Chapter 3, the Present (P11-02): first check, for the owner with P1
 

@@ -445,7 +445,7 @@ const LEGENDS := {
 		"unlock_scene": "lg_skylight_unlock",
 	},
 	"lg_zigzag": {
-		"name": "ZIGZAG", "full": "Lucien \"Zigzag\" Moreau", "first": "Lucien", "last": "Moreau",
+		"name": "ZIGZAG", "full": "Bastien \"Zigzag\" Moreau", "first": "Bastien", "last": "Moreau",
 		"chapter": "present", "archetype": "slasher", "role": "slasher", "tier": "legend",
 		"sheet": "lg_zigzag", "portrait": "lg_zigzag", "number": 58,
 		"shape": {"speed": 10, "shooting": -5, "finishing": 10, "defense": -10, "stamina": -5},
