@@ -693,7 +693,7 @@ Everything below (Tasks by wave).
   xvfb over a seeded settings.cfg (era picks, BIG STAGE): put back byte for byte. `--menushot` (with
   `--legends-unlock-all`, needed for the twist line) both pairs OK, no main.gd change. 3 `--autoplay` 21-20, 12-21,
   22-17 (8:40-12:26), `--humantest` 21-14.
-- **P11-36** (P8 b) | QA: era team balance in Quick Game
+- **P11-36** (P8 b) | REVIEW | QA: era team balance in Quick Game
   | qa-balance-tester | `docs/qa/phase11-quick-eras.md` (reports only; `ERA_PICK` or the average changed only with the
   owner's yes)
   | 200+ `--autoplay` games per era team against the Quick Game crews on Hard (half as BLUE, half as RED, against the
@@ -702,6 +702,12 @@ Everything below (Tasks by wave).
   (100+ games per pair); game length, shots, FG%, fouls, rebounds in the CLAUDE.md bands; signature move counts per era;
   any lean explained (signature moves, the twist, the crew style); no test touches the owner's files | P11-33, P11-34
   merged, P11-17 merged (signature moves), P11-21 tuned
+  | Result (`docs/qa/phase11-quick-eras.md`, 760 games, all ended, 0 errors, 0 shot-clock violations): gym vs 4 crews
+  (120 each, SE ~4.5) Grandfathers 56.7%, Fathers 48.3%, Present **61.7%** (lean: 8.8 threes a game, step-back);
+  own court Grandfathers **37.5%** on OLD GYM (80, SE 5.4; OLD SCHOOL's inside_mult helps the crews more), Fathers
+  47.5%, Present 55.0% (40 each); era vs era (60 each) Present over Fathers 63.3%, over Grandfathers 56.7%, Fathers
+  over Grandfathers 56.7%. Stats in the bands; Kings vs Runners interceptions 2.98 a game (60 games, SE 0.24), as
+  Phase 10 Quick Game. Nothing changed; owner choices in the report (leave the Present lean, or a lower Present average)
 
 ### Wave 6
 - **P11-29** | Docs
