@@ -75,3 +75,15 @@ rm -f "$T"
 #   0.2 s before and 0.3 s after (100 ms blocks the same for 2 s); the encoded wrap is at -50 dB, step 0.0007 (the
 #   track's steps: p99 0.125). -20.1 LUFS, true peak -4.3 dBFS, 913 KB.
 $M "$D/headspin_0.mp3"                  assets/music/legends_fathers.ogg --start 76.34 --end 173.7466 --xfade 0.04 --lufs -20 --q 3
+# Phase 11 (P11-20), the Legends Chapter 3 (Present era) track, the owner's pick D from docs/audio_preview/LIST.md:
+#   legends_present  Techno DRIVE!!! v2.5, the chiptune variant ("racing tecno_v2.5.ogg", the page's stereo Ogg,
+#   88.0 s = 44 bars at 120 bpm; not the page's v1, v2, v2(slow) or v2.6 files). Credited as "Techno drive" (the
+#   author's wish). -13.2 LUFS, true peak +0.3 dBFS, not clipped (4 ppm of samples within 2% of the max): no de-clip
+#   step. L/R correlation 0.69: the mono sum is safe. The track builds up (intro 1.85-17.85, heavy bass from 47.85,
+#   a 4-bar breakdown 63.85-71.85, the climax 71.85 to the file end, no fade), so the whole file would drop from the
+#   climax into the quiet intro; find's best (33.85/41.85 -> 81.85, similarity <= 0.93) cut the climax short.
+#   The loop is the last 20 whole bars, 47.86-87.86 (40.00 s: 8 + 4 + 8 bars), both points 20 ms before a downbeat
+#   (the kick rises at 47.88 and 87.88), 30 ms crossfade there. Seam: the encoded 20 ms envelope runs on across the
+#   wrap (no gap, the same hit pattern before both downbeats); wrap step 0.019 (the track's steps: p99 0.091).
+#   -20.1 LUFS, true peak -4.2 dBFS, 383 KB.
+$M "$D/racing tecno_v2.5.ogg"           assets/music/legends_present.ogg --start 47.86 --end 87.86 --xfade 0.03 --lufs -20 --q 3

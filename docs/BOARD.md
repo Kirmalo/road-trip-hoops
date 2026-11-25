@@ -207,6 +207,13 @@ Everything below (Tasks by wave).
 ## Doing
 
 ## Review
+- **P11-20** (art E): `assets/music/legends_present.ogg` (383 KB) from "Techno DRIVE!!!" v2.5 (`racing tecno_v2.5.ogg`),
+  Centurion_of_war, CC-BY 4.0, credited "Techno drive": loop 47.86-87.86 s (the last 20 whole bars, 120 bpm; the
+  track builds, so no whole-file loop), 30 ms crossfade before the downbeat, mono, -20.1 LUFS (from -13.2), true peak
+  -4.2 dBFS, wrap step 0.019 (p99 0.091). `make_music.sh` step, `CREDITS.md` row, `CREDITS_LIST` entry (and the
+  "need the credit" line names the Present era music). `--titletest` credits: 6 CC-BY rows, 6 shown. Not wired to a
+  look or chapter here: `court_looks.gd` `era_present` and `legends_data.gd` still say `newyork` until their owners
+  (P11-06 / P11-11) set `legends_present`; the `--challenge` check waits for P11-11.
 - **P11-05b** (art B, P4 c: both; on the branch, waits for the owner's look check): `make_players_v2.py` EXTRA rows `stepback` (12 frames: drive step, plant with the
   last dribble, push back, hop, land square, then today's jumper; events `fade` [1, 4], `fade_ft` `STEP_FT` 2.0,
   release 8, air [6, 10]) and `eurostep` (13 frames: gather, long step right, plant, long step back left, plant on

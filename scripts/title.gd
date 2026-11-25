@@ -178,6 +178,9 @@ const CREDITS_LIST := [
 	["Fathers era music", "Headspin", "congusbongus", "CC0",
 		"https://opengameart.org/content/headspin",
 		"Cut to a loop (76.34-173.75 s), loop crossfade, mono, loudness levelled, Ogg Vorbis"],
+	["Present era music", "Techno drive", "Centurion_of_war", "CC-BY 4.0",
+		"https://opengameart.org/content/techno-drive",
+		"The chiptune version (v2.5), cut to a loop (47.86-87.86 s), loop crossfade, mono, loudness levelled, Ogg Vorbis"],
 	["New York music", "NES chiptune \"Slam-Funk\"", "Haley Halcyon", "CC-BY 4.0",
 		"https://opengameart.org/content/nes-chiptune-slam-funk",
 		"Cut to a loop (6.10-45.45 s), loop crossfade, mono, loudness levelled, Ogg Vorbis"],
@@ -729,8 +732,8 @@ func _build_crew() -> void:
 		if e.size() > 5 and str(e[5]) != "":
 			_left(list, "Changes: " + str(e[5]), DETAIL_FONT, STUB_COLOR)
 		_spacer(list, 6)
-	_left(list, "Only CC0 and CC-BY assets are used. The CC-BY crowd sounds and the Memphis, Seattle and New York " +
-			"music need the credit above.", DETAIL_FONT, STUB_COLOR)
+	_left(list, "Only CC0 and CC-BY assets are used. The CC-BY crowd sounds and the Memphis, Seattle, New York and " +
+			"Present era music need the credit above.", DETAIL_FONT, STUB_COLOR)
 	_left(list, "Full list: CREDITS.md in the game folder.", DETAIL_FONT, STUB_COLOR)
 	_spacer(list, 24)
 	_section(list, "GODOT ENGINE LICENSE")
