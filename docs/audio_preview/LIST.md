@@ -87,3 +87,40 @@ Notes:
   (Eldritch Grim, CC0, a chiptune beat; kept as a spare), the 8-bit lofi hip-hop tracks by Tad (sad, slow), and the
   share-alike or OGA-BY-only funk and beat-'em-up tracks ("Jump Button", "City Riff", "Funky Experimental Chiptune",
   "There's No Rush", the wyver9 arcade loops, "Final Punch").
+
+## Legends: Present (P11-08)
+
+The third era's chapter track (Chapter 3, the Present, SPACE THE FLOOR): upbeat chiptune with a modern arena feel
+(electro, trap-style drums, big synth hooks). Not New York's "Slam-Funk", not Headspin or Bebop, and no track already
+in the game. Five candidates; each `present_*.ogg` here is a 30-second sample made like the samples above (mono,
+-20 LUFS, faded in and out, the busiest 30 s after the first 4 s, `python3 tools/make_music.py preview SRC OUT`; the
+8-Bit Hero Quest sample is the whole 29 s loop, `--start 0 --len 29`). Pick one (or "none of these"); the pick then
+gets cut into a loop `assets/music/legends_present.ogg` (P11-20), with a row in `CREDITS.md` and `CREDITS_LIST`.
+Nothing here is in the game.
+
+All from OpenGameArt; each license was read on the track's page and its license link checked there (November 2026):
+CC0 or CC-BY only. Tempos are rough measurements from the files.
+
+| Sample | Title | Author | License | Page | Length | Why it fits | What would change |
+|---|---|---|---|---|---|---|---|
+| `present_a_the_bass_of_the_future.ogg` | The Bass of the Future | Chance de la Soul | CC0 (https://creativecommons.org/publicdomain/zero/1.0/) | https://opengameart.org/content/the-bass-of-the-future | 2:17 (WAV, about 140 bpm, half-time feel) | The author's "attempt at Future Bass" on NES-style chip sounds: wobbling chip chords, big synth hook, a half-time drop. The most "today" of the five | Mastered very loud (about -7 LUFS) with a limiter: about 0.9% of samples sit at the ceiling, so check for grit after turning it down to -20 (the Bebop de-clip step if needed); no loop points, loop on a phrase with a crossfade; mono, Ogg q3; courtesy credit (same composer as Seattle's spare, not in the game) |
+| `present_b_royal_run.ogg` | Royal run | iamoneabe | CC0 (https://creativecommons.org/publicdomain/zero/1.0/) | https://opengameart.org/content/royal-run | 3:09 (MP3) | "Loopable chiptune EDM": four-on-the-floor dance beat, steady pumping chip leads; a page comment calls it "a nice mix of modern music and chiptune". Long, so it repeats least | Already made to loop: whole file or a long phrase with a short wrap blend; -14 LUFS brought down to -20, not clipped; mono, Ogg q3; courtesy credit |
+| `present_c_8_bit_hero_quest.ogg` | 8-Bit Hero Quest (from LOOP BOX #1) | Of Far Different Nature | CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/) | https://opengameart.org/content/loop-box-1-beats-for-rpg-platformers-visual-novels-adventure-puzzle-games-simulators-menu | 0:29.5 (Ogg loop from the pack ZIP, about 130 bpm) | The only real trap beat: hip-hop/trap drums (rolling hats, heavy kick) under 8-bit leads; the pack tags it "trap, 8-bit, present, modern". Closest to "trap-style drums" in the brief | Short: a 29.5 s loop repeats often over a game to 21 (like HoverWhip in the Fathers list). Already a loop: whole file, short wrap blend; -9.5 LUFS brought down; credit row "8-Bit Hero Quest" by Of Far Different Nature, CC-BY 4.0. Take it from the pack page (single file in the ZIP), not the page's remix "8-Bit Hero Quest (Of Far Different Nature & HorrorPen & tcarisland)", which is a mix of three works |
+| `present_d_techno_drive.ogg` | Techno DRIVE!!! (v2.5, the chiptune variant) | Centurion_of_war | CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/) | https://opengameart.org/content/techno-drive | 1:28 (Ogg, about 120 bpm) | "Semi retro/electro beats to pump your soul up": a driving electro beat with chip leads, racing-game energy; the most game-time pump of the five | The page has five versions; we would use `racing tecno_v2.5.ogg` (the chiptune one); the author says "Techno drive is fine" as the credit title and asks to be told when it is used (a request, not a condition). Loop on a phrase; -13 LUFS brought down; credit row by Centurion_of_war, CC-BY 4.0 (same composer as Denver's spare "Backfoot", not in the game) |
+| `present_e_technocade.ogg` | TECHNOCADE (Looping) | Eric Matyas (soundimage.org) | CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/) | https://opengameart.org/content/technocade-looping | 1:07 (Ogg loop, about 122 bpm) | "Techno + arcade": a clean techno pulse with arcade chip arpeggios, bright and tidy; more arena intro music than streetball | Already a loop: whole file, short wrap blend; -17 LUFS raised to -20; credit row "TECHNOCADE" by Eric Matyas (soundimage.org), CC-BY 3.0 |
+
+Notes:
+- Order of fit (art-audio's view, for a modern arena under big lights): The Bass of the Future (the most modern sound
+  and the biggest hook), then Royal run (EDM drive, long, loops easily), then 8-Bit Hero Quest (the trap drums, but a
+  short loop), then Techno DRIVE!!!, then Technocade.
+- Looked at and left out: "Sippy Pop" (congusbongus, CC-BY 4.0, sweet electropop chiptune; a spare, but the composer
+  already has Memphis and Headspin in the game), "All my girls (PSG Version)" (Snabisch, CC-BY 3.0, 8-bit electro hip
+  hop at about 100 bpm; a spare, a slower groove), "Electro Opening Theme" (CleytonKauffman, CC0, 8-bit complextro,
+  but a 34 s podcast opener), "Space Dimensions (8bit/Retro Version)" and "Space Boss Battle Theme" (Matthew Pablo,
+  CC-BY 3.0, dubstep-electro, the page says it does not loop), "Neon Pulse" and "Digital Showdown" (aroldv, CC-BY
+  4.0, re-titled tracks whose pages say "Content ID disabled", so they were once registered for Content ID: unclear
+  for a game upload), "Pocket Destroyer", "Party Grooves", "Element", "Glitchy Battle", "Hardwire Groove" (share-alike),
+  "Partymaker (8-Bit)" (asks for a message before use, no clear license line), "Short Eurodance" (90s, not modern),
+  the other LOOP BOX #1 trap loops ("Friendly Trap", "Evil Trap": darker and not chiptune; one loop there is named
+  after a sportswear slogan, so the pack's other titles were not used), "Epic - Trap Beat" and "Trap Menu Theme"
+  (CC-BY 4.0, trap beats but not chiptune).
