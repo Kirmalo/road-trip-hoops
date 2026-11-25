@@ -23,6 +23,8 @@ Outputs (all opaque except the ball):
                                        years), same sizes as the city looks; see "Phase 9 era courts" below
   assets/courts/era_fathers_*.png     P10-05 Legends Chapter 2 court (NIGHT PARK: a blacktop under lights), same
                                        sizes; see "Phase 10 era court" below
+  assets/courts/era_present_*.png     P11-06 Legends Chapter 3 court (a made-up modern arena), same sizes; see
+                                       "Phase 11 era court" below
   docs/art/courts_preview_v2.png      the city looks for the owner: the game's own 1280 x 720 screenshot of each, its
                                        whole backdrop and its floor tile 3 x 3 (needs --shots DIR, below)
   docs/art/courts_preview_v1.png      preview: both looks composed in the 3/4 view as the game frames it, plus the
@@ -48,8 +50,9 @@ Usage:  python3 tools/art/make_courts.py                  all textures, the v1 p
         python3 tools/art/make_courts.py --rewards        only the P8-06 reward looks and balls
         python3 tools/art/make_courts.py --rewards-preview DIR   the same, plus docs/art/rewards_preview.png from
                                                           DIR/<look>.png (-- --court midnight / gold_hall --shots)
-        python3 tools/art/make_courts.py --era            only the era looks (era_grand, era_fathers)
-        python3 tools/art/make_courts.py --era fathers    only that chapter's era look (era_fathers; also --era grand)
+        python3 tools/art/make_courts.py --era            only the era looks (era_grand, era_fathers, era_present)
+        python3 tools/art/make_courts.py --era fathers    only that chapter's era look (era_fathers; also --era grand,
+                                                          --era present)
         python3 tools/art/make_courts.py --era-preview DIR   the same, plus DIR/<look>_tiles.png (backdrop at 3x
                                                           and the floor tile 3 x 3; game check: -- --court era_grand
                                                           --shots; add --era fathers for one look)
@@ -2850,6 +2853,191 @@ def era_fathers_backdrop(seed=62):
 
 
 
+# ============================================================================= Phase 11 era court (P11-06)
+# Legends, Chapter 3 (the Present): look "era_present", a made-up modern arena. Same conventions as the other era
+# looks (64 x 64 seamless floor tile, 384 x 100 backdrop repeating in x; the game shows rows ~52-100 at 1280 x 720 and
+# the HUD bar covers ~54-68). No team, arena, league, logo, sponsor, letter or digit anywhere: the ribbon boards carry
+# abstract stripes and chevrons only. Its court_looks.gd row has no twist and it never joins the Quick Game COURT list.
+# Not GOLD HALL (warm honey maple, navy seats, gold banners with years, gold LED), not the gym (orange maple, wooden
+# bleachers) and not Memphis' soul gym (an old packed gym): here cool ash-grey wide planks under a clear gloss, a dark
+# charcoal bowl, black seats, cool white light, and ribbon boards in the era colour (teal, a first guess until the
+# P11-05 look check) with a coral accent; fans hold up phone lights.
+#   era_present  (name proposed: NEW ARENA)  wide 8-texel ash planks in cool greige with a fine seam, staggered
+#                            joints, a bright gloss edge and long soft light streaks (the arena lights in the varnish);
+#                            a near-black roof with a light ring, a dim upper deck, a teal ribbon board with white
+#                            slashes (rows ~65-69, at the HUD band's lower edge), a lower bowl of black seats with LED
+#                            step lights in the aisles, a courtside LED board (teal chevrons, coral bars) and a dark
+#                            padded front with a thin teal trim
+
+# --- era_present floor
+ASH = pal("#bab2a7", "#b5ada2", "#b0a89d", "#aba398")             # cool greige ash planks (lit .. shade)
+ASH_SEAM = H("#7e766e")
+ASH_GRAIN = H("#968e84")
+ASH_GLOSS = H("#f4f2ee")
+PRESENT_PLANK = 8                                                 # texels per plank (wide modern boards)
+
+
+def era_present_floor(seed=71):
+    """Wide ash planks (7 texels + a fine seam) in four close cool tones, staggered joints (1-2 per plank row per
+    tile, at least 22 apart), faint grain, a bright gloss edge on every plank and two long soft gloss streaks that
+    wrap in x (the arena lights in a clear finish). Mid-light so the white lines, the teal key and both jerseys read."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, ASH[1], wrap_y=True)
+    for r in range(TILE // PRESENT_PLANK):
+        y = r * PRESENT_PLANK
+        while True:
+            n = rnd.choice((1, 2))
+            js = sorted(rnd.randrange(TILE) for _ in range(n))
+            gaps = [(js[(k + 1) % n] - js[k]) % TILE or TILE for k in range(n)]
+            if min(gaps) >= 22:
+                break
+        for k in range(n):
+            x0, L = js[k], gaps[k]
+            base = ASH[rnd.choice((0, 1, 1, 2, 2, 3))]
+            for dx in range(L):
+                x = x0 + dx
+                for dy in range(PRESENT_PLANK - 1):
+                    c = base
+                    if dy == 0:
+                        c = mix(base, ASH_GLOSS, 0.14)
+                    elif dy == PRESENT_PLANK - 2:
+                        c = mix(base, ASH_SEAM, 0.05)
+                    if dx == L - 1:
+                        c = mix(base, ASH_SEAM, 0.28)
+                    px.put(x, y + dy, c)
+            for _ in range(max(1, L // 10)):                     # faint grain lines along the plank
+                gx = x0 + rnd.randint(1, max(1, L - 10))
+                gy = y + rnd.randint(1, PRESENT_PLANK - 3)
+                for q in range(rnd.randint(4, 9)):
+                    if (gx + q - x0) % TILE < L - 1:
+                        px.put(gx + q, gy, mix(base, ASH_GRAIN, 0.25))
+        for x in range(TILE):
+            px.put(x, y + PRESENT_PLANK - 1, mix(ASH[3], ASH_SEAM, 0.30))
+    for gy in (13, 42):                                          # long soft gloss streaks (wrap in x)
+        for x in range(TILE):
+            px.blend(x, gy, ASH_GLOSS, 0.16 + 0.08 * math.sin(2 * math.pi * x / TILE + gy))
+    for _ in range(8):                                           # gloss specks (2 texels, along the planks)
+        x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+        if y % PRESENT_PLANK not in (PRESENT_PLANK - 1, 0):
+            px.blend(x, y, ASH_GLOSS, 0.6)
+            px.blend(x + 1, y, ASH_GLOSS, 0.35)
+    return px.image()
+
+
+# --- era_present backdrop
+PBOWL = pal("#2a2d36", "#20232b", "#181a21", "#0e1015")          # the charcoal bowl (lit .. roof black)
+PSEAT = pal("#3a3d46", "#2a2c34", "#1c1e25", "#121318")          # black seats
+TEAL = pal("#b8fff4", "#3ee0d0", "#16a8a0", "#0c6a68")           # the era colour (first guess) on the LED
+CORAL = pal("#ffd0b8", "#ff7a5a", "#d8483a", "#8a2a2a")          # the accent
+PLIGHT = H("#e8f4ff")                                            # cool white arena light
+PRESENT_SHIRTS = [pal("#ffffff", "#e4eaf2", "#aab4c4", "#6a7488"),   # white tees
+                  pal("#7af0e0", "#22b8ac", "#16807c", "#0c4e4e"),   # teal (the home colour, no logo)
+                  pal("#7af0e0", "#22b8ac", "#16807c", "#0c4e4e"),
+                  pal("#5c5c72", "#34343f", "#1f1e2a", "#121019"),   # black hoodies
+                  pal("#ff9a7a", "#f05a40", "#b0382e", "#6a2020"),   # coral
+                  pal("#a8b0c0", "#7a8296", "#545a6c", "#363a48"),   # grey
+                  pal("#78b8ff", "#2f74e0", "#1f479e", "#172a66"),
+                  pal("#ffe080", "#f0b830", "#b07818", "#6c4410")]
+PRESENT_TIER_H = 9
+PRESENT_AISLES = (56, 184, 312)                                  # one aisle every 128 texels
+
+
+def slashes(px, y0, y1, step, fg, bg, phase=0, width=2):
+    """A ribbon strip: bg with forward slashes of fg (abstract, no letters), every `step` texels."""
+    px.rect(0, y0, BD_W - 1, y1, bg)
+    for x0 in range(phase - (y1 - y0), BD_W + step, step):
+        for dy in range(y1 - y0 + 1):
+            for t in range(width):
+                px.put(x0 + (y1 - y0 - dy) + t, y0 + dy, fg)
+
+
+def era_present_backdrop(seed=72):
+    """Back to front: the near-black roof with a ring of cool lights, the dim upper deck, the teal ribbon board, the
+    lower bowl (black seats, fans, phone lights, LED step lights in the aisles), the courtside LED board and the
+    padded front. The top-left texel is the roof's colour (the game fills above the strip with it)."""
+    rnd = random.Random(seed)
+    px = bd_canvas(PBOWL[3])
+    # the roof: a ring of light fixtures (rows 6-8) and a faint catwalk truss (rows 14-17)
+    for x in range(4, BD_W, 12):
+        px.rect(x, 6, x + 3, 7, PLIGHT)
+        px.rect(x, 8, x + 3, 8, mix(PLIGHT, PBOWL[3], 0.5))
+    for x in range(BD_W):
+        px.put(x, 14, PBOWL[2])
+        px.put(x, 17, PBOWL[2])
+        if (x % 6) in (0, 5):
+            px.put(x, 15, PBOWL[2])
+            px.put(x, 16, PBOWL[2])
+    # the upper deck (rows 22-64): steep dim tiers of tiny fans, a few phone lights
+    for y in range(22, 65):
+        for x in range(BD_W):
+            px.put(x, y, PBOWL[2] if (y - 22) % 4 else PBOWL[3])
+    for y in range(24, 63, 4):
+        for x in range(rnd.randint(0, 2), BD_W, 2):
+            if rnd.random() < 0.78:
+                c = rnd.choice(PRESENT_SHIRTS)[rnd.choice((1, 2))]
+                px.put(x, y, mix(c, PBOWL[2], 0.62))
+                px.put(x, y + 1, mix(rnd.choice(SKIN)[1], PBOWL[2], 0.66))
+    for _ in range(40):                                          # phone lights up in the deck
+        px.put(rnd.randrange(BD_W), rnd.randint(24, 63), H("#ffffff") if rnd.random() < 0.6 else PLIGHT)
+    img = haze_rows(px.image(), H("#0e1015"), 0.30, 0.0)
+    px = from_img(img)
+    # the ribbon board between the decks (rows 64-70): trims, teal with white slashes, a coral bar every 64
+    px.rect(0, 64, BD_W - 1, 64, PBOWL[0])
+    slashes(px, 65, 69, 8, TEAL[0], TEAL[2], phase=2)
+    for x in range(0, BD_W, 64):
+        px.rect(x + 28, 65, x + 35, 69, CORAL[1])
+        px.rect(x + 28, 65, x + 35, 65, CORAL[0])
+    px.rect(0, 70, BD_W - 1, 72, PBOWL[3])
+    # the lower bowl (rows 73-90): two tiers of black seats full of fans, aisles with LED step lights
+    top0 = 73
+    for t in range(2):
+        y0 = top0 + t * PRESENT_TIER_H
+        px.rect(0, y0, BD_W - 1, y0 + PRESENT_TIER_H - 3, PSEAT[2])
+        px.rect(0, y0, BD_W - 1, y0, PSEAT[3])
+        px.rect(0, y0 + PRESENT_TIER_H - 2, BD_W - 1, y0 + PRESENT_TIER_H - 2, PSEAT[0])
+        px.rect(0, y0 + PRESENT_TIER_H - 1, BD_W - 1, y0 + PRESENT_TIER_H - 1, PSEAT[3])
+        for ax in PRESENT_AISLES:
+            px.rect(ax, y0, ax + 5, y0 + PRESENT_TIER_H - 1, PBOWL[1])
+            px.rect(ax, y0 + PRESENT_TIER_H - 2, ax + 5, y0 + PRESENT_TIER_H - 2, PBOWL[0])
+            px.put(ax, y0 + PRESENT_TIER_H - 1, TEAL[1])     # LED step lights at both ends of a step
+            px.put(ax + 5, y0 + PRESENT_TIER_H - 1, TEAL[1])
+        x = rnd.randint(0, 4)
+        while x < BD_W:
+            if any(ax - 5 <= x % BD_W <= ax + 6 for ax in PRESENT_AISLES):
+                x += 2
+                continue
+            if rnd.random() < 0.93:
+                standing = rnd.random() < 0.14
+                arms = rnd.random() < 0.20
+                hy = y0 + PRESENT_TIER_H - 10 - (2 if standing else 0)
+                person(px, x, hy, rnd, t, standing, arms_up=arms, shirts=PRESENT_SHIRTS)
+                if arms and rnd.random() < 0.5:                  # a phone light held up
+                    px.put(x + rnd.choice((0, 4)), hy, H("#ffffff"))
+            x += rnd.choice((5, 6, 6, 7))
+    # cool light from the roof: soft wide beams down over the bowl (blended)
+    for bx in (24, 152, 280):
+        for y in range(18, 90):
+            half = 5 + (y - 18) * 0.18
+            cx = bx + 30 + (y - 18) * 0.10
+            for x in range(int(cx - half), int(cx + half) + 1):
+                px.blend(x, y, PLIGHT, 0.07 * (1 - abs(x - cx) / (half + 1)))
+    # courtside: a teal trim, the LED board (rows 92-96: teal chevrons, coral bars, teal dots), the padded front
+    px.rect(0, 91, BD_W - 1, 91, TEAL[3])
+    chevrons(px, 92, 96, 14, TEAL[1], H("#080a0e"), phase=6)
+    for x in range(0, BD_W, 96):
+        px.rect(x + 40, 92, x + 55, 96, CORAL[2])
+        for k in range(0, 16, 4):
+            px.rect(x + 41 + k, 93, x + 42 + k, 95, CORAL[1])
+        px.rect(x, 92, x, 96, H("#22252e"))                      # board panel joints
+    for x in range(3, BD_W, 8):
+        if px.get(x, 94) == tuple(H("#080a0e")):
+            px.put(x, 94, TEAL[2])
+    px.rect(0, 97, BD_W - 1, 97, TEAL[2])
+    px.rect(0, 98, BD_W - 1, BD_H - 1, PBOWL[1])
+    px.rect(0, BD_H - 1, BD_W - 1, BD_H - 1, PBOWL[3])
+    return px.image()
+
+
 # The era looks' court_looks.gd data (like CITY_LOOKS; --print-looks prints them too). Music: an existing track until
 # the era's own (P9-16); no "twist" key (the match brings the era twist).
 ERA_LOOKS = {
@@ -2863,8 +3051,14 @@ ERA_LOOKS = {
                     "logo": ("#f0a83a", 0.72), "apron": "#3e3838", "backdrop": "fence", "wall": "#3a1c30",
                     "wall_dark": "#160e1c", "backboard": "glass", "board_square": "#ffe6a0",
                     "pole": "#342c34", "rim": "#f06a1e", "net": ("#fff4e4", 0.85)},
+    "era_present": {"name": "NEW ARENA", "music": "newyork", "floor": "#b3aa9e", "floor_stripe": "#b3aa9e",
+                    "stripe_ft": 0, "speckle": 0, "line": ("#ffffff", 0.95), "paint": ("#16a8a0", 0.80),
+                    "logo": ("#20232b", 0.78), "apron": "#20232b", "backdrop": "bleachers", "wall": "#181a21",
+                    "wall_dark": "#0e1015", "backboard": "glass", "board_square": "#ffffff",
+                    "pole": "#181a21", "rim": "#f06a1e", "net": ("#ffffff", 0.85)},
 }
-ERA_MAKERS = {"era_grand": (era_grand_floor, era_grand_backdrop), "era_fathers": (era_fathers_floor, era_fathers_backdrop)}
+ERA_MAKERS = {"era_grand": (era_grand_floor, era_grand_backdrop), "era_fathers": (era_fathers_floor, era_fathers_backdrop),
+              "era_present": (era_present_floor, era_present_backdrop)}
 
 
 def era_ids(args):

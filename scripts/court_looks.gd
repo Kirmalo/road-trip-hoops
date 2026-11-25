@@ -395,6 +395,34 @@ const LOOKS := {
 		"rim": Color(0.94, 0.42, 0.12),
 		"net": Color(1.00, 0.96, 0.89, 0.85),
 	},
+	# ---- Phase 11 era court (P11-06; tools/art/make_courts.py --era present, --print-looks): the Legends Chapter 3
+	# court, a made-up modern arena (ash floor, teal key, dark bowl, abstract ribbon boards). No twist key (the legends
+	# match brings the era twist), no reward, not a city: never in quick_courts(). Music: an existing track until the
+	# era's own (P11-20). The name is a proposal for the owner's look check ----
+	"era_present": {
+		"name": "NEW ARENA",
+		"music": "newyork",
+		"floor_texture": "res://assets/courts/era_present_floor.png",
+		"floor_scale": 2.0,
+		"floor": Color(0.70, 0.67, 0.62),
+		"floor_stripe": Color(0.70, 0.67, 0.62),
+		"stripe_ft": 0.0,
+		"speckle": 0,
+		"line": Color(1.00, 1.00, 1.00, 0.95),
+		"paint": Color(0.09, 0.66, 0.63, 0.80),
+		"logo": Color(0.13, 0.14, 0.17, 0.78),
+		"apron": Color(0.13, 0.14, 0.17),
+		"backdrop": "bleachers",
+		"backdrop_texture": "res://assets/courts/era_present_backdrop.png",
+		"backdrop_scale": 2.0,
+		"wall": Color(0.09, 0.10, 0.13),
+		"wall_dark": Color(0.05, 0.06, 0.08),
+		"backboard": "glass",
+		"board_square": Color(1.00, 1.00, 1.00),
+		"pole": Color(0.09, 0.10, 0.13),
+		"rim": Color(0.94, 0.42, 0.12),
+		"net": Color(1.00, 1.00, 1.00, 0.85),
+	},
 }
 const DEFAULT := "gym"
 const ALWAYS_OPEN := ["gym", "blacktop"]   # Quick Game courts that need no unlock (twist none)

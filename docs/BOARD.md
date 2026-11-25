@@ -216,6 +216,12 @@ Everything below (Tasks by wave).
   jump shot) and `docs/art/eurostep_v1.gif` (1.50 MB, vs the layup), 5 directions, drift drawn, 0 hand/ball check
   problems; stand-in bodies `sea_g1` (slim guard, short fade, no beard) and `den_g2` (slim guard, short twists, no
   headband) until the legends' sheets exist. For the owner's look check with P11-05.
+- **P11-06** (art C): `era_present` court done: `make_courts.py --era present` (wide cool ash planks, teal key, dark
+  centre circle and apron, charcoal bowl, black seats, teal / coral ribbon boards with stripes and chevrons only, phone
+  lights; no word, digit or logo), `era_present_floor.png` 969 B, `era_present_backdrop.png` 15.8 KB, a
+  `court_looks.gd` row (name proposed "NEW ARENA", music `newyork` until P11-20). Checked angled and flat shots;
+  not in the COURT list (`--menushot --unlock-all --stars 72`); `--era` rewrites the older era files byte for byte.
+  Teal is a first guess until P11-05's palettes.
 
 ## Done
 - **P11-01** (qa, merged) Phase 10 save fixtures: `docs/qa/fixtures/` legends_v1_ch2_mid / _ch2_done, trip_v2_father, settings_v2_48, make_ / check_fixtures_v4 (README "Phase 10 save fixtures"); scripted like P10-01, not a test-driver stop (README says why)
