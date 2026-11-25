@@ -129,6 +129,7 @@ tablet with a joystick and two buttons.
 | Phase 11 spacing (after P11-21) | Owner: keep SPACE THE FLOOR's 2 ft spacing (off-ball spots move 2 ft straight out from the hoop, kept inside the lines) although rim shots fall about 29% (34 to 24 a game) and offensive rebounds dip a little under 25%: the era should feel like a shooting era; pull-up numbers stay (PULLUP_CPU_CHANCE 0.5, PULLUP_WINDOW 1.0; docs/qa/phase11-era.md) |
 | Phase 11 tuning (after P11-23) | Owner: accept Chapter 3 as measured (end-of-trip crew: six challenges Normal 50%, Hard 40%; finale at `finale_stage_avg` 63: Normal 53%, Hard 33%); Switch keeps `min` 5 (met ~15%, the hardest on purpose like Lockbox); no per-level offset (docs/qa/phase11-challenges.md) |
 | Phase 11 teal (after P11-28) | Owner: the Present's `ui_color` goes darker, #0a7385 (P11-B2), so its LEGEND tags and draft band read apart from the Fathers' mint; also darkens its Quick Game team button. The era court's paint keeps its teal |
+| Phase 11 era team balance (after P11-36) | Owner: leave both as measured: the Present is the strongest Quick Game team (~62% vs the crews on Hard), a reward for the last era; the Grandfathers stay weak on their own OLD GYM (~38%, the OLD SCHOOL twist helps their opponents), no Quick Game home edge (docs/qa/phase11-quick-eras.md) |
 
 ## Technical constraints
 - Godot 4.3+ (GDScript), GL Compatibility renderer, 1280x720 landscape. See `CLAUDE.md` for code conventions.
