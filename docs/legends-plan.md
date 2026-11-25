@@ -438,7 +438,12 @@ numbers set the win shares, the ratings barely do, so this mostly picks the goal
   3 best, stats averaged to 50 like the Quick Game crews), with the era court and its rules on COURT
 - c) Add the token ladder with Legends cosmetics (an era jersey and an era ball in the LOCKER)
 
-## Phase 11 open questions (lead-producer, 2026-11-25; answer with the letter, (a) is the recommendation)
+## Phase 11 open questions (lead-producer, 2026-11-25; ANSWERED 2026-11-25)
+
+**Answered by the owner: see `docs/VISION.md` "Phase 11 answers P1-P8"** (all a, except P4 c: both the step-back and
+the Euro-step animations; P8 b: era teams in Quick Game, and each era court with its era rules on COURT once that era's
+team is open), then "Phase 11 names (after P11-02)" (Sigurd "Stretch" Halvorsen, was Ozren) and "Phase 11 era music".
+The questions stay below as asked; `docs/BOARD.md` carries the answers into the tasks.
 
 Phase 11 builds Chapter 3, the Present, end to end (`docs/BOARD.md`). Wave 1 of the board starts without these
 answers; each question names the tasks it blocks.
