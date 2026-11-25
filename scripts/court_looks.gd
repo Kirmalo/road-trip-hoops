@@ -401,7 +401,7 @@ const LOOKS := {
 	# era's own (P11-20). Name BIG STAGE (owner, look check) ----
 	"era_present": {
 		"name": "BIG STAGE",
-		"music": "newyork",
+		"music": "legends_present",
 		"floor_texture": "res://assets/courts/era_present_floor.png",
 		"floor_scale": 2.0,
 		"floor": Color(0.70, 0.67, 0.62),
