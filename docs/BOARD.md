@@ -491,12 +491,19 @@ Everything below (Tasks by wave).
   view after a Chapter 3 game, unlock or finale; drafted Present legends sit when they are opponents; `Legends.self_test()`
   covers the three shipped chapters (gates, tokens per chapter, unlocks, mentors from three eras, the test trip save
   unchanged) | P11-11
-- **P11-19** | Draft and lineup with three eras
+- **P11-19** | REVIEW | Draft and lineup with three eras
   | gameplay-programmer C | `scripts/trip.gd`, `scripts/draft.gd`, `scripts/lineup.gd`
   | three LEGENDS rows in the draft in timeline order (Grandfathers, Fathers, then "UNLOCKED IN LEGENDS - THE
   PRESENT"), each in its frame and tag color, the draft scrolls to the last; `LEGEND_LIMIT` 1 across
   all chapters; legend + boss still allowed; `end_of_trip_crew()` `_sim_chapters` counts Chapter 3 only for Chapter 3 runs
-  and `--city` runs; save version 2; every fixture loads; `--triptest-data` (+ `--load`) TRIPDATA OK | P11-11, P11-07
+  and `--city` runs; save version 2; every fixture loads; `--triptest-data` (+ `--load`) TRIPDATA OK | P11-11, P11-07.
+  Result: the logic was already data-driven (no chapter id), so no rule changed: three rows, frames and tag colours from
+  the data (screenshot at 1280 and 1600). trip.gd: `sim_chapters_for(match)` (the P10-N1 rule as one function; Chapter
+  1 run grand, 2 + fathers, 3 all three, any other match every built chapter); self test drafts a third-era legend into
+  slot 4 (any two legends refused, it + a boss start, kept by the version 2 save) and checks the best crew per chapter
+  game. draft.gd: `DRAFT legends rows` print, `scroll_to_row(i)` / `scroll_to_last()` for drivers and shots. lineup.gd:
+  comment only. TRIPDATA OK (+ `--load`); check_fixtures v2-v4 CHECK OK (v1 differs as on the base, its catch-up);
+  `--trip-test --legends-unlock-all --stars 24` TRIP END; `--legendtest` OK
 - **P11-21** | QA: the SPACE THE FLOOR era rules
   | qa-balance-tester | `docs/qa/phase11-era.md`; may tune the `era_present` numbers in `scripts/twists.gd`
   | 64+ `--autoplay --twist era_present` games against 64 twist `none` (and 40 with `--court era_present`): each rule

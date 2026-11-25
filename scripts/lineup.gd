@@ -24,6 +24,8 @@ extends CanvasLayer
 # the same place; tapping a second legend flashes Trip.LEGEND_RULE and doesn't pick him. A legend is not a boss, so one
 # legend and one boss may start together. P10-19: the limit counts every chapter together (a Grandfather and a Father
 # never start together; the flash names the one already picked); each tag is in its own chapter's colour.
+# P11-19: three eras, nothing new in the logic: a Grandfather, a Father or a Present legend starts, never two of them,
+# and each one's tag takes his chapter's ui_color from the data (the Present's teal).
 # Drag the list (or its wide scroll bar) to scroll; a drag never counts as a tap. Taps are ignored for ARM_T s when the
 # screen opens and once PLAY is on its way, so nothing leaks into the next screen or the game.
 # Desktop testing: Enter = PLAY, Escape = BACK. Trip test: auto_step() keeps the lineup and taps PLAY;

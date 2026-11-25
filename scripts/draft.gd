@@ -19,6 +19,9 @@ extends CanvasLayer
 #   P10-19: one LEGENDS row per chapter (Trip.legends_rows(), timeline order): "UNLOCKED IN LEGENDS - THE GRANDFATHERS",
 #   then "... - THE FATHERS", each in its chapter's colour (band, tag) with its chapter's frame (assets/legends/ui.json
 #   "frames", else frame_<chapter>.png, else LEGEND_FRAME_DEFAULT's). One legend starts, whatever his era.
+#   P11-19: three eras, the same way from the data: GRANDFATHERS, FATHERS, then "UNLOCKED IN LEGENDS - THE PRESENT",
+#   each in its frame and tag colour; the list scrolls down to the last row. The open screen prints "DRAFT legends rows"
+#   (chapter and count per row, list order); scroll_to_row(i) / scroll_to_last() are for test drivers and screenshots.
 # Taps are ignored for ARM_T s when the screen opens and SIGN for PICK_ARM_T s after a pick (a double tap can't
 # confirm). Desktop: Escape = BACK (closes the confirm panel first; on the joining line it goes on); main.gd turns the
 # Android back gesture into an Escape press. auto_step() (test drivers): draft the first card if a slot is open (no
@@ -145,6 +148,7 @@ var _leave_t := -1.0
 var _join_t := -1.0          # s the joining line has been up (-1: not shown)
 var _join_hint: Label
 var _ui_cache = null         # P10-19: assets/legends/ui.json (_legend_ui(); null = not read yet)
+var _heads: Array = []       # P11-19: the crew header of each row, in list order (scroll_to_row())
 
 func _ready() -> void:
 	_back = str(Flow.args.get("back", DEFAULT_BACK))
@@ -165,6 +169,12 @@ func _ready() -> void:
 	_stat("draft_screen")
 	print("DRAFT screen | %d crews, %d players | slots %d, open %d, drafted %s | back %s" % [_crews.size(),
 			_cards.size(), Trip.slot_count(), Trip.open_slots(), str(Trip.drafted_ids()), _back])
+	var lrows: Array = []
+	for row in _crews:
+		if str((row as Dictionary).get("city", "")) == Trip.LEGENDS_ROW:
+			lrows.append("%s %d" % [_where(row).trim_prefix(LEGEND_WHERE + " - "), ((row as Dictionary).get("players", []) as Array).size()])
+	if not lrows.is_empty():
+		print("DRAFT legends rows | %s" % ", ".join(PackedStringArray(lrows)))   # P11-19: timeline order
 
 func _process(delta: float) -> void:
 	if _arm_t > 0.0:
@@ -280,6 +290,7 @@ func _build_list() -> void:
 		hd.custom_minimum_size = Vector2(LIST_SIZE.x - SCROLL_BAR_W - 8.0, CREW_HEAD_H)
 		hd.mouse_filter = Control.MOUSE_FILTER_STOP   # a drag on the header scrolls too
 		col.add_child(hd)
+		_heads.append(hd)
 		var grid := GridContainer.new()
 		grid.columns = COLS
 		grid.add_theme_constant_override("h_separation", CARD_GAP)
@@ -686,6 +697,21 @@ func auto_step() -> bool:
 			return true
 	_on_back()
 	return true
+
+# P11-19, test drivers and screenshots: scroll the list so row i's header is at the top (as far as the list goes; -1 =
+# the last row, the last era's LEGENDS row when there is one). Call it once the screen is laid out (a frame after
+# _ready()). False when there is no such row.
+func scroll_to_row(i: int) -> bool:
+	if _scroll == null or _heads.is_empty():
+		return false
+	var k: int = _heads.size() - 1 if i < 0 else i
+	if k >= _heads.size():
+		return false
+	_scroll.scroll_vertical = int((_heads[k] as Control).position.y)
+	return true
+
+func scroll_to_last() -> bool:
+	return scroll_to_row(-1)
 
 # test drivers: pick a card by id as a tap would (true if he is on the screen)
 func tap_player(id: String) -> bool:
