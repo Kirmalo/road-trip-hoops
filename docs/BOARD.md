@@ -530,12 +530,21 @@ Everything below (Tasks by wave).
   `era_fathers` match Phase 10 | P11-12
 
 ### Wave 4
-- **P11-22** | Mentor perks for the Present
+- **P11-22** | REVIEW | Mentor perks for the Present
   | gameplay-programmer B | `scripts/player.gd`, `scripts/main.gd`, `scripts/defense.gd` (one hook per new perk key)
   | P5 a, the contract's six perks (`off_dribble`, `extra_pass`, `catch_shoot`, `contest`, `board_work`, `side_step`):
   each key one `p.perk(key, default)`, default = today; your side only, Road Trip games only (never an era team in
   Quick Game); `--perk <id>` shows each working (PERK line, `perk_<id>_t0`); `--autoplay` unchanged with no perk; the
   Hall's perk text from the data | P11-17 merged, P11-11
+  Result: main.gd `_perk_shot_bonus()` (pullup_bonus on a jumper with `pullup_mark`, catch_shot_bonus on one with the
+  new `player.catch_mark`, `PERK_CATCH_WINDOW` 1.0 s at the shot start), `_perk_mate_bonus()` (assist_shot_bonus: the
+  passer of the caught pass, shot released within `PERK_ASSIST_WINDOW` 1.5 s of `do_pass()`; guard_contest_bonus: the
+  shooter's slot man within `PERK_GUARD_FT` 8 ft), `_perk_rebound_reach()` (rebound_reach_mult on ball.gd's 20 px floor
+  pick-up reach, missed field goals only); defense.gd `_side_step_mult()` on both layup block rolls. CPU: an off_dribble
+  player rolls the SPACE THE FLOOR pull-up after his crossovers with any twist. Seeded runs with no perk / old perks /
+  a Chapter 2 challenge / `--humantest` / `era_present` are byte for byte the base build's. Fires per game to 21 (3
+  holders): contest 24, extra_pass 15, catch_shoot 13, board_work 2-15, off_dribble 4, side_step 0 in 5 games (rare: a
+  block try at a BLUE layup inside the 5% band; for P11-26)
 - **P11-23** | QA: Chapter 3 challenge balance
   | qa-balance-tester | `docs/qa/phase11-challenges.md`; may tune the Chapter 3 goal numbers and its per-chapter rating
   keys in `scripts/legends_data.gd`
