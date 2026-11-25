@@ -543,7 +543,7 @@ Everything below (Tasks by wave).
   pick-up reach, missed field goals only); defense.gd `_side_step_mult()` on both layup block rolls. CPU: an off_dribble
   player rolls the SPACE THE FLOOR pull-up after his crossovers with any twist. Seeded runs with no perk / old perks /
   a Chapter 2 challenge / `--humantest` / `era_present` are byte for byte the base build's. Fires per game to 21 (3
-  holders): contest 24, extra_pass 15, catch_shoot 13, board_work 2-15, off_dribble 4, side_step 0 in 5 games (rare: a
+  holders): contest 24, extra_pass 15, catch_shoot 13, board_work 2, off_dribble 4, side_step 0 in 5 games (rare: a
   block try at a BLUE layup inside the 5% band; for P11-26)
 - **P11-23** | QA: Chapter 3 challenge balance
   | qa-balance-tester | `docs/qa/phase11-challenges.md`; may tune the Chapter 3 goal numbers and its per-chapter rating
