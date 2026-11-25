@@ -36,6 +36,10 @@ docs/art/legends_sample_v1.png and .gif (one era look in the v2 style; nothing i
 Phase 10 (P10-04): the Fathers era parts ("Phase 10 era parts": baggy shorts, crew socks, the durag; the
 older sleeve, leg sleeve, wristbands, cornrows, goatee and headband reused). --legends-sample fathers writes only the
 owner's look sample docs/art/legends_fathers_sample_v1.png and .gif (two era looks; nothing in assets/).
+Phase 11 (P11-05): the Present era parts ("Phase 11 era parts": mid-thigh shorts, compression tights on both legs
+or one, a knee sleeve, low socks, hair crop / waves / hightop_fade / manbun, a boxed beard and a thin mustache).
+--legends-sample present writes only the owner's look sample docs/art/legends_present_sample_v1.png and .gif (two
+era looks, Deep End and Toolbox as the Phase 11 board proposes them; nothing in assets/).
 Needs:  Pillow, numpy
 """
 import json
@@ -818,6 +822,170 @@ def build_era2(p, pose, expr="focus", portrait=False):
 P.build = build_era2
 
 
+# ----------------------------------------------------------------------------- Phase 11 era parts (P11-05)
+# The Present era (Legends Chapter 3, today's game): parts drawn once for the whole era, wrapped around the Phase 10
+# build in the same way, so a player without these keys goes straight through (every older sheet stays
+# pixel-identical). Original parts only: no real player's look, number or accessory is copied, and the parts are
+# spread over the six legends (the hard rule's combination check, docs/BOARD.md Phase 11: never the step-back shooter
+# with a full beard, the slim deep-range guard with a mouthguard, the seven-foot shooting big with shaggy hair, the
+# big point-forward in a headband, or the long-armed two-way wing with twists).
+#   modern_shorts: true   mid-thigh shorts (shorts_len ERA3_SHORTS_LEN unless given), a slim cut (ERA3_SHORTS_SLIM
+#                         off the thigh) with a thin side stripe in shorts_trim
+#   tights: "both" | "L" | "R"   compression tights (tight_pal) from under the shorts to the ankle, on both legs or
+#                         one, with a darker seam down the outside; the low socks sit over their ends
+#   knee_sleeve: "L" | "R"   a knee sleeve (knee_pal) from the lower thigh to the upper calf, a darker band at each end
+#   socks: "low"          modern low socks (sock_len ERA3_LOW_LEN unless given), just over the shoe, no band
+#   hair "crop"           close-cropped hair with a sharp line-up (a straight front hairline, squared temples)
+#   hair "waves"          short hair brushed into waves: lighter ridges in rings around the crown, the same line-up
+#   hair "hightop_fade"   a squared, flat-topped high-top over faded sides and back (shorter than the 1990s hightop)
+#   hair "manbun"         hair pulled back into a low bun at the back of the head (never a high top-knot), a faded
+#                         undercut; the hair tie in band_pal when given (no headband: that needs headband: true)
+#   boxed_beard: true     a short, trimmed beard: a straight cheek line, the jaw strap, chin and mustache
+#   thin_mustache: true   a thin line over the lip (no beard)
+# Era palettes are the ERA3_* rows of crews.json. tools/art/make_players.py --legends-sample present draws the owner's
+# look sample (docs/art/legends_present_sample_v1.png and .gif); nothing in assets/ is written by it.
+
+ERA3_SHORTS_LEN = 0.7       # thigh fraction under the shorts (mid-thigh; era 1 0.46, today's shortest 0.62)
+ERA3_SHORTS_SLIM = 0.3      # thigh radius taken off under the shorts (today's shorts add 0.45: a slimmer cut)
+ERA3_STRIPE = 0.8           # the side stripe: the outer part of the leg, as a fraction of the sphere radius
+ERA3_SEAM = 0.82            # the tights' seam, the same way
+ERA3_LOW_LEN = 0.1          # calf fraction under low socks
+ERA3_KNEE = (0.76, 0.34)    # knee sleeve: from thigh fraction a to calf fraction b
+ERA3_KNEE_BAND = 0.05       # the darker band at each end of the sleeve
+ERA3_LINEUP_Y = 1.45        # head-local height of the straight front hairline (crop, waves, hightop fade)
+ERA3_WAVE_CROWN = (0.0, 4.3, -0.8)   # head-local centre of the wave rings
+ERA3_WAVE_STEP = 1.7        # ring spacing (head-local units; about 2 px in the frame)
+ERA3_HAIR = ("crop", "waves", "hightop_fade", "manbun")
+ERA3_KEYS = ("modern_shorts", "tights", "knee_sleeve", "boxed_beard", "thin_mustache")
+
+_P10_BUILD = P.build
+
+
+def is_era3(p):
+    return p.get("hair") in ERA3_HAIR or p.get("socks") == "low" or any(p.get(k) for k in ERA3_KEYS)
+
+
+def build_era3(p, pose, expr="focus", portrait=False):
+    if not is_era3(p):
+        return _P10_BUILD(p, pose, expr, portrait)
+    style = p.get("hair")
+    q = dict(p)
+    if style in ERA3_HAIR:
+        q["hair"] = "bald"
+    if p.get("modern_shorts") and not p.get("shorts_len_set"):
+        q["shorts_len"] = ERA3_SHORTS_LEN
+    if p.get("socks") == "low" and not p.get("sock_len_set"):
+        q["sock_len"] = ERA3_LOW_LEN
+    if p.get("tights"):
+        q["tight"] = None          # drawn below on the legs it names
+    prims, info, pp = _P10_BUILD(q, pose, expr, portrait)
+    if p.get("knee_pal"):
+        pp["knee"] = P.pal(p["knee_pal"])
+    if p.get("tights") and "tight" not in pp:
+        pp["tight"] = P.pal(p["tight_pal"])
+    head_c, Rh = info["head_c"], info["Rh"]
+    HX, HY, HZ = info["HX"], info["HY"], info["HZ"]
+
+    def H(x, y, z):
+        return head_c + Rh @ P.vec(x, y, z)
+
+    def head_local(h):
+        return Rh.T @ (h - head_c) / (HK * HK)
+
+    def hairline(l):
+        return 1.55 * max(-1.0, min(1.0, l[2] / 3.6)) + 0.25
+
+    # --- legs: modern shorts (slim, side stripe), tights, knee sleeve. Leg spheres come L thigh, L calf, L shoe, then
+    # R (pixel3d.build order), like the knee pads.
+    slen = q["shorts_len"]
+    tights = p.get("tights")
+    knee = p.get("knee_sleeve")
+    side, sname, seen_shoe = 1.0, "L", False
+    for pr in prims:
+        if pr.part == "shoe":
+            seen_shoe = True
+            continue
+        if pr.part == "thigh" and seen_shoe:
+            side, sname, seen_shoe = -1.0, "R", False
+        if pr.part not in ("thigh", "calf"):
+            continue
+        under = pr.t < slen if pr.part == "thigh" else pr.t < slen - 1.0
+        if p.get("modern_shorts") and under and pr.part == "thigh":
+            pr.r = max(0.6, pr.r - ERA3_SHORTS_SLIM)
+        if not callable(pr.mat):
+            continue
+        tight_here = tights in ("both", sname)
+        knee_here = knee == sname and ((pr.part == "thigh" and pr.t >= ERA3_KNEE[0])
+                                      or (pr.part == "calf" and pr.t <= ERA3_KNEE[1]))
+
+        def leg3_mat(h, prim, orig=pr.mat, sx=side, th=tight_here, kn=knee_here):
+            m = orig(h, prim)
+            out = (h - prim.c)[0] * sx
+            if p.get("modern_shorts") and m == "shorts" and out > prim.r * ERA3_STRIPE:
+                return "shorts_trim"
+            if kn and m in ("skin", "tight"):
+                a, b = ERA3_KNEE
+                edge = (prim.part == "thigh" and prim.t < a + ERA3_KNEE_BAND) or \
+                       (prim.part == "calf" and prim.t > b - ERA3_KNEE_BAND)
+                return "knee+1" if edge else "knee"
+            if th and m == "skin":
+                return "tight+1" if out > prim.r * ERA3_SEAM else "tight"
+            return m
+        pr.mat = leg3_mat
+
+    # --- head: the era's hair (on the bald head's skin) and the face parts
+    def face3(l, m):
+        x, y, z = l
+        if m != "skin":
+            return m
+        ax = abs(x)
+        hl = hairline(l)
+        if style in ("crop", "waves", "hightop_fade"):
+            # line-up: a straight front hairline, squared temples, the back and sides following the head
+            line = min(hl + 0.2, ERA3_LINEUP_Y) if z > 0.6 else hl + 0.2
+            if ax > 2.5 and z > 0.0:
+                line = min(line, 0.7)       # the squared temple corners
+            if y > line:
+                if style == "hightop_fade":
+                    return "hair" if (y > 2.2 and ax < 2.7 and z > -2.4) or (z > 2.2 and y > ERA3_LINEUP_Y) \
+                        else "skin+1"       # faded sides and back
+                if style == "waves":
+                    cx, cy, cz = ERA3_WAVE_CROWN
+                    dd = math.sqrt((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2)
+                    return "hair-1" if (dd / ERA3_WAVE_STEP) % 1.0 < 0.42 else "hair"
+                return "hair"
+        if style == "manbun" and y > hl + 0.15:
+            return "skin+1" if ax > 2.55 and y < 2.0 else "hair"     # the faded undercut
+        if p.get("boxed_beard") and z > -0.4:
+            if (ax > 2.5 and y < 0.1) or (ax > 1.5 and y < -1.7) or y < -2.45:
+                if not (ax < 1.0 and -2.35 < y < -1.55 and z > 2.0):
+                    return "hair"
+            if -1.5 < y < -1.05 and ax < 1.4 and z > 2.2:
+                return "hair"
+        if p.get("thin_mustache") and z > 2.1 and -1.45 < y < -0.95 and ax < 1.35:
+            return "hair"
+        return m
+
+    for pr in prims:
+        if pr.part == "head" and callable(pr.mat):
+            def wrapped3(h, prim, orig=pr.mat):
+                return face3(head_local(h), orig(h, prim))
+            pr.mat = wrapped3
+    if style == "hightop_fade":    # a squared block on top, cut flat
+        prims.append(P.ell(H(0, 3.2, -0.15), Rh, HX - 0.3, 3.0, HZ - 0.25, "hair", "hair",
+                           clip=(H(0, 5.6, 0), Rh @ P.unit(0, -1.0, 0))))
+    if style == "manbun":          # the hair pulled back over the top, and a low bun at the back of the head
+        prims.append(P.ell(H(0, 0.9, -0.4), Rh, HX + 0.2, HY + 0.12, HZ + 0.25, "hair", "hair",
+                           clip=(H(0, 1.5, 0), Rh @ P.unit(0, 1.0, -0.35))))
+        prims.append(P.ell(H(0, 0.9, -4.4), Rh, 1.05, 1.0, 0.55,
+                           "band" if p.get("band_pal") else "hair+2", "hair"))    # the tie (band_pal: a colored one)
+        prims.append(P.Sphere(H(0, 0.8, -5.4), 1.4, "hair_tw", "hair"))
+    return prims, info, pp
+
+
+P.build = build_era3
+
+
 # ----------------------------------------------------------------------------- render + checks
 
 def render_frame(p, anim, k, yaw, hands=None):
@@ -1541,11 +1709,239 @@ def legends_sample_fathers(argv):
     return len(probs)
 
 
+# ----------------------------------------------------------------------------- Phase 11 legend look sample (P11-05)
+# --legends-sample present: two Present looks in the board's proposed form (docs/BOARD.md Phase 11, the flagged
+# table's right column, owner answer P1 a; not the plan's flagged drafts): Deep End (Calloway Whitlock, the step-back
+# shooter: no beard, a thin mustache, waves, no mouthguard) and Toolbox (Theo Lindqvist, the point-forward: man bun,
+# no headband), in the v2 sheet style, for the owner's look check before P11-14 makes the six sheets. Writes only
+# docs/art/legends_present_sample_v1.png and .gif. The looks are data here, not in crews.json (no sheet is made from
+# them); the numbers are placeholders (the owner approves the list). The parts row puts the other era parts on plain
+# bodies, spread the way the hard rule asks (a parts check, not the other legends' final looks: P11-14 makes those).
+
+PRESENT_SAMPLE_PNG = os.path.join(ROOT, "docs", "art", "legends_present_sample_v1.png")
+PRESENT_SAMPLE_GIF = os.path.join(ROOT, "docs", "art", "legends_present_sample_v1.gif")
+PRESENT_FLOOR = os.path.join(ROOT, "assets", "courts", "gym_floor.png")    # read only: the era plays indoors
+_ERA3_KIT = {"top": "tank", "sleeve": None, "tight": None, "modern_shorts": True, "socks": "low",
+             "sock_pal": "ERA3_LIGHT", "shoe_pal": "ERA3_LIGHT"}
+PRESENT_SAMPLE = [
+    ("DEEP END", "step-back shooter: lean guard, waves, thin mustache (no beard, no mouthguard), right-leg tights, "
+                 "mid-thigh shorts, low socks",
+     dict(_ERA3_KIT, id="lg_sample_deep_end", crew="B", number=26, role="step-back shooter", name="Deep End",
+          body="lanky_guard", skin="brown", hair="waves", hair_pal="HAIR_BLACK", thin_mustache=True, tights="R",
+          tight_pal="ERA3_INK", top_pal="ERA3_GRAPHITE", trim_pal="ERA3_MINT", shorts_pal="ERA3_GRAPHITE",
+          shorts_trim="ERA3_MINT", shoe_acc="ERA3_MINT", sole_pal="ERA3_GRAPHITE")),
+    ("TOOLBOX", "point-forward: big and strong, low man bun (no headband), clean-shaven, mid-thigh shorts, low socks",
+     dict(_ERA3_KIT, id="lg_sample_toolbox", crew="B", number=38, role="point-forward", name="Toolbox",
+          body="champion", body_tweak={"mass": -0.08}, skin="light", hair="manbun", hair_pal="HAIR_BROWN",
+          band_pal="ERA3_GRAPHITE",
+          top_pal="ERA3_MAGENTA", trim_pal="ERA3_GRAPHITE", shorts_pal="ERA3_MAGENTA", shorts_trim="ERA3_GRAPHITE",
+          shoe_acc="ERA3_MAGENTA", sole_pal="ERA3_GRAPHITE")),
+]
+# your colors (a drafted legend wears them, like a _crew recolor): era palette names swapped
+PRESENT_SAMPLE_CREW = {"ERA3_GRAPHITE": "BLUE", "ERA3_MAGENTA": "BLUE", "ERA3_EMBER": "BLUE", "ERA3_AQUA": "BLUE",
+                       "ERA3_INK": "NAVY", "ERA3_MINT": "GOLD", "ERA3_LIGHT": "WHITE"}
+PRESENT_PARTS_CHECK = [  # (label, entry): the other era parts on plain bodies, spread as the hard rule asks
+    ("stretch: dark crop, boxed beard, tights", dict(_ERA3_KIT, id="era3_part_1", crew="B", number=4,
+                                                     body="wiry_center",
+                                            skin="tan", hair="crop", hair_pal="HAIR_DARK", boxed_beard=True,
+                                            tights="both", tight_pal="ERA3_INK", top_pal="ERA3_LIGHT",
+                                            trim_pal="ERA3_INK", shorts_pal="ERA3_LIGHT", shorts_trim="ERA3_INK",
+                                            shoe_acc="ERA3_INK", sole_pal="ERA3_INK")),
+    ("wing: bald, boxed beard", dict(_ERA3_KIT, id="era3_part_2", crew="B", number=7, body="lanky_wing",
+                                     skin="deep", hair="bald", hair_pal="HAIR_BLACK", boxed_beard=True,
+                                     top_pal="ERA3_EMBER", trim_pal="ERA3_LIGHT", shorts_pal="ERA3_EMBER",
+                                     shorts_trim="ERA3_LIGHT", shoe_acc="ERA3_EMBER", sole_pal="ERA3_EMBER")),
+    ("big: high-top fade, left tights", dict(_ERA3_KIT, id="era3_part_3", crew="B", number=9, body="power_forward",
+                                             skin="umber", hair="hightop_fade", hair_pal="HAIR_BLACK", tights="L",
+                                             tight_pal="ERA3_LIGHT", top_pal="ERA3_AQUA", trim_pal="ERA3_INK",
+                                             shorts_pal="ERA3_AQUA", shorts_trim="ERA3_INK", shoe_acc="ERA3_AQUA",
+                                             sole_pal="ERA3_INK")),
+    ("guard: crop, knee sleeve", dict(_ERA3_KIT, id="era3_part_4", crew="B", number=2, body="slim_guard",
+                                      skin="light", hair="crop", hair_pal="HAIR_BROWN", knee_sleeve="L",
+                                      knee_pal="ERA3_LIGHT", top_pal="ERA3_GRAPHITE", trim_pal="ERA3_AQUA",
+                                      shorts_pal="ERA3_GRAPHITE", shorts_trim="ERA3_AQUA", shoe_acc="ERA3_AQUA",
+                                      sole_pal="ERA3_GRAPHITE")),
+]
+PRESENT_ANIMS = ["idle", "run", "run_dribble", "shoot"]
+
+
+def _present_players():
+    entries = []
+    for _, _, e in PRESENT_SAMPLE:
+        entries.append(dict(e))
+        c = {k: (PRESENT_SAMPLE_CREW.get(v, v) if isinstance(v, str) else v) for k, v in e.items()}
+        c.update({"id": e["id"] + "_crew", "crew": "U"})
+        entries.append(c)
+    entries += [dict(e) for _, e in PRESENT_PARTS_CHECK]
+    for e in entries:
+        e.setdefault("shorts_len", ERA3_SHORTS_LEN)
+        e.setdefault("sock_len", ERA3_LOW_LEN)
+    return _load_entries(entries)
+
+
+def _floor_bg(path, w, h, show=2):
+    if not os.path.exists(path):
+        return Image.new("RGBA", (w, h), (120, 92, 60, 255))
+    t = Image.open(path).convert("RGBA")
+    t = t.resize((t.width * show, t.height * show), Image.NEAREST)
+    bg = Image.new("RGBA", (w, h))
+    for y in range(0, h, t.height):
+        for x in range(0, w, t.width):
+            bg.paste(t, (x, y))
+    return bg
+
+
+def legends_sample_present(argv):
+    if __name__ == "__main__":
+        sys.modules["make_players"] = sys.modules["__main__"]    # make_players_v2 imports this module: no re-patch
+    import make_players_v2 as V
+    import make_anim_sample as AS
+    ps = _present_players()
+    ref = [q for q in V.players_v2() if q["id"] == SAMPLE_REF][0]
+    alld = ("S", "SE", "E", "NE", "N")
+    fr, probs = {}, []
+    looks = [(title, desc, e["id"], e["id"] + "_crew") for title, desc, e in PRESENT_SAMPLE]
+    for _, _, sid, cid in looks:
+        for pid in (sid, cid):
+            fr[pid], pr = _render_anims(V, ps[pid], PRESENT_ANIMS, alld)
+            probs += pr
+    fr[SAMPLE_REF], pr = _render_anims(V, ref, PRESENT_ANIMS, alld)
+    probs += pr
+    parts = []
+    for lab, e in PRESENT_PARTS_CHECK:
+        f, pr = _render_anims(V, ps[e["id"]], ["idle", "run"], ("S", "SE", "E", "N"))
+        parts.append((lab, f))
+        probs += pr
+
+    def bg_of(w, h):
+        return _floor_bg(PRESENT_FLOOR, w, h)
+
+    # --- the PNG
+    Z, pad, lab_h = 2, 6, 18
+    cw, chh = V.FW * Z, V.FH * Z
+    cells_per_row = 10
+    lx = 170
+    W = lx + cells_per_row * (cw + pad)
+
+    def C(f, name, dn, k=0, flip=False):
+        img, rec = f[(name, dn)][k]
+        if flip:
+            return V.compose(img.transpose(Image.FLIP_LEFT_RIGHT), dict(rec, ball=None))
+        return V.compose(img, rec)
+
+    def strip(f):
+        r = [C(f, "idle", dn) for dn in alld] + [C(f, "idle", "E", flip=True)]
+        r += [C(f, "run", "E", 3), C(f, "run_dribble", "SE", 2), C(f, "shoot", "E", 2), C(f, "shoot", "SE", 6)]
+        return r
+
+    heads = ("idle S SE E NE N W (mirrored) | run E | running dribble SE | jumper E (gather) | jumper SE (release; "
+             "the game adds the jump height)")
+    rows = []
+    for title, desc, sid, cid in looks:
+        rows += [(title + ", era colors", desc, strip(fr[sid])), ("  in your colors", "", strip(fr[cid]))]
+    rows.append(("today: " + SAMPLE_REF, "", strip(fr[SAMPLE_REF])))
+    prow = []
+    for lab, f in parts:
+        prow += [C(f, "idle", "S"), C(f, "run", "SE", 2)]
+    bar = 30
+    card_z = 3
+    H = (64 + len(rows) * (chh + lab_h + pad) + 3 * bar + (chh + lab_h + pad) + V.FH * card_z + lab_h + pad
+         + 4 * V.FH + 3 * pad)
+    base = bg_of(W, H)
+    dr = ImageDraw.Draw(base)
+    dr.rectangle([0, 0, W, 56], fill=(28, 26, 38, 255))
+    AS.label(dr, (8, 6), "Legends look sample v1 (P11-05): the Present era parts on two looks, Deep End and Toolbox, "
+                         "as the board proposes them (original characters; numbers are placeholders). Shown 2x as in "
+                         "the game.", 14)
+    AS.label(dr, (8, 30), heads, 12, (210, 204, 224))
+    y = 64
+    for name, desc, r in rows:
+        dr.rectangle([0, y, W, y + lab_h - 2], fill=(28, 26, 38, 200))
+        AS.label(dr, (8, y + 1), name + (": " + desc if desc else ""), 12)
+        for c, cell in enumerate(r):
+            base.alpha_composite(cell.resize((cw, chh), Image.NEAREST), (lx + c * (cw + pad), y + lab_h))
+        y += chh + lab_h + pad
+    dr.rectangle([0, y, W, y + 24], fill=(28, 26, 38, 255))
+    AS.label(dr, (8, y + 4), "Parts check: the other era parts on plain bodies, spread over different builds "
+                             "(idle S, run SE). Not the other legends' final looks (P11-14 makes those).", 13)
+    y += bar
+    for i, (lab, f) in enumerate(parts):
+        dr.rectangle([lx + 2 * i * (cw + pad), y, lx + 2 * i * (cw + pad) + 2 * cw + pad, y + lab_h - 2],
+                     fill=(28, 26, 38, 200))
+        AS.label(dr, (lx + 2 * i * (cw + pad) + 2, y + 2), lab, 12)
+    for c, cell in enumerate(prow):
+        base.alpha_composite(cell.resize((cw, chh), Image.NEAREST), (lx + c * (cw + pad), y + lab_h))
+    y += chh + lab_h + pad
+    dr.rectangle([0, y, W, y + 24], fill=(28, 26, 38, 255))
+    AS.label(dr, (8, y + 4), "Cards 3x (idle S, frame 0: the Hall / draft card): era colors and your colors", 13)
+    y += bar
+    x = lx
+    for title, _, sid, cid in looks:
+        for pid, sub in ((sid, title), (cid, "your colors")):
+            img, _ = fr[pid][("idle", "S")][0]
+            box = Image.new("RGBA", (V.FW * card_z, V.FH * card_z), (36, 34, 48, 255))
+            box.alpha_composite(img.resize((V.FW * card_z, V.FH * card_z), Image.NEAREST))
+            base.alpha_composite(box, (x, y))
+            dr.rectangle([x, y + V.FH * card_z, x + V.FW * card_z, y + V.FH * card_z + lab_h], fill=(28, 26, 38, 255))
+            AS.label(dr, (x + 4, y + V.FH * card_z + 2), sub, 12)
+            x += V.FW * card_z + 3 * pad
+    y += V.FH * card_z + lab_h + pad
+    dr.rectangle([0, y, W, y + 24], fill=(28, 26, 38, 255))
+    AS.label(dr, (8, y + 4), "Close-up 4x: waves, thin mustache, mid-thigh shorts with the side stripe, one-leg "
+                             "tights, "
+                             "low socks (Deep End S, NE) | low man bun with the faded undercut (Toolbox S, E, N)", 13)
+    y += bar
+    x = lx
+    sid1, sid2 = looks[0][2], looks[1][2]
+    for pid, dn in ((sid1, "S"), (sid1, "NE"), (sid2, "S"), (sid2, "E"), (sid2, "N")):
+        img, rec = fr[pid][("idle", dn)][0]
+        base.alpha_composite(img.resize((V.FW * 4, V.FH * 4), Image.NEAREST), (x, y))
+        x += V.FW * 4 + pad
+    base.convert("RGB").save(PRESENT_SAMPLE_PNG, optimize=True)
+    print("wrote %s %s %d bytes" % (PRESENT_SAMPLE_PNG, base.size, os.path.getsize(PRESENT_SAMPLE_PNG)))
+
+    # --- the GIF: both looks in era colors and your colors, and today's player, side by side
+    moves = [("idle", "S", 1), ("run", "SE", 2), ("run", "E", 2), ("run_dribble", "SE", 2), ("run_dribble", "E", 2),
+             ("shoot", "E", 1), ("shoot", "SE", 1), ("idle", "N", 1)]
+    top, head = 30, 22
+    panels = [(looks[0][2], looks[0][0]), (looks[0][3], "YOUR COLORS"), (looks[1][2], looks[1][0]),
+              (looks[1][3], "YOUR COLORS"), (SAMPLE_REF, "TODAY")]
+    gw = pad + len(panels) * (cw + pad)
+    gh = head + (V.FH + top) * Z + pad + 14
+    frames, durs = [], []
+    for name, dn, loops in moves:
+        ms = V.ANIM[name][3]
+        lift = V.PREVIEW_LIFT.get(name)
+        for _ in range(loops):
+            for k, dur in enumerate(ms):
+                bg = bg_of(gw, gh)
+                d2 = ImageDraw.Draw(bg)
+                d2.rectangle([0, 0, gw, head - 4], fill=(28, 26, 38, 255))
+                AS.label(d2, (6, 3), "%s (%s) %d/%d" % ("jumper" if name == "shoot" else name, dn, k + 1, len(ms)), 13)
+                d2.rectangle([0, gh - 20, gw, gh], fill=(28, 26, 38, 255))
+                for c, (pid, title) in enumerate(panels):
+                    img, rec = fr[pid][(name, dn)][k]
+                    cell = AS.compose_frame(img, rec, lift=lift[k] if lift else 0, ball_spin=k, top=top)
+                    bg.alpha_composite(cell.resize((cw, (V.FH + top) * Z), Image.NEAREST),
+                                       (pad + c * (cw + pad), head))
+                    AS.label(d2, (pad + c * (cw + pad) + 4, gh - 18), title, 11)
+                frames.append(bg)
+                durs.append(max(20, dur))
+    AS.gif_save(frames, durs, PRESENT_SAMPLE_GIF)
+    print("wrote %s %d frames %d bytes" % (PRESENT_SAMPLE_GIF, len(frames), os.path.getsize(PRESENT_SAMPLE_GIF)))
+    for s in probs:
+        print("CHECK", s)
+    print("checks: %d problem(s)" % len(probs))
+    return len(probs)
+
+
 def main(argv):
     if "--legends-sample" in argv:    # P9-04: the owner's look sample only, nothing in assets/
         i = argv.index("--legends-sample")
         if i + 1 < len(argv) and argv[i + 1] == "fathers":    # P10-04: the Fathers look sample
             return legends_sample_fathers(argv)
+        if i + 1 < len(argv) and argv[i + 1] == "present":    # P11-05: the Present look sample
+            return legends_sample_present(argv)
         return legends_sample(argv)
     only = set(argv[argv.index("--only") + 1].split(",")) if "--only" in argv else None
     jobs = int(argv[argv.index("--jobs") + 1]) if "--jobs" in argv else (os.cpu_count() or 1)

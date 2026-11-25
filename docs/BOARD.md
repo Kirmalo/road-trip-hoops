@@ -222,6 +222,15 @@ Everything below (Tasks by wave).
   `court_looks.gd` row (name proposed "NEW ARENA", music `newyork` until P11-20). Checked angled and flat shots;
   not in the COURT list (`--menushot --unlock-all --stars 72`); `--era` rewrites the older era files byte for byte.
   Teal is a first guess until P11-05's palettes.
+- **P11-05** | Present era parts and a look sample | art-audio-integrator A | `make_players.py` "Phase 11 era parts"
+  (modern_shorts, tights both/L/R, knee_sleeve, socks low, hair crop / waves / hightop_fade / manbun (a low bun),
+  boxed_beard, thin_mustache; no older sheet changes: 0 of 121 sheets use them), `ERA3_*` palettes in `crews.json`
+  (P11-07's MAGENTA, GRAPHITE, LIGHT, FLOOR plus INK, MINT, EMBER, AQUA), `--legends-sample present` writes
+  `docs/art/legends_present_sample_v1.png` / `.gif`: Deep End (Whitlock: waves, thin mustache, no beard, right-leg
+  tights, #26 placeholder, graphite / mint) and Toolbox (Lindqvist: low man bun, no headband, clean-shaven, #38
+  placeholder, magenta / graphite), each in your colors, next to today's ud_deuce; parts row (Stretch dark crop +
+  boxed beard + tights, bald + boxed beard wing, high-top fade + one-leg tights, crop + knee sleeve). Renderer
+  checks 0 problems; `--anim-test` ANIM OK; nothing in `assets/` changed. Waiting for the owner's look check.
 
 ## Done
 - **P11-01** (qa, merged) Phase 10 save fixtures: `docs/qa/fixtures/` legends_v1_ch2_mid / _ch2_done, trip_v2_father, settings_v2_48, make_ / check_fixtures_v4 (README "Phase 10 save fixtures"); scripted like P10-01, not a test-driver stop (README says why)
