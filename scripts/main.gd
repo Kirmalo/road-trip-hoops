@@ -53,7 +53,7 @@ const LEGENDS_PATH := "res://scripts/legends.gd"   # --legendtest, --challenge <
 const PERK_ASSIST_WINDOW := 1.5      # P11-22 extra_pass: a teammate's shot released this soon after his pass (s)
 const PERK_GUARD_FT := 8.0           # P11-22 contest: the man he guards (same slot) shoots worse with him this close
 const REB_GRAB_PX := 20.0            # = ball.gd's loose-ball pick-up reach (px); the rebound_reach_mult perk widens it
-const REB_GRAB_Z := 30.0             # = ball.gd's: a loose ball under this height can be picked up
+const REB_GRAB_Z := 30.0             # = ball.gd's: a loose ball under this height can be picked up (not widened)
 const LEGENDS_DATA_PATH := "res://scripts/legends_data.gd"   # PERKS, for --perk (loaded only with the flag)
 const PERK_FLAG := "--perk"
 
@@ -1619,8 +1619,8 @@ func _update_fire_trail() -> void:
 		fx.set_trail(want, FIRE_COLOR)
 
 # P11-22 board_work (rebound_reach_mult): a missed field goal's loose ball that ball.gd's pick-up left on the floor
-# this frame (nobody within REB_GRAB_PX under REB_GRAB_Z) goes to the nearest player with the perk inside his longer
-# reach (both x the perk). Nothing happens without the perk.
+# this frame (nobody within REB_GRAB_PX, the ball under REB_GRAB_Z) goes to the nearest player with the perk inside
+# his longer reach (REB_GRAB_PX x the perk, on the floor; the height stays). Nothing happens without the perk.
 func _perk_rebound_reach() -> void:
 	if ball.state != ball.LOOSE or _reb_team < 0:
 		return
@@ -1631,13 +1631,13 @@ func _perk_rebound_reach() -> void:
 			continue
 		var m: float = p.perk("rebound_reach_mult", 1.0)
 		var d: float = p.position.distance_to(ball.position)
-		if m > 1.0 and ball.z < REB_GRAB_Z * m and d < REB_GRAB_PX * m and d < best_d:
+		if m > 1.0 and ball.z < REB_GRAB_Z and d < REB_GRAB_PX * m and d < best_d:
 			best_d = d
 			best = p
 	if best == null:
 		return
-	best.perk_log("rebound reached at %.1f ft, %.0f px up (reach x%.2f)" % [best_d / FT, ball.z,
-			best.perk("rebound_reach_mult", 1.0)])
+	best.perk_log("rebound reached at %.2f ft (reach %.2f ft, x%.2f)" % [best_d / FT,
+			REB_GRAB_PX * best.perk("rebound_reach_mult", 1.0) / FT, best.perk("rebound_reach_mult", 1.0)])
 	ball.hold(best)
 
 # P9-24 pass_speed_mult: a passer with the perk sends his flat pass faster. ball.gd moved it PASS_SPEED x delta (an
