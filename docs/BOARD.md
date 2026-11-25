@@ -533,7 +533,7 @@ Everything below (Tasks by wave).
   | with `--legends-unlock-all --stars 24`: `LEGEND_DRAFT_CHAPTERS` gains `present` (the first legend draft signs a
   Present legend from his chapter's row, the second one of another era), the lineup refuses two legends and accepts one
   + a boss; "TRIP legend eras" lists three rows; TRIP END on every level; `--trip-resume` works | P11-19
-- **P11-33** (P8 b) | Era teams on the Quick Game team lists
+- **P11-33** (P8 b) | REVIEW | Era teams on the Quick Game team lists
   | gameplay-programmer F | `scripts/difficulty.gd` (`quick_teams()`, `team_info()`, `team_unlocked()` know the era
   ids; `all_teams()` for the trip unchanged), `scripts/trip.gd` (`quick_team()` hands an era id to `EraTeams.team()`,
   nothing else), `scripts/legends.gd` (`legendtest()` also runs `EraTeams.self_test()`, one call)
@@ -545,6 +545,14 @@ Everything below (Tasks by wave).
   Bridge Runners; nothing written to `settings.cfg`, `legends.json` or `trip.json` in a test run; `--legendtest`
   LEGENDTEST OK (era teams included), `--triptest-data` (+ `--load`) TRIPDATA OK, a Kings vs Bridge Runners
   `--autoplay` as in Phase 10 | P11-32 merged, P11-18 merged (legends.gd), P11-19 merged (trip.gd)
+  Result: `Difficulty.team_info()` falls back to `EraTeams.info()`, `team_unlocked()` asks `EraTeams.is_open()`,
+  `quick_teams()` adds `open_ids()` after the crews, `unlock_team()` refuses an era id (`is_era_team()`), `all_teams()` /
+  `team_of()` unchanged; `Trip.quick_team()` hands an `"era"` entry to `EraTeams.team()`; `legendtest()` prints
+  "LEGENDTEST era teams [grandfathers, fathers, present]: OK". Lists: no flag / `--unlock-none` / `--legends-unlock-none`
+  Kings + Runners; `--legends-unlock-all` + the 3 era teams; `--unlock-all` all 11 crews + 3. Closed era picks fall back
+  to Kings / Runners. `--autoplay` grandfathers,present 21-16 (7:51, SIGNATURE hook / finger_roll / outlet, no PERK),
+  present,fathers 21-17, kings,grandfathers (normal) 21-13, kings,runners 15-21 (7:21); `--humantest` fathers,grandfathers
+  22-18; `--triptest-data` (+ `--load`) TRIPDATA OK; nothing written in the test runs.
 - **P11-34** (P8 b and the owner's follow-up) | Era teams and era courts on the Quick Game panel
   | gameplay-programmer D | `scripts/menu.gd` (`quick_courts()`, `quick_twist()`, the team and court button lines),
   `scripts/court_looks.gd` (the "never in quick_courts()" comments on the era rows only; the rows' data unchanged)
