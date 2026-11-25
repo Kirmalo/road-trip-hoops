@@ -207,6 +207,15 @@ Everything below (Tasks by wave).
 ## Doing
 
 ## Review
+- **P11-32** (gameplay F, P8 b; on the branch): `scripts/era_teams.gd` (static, nothing preloaded but `legends_data.gd`
+  and `ratings.gd`; `legends.gd`, `trip.gd`, `difficulty.gd` loaded at run time). `ERA_PICK` "finale" (owner, VISION
+  "Phase 11 era teams": the finale three from `CHAPTERS`' `finale`; "shape", Q11-E1 a, kept as the other value),
+  `ERA_TEAM_MIN` 3. API `ids()`, `open_ids()`, `is_era_id()`, `info()` (an `all_teams()`-style entry for P11-33),
+  `is_open()`, `unlocked_count()`, `lineup()`, `ratings_of()`, `team()`, `look_of()`, `twist_of_look()`, `era_of_look()`,
+  `self_test()`. Today: `grandfathers` (Steeple 35/50/70/55/40, Velvet, Quarterback; OLD GYM, OLD SCHOOL) and `fathers`
+  (Rooftop, Midrange, Freight; NIGHT PARK, ISO BALL), each player averaging 50, signature kept, no perk, own era kit.
+  `self_test()` "" with no flag and under each of the four unlock flags (and both pairs); stand-in Present: 3 teams; a
+  real test Legends file with 2 / 3 of an era unlocked: closed / open; a missing legends.gd: none open; nothing written.
 - **P11-05b** (art B, P4 c: both; on the branch, waits for the owner's look check): `make_players_v2.py` EXTRA rows `stepback` (12 frames: drive step, plant with the
   last dribble, push back, hop, land square, then today's jumper; events `fade` [1, 4], `fade_ft` `STEP_FT` 2.0,
   release 8, air [6, 10]) and `eurostep` (13 frames: gather, long step right, plant, long step back left, plant on
@@ -381,7 +390,7 @@ Everything below (Tasks by wave).
   the Fathers' "kids" grown up and the Grandfathers' grandkids (theme only, no real families), no real people, quotes,
   slogans, celebrations or trademarked move names; goal numbers as in the data; every scene the data names exists
   (`--legendtest`) | P11-11
-- **P11-32** (P8 b) | Era teams: the logic
+- **P11-32** (P8 b) | REVIEW | Era teams: the logic
   | gameplay-programmer F | `scripts/era_teams.gd` (new, static `EraTeams`, loaded at run time by its callers; tuning
   `ERA_TEAM_MIN` 3 and `ERA_PICK` at the top)
   | the contract's "Era teams in Quick Game": `ids()`, `is_open(id)`, `lineup(id)`, `team(id)`, `look_of(id)`,
