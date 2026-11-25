@@ -207,6 +207,11 @@ const PERK_CLOSE_FT := 14.0       # close_shot_bonus: a jumper this close to the
                                   # the range of Steeple's hook); layups count at any range, dunks never
 # P10-22 (the Fathers' perks): cross_win_mult in cross_beat_check() (_perk_cross_roll), pass_safe_mult in pick_mult();
 # the others in main.gd (mid_shot_bonus, contested_dunk_bonus, strip_guard_mult, steal_window_mult)
+# P11-22 (the Present's perks): catch_mark for catch_shot_bonus, the CPU pull-up of an off_dribble player (main.gd
+# reads pullup_bonus, catch_shot_bonus, assist_shot_bonus, guard_contest_bonus, rebound_reach_mult; defense.gd
+# layup_block_mult)
+const PERK_CATCH_WINDOW := 1.0    # catch_shoot: a jumper started this soon after his catch (s; = POP_CATCH_T)
+var catch_mark := false           # this jumper started within PERK_CATCH_WINDOW of his catch (main._perk_shot_bonus)
 const PERK_CROSS_RATE_MAX := 0.9  # cross_win_mult: the beat share its second roll is sized on is capped here
 const PERK_PASS_SAVED_TEXT := "saved by the look"   # ball._no_look_log's text for a pick-off only the passer's
                                   # pick_mult stopped (a pass_safe_mult perk counts those, see sig_log)
@@ -1206,6 +1211,7 @@ func start_shot() -> void:
 	if has_ball() and not shooting and rim_kind == "":
 		cpu_three_try = false
 		pullup_mark = false
+		catch_mark = false
 		hook_shot = false
 		fade_shot = false
 		fade_air_t = 0.0
@@ -1221,7 +1227,8 @@ func start_shot() -> void:
 			return
 		shooting = true
 		shot_charge = 0.0
-		pullup_mark = since_cross <= PULLUP_WINDOW and not at_free_throw()   # P11-12: only pullup_mult reads it
+		pullup_mark = since_cross <= PULLUP_WINDOW and not at_free_throw()   # P11-12 pullup_mult, P11-22 pullup_bonus
+		catch_mark = since_catch <= PERK_CATCH_WINDOW and not at_free_throw()   # P11-22: only catch_shot_bonus reads it
 		hook_shot = signature == SIG_HOOK and d_ft <= HOOK_MAX_FT and not at_free_throw()   # P9-20
 		fade_shot = signature == SIG_FADEAWAY and d_ft <= FADE_MAX_FT and not at_free_throw() \
 				and not game.is_three(position, game.attack_hoop(team))   # P10-17
@@ -1324,6 +1331,7 @@ func release_shot() -> void:
 		game.stat("pullups_cross_t%d" % team)   # P11-12: a jumper the SPACE THE FLOOR pull-up mark moved
 	game.release_shot(self, quality)
 	pullup_mark = false
+	catch_mark = false
 	var ball = game.ball
 	count_pump_and_score()
 	if pullup_counted and ball.state == ball.SHOT and ball.shot_made:
@@ -1975,9 +1983,11 @@ func spaced_spot(hoop: Vector2, t: Vector2) -> Vector2:
 # he has room (rolled once per crossover); never without the twist's pullup_mult (no roll: today's game)
 # P11-17: the step-back man rolls it with or without the twist, from STEP_BACK_MIN_FT to STEP_BACK_CPU_MAX_FT, without
 # needing room (the hop back makes it), at STEP_BACK_CPU_CHANCE
+# P11-22: a player with the off_dribble perk (pullup_bonus) looks for it too, with or without the twist
 func try_cpu_cross_pullup(dist_ft: float, open_ft: float, guard_behind: bool) -> bool:
 	var sb: bool = signature == SIG_STEP_BACK
-	if (Twists.value("pullup_mult", 1.0) <= 1.0 and not sb) or _pullup_rolled:
+	var pk: bool = perk_key != "" and perk("pullup_bonus", 0.0) > 0.0
+	if (Twists.value("pullup_mult", 1.0) <= 1.0 and not sb and not pk) or _pullup_rolled:
 		return false
 	if since_cross < PULLUP_CPU_DELAY or since_cross > PULLUP_WINDOW - 0.1 or shooting or rim_kind != "":
 		return false

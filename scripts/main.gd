@@ -46,8 +46,14 @@ const LEGENDS_PATH := "res://scripts/legends.gd"   # --legendtest, --challenge <
 # _perk_pass_step(), dunk_reach_mult in player.dunk_reach(), block_window_mult in defense._jump_timing(). P10-22 (the
 # Fathers): mid_shot_bonus and contested_dunk_bonus in shot_probability(), strip_guard_mult in steal_chance(),
 # steal_window_mult in steal_quality() (and defense._update_pokes()), cross_win_mult in player.cross_beat_check(),
-# pass_safe_mult in player.pick_mult(). No perk = today's game. Test flag -- --perk <id>[,<id>,<id>]: BLUE's players
-# get these legends_data PERKS (one id = all 3).
+# pass_safe_mult in player.pick_mult(). P11-22 (the Present): pullup_bonus and catch_shot_bonus in _perk_shot_bonus(),
+# assist_shot_bonus (the passer's) and guard_contest_bonus (the shooter's man's) in _perk_mate_bonus(),
+# rebound_reach_mult in _perk_rebound_reach(), layup_block_mult in defense._side_step_mult(). No perk = today's game.
+# Test flag -- --perk <id>[,<id>,<id>]: BLUE's players get these legends_data PERKS (one id = all 3).
+const PERK_ASSIST_WINDOW := 1.5      # P11-22 extra_pass: a teammate's shot released this soon after his pass (s)
+const PERK_GUARD_FT := 8.0           # P11-22 contest: the man he guards (same slot) shoots worse with him this close
+const REB_GRAB_PX := 20.0            # = ball.gd's loose-ball pick-up reach (px); the rebound_reach_mult perk widens it
+const REB_GRAB_Z := 30.0             # = ball.gd's: a loose ball under this height can be picked up
 const LEGENDS_DATA_PATH := "res://scripts/legends_data.gd"   # PERKS, for --perk (loaded only with the flag)
 const PERK_FLAG := "--perk"
 
@@ -1273,7 +1279,8 @@ func shot_probability(p, quality: float) -> float:
 		base *= RIM_CONTEST_NEAR_MULT if rim else CONTEST_NEAR_MULT
 	# the shooting rating moves jump shots only (dunks and layups use finishing, in player.gd); 50 = x1.0
 	var rate: float = 1.0 if rim else Ratings.shot_mult(_shooting(p))
-	return clampf(base * quality * rate + _perk_shot_bonus(p, d, hoop, cont), SHOT_MIN, SHOT_CAP)
+	return clampf(base * quality * rate + _perk_shot_bonus(p, d, hoop, cont) + float(_perk_mate_bonus(p)[0]),
+			SHOT_MIN, SHOT_CAP)
 
 # P9-24: the make chance a shooter's mentor perk adds to this shot (0.0 without one; still capped at SHOT_CAP):
 # close_shot_bonus on layups and on jumpers inside player.PERK_CLOSE_FT (not dunks), three_bonus beyond the arc,
@@ -1303,7 +1310,33 @@ func _perk_shot_bonus(p, d_ft: float, hoop: Vector2, cont: float) -> float:
 			return mb
 	if p.rim_kind == "dunk" and cont < CONTEST_NEAR_FT:
 		return p.perk("contested_dunk_bonus", 0.0)      # P10-22 rise_up: a dunk with a defender near
-	return 0.0
+	if jumper and "pullup_mark" in p and p.pullup_mark:
+		var ub: float = p.perk("pullup_bonus", 0.0)     # P11-22 off_dribble: a jumper started within PULLUP_WINDOW
+		if ub != 0.0:                                   # of his crossover
+			return ub
+	if jumper and "catch_mark" in p and p.catch_mark:
+		return p.perk("catch_shot_bonus", 0.0)          # P11-22 catch_shoot: a jumper started within PERK_CATCH_WINDOW
+	return 0.0                                          # of his catch
+
+# P11-22: the make chance another player's perk adds to p's field goal: [chance, that player] ([0.0, null] without):
+# assist_shot_bonus when the teammate whose pass he caught has it and the shot leaves within PERK_ASSIST_WINDOW of that
+# pass (any kind of shot); guard_contest_bonus (taken off) when the man in his slot on the other team guards him from
+# within PERK_GUARD_FT. Only BLUE holds perks, so the first helps BLUE shots and the second hurts RED ones; never both.
+var _pass_from = null        # the passer of the last do_pass() and rules.play_time then (extra_pass)
+var _pass_t := -99.0
+func _perk_mate_bonus(p) -> Array:
+	var pr = _pass_from
+	if pr != null and pr != p and pr.team == p.team and pr.perk_key != "" and ball.passer == pr \
+			and rules.play_time - _pass_t <= PERK_ASSIST_WINDOW and p.since_catch <= rules.play_time - _pass_t:
+		var ab: float = pr.perk("assist_shot_bonus", 0.0)
+		if ab != 0.0:
+			return [ab, pr]
+	var g = teams[1 - p.team][p.index]
+	if g.perk_key != "" and g.position.distance_to(p.position) <= PERK_GUARD_FT * FT:
+		var gb: float = g.perk("guard_contest_bonus", 0.0)
+		if gb != 0.0:
+			return [-gb, g]
+	return [0.0, null]
 
 # ---------------- ball events ----------------
 
@@ -1339,6 +1372,11 @@ func release_shot(p, quality: float) -> void:
 		if pb != 0.0:   # P9-24: counted and, the first time, logged
 			p.perk_log("%s from %.1f ft, odds %.2f (+%.2f) %s" % [p.rim_kind if p.rim_kind != "" else "jumper",
 					p.position.distance_to(hoop) / FT, prob, pb, "made" if made else "missed"])
+	var mate: Array = _perk_mate_bonus(p)
+	if mate[1] != null:   # P11-22 extra_pass / contest: counted on the perk's holder and, the first time, logged
+		mate[1].perk_log("%s's %s from %.1f ft, odds %.2f (%+.3f) %s" % [p.pname if p.pname != "" else p.pid,
+				p.rim_kind if p.rim_kind != "" else "jumper", p.position.distance_to(hoop) / FT, prob, float(mate[0]),
+				"made" if made else "missed"])
 	var pts: int = rules.points_for(p, hoop)
 	shot_clock_running = false
 	shot_serial += 1
@@ -1580,6 +1618,28 @@ func _update_fire_trail() -> void:
 		_trail_on = want
 		fx.set_trail(want, FIRE_COLOR)
 
+# P11-22 board_work (rebound_reach_mult): a missed field goal's loose ball that ball.gd's pick-up left on the floor
+# this frame (nobody within REB_GRAB_PX under REB_GRAB_Z) goes to the nearest player with the perk inside his longer
+# reach (both x the perk). Nothing happens without the perk.
+func _perk_rebound_reach() -> void:
+	if ball.state != ball.LOOSE or _reb_team < 0:
+		return
+	var best = null
+	var best_d := INF
+	for p in teams[HUMAN_TEAM]:
+		if p.perk_key == "":
+			continue
+		var m: float = p.perk("rebound_reach_mult", 1.0)
+		var d: float = p.position.distance_to(ball.position)
+		if m > 1.0 and ball.z < REB_GRAB_Z * m and d < REB_GRAB_PX * m and d < best_d:
+			best_d = d
+			best = p
+	if best == null:
+		return
+	best.perk_log("rebound reached at %.1f ft, %.0f px up (reach x%.2f)" % [best_d / FT, ball.z,
+			best.perk("rebound_reach_mult", 1.0)])
+	ball.hold(best)
+
 # P9-24 pass_speed_mult: a passer with the perk sends his flat pass faster. ball.gd moved it PASS_SPEED x delta (an
 # outlet x OUTLET_SPEED_MULT) this frame; this adds the perk's share on the same line, never past the catch (ball.gd
 # catches it next frame). Lobs keep their own flight. Nothing happens without the perk.
@@ -1608,6 +1668,8 @@ func do_pass(from_p, to_p) -> void:
 	if not from_p.has_ball() or to_p == from_p:
 		return
 	ball.pass_to(from_p, to_p)
+	_pass_from = from_p   # P11-22 extra_pass
+	_pass_t = rules.play_time
 	stat("passes")
 	if from_p.team == HUMAN_TEAM and (CONTROL_FOLLOWS_CATCH or from_p == human_player):
 		human_player = to_p
@@ -2014,6 +2076,7 @@ func _physics_process(delta: float) -> void:
 	if not rules.ft_active:
 		_separate_players()
 	ball.update(delta)
+	_perk_rebound_reach()
 	_perk_pass_step(delta)
 	if not rules.ft_shot_live:
 		DefenseScript.check_jump_shot_block(self)   # free throws can't be blocked

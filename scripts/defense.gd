@@ -354,15 +354,17 @@ static func rim_blocker(g, shooter, kind: String):
 		chance = _chase_chance(d, shooter, chance)   # P10-17 chase_down from behind; the same chance for everyone else
 		var roll: float = g.rng.randf()
 		var sm: float = shooter.sig_block_mult(kind)   # P9-20 hook, P10-17 shoulder: x1.0 for everyone else
-		if roll < chance * sm:
-			_chase_log(g, d, shooter, true, roll >= base_chance * sm, kind)
+		var pm: float = _side_step_mult(shooter, kind)   # P11-22 side_step: x1.0 without the perk
+		_side_step_log(shooter, d, pm, roll, chance * sm)
+		if roll < chance * sm * pm:
+			_chase_log(g, d, shooter, true, roll >= base_chance * sm * pm, kind)
 			_shoulder_log(g, shooter, d, sm, true, kind)
 			clear_pending_fouls(g, shooter)   # blocked: no foul on this shot
 			return d
 		_chase_log(g, d, shooter, false, false, kind)
 		_shoulder_log(g, shooter, d, sm, false, kind)
-		if roll < chance:
-			_sig_escape(g, shooter, d)   # his layup went over a block that would have been
+		if roll < chance * pm:
+			_sig_escape(g, shooter, d)   # his layup went over a block that would have been (pm: not the perk's)
 		if not good:
 			# a bad jump into him at the release (late: still rising; early: coming down): maybe a foul, called once
 			# the shot is in the air (player.release_rim_shot -> call_pending_fouls)
@@ -410,6 +412,21 @@ static func _shoulder_log(g, shooter, d, sm: float, blocked: bool, what: String)
 		g.stat("sig_shoulder_holds_t%d" % shooter.team)
 	shooter.sig_log(shooter.SIG_SHOULDER, "%s through %s's block try (chance x%.2f): %s" % [what,
 			d.pname if d.pname != "" else d.pid, sm, "blocked anyway" if blocked else "not blocked"])
+
+# P11-22 side_step (a mentor perk): x his layup_block_mult on a block try at his layup (at the release in rim_blocker()
+# and in the air in check_jump_shot_block()); 1.0 for every other shot and everyone without the perk
+static func _side_step_mult(shooter, kind: String) -> float:
+	if kind != "layup" or shooter.perk_key == "":
+		return 1.0
+	return shooter.perk("layup_block_mult", 1.0)
+
+# P11-22 side_step: a block try at his layup that only the perk turned away (roll between the two chances) is counted
+# and, the first time, logged
+static func _side_step_log(shooter, d, pm: float, roll: float, chance: float) -> void:
+	if pm == 1.0 or roll < chance * pm or roll >= chance:
+		return
+	shooter.perk_log("layup past %s's block try (chance %.2f, x%.2f)" % [d.pname if d.pname != "" else d.pid,
+			chance, pm])
 
 # Gate's blocks stay in play: right after main.block_shot knocked the ball loose (away from him, often out of
 # bounds), a keep_block blocker tips it instead to the most open teammate within KEEP_TIP_MAX_FT (at least
@@ -596,9 +613,11 @@ static func check_jump_shot_block(g) -> void:
 		c = _chase_chance(d, shooter, c)   # P10-17 chase_down from behind; the same chance for everyone else
 		var roll: float = g.rng.randf()
 		var sm: float = shooter.sig_block_mult(ball.shot_kind)   # P9-20 hook, P10-17 shoulder: x1.0 for everyone else
+		var pm: float = _side_step_mult(shooter, ball.shot_kind)   # P11-22 side_step: x1.0 without the perk
+		_side_step_log(shooter, d, pm, roll, c * sm)
 		var what: String = "layup" if layup else "jumper"
-		if roll < c * sm:
-			_chase_log(g, d, shooter, true, roll >= base_c * sm, what)
+		if roll < c * sm * pm:
+			_chase_log(g, d, shooter, true, roll >= base_c * sm * pm, what)
 			_shoulder_log(g, shooter, d, sm, true, what)
 			g.stat("layup_air_blocks" if layup else "jumper_blocks")
 			g.block_shot(d)
@@ -606,7 +625,7 @@ static func check_jump_shot_block(g) -> void:
 			return
 		_chase_log(g, d, shooter, false, false, what)
 		_shoulder_log(g, shooter, d, sm, false, what)
-		if roll < c:
+		if roll < c * pm:
 			_sig_escape(g, ball.shooter, d)   # the hook went over a block that would have been
 		var why: String = _early_reason(d, ball.shooter)
 		if not good and _foul_roll(g, d, ball.shooter, g.shot_serial, why):
