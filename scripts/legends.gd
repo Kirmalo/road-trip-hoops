@@ -1081,6 +1081,11 @@ static func _check_chapter_walk(errs: Array, trip_path: String, tag: String, wan
 	var trip_mem: Dictionary = Trip.to_dict()
 	var chs: Array = LegendsData.built_chapters()
 	var strict: bool = not LegendsData.test_data_on()
+	# P11-11: a shipped chapter's scenes are checked strictly once story_text.gd has its intro scene (LegendsData's own
+	# rule: a chapter's data may land before its story, and the story screen skips the missing scenes meanwhile)
+	var strict_ch: Dictionary = {}
+	for ch in chs:
+		strict_ch[str(ch)] = strict and StoryText.has_scene(str(LegendsData.chapter(str(ch)).get("intro_scene", "")))
 	_check(errs, chs.size() >= want and chs.size() >= 2, "%s: %d built chapters, want %d+" % [tag, chs.size(), want])
 	if chs.size() < want or chs.size() < 2:
 		return
@@ -1184,7 +1189,7 @@ static func _check_chapter_walk(errs: Array, trip_path: String, tag: String, wan
 	# the intro scenes: in story_text.gd, unseen on a fresh file, marked once (the tour plays them on the first open)
 	for ch in chs:
 		var sc: String = str(LegendsData.chapter(str(ch)).get("intro_scene", ""))
-		if strict or StoryText.has_scene(sc):
+		if bool(strict_ch.get(str(ch), strict)) or StoryText.has_scene(sc):
 			_check(errs, sc != "" and StoryText.has_scene(sc) and not has_seen(sc) and mark_seen(sc) and has_seen(sc)
 					and not mark_seen(sc), "%s: %s intro scene '%s'" % [tag, ch, sc])
 
@@ -1208,7 +1213,7 @@ static func _check_chapter_walk(errs: Array, trip_path: String, tag: String, wan
 		nx = after_result()
 		var us: String = str(LegendsData.legend(a).get("unlock_scene", ""))
 		_check(errs, bool(o["won"]) and str(o["unlocked"]) == a and int(o["tokens_now"]) == 2
-				and _after_ok(nx, us, ck, strict), "%s: %s unlock %s" % [tag, a, str(nx)])
+				and _after_ok(nx, us, ck, bool(strict_ch.get(ck, strict))), "%s: %s unlock %s" % [tag, a, str(nx)])
 		nx = after_result()
 		_check(errs, nx["screen"] == SCREEN and nx["args"].get("chapter", "") == ck, "%s: %s unlock scene twice" % [tag, a])
 		for i in range(1, idk.size()):
@@ -1217,7 +1222,7 @@ static func _check_chapter_walk(errs: Array, trip_path: String, tag: String, wan
 			o = record_result({"won": true})
 			var sc_i: String = str(LegendsData.legend(str(idk[i])).get("unlock_scene", ""))
 			nx = after_result()
-			_check(errs, str(o["unlocked"]) == str(idk[i]) and _after_ok(nx, sc_i, ck, strict),
+			_check(errs, str(o["unlocked"]) == str(idk[i]) and _after_ok(nx, sc_i, ck, bool(strict_ch.get(ck, strict))),
 					"%s: %s unlock %s" % [tag, idk[i], str(nx)])
 		unl = idk + unl
 		var before_ok: bool = true
@@ -1233,7 +1238,8 @@ static func _check_chapter_walk(errs: Array, trip_path: String, tag: String, wan
 		var after_sc: String = str((LegendsData.chapter(ck).get("finale_scenes", {}) as Dictionary).get("after", ""))
 		nx = after_result()
 		_check(errs, bool(o["chapter_done"]) and chapter_done(ck) and not chapter_done(c1) and finales == done + [ck]
-				and int(o["tokens_now"]) == 3 and str(o["unlocked"]) == "" and _after_ok(nx, after_sc, ck, strict),
+				and int(o["tokens_now"]) == 3 and str(o["unlocked"]) == ""
+				and _after_ok(nx, after_sc, ck, bool(strict_ch.get(ck, strict))),
 				"%s: %s finale %s / %s" % [tag, ck, str(o), str(nx)])
 		nx = after_result()
 		_check(errs, nx["screen"] == SCREEN and nx["args"].get("chapter", "") == ck, "%s: %s after scene twice" % [tag, ck])

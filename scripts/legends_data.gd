@@ -17,7 +17,7 @@ extends RefCounted
 #
 # CHAPTERS rows (ordered, the era timeline):
 #   id, name             "grand" | "fathers" | "present" | "next"; the name on the timeline
-#   built                false = a locked pin only ("COMING LATER"): no legends, art or games (Phase 10)
+#   built                false = a locked pin only ("COMING LATER"): no legends, art or games (Phase 11: Chapter 4)
 #   rules                the era rules' name (the twist's banner name; "" when not built)
 #   feel                 one short line for the timeline
 #   twist, look, music   twists.gd id, court_looks.gd id, res://assets/music/<music>.ogg ("" when not built)
@@ -95,9 +95,10 @@ const CHALLENGE_TYPES := {          # each goal type and the numbers its row mus
 # jersey numbers we never give a legend: the most famous numbers in the game's history (an era kit is our own colors
 # anyway; this keeps a "his number" reading out entirely). The legends' numbers are placeholders until the owner
 # approves a list (docs/legends-plan.md part 1). P10-11 added the 2000s era's famous numbers (2, 5, 10, 11, 15, 20, 21,
-# 22, 31, 41, 42, 44, 50, 55; docs/legends-namecheck.md "Chapter 2"); no Chapter 1 number is among them.
-const NUMBER_AVOID := [0, 1, 2, 3, 5, 6, 8, 10, 11, 13, 15, 20, 21, 22, 23, 24, 30, 31, 32, 33, 34, 35, 41, 42, 44,
-		45, 50, 55, 99]
+# 22, 31, 41, 42, 44, 50, 55; docs/legends-namecheck.md "Chapter 2"); no Chapter 1 number is among them. P11-02 /
+# P11-11 added today's era (4, 7, 77; "Chapter 3"); no shipped number is among them.
+const NUMBER_AVOID := [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 13, 15, 20, 21, 22, 23, 24, 30, 31, 32, 33, 34, 35, 41, 42,
+		44, 45, 50, 55, 77, 99]
 const PERK_MULT_MAX := 0.2          # a perk's "_mult" value is in 1.0 +- this, never 1.0 itself (small, L8 a)
 const PERK_BONUS_MAX := 0.06        # a perk's "_bonus" value is in (0, this]
 
@@ -146,11 +147,21 @@ const CHAPTERS := [
 		"challenge_avg": 69, "mate_drop": 14, "finale_stage_avg": 56,
 	},
 	{
-		"id": "present", "name": "THE PRESENT", "built": false,
-		"rules": "", "feel": "Spacing, step-backs, long shots",
-		"twist": "", "look": "", "music": "", "fallback_music": "",
-		"gate": {"stars": 48, "tokens": 30},
-		"crew": {}, "legends": [], "finale": {}, "intro_scene": "", "finale_scenes": {},
+		# P11-11 (owner P1 a, P3 a, P4 c, P5 a, P6 a, P7 a; the names row after P11-02; the look check: era color teal +
+		# coral, music "Techno drive"). Art, story, twist and music land in their own tasks (P11-05..P11-20); a missing
+		# file still plays the fallbacks (Sheets' chain, the silhouette, twist none, fallback_music)
+		"id": "present", "name": "THE PRESENT", "built": true,
+		"rules": "SPACE THE FLOOR", "feel": "Spacing, step-backs, long shots",
+		"twist": "era_present", "look": "era_present", "music": "legends_present", "fallback_music": "newyork",
+		"gate": {"stars": 48, "tokens": 30},   # P7 a: 48 trip stars or 30 legend tokens, no Chapter 2 finale needed
+		"crew": {"name": "THE PRESENT", "style": "outside", "colors": ["ERA3_TEAL", "ERA3_CORAL"],
+			"ui_color": Color(0.09, 0.66, 0.63)},   # the look check: teal (the era court's key paint) + coral
+		"legends": ["lg_deep_end", "lg_toolbox", "lg_stretch", "lg_switch", "lg_skylight", "lg_zigzag"],
+		"finale": {"target": 21, "legends": ["lg_deep_end", "lg_toolbox", "lg_skylight"], "label": "PRESENT FINALE"},
+		"intro_scene": "legends_present_intro",
+		"finale_scenes": {"before": "legends_present_finale_before", "after": "legends_present_finale_after"},
+		# P6 a: a step harder than Chapter 2 (69 / 14 / 56); a first guess, P11-23 tunes them
+		"challenge_avg": 72, "mate_drop": 14, "finale_stage_avg": 57,
 	},
 	{
 		"id": "next", "name": "THE NEW GENERATION", "built": false,
@@ -349,6 +360,103 @@ const LEGENDS := {
 		"bio": "Picks up his man at the far free-throw line and walks him back the whole way. Has never once been in a hurry to shoot.",
 		"unlock_scene": "lg_lockbox_unlock",
 	},
+	# Chapter 3, the Present (P1 a and VISION "Phase 11 names (after P11-02)"; challenges P3 a, signatures P4 c, perks
+	# P5 a). Name check: docs/legends-namecheck.md "Chapter 3" (final table). The hard rule's look spread (the board's
+	# six risky sets): Deep End no beard, no mouthguard (a thin mustache, waves, a normal guard's height); Toolbox a low
+	# man bun, no headband; Stretch close-cropped dark hair and a short boxed beard, a medium build; Switch bald with a
+	# short beard, bare arms (no braids, no twists); Skylight a high-top fade; Zigzag curly hair and a knee sleeve, no
+	# headband. Numbers: the look check's (coordinator, from the passing list). Kits: ERA3_* palettes (made up; P11-14
+	# may change them, never to a current team's color pair).
+	"lg_deep_end": {
+		"name": "DEEP END", "full": "Calloway \"Deep End\" Whitlock", "first": "Calloway", "last": "Whitlock",
+		"chapter": "present", "archetype": "step-back shooter", "role": "step-back shooter", "tier": "legend",
+		"sheet": "lg_deep_end", "portrait": "lg_deep_end", "number": 26,
+		"shape": {"speed": 5, "shooting": 25, "finishing": -10, "defense": -10, "stamina": -10},
+		"spec": ["shooting"], "steal_bias": 4, "block_bias": -8,
+		"signature": {"id": "step_back", "text": "Step-back jumper: his long jumpers after a crossover lose half the contest"},
+		"challenge": {"type": "fire", "target": 15, "cool_misses": 2, "mates": ["lg_stretch", "lg_switch"],
+			"line": "DEEP END STARTS ON FIRE: WIN THE GAME TO 15"},
+		"perk": "off_dribble",
+		"colors": ["ERA3_GRAPHITE", "ERA3_MINT"],
+		"look": "slim guard of normal height, brown skin, waves, thin mustache, no beard, no mouthguard, graphite tank with mint trim, modern mid-thigh shorts, right-leg tights, low socks (the approved look sample)",
+		"bio": "Learned to shoot at the public pool's outdoor hoop, from the far side of the water. Still backs up one more step before every shot, just to be sure.",
+		"unlock_scene": "lg_deep_end_unlock",
+	},
+	"lg_toolbox": {
+		"name": "TOOLBOX", "full": "Theo \"Toolbox\" Lindqvist", "first": "Theo", "last": "Lindqvist",
+		"chapter": "present", "archetype": "point-forward", "role": "point-forward", "tier": "legend",
+		"sheet": "lg_toolbox", "portrait": "lg_toolbox", "number": 38,
+		"shape": {"speed": 5, "shooting": 0, "finishing": 5, "defense": 0, "stamina": -10},
+		"spec": [], "steal_bias": 4, "block_bias": 0,
+		"signature": {"id": "coast", "text": "Coast to coast: after a defensive rebound he runs the floor without tiring"},
+		"challenge": {"type": "comeback", "target": 15, "start_score": [0, 1], "mates": ["lg_switch", "lg_zigzag"],
+			"line": "START DOWN 0-1: COME BACK AND WIN (TO 15)"},
+		"perk": "extra_pass",
+		"colors": ["ERA3_CORAL", "ERA3_GRAPHITE"],
+		"look": "big and strong forward, light skin, low man bun, clean-shaven, no headband, coral tank with graphite trim, modern mid-thigh shorts, low socks (the approved look sample's build)",
+		"bio": "Grabs the rebound, brings it up, runs the play and fixes the scoreboard on the way back. Carries a little screwdriver in his gym bag, just in case.",
+		"unlock_scene": "lg_toolbox_unlock",
+	},
+	"lg_stretch": {
+		"name": "STRETCH", "full": "Sigurd \"Stretch\" Halvorsen", "first": "Sigurd", "last": "Halvorsen",
+		"chapter": "present", "archetype": "stretch big", "role": "stretch big", "tier": "legend",
+		"sheet": "lg_stretch", "portrait": "lg_stretch", "number": 49,
+		"shape": {"speed": -10, "shooting": 15, "finishing": 0, "defense": 5, "stamina": -10},
+		"spec": ["shooting"], "steal_bias": -6, "block_bias": 6,
+		"signature": {"id": "pop", "text": "Pick-and-pop: he drifts to the arc when his man helps, and his catch-and-shoot shots are hard to contest"},
+		"challenge": {"type": "race", "target": 11, "their_target": 10, "mates": ["lg_deep_end", "lg_skylight"],
+			"line": "REACH 11 BEFORE STRETCH'S CREW GETS 10"},
+		"perk": "catch_shoot",
+		"colors": ["ERA3_LIGHT", "ERA3_CORAL"],
+		"look": "tall big of medium build, light skin, close-cropped dark hair, short boxed beard, white tank with coral trim, modern mid-thigh shorts, full tights, low socks",
+		"bio": "Sets the screen, steps back to the line and waits. Says a big man near the rim is just in the way of the view.",
+		"unlock_scene": "lg_stretch_unlock",
+	},
+	"lg_switch": {
+		"name": "SWITCH", "full": "Ellery \"Switch\" Achterberg", "first": "Ellery", "last": "Achterberg",
+		"chapter": "present", "archetype": "two-way wing", "role": "two-way wing", "tier": "legend",
+		"sheet": "lg_switch", "portrait": "lg_switch", "number": 29,
+		"shape": {"speed": 5, "shooting": -5, "finishing": 0, "defense": 15, "stamina": -15},
+		"spec": ["defense"], "steal_bias": 14, "block_bias": 6,
+		"signature": {"id": "steal_break", "text": "Steal and run: a burst of speed right after his steals"},
+		"challenge": {"type": "score", "target": 11, "min": 5, "mates": ["lg_toolbox", "lg_zigzag"],
+			"line": "SCORE 5 POINTS YOURSELF ON SWITCH AND WIN (TO 11)"},
+		"perk": "contest",
+		"colors": ["ERA3_INK", "ERA3_TEAL"],
+		"look": "long-armed wing, deep brown skin, bald, short beard, bare arms, ink tank with teal trim, modern mid-thigh shorts, low socks",
+		"bio": "Guards the point guard, then the center, then whoever is left. Says about four words a game, and three of them are \"mine\".",
+		"unlock_scene": "lg_switch_unlock",
+	},
+	"lg_skylight": {
+		"name": "SKYLIGHT", "full": "Bodie \"Skylight\" Castellano", "first": "Bodie", "last": "Castellano",
+		"chapter": "present", "archetype": "rim-running big", "role": "rim-running big", "tier": "legend",
+		"sheet": "lg_skylight", "portrait": "lg_skylight", "number": 52,
+		"shape": {"speed": 0, "shooting": -20, "finishing": 20, "defense": 5, "stamina": -5},
+		"spec": ["finishing"], "steal_bias": -6, "block_bias": 14,
+		"signature": {"id": "lob_magnet", "text": "Alley-oop catcher: lobs to him are caught from further out"},
+		"challenge": {"type": "stop", "target": 15, "count": 2, "mates": ["lg_deep_end", "lg_toolbox"],
+			"line": "BLOCK OR STEAL ON SKYLIGHT 2 TIMES AND WIN (TO 15)"},
+		"perk": "board_work",
+		"colors": ["ERA3_TEAL", "ERA3_LIGHT"],
+		"look": "athletic big, brown skin, high-top fade, left-leg tights, teal tank with white trim, modern mid-thigh shorts, low socks",
+		"bio": "Runs the floor like the rim owes him money. Throw it anywhere near the glass and he goes up to collect.",
+		"unlock_scene": "lg_skylight_unlock",
+	},
+	"lg_zigzag": {
+		"name": "ZIGZAG", "full": "Lucien \"Zigzag\" Moreau", "first": "Lucien", "last": "Moreau",
+		"chapter": "present", "archetype": "slasher", "role": "slasher", "tier": "legend",
+		"sheet": "lg_zigzag", "portrait": "lg_zigzag", "number": 58,
+		"shape": {"speed": 10, "shooting": -5, "finishing": 10, "defense": -10, "stamina": -5},
+		"spec": [], "steal_bias": 6, "block_bias": -6,
+		"signature": {"id": "euro_step", "text": "Euro-step layup: his layups slip past the man in front"},
+		"challenge": {"type": "hold", "target": 11, "limit": 6, "mates": ["lg_stretch", "lg_skylight"],
+			"line": "HOLD ZIGZAG UNDER 6 POINTS AND WIN (TO 11)"},
+		"perk": "side_step",
+		"colors": ["ERA3_AQUA", "ERA3_INK"],
+		"look": "slim slasher, tan skin, curly dark hair, no headband, a knee sleeve, aqua tank with ink trim, modern mid-thigh shorts, low socks",
+		"bio": "Never takes the straight road to the rim when a crooked one is open. Leaves defenders guarding the spot where he used to be.",
+		"unlock_scene": "lg_zigzag_unlock",
+	},
 }
 
 # ---------------------------------------------------------------------------------------------------- perks
@@ -373,6 +481,14 @@ const PERKS := {
 	"strong_hold": {"key": "strip_guard_mult", "value": 0.95, "text": "5% harder to strip"},
 	"blind_pass": {"key": "pass_safe_mult", "value": 0.85, "text": "Passes 15% harder to intercept"},
 	"quick_hands": {"key": "steal_window_mult", "value": 1.05, "text": "Steal timing window 5% wider"},
+	# Chapter 3 (P5 a, the board's contract; data only here, P11-22 hooks them, P11-26 measures them). layup_block_mult
+	# is "on him" (block chance on his layups), so its value is under 1.0
+	"off_dribble": {"key": "pullup_bonus", "value": 0.015, "text": "Jumpers right after his crossover +1.5%"},
+	"extra_pass": {"key": "assist_shot_bonus", "value": 0.015, "text": "A teammate's shot right after his pass +1.5%"},
+	"catch_shoot": {"key": "catch_shot_bonus", "value": 0.015, "text": "Jumpers right after a catch +1.5%"},
+	"contest": {"key": "guard_contest_bonus", "value": 0.015, "text": "The man he guards shoots 1.5% worse"},
+	"board_work": {"key": "rebound_reach_mult", "value": 1.05, "text": "Reaches rebounds 5% further"},
+	"side_step": {"key": "layup_block_mult", "value": 0.95, "text": "Layups 5% harder to block"},
 }
 
 # ---------------------------------------------------------------------------------------------------- name check
@@ -412,6 +528,18 @@ const REAL_NICKNAMES := [
 	"ao", "god shammgod", "shammgod", "killer crossover", "utep two step", "cat", "the mayor", "bubba chuck",
 	"human joystick", "jumpman", "big nasty", "boston strangler", "k mart", "kmart", "chosen one", "lob city",
 	"sky walker", "dr dunkenstein", "slim",
+	# P11-02 / P11-11: today (about 2015-2026, NBA and WNBA), and the trademark next to a draft nickname
+	"steph", "baby faced assassin", "durantula", "easy money sniper", "kd", "bron", "kid from akron", "playoff p",
+	"pg13", "pg 13", "pandemic p", "jimmy buckets", "playoff jimmy", "himmy", "buckets", "book", "d book", "ice trae",
+	"dame dolla", "logo lillard", "board man", "fun guy", "stifle tower", "french rejection", "wemby", "mutant",
+	"zinger", "porzingod", "kat", "bam", "luka magic", "sga", "ant man", "iso joe", "scary terry", "swaggy p",
+	"lou will", "linsanity", "dragon", "zanos", "hood melo", "big body", "cardiac kemba", "point gawd", "unibrow",
+	"stewie", "ace", "phee", "bayou barbie", "chi barbie", "paige buckets", "sabi",
+	"swiss army", "swiss army knife", "swiss knife",
+	# P11-02: today's celebrations and slogans (words that must never appear; all 2+ words, so every text is checked)
+	"night night", "ice in my veins", "too small", "let him cook", "trust the process", "board man gets paid",
+	"rock the baby", "light the beam", "fear the deer", "we the north", "strength in numbers", "grit and grind",
+	"heat culture", "thunder up", "dub nation", "bucks in six",
 ]
 const REAL_NAMES := [
 	"michael jordan", "magic johnson", "earvin johnson", "larry bird", "kareem abdul jabbar", "wilt chamberlain",
@@ -461,6 +589,35 @@ const REAL_NAMES := [
 	"jerry stackhouse", "rod strickland", "terrell brandon", "kenny anderson", "derek anderson", "brent barry",
 	"jason kapono", "fred jones", "dee brown", "harold miner", "god shammgod",
 	"grayson boucher", "philip champion", "aaron owens", "waliyy dixon", "troy jackson", "shane woney",
+	# P11-02 / P11-11: the draft names' matches, today's NBA (about 2015-2026) and the WNBA (suffixes left off)
+	"torraye braggs", "rolando ferreira", "santi aldama", "rick calloway", "theo maledon", "lucian whitaker",
+	"devin booker", "donovan mitchell", "trae young", "jaylen brown", "bam adebayo", "jrue holiday",
+	"kristaps porzingis", "rudy gobert", "karl anthony towns", "jalen brunson", "tyrese haliburton", "deaaron fox",
+	"domantas sabonis", "pascal siakam", "lauri markkanen", "demar derozan", "zach lavine", "bradley beal",
+	"kemba walker", "kyle lowry", "mikal bridges", "og anunoby", "paolo banchero", "chet holmgren", "cade cunningham",
+	"evan mobley", "scottie barnes", "jaren jackson", "desmond bane", "tyrese maxey", "jamal murray",
+	"michael porter", "aaron gordon", "alperen sengun", "franz wagner", "jalen williams", "jalen green",
+	"jalen duren", "jalen johnson", "jalen suggs", "lamelo ball", "lonzo ball", "ben simmons", "brandon ingram",
+	"cj mccollum", "fred vanvleet", "kevin love", "kyle kuzma", "dangelo russell", "marcus smart", "al horford",
+	"tobias harris", "khris middleton", "dejounte murray", "darius garland", "jarrett allen", "julius randle",
+	"deandre ayton", "clint capela", "steven adams", "myles turner", "nikola vucevic", "brook lopez",
+	"deandre jordan", "blake griffin", "isaiah thomas", "derrick rose", "john wall", "demarcus cousins",
+	"gordon hayward", "kyle korver", "jj redick", "patrick beverley", "lou williams", "andre drummond", "jeremy lin",
+	"terry rozier", "jordan poole", "anfernee simons", "josh giddey", "victor oladipo", "jabari smith",
+	"amen thompson", "ausar thompson", "cooper flagg", "dylan harper", "zaccharie risacher", "alex sarr",
+	"stephon castle", "austin reaves", "dereck lively", "brandon miller", "scoot henderson", "josh hart",
+	"donte divincenzo", "alex caruso", "naz reid", "herbert jones", "derrick white", "ivica zubac",
+	"bogdan bogdanovic", "goran dragic", "jusuf nurkic", "jonas valanciunas", "dennis schroder", "nicolas batum",
+	"evan fournier", "danilo gallinari", "marc gasol", "serge ibaka", "hassan whiteside", "mark williams",
+	"kevin porter", "jonathan kuminga", "tyler herro", "jaden mcdaniels",
+	"aja wilson", "breanna stewart", "caitlin clark", "angel reese", "sabrina ionescu", "paige bueckers",
+	"napheesa collier", "diana taurasi", "sue bird", "candace parker", "maya moore", "elena delle donne",
+	"brittney griner", "kelsey plum", "jewell loyd", "arike ogunbowale", "aliyah boston", "jonquel jones",
+	"alyssa thomas", "skylar diggins smith", "chelsea gray", "nneka ogwumike", "tina charles", "sylvia fowles",
+	"lindsay whalen", "kahleah copper", "jackie young", "kelsey mitchell", "rhyne howard", "cameron brink",
+	"kamilla cardoso", "courtney vandersloot", "allie quigley", "dewanna bonner", "satou sabally", "natasha cloud",
+	"dearica hamby", "seimone augustus", "lisa leslie", "sheryl swoopes", "cynthia cooper", "tamika catchings",
+	"lauren jackson", "becky hammon", "juju watkins",
 ]
 
 # The test's own check that the name check works: these must fail it.
@@ -477,6 +634,12 @@ const NAMECHECK_PROBES := [
 	{"first": "Shane", "last": "Battier", "name": "LOCKBOX"},
 	{"first": "Tremaine", "last": "Pettaway", "name": "THE ANSWER"},
 	{"first": "Darnell", "last": "Kingsley", "name": "BIG SHOT"},
+	# P11-11: the flagged Present draft names, a present-day nickname and a celebration in a text
+	{"first": "Calloway", "last": "Briggs", "name": "DEEP END"},
+	{"first": "Bodie", "last": "Ferreira", "name": "SKYLIGHT"},
+	{"first": "Theo", "last": "Lindqvist", "name": "SWISS KNIFE"},
+	{"first": "Sigurd", "last": "Halvorsen", "name": "STIFLE TOWER"},
+	{"first": "Calloway", "last": "Whitlock", "name": "DEEP END", "bio": "Hits the shot, then puts the crowd to bed: night night."},
 ]
 
 static var notes: Array = []        # self_test(): things that fall back for now (art or story not merged yet)

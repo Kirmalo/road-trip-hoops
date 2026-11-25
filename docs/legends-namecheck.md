@@ -1,4 +1,4 @@
-# Legends name check (P9-07; Chapter 2: P10-11; Chapter 3 first check: P11-02)
+# Legends name check (P9-07; Chapter 2: P10-11; Chapter 3: P11-02, final in P11-11)
 
 The hard rule (`docs/legends-plan.md` part 1): every legend is our own character. No legend's full name, nickname
 or "first last" may match a real NBA or ABA player or a famous real basketball nickname, closely or exactly. This
@@ -79,15 +79,42 @@ approved sample's), Lockbox **36**. None is in `NUMBER_AVOID` or used by Chapter
 - The kits are the made-up `ERA2_*` palettes; a legend's kit never copies a real team's colors (crews.json says how).
 - Probes added to the data test: Dorian Vance, Keon Ridley, Shane Battier, "THE ANSWER", "BIG SHOT" must fail.
 
+## Chapter 3, the Present (P11-11): final, passes
+
+The six as the owner chose them (P1 a; VISION "Phase 11 names (after P11-02)": Sigurd, Castellano and the thin
+mustache kept; "Phase 11 look check": the numbers), in `scripts/legends_data.gd` and checked by `--legendtest` with
+the lists below (P11-11 copied P11-02's additions into `REAL_NICKNAMES` / `REAL_NAMES` and 4, 7, 77 into
+`NUMBER_AVOID`). Checked 2026-11-25 by gameplay-programmer A: LEGENDTEST OK, all 18 legends pass, every probe fails.
+
+| Legend (id) | Full name | Number | Exact match | Close matches looked at | Verdict |
+|---|---|---|---|---|---|
+| `lg_deep_end` | Calloway "Deep End" **Whitlock** (was Briggs) | 26 | none | Rick Calloway has Calloway as a surname (an old role player); no surname within 2 letters of Whitlock (Jason Whitlock is a sports columnist, not a player) | **pass** |
+| `lg_toolbox` | Theo "**Toolbox**" Lindqvist (was "Swiss Knife") | 38 | none | first name shared with Theo Maledon, Pinson, Ratliff (first name only); Lundqvist is a hockey goalie | **pass** |
+| `lg_stretch` | **Sigurd** "Stretch" Halvorsen (was Ozren) | 49 | none | no Sigurd and no surname within 2 letters; "stretch" a plain basketball word | **pass** |
+| `lg_switch` | **Ellery** "Switch" Achterberg (was Idris) | 29 | none | none within 2 letters | **pass** |
+| `lg_skylight` | Bodie "Skylight" **Castellano** (was Ferreira) | 52 | none in the NBA / WNBA list | 1 letter from Nick Castellanos (a baseball player, not basketball); the owner kept it. Never shortened to "Sky" (listed) | **pass** (owner's call) |
+| `lg_zigzag` | **Lucien** "Zigzag" Moreau (was Santi) | 58 | none | Lucian Whitaker (first name, 1 letter); "Zigzag" one word, never hyphenated (a rolling-paper brand) | **pass** |
+
+The looks in the data follow the board's spread (none of the six risky sets on one legend): Deep End slim, a normal
+guard's height, waves, a thin mustache, **no beard, no mouthguard**, right-leg tights; Toolbox a **low** man bun,
+clean-shaven, **no headband**; Stretch close-cropped **dark** hair, a short boxed beard, a **medium** build, full
+tights; Switch bald, a short beard, bare arms (no braids, twists or cornrows); Skylight a high-top fade, left-leg
+tights; Zigzag curly hair, a knee sleeve, **no headband**. Numbers 26, 38, 49, 29, 52, 58: none in `NUMBER_AVOID`, none
+worn by another legend (the look check swapped P11-02's Deep End 38 / Toolbox 26 placeholders). Kits are made-up
+`ERA3_*` palettes in the era's teal + coral (P11-14 makes the sheets; never a current team's color pair). Bios,
+looks, signature texts, challenge lines and archetypes hold no listed name, nickname, celebration or slogan
+(the data test). Probes added: Calloway Briggs, Bodie Ferreira, "SWISS KNIFE", "STIFLE TOWER" and a bio holding
+"night night" (all fail, as they must).
+
 ## Chapter 3, the Present (P11-02): first check, for the owner with P1
 
 Checked 2026-11-25 by gameplay-programmer A: the plan's six draft names (`docs/legends-plan.md` part 3) **and** the
 board's proposals (Whitlock, Toolbox, Ellery, Castellano, Lucien), against step 1 below (the same `nba_api` 1.12.0
 list, 5,198 NBA and 1,228 WNBA entries, read as text) and the lists below, extended with today's era (NBA and WNBA
-stars of about 2015-2026, their nicknames, their celebrations and the teams' slogans). A first check only: the
-names are not in the data yet. P11-11 copies the lists into `legends_data.gd` and makes the table final after the
-owner's P1 answer. Every name below marked ok also passes the data test's rules (a dry run of `name_hit()` in
-Python with today's lists plus the P11-02 additions); the twelve shipped legends still pass with the longer lists.
+stars of about 2015-2026, their nicknames, their celebrations and the teams' slogans). A first check only, kept as
+the record (P11-11 has since copied the lists into `legends_data.gd`; the final table is "Chapter 3, the Present
+(P11-11)" above). Every name below marked ok also passes the data test's rules (a dry run of `name_hit()` in Python
+with today's lists plus the P11-02 additions); the twelve shipped legends still pass with the longer lists.
 
 ### Names (step 1 and the lists)
 
