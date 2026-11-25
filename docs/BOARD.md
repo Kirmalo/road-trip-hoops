@@ -641,7 +641,11 @@ Everything below (Tasks by wave).
   twice. BACKTEST OK plain (the run forces 48 stars), with `--tokens 30` (stars 24, tokens 30) and `--stars 48`;
   TITLETEST DONE plain and with `--stars 48 --legends-unlock-all` (three chapters open, 18 unlocked, settings.cfg put
   back); 3 `--autoplay` 11-21, 21-20, 14-21 (9:03-10:35), `--humantest` 21-17.
-- **P11-26** | QA: the ramp with a Present legend and the new perks
+- **P11-26** | REVIEW (527 games, 0 errors, report only; `docs/qa/phase11-ramp.md`: Hard RED 44% vs legend + boss +
+  `quick_pass,contest` (180), NY SF 39% on 80 (watch item closed; Toolbox forced 30% on 20), Chapter 3 finale vs best
+  crew 40% on 40 (P11-23's 1/10 was noise); perks at P5 a: contest 3x, extra_pass 1.6x, catch_shoot 1.4x, off_dribble
+  0.65x, board_work ~0.4x, side_step 0.2x; proposed for the owner 0.005 / 0.010 / 0.010 / 0.025 / 1.15 / 0.80, nothing
+  applied) | QA: the ramp with a Present legend and the new perks
   | qa-balance-tester | `docs/qa/phase11-ramp.md`; may tune the Present perk sizes in `scripts/legends_data.gd`
   | `--best-roster` with the strongest legal three (a legend of any era + a boss) plus the best perk of any chapter
   (`--perk`), late boss games and New York on every level, 40+ games a cell: on Hard RED still wins 20%+ (the P8-25
