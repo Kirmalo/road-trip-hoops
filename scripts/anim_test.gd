@@ -32,7 +32,7 @@ extends Node
 #     index 0 (or indexes the palette leaves clear), and the images show the real colors. A recolor (a palette only,
 #     drawn on its base sheet's pages) is checked and drawn too; pixels whose index the palette leaves clear are a note.
 #   - P9-04c extra animations (format.json "extra", e.g. the legends' hook): the section itself (frames, columns, no
-#     overlaps in the extra space, no clash with a normal name, a "sheets" list); on every sheet the format lists for
+#     overlaps in the extra space between extras one sheet carries (P11-14: other sheets' extras may share columns), no clash with a normal name, a "sheets" list); on every sheet the format lists for
 #     an extra, the extra must load (its x pages <pages id>_x<N>.png present and of the right size, else a problem),
 #     and its frames are checked like any animation (pixels, hand and ball points, a ball point on frame 0); a sheet
 #     with x pages that the format lists for nothing is a note. Sheets that list no extra are checked as before.
@@ -328,15 +328,29 @@ func _check_extra_section(fmt: Dictionary, what: String) -> void:
 		var ms = e.get("ms", null)
 		if ms is Array and (ms as Array).size() != n:
 			_problems.append("%s: extra %s has %d ms for %d frames" % [what, a, (ms as Array).size(), n])
-		for k in range(st, st + n):
-			if used.has(k):
-				_problems.append("%s: extra %s overlaps %s at extra column %d" % [what, a, used[k], k])
-				break
-			used[k] = a
 		var list = e.get(Sheets.EXTRA_SHEETS, [])
 		if not (list is Array) or (list as Array).is_empty():
 			_notes.append("%s: the extra %s lists no sheets (nobody carries it)" % [what, a])
 			list = []
+		# P11-14: extras carried by different sheets may share columns (their own lanes, e.g. stepback and eurostep
+		# on x0); two extras that one sheet carries never may (an extra without sheets is checked against all)
+		for k in range(st, st + n):
+			var clash := ""
+			for other in (used.get(k, []) as Array):
+				var olv = (ex[other] as Dictionary).get(Sheets.EXTRA_SHEETS, [])
+				var ol: Array = olv if olv is Array else []
+				var shared: bool = (list as Array).is_empty() or ol.is_empty()
+				for sid in (list as Array):
+					if ol.has(sid):
+						shared = true
+				if shared:
+					clash = str(other)
+			if clash != "":
+				_problems.append("%s: extra %s overlaps %s at extra column %d" % [what, a, clash, k])
+				break
+			if not used.has(k):
+				used[k] = []
+			(used[k] as Array).append(a)
 		lines.append("%s (extra columns %d..%d, %d sheets)" % [a, st, st + n - 1, (list as Array).size()])
 	print("ANIM %s: extras: %s" % [what, ", ".join(lines) if not lines.is_empty() else "none"])
 

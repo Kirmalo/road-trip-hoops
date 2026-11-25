@@ -331,6 +331,21 @@
   "lg_boxcar_crew_j3": {
    "pages": "lg_boxcar"
   },
+  "lg_deep_end": {
+   "pages": "lg_deep_end"
+  },
+  "lg_deep_end_crew": {
+   "pages": "lg_deep_end"
+  },
+  "lg_deep_end_crew_j1": {
+   "pages": "lg_deep_end"
+  },
+  "lg_deep_end_crew_j2": {
+   "pages": "lg_deep_end"
+  },
+  "lg_deep_end_crew_j3": {
+   "pages": "lg_deep_end"
+  },
   "lg_eyes_closed": {
    "pages": "lg_eyes_closed"
   },
@@ -451,6 +466,21 @@
   "lg_set_shot_crew_j3": {
    "pages": "lg_set_shot"
   },
+  "lg_skylight": {
+   "pages": "lg_skylight"
+  },
+  "lg_skylight_crew": {
+   "pages": "lg_skylight"
+  },
+  "lg_skylight_crew_j1": {
+   "pages": "lg_skylight"
+  },
+  "lg_skylight_crew_j2": {
+   "pages": "lg_skylight"
+  },
+  "lg_skylight_crew_j3": {
+   "pages": "lg_skylight"
+  },
   "lg_steeple": {
    "pages": "lg_steeple"
   },
@@ -466,6 +496,51 @@
   "lg_steeple_crew_j3": {
    "pages": "lg_steeple"
   },
+  "lg_stretch": {
+   "pages": "lg_stretch"
+  },
+  "lg_stretch_crew": {
+   "pages": "lg_stretch"
+  },
+  "lg_stretch_crew_j1": {
+   "pages": "lg_stretch"
+  },
+  "lg_stretch_crew_j2": {
+   "pages": "lg_stretch"
+  },
+  "lg_stretch_crew_j3": {
+   "pages": "lg_stretch"
+  },
+  "lg_switch": {
+   "pages": "lg_switch"
+  },
+  "lg_switch_crew": {
+   "pages": "lg_switch"
+  },
+  "lg_switch_crew_j1": {
+   "pages": "lg_switch"
+  },
+  "lg_switch_crew_j2": {
+   "pages": "lg_switch"
+  },
+  "lg_switch_crew_j3": {
+   "pages": "lg_switch"
+  },
+  "lg_toolbox": {
+   "pages": "lg_toolbox"
+  },
+  "lg_toolbox_crew": {
+   "pages": "lg_toolbox"
+  },
+  "lg_toolbox_crew_j1": {
+   "pages": "lg_toolbox"
+  },
+  "lg_toolbox_crew_j2": {
+   "pages": "lg_toolbox"
+  },
+  "lg_toolbox_crew_j3": {
+   "pages": "lg_toolbox"
+  },
   "lg_velvet": {
    "pages": "lg_velvet"
   },
@@ -480,6 +555,21 @@
   },
   "lg_velvet_crew_j3": {
    "pages": "lg_velvet"
+  },
+  "lg_zigzag": {
+   "pages": "lg_zigzag"
+  },
+  "lg_zigzag_crew": {
+   "pages": "lg_zigzag"
+  },
+  "lg_zigzag_crew_j1": {
+   "pages": "lg_zigzag"
+  },
+  "lg_zigzag_crew_j2": {
+   "pages": "lg_zigzag"
+  },
+  "lg_zigzag_crew_j3": {
+   "pages": "lg_zigzag"
   },
   "mem_a1": {
    "pages": "mem_a1"
@@ -967,6 +1057,10 @@
   "lg_boxcar_crew_j1": "lg_boxcar",
   "lg_boxcar_crew_j2": "lg_boxcar",
   "lg_boxcar_crew_j3": "lg_boxcar",
+  "lg_deep_end_crew": "lg_deep_end",
+  "lg_deep_end_crew_j1": "lg_deep_end",
+  "lg_deep_end_crew_j2": "lg_deep_end",
+  "lg_deep_end_crew_j3": "lg_deep_end",
   "lg_eyes_closed_crew": "lg_eyes_closed",
   "lg_eyes_closed_crew_j1": "lg_eyes_closed",
   "lg_eyes_closed_crew_j2": "lg_eyes_closed",
@@ -999,14 +1093,34 @@
   "lg_set_shot_crew_j1": "lg_set_shot",
   "lg_set_shot_crew_j2": "lg_set_shot",
   "lg_set_shot_crew_j3": "lg_set_shot",
+  "lg_skylight_crew": "lg_skylight",
+  "lg_skylight_crew_j1": "lg_skylight",
+  "lg_skylight_crew_j2": "lg_skylight",
+  "lg_skylight_crew_j3": "lg_skylight",
   "lg_steeple_crew": "lg_steeple",
   "lg_steeple_crew_j1": "lg_steeple",
   "lg_steeple_crew_j2": "lg_steeple",
   "lg_steeple_crew_j3": "lg_steeple",
+  "lg_stretch_crew": "lg_stretch",
+  "lg_stretch_crew_j1": "lg_stretch",
+  "lg_stretch_crew_j2": "lg_stretch",
+  "lg_stretch_crew_j3": "lg_stretch",
+  "lg_switch_crew": "lg_switch",
+  "lg_switch_crew_j1": "lg_switch",
+  "lg_switch_crew_j2": "lg_switch",
+  "lg_switch_crew_j3": "lg_switch",
+  "lg_toolbox_crew": "lg_toolbox",
+  "lg_toolbox_crew_j1": "lg_toolbox",
+  "lg_toolbox_crew_j2": "lg_toolbox",
+  "lg_toolbox_crew_j3": "lg_toolbox",
   "lg_velvet_crew": "lg_velvet",
   "lg_velvet_crew_j1": "lg_velvet",
   "lg_velvet_crew_j2": "lg_velvet",
   "lg_velvet_crew_j3": "lg_velvet",
+  "lg_zigzag_crew": "lg_zigzag",
+  "lg_zigzag_crew_j1": "lg_zigzag",
+  "lg_zigzag_crew_j2": "lg_zigzag",
+  "lg_zigzag_crew_j3": "lg_zigzag",
   "mem_a1_crew": "mem_a1",
   "mem_a1_crew_j1": "mem_a1",
   "mem_a1_crew_j2": "mem_a1",

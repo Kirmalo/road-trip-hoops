@@ -41,11 +41,13 @@ Usage:  python3 tools/art/make_players_v2.py [--only ID[,ID...] | --all] [--jobs
         [--extra-preview NAME [ID]]  (P10-04b: only that extra's preview gif, e.g. fadeaway: docs/art/fadeaway_v1.gif)
         [--extra-strip NAME ID DIR]  (a still strip of that extra in 5 directions to DIR)
                                      P11-05b: NAME stepback (docs/art/stepback_v1.gif) or eurostep
-                                     (docs/art/eurostep_v1.gif); no sheet carries them yet
-        [--legends-strip [fathers]]  (P9-09: only docs/art/legends_grand.png, the six lg_ sheets with the hook, from
+                                     (docs/art/eurostep_v1.gif); P11-14: lg_deep_end / lg_zigzag carry them
+        [--legends-strip [fathers|present]]  (P9-09: only docs/art/legends_grand.png, the six lg_ sheets with the hook, from
                                      the written files; the sheets themselves: --only <the LEGENDS ids>. P10-14:
                                      fathers = docs/art/legends_fathers.png, Midrange with the fadeaway;
-                                     --only <the LEGENDS_FATHERS ids>)
+                                     --only <the LEGENDS_FATHERS ids>. P11-14: present =
+                                     docs/art/legends_present.png, the step-back and the Euro-step;
+                                     --only <the LEGENDS_PRESENT ids>)
 Extra animations (P9-04b): EXTRA (the hook shot; P10-04b the turnaround fadeaway) is rendered only for the sheets
 that carry it (EXTRA_CREWS: the hook on crew "GR"; a crews.json "extra": [...] list; --extra-sheets [name:]id,...),
 onto extra pages <id>_x<N>.png with the same palettes, and listed in format.json's "extra" section (only the extras
@@ -94,8 +96,9 @@ def dims_of(p):
     d = S.body_dims(p)
     legk, tk, W = p["leg"], p["torso"], p["width"]
     d["L"] = d["l1"] + d["l2"]
-    d["up"] = 6.7 * (0.5 + 0.5 * legk)
-    d["fo"] = 6.2 * (0.5 + 0.5 * legk)
+    arm_k = p.get("arm_len", 1.0)                 # P11-14: long arms (pixel3d.build uses the same factor)
+    d["up"] = 6.7 * (0.5 + 0.5 * legk) * arm_k
+    d["fo"] = 6.2 * (0.5 + 0.5 * legk) * arm_k
     d["reach"] = d["up"] + d["fo"] + 0.7          # shoulder -> hand centre, arm straight
     d["sh_y"] = 10.0 * tk
     d["tk"] = tk
@@ -1279,7 +1282,13 @@ EXTRA_ANIM = {a[0]: a for a in EXTRA}
 # each keeps its own columns). P10-14: the Fathers (crew "FA") carry no hook; only Midrange lists "extra":
 # ["fadeaway"], so his x page holds the fadeaway in its own columns (11..23, the hook's 0..10 left empty).
 # --extra-sheets id,... makes those sheets carry every extra this run; --extra-sheets name:id,... only that extra.
-EXTRA_CREWS = {"hook": ("GR",), "fadeaway": (), "stepback": (), "eurostep": ()}   # P11-05b: nobody carries those yet
+# P11-14: Deep End lists "extra": ["stepback"] and Zigzag "extra": ["eurostep"] in crews.json (no crew carries them).
+EXTRA_CREWS = {"hook": ("GR",), "fadeaway": (), "stepback": (), "eurostep": ()}
+# P11-14: an extra may start its own lane in the extra column space (EXTRA_LANE name -> start column) instead of after
+# the ones before it: the Present's two extras start at column 0, on their own sheet's first x page (lg_deep_end_x0,
+# lg_zigzag_x0), since no sheet carries one of them together with another extra (extra_columns() checks). The hook
+# and the fadeaway keep their columns (0..10, 11..23), so their pages and format.json rows stay as they were.
+EXTRA_LANE = {"stepback": 0, "eurostep": 0}
 EXTRA_FORCE = set()
 PREVIEW_LIFT["hook"] = [0, 0, 0, 4, 12, 17, 18, 15, 7, 0, 0]
 PREVIEW_LIFT["fadeaway"] = [0, 0, 0, 0, 0, 3, 9, 15, 17, 15, 8, 0, 0]
@@ -1317,16 +1326,25 @@ def extra_sheets(name, players=None):
     return [q["id"] for q in players if "recolor_of" not in q and name in extras_for(q["id"], players)]
 
 
-def extra_columns(names):
+def extra_columns(names, check=True):
     """{name: (start, n)} in the extra column space of a sheet carrying `names`, and the total. Every extra keeps
     the same start on every sheet (EXTRA order; a sheet without one leaves its columns empty), so one format.json
     entry fits all."""
     out = {}
     c = 0
     for name, d, fps, ms, ev in EXTRA:
+        if name in EXTRA_LANE:
+            out[name] = (EXTRA_LANE[name], d["n"])
+            continue
         out[name] = (c, d["n"])
         c += d["n"]
-    return {k: v for k, v in out.items() if k in names}, c
+    sel = {k: v for k, v in out.items() if k in names}
+    taken = {}
+    for k, (st, n) in (sel.items() if check else ()):   # a sheet's own extras never share a column (lanes: disjoint sheets)
+        for col in range(st, st + n):
+            assert col not in taken, "extras %s and %s overlap at extra column %d on one sheet" % (taken[col], k, col)
+            taken[col] = k
+    return sel, max([c] + [st + n for st, n in out.values()])
 
 
 def assemble_extra_pages(frames, names):
@@ -1350,7 +1368,7 @@ def assemble_extra_pages(frames, names):
 def extra_format(players=None):
     """format.json's "extra" section: only the extras some sheet carries ({} = none, and no section is written)."""
     players = players if players is not None else players_v2()
-    cols, total = extra_columns([a[0] for a in EXTRA])
+    cols, total = extra_columns([a[0] for a in EXTRA], check=False)
     out = {}
     used = 0       # extra_cols: the columns the carried extras use (an extra nobody carries yet adds none)
     for name, d, fps, ms, ev in EXTRA:
@@ -2256,7 +2274,7 @@ def moves_gif(all_frames, path=MOVES_GIF):
 
 
 PREVIEW4 = os.path.join(ROOT, "docs", "art", "players_preview_v4.png")
-CREW_ORDER = ["U", "HT", "CHI", "MEM", "NOL", "DEN", "SEA", "LA", "NYQ", "NYS", "NYF", "NY", "GR", "FA"]
+CREW_ORDER = ["U", "HT", "CHI", "MEM", "NOL", "DEN", "SEA", "LA", "NYQ", "NYS", "NYF", "NY", "GR", "FA", "PR"]
 
 
 def decoded_pages(base, pal_id):
@@ -2409,7 +2427,16 @@ def cut_extra(pages, name, dname, k):
 LEGENDS_FATHERS = ["lg_rooftop", "lg_ankles", "lg_midrange", "lg_freight", "lg_eyes_closed", "lg_lockbox"]
 LEGENDS_FATHERS_STRIP = os.path.join(ROOT, "docs", "art", "legends_fathers.png")
 LEGEND_FADE = [("E", k) for k in (0, 2, 4, 7, 8, 10)] + [("S", 8), ("SE", 8)]
-LEGEND_EXTRA_CELLS = {"hook": ("HOOK", LEGEND_HOOK), "fadeaway": ("FADEAWAY", LEGEND_FADE)}
+# P11-14: the Present sheets (crews.json crew "PR"): era kits ERA3_* (teal and coral, the owner's look check), a _crew
+# recolor (crew_recolor "PR") and the _crew_j1..3 jerseys; Deep End carries the step-back, Zigzag the Euro-step
+# (P11-05b, approved). Rebuild: --only <the LEGENDS_PRESENT ids> --no-preview, then --legends-strip present
+# (docs/art/legends_present.png).
+LEGENDS_PRESENT = ["lg_deep_end", "lg_toolbox", "lg_stretch", "lg_switch", "lg_skylight", "lg_zigzag"]
+LEGENDS_PRESENT_STRIP = os.path.join(ROOT, "docs", "art", "legends_present.png")
+LEGEND_STEP = [("E", k) for k in (0, 1, 3, 5, 7, 8)] + [("S", 8), ("SE", 8)]
+LEGEND_EURO = [("E", k) for k in (0, 1, 3, 5, 7, 8)] + [("S", 8), ("SE", 8)]
+LEGEND_EXTRA_CELLS = {"hook": ("HOOK", LEGEND_HOOK), "fadeaway": ("FADEAWAY", LEGEND_FADE),
+                      "stepback": ("STEP-BACK", LEGEND_STEP), "eurostep": ("EURO-STEP", LEGEND_EURO)}
 LEGEND_STRIPS = {
     "grand": (LEGENDS, LEGENDS_STRIP,
               "Legends Chapter 1, the Grandfathers (P9-09): the six legend sheets as the game draws them "
@@ -2422,6 +2449,12 @@ LEGEND_STRIPS = {
                 "Top: era colors (idle S SE E NE N, run dribble SE, jump shot E, block S | Midrange's FADEAWAY: E "
                 "post, turn, gather, top, release, follow; release S, SE). Bottom: your colors (_crew, star jerseys "
                 "%s) | the _crew fadeaway. No hook on these sheets."),
+    "present": (LEGENDS_PRESENT, LEGENDS_PRESENT_STRIP,
+                "Legends Chapter 3, the Present (P11-14): the six legend sheets as the game draws them "
+                "(index pages + palettes), 2x. Original characters; owner-approved names, numbers and era colors.",
+                "Top: era colors (idle S SE E NE N, run dribble SE, jump shot E, block S | Deep End's STEP-BACK and "
+                "Zigzag's EURO-STEP: E start .. release; release S, SE). Bottom: your colors (_crew, star jerseys "
+                "%s) | the _crew extra. No hook or fadeaway on these sheets."),
 }
 
 
