@@ -172,6 +172,13 @@ Everything below (Tasks by wave).
   Future (CC0), Royal run (CC0), 8-Bit Hero Quest (CC-BY 4.0), Techno DRIVE!!! v2.5 (CC-BY 4.0), TECHNOCADE (CC-BY 3.0);
   list in `LIST.md` "Legends: Present"; the owner picks one
 - **P11-01** Phase 10 save fixtures: `docs/qa/fixtures/` legends_v1_ch2_mid / _ch2_done, trip_v2_father, settings_v2_48, make_ / check_fixtures_v4 (README "Phase 10 save fixtures"); scripted like P10-01, not a test-driver stop (README says why)
+- **P11-04** (gameplay-programmer C): checked, no code change needed. `legends_tour.gd` and `hall.gd` already read
+  every chapter from the data. In a scratch copy with a built stand-in `present` row (Chapter 1 copies `lg_zz_1..6`,
+  18 legends, 63 tokens) at 1280x720 and 1600x720: the timeline shows Chapter 3 LOCKED with its gate ("OPENS AT 48
+  STARS OR 30 TOKENS"), then open (PLAY), then FINALE WON on all three; the Chapter 3 view works; the Hall has three
+  built rows and scrolls to the bottom (934 px list, scroll 354 = the end, the Chapter 4 locked row under it); the
+  mentor picker with a full trip roster scrolls. With the shipped data every screen is the same as in Phase 10.
+  `--backtest` BACKTEST OK (clean copy, and again with the stand-in on: the same 63 steps).
 
 ## Done
 
