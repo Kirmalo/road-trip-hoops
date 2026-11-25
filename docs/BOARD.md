@@ -626,13 +626,19 @@ Everything below (Tasks by wave).
   (`--perk`), late boss games and New York on every level, 40+ games a cell: on Hard RED still wins 20%+ (the P8-25
   bound), with the New York semifinal re-measured on 80+ games (the Phase 10 watch item at the edge); each new perk worth
   about 2 stat points (measured like P9-30 / P10-26; sizes changed only with the owner's yes) | P11-22, P11-19
-- **P11-27** | QA: saves
+- **P11-27** | REVIEW | QA: saves
   | qa-balance-tester | `docs/qa/phase11-saves.md`
   | every 1.0.0, Phase 8, P10-01 and P11-01 fixture loads and plays on in Phase 11; a Phase 11 `legends.json` (Present
   legends unlocked, their tokens, a Present mentor) and a trip with a drafted Present legend, opened by the Phase 10
   build (`83520f8`): no error dialog, the unknown legend dropped from the trip, his tokens not counted, his mentor pair
   shown as NO MENTOR (P10-B2) and ignored, plays on; missing, broken, newer `legends.json`: no crash; NEW TRIP keeps it;
   no test touches the owner's files | P11-01, P11-18, P11-19, P11-22
+  | Result (`docs/qa/phase11-saves.md`, build 67de993): all 11 old fixture resumes TRIP END (1.0.0 x5, Phase 8 x2,
+  P10-01 x2, P11-01 x2), check_fixtures v2/v3/v4 CHECK OK; Phase 11 files (15 unlocked, 49 tokens, TOOLBOX -> NICO,
+  DEEP END drafted on the bench / starting / YOU) in 83520f8: no error dialog, DEEP END dropped (a lineup he started in
+  resets to the underdogs), 42/42 tokens, NICO "NO MENTOR" with no perk, game starts, TRIP END x3; its writes keep
+  every Present key. 7 broken/newer legends.json variants: no crash; NEW TRIP keeps legends.json in both builds;
+  owner's files untouched by 21 test runs. 5 `--autoplay` (9:50 mean, 52%), 2 `--humantest` 21-18. No bugs filed.
 - **P11-28** | QA: screens
   | qa-balance-tester | `docs/qa/phase11-screens.md`, `docs/qa/phase11-screens.png`
   | xvfb screenshots: the timeline (Chapter 3 locked with its gate, open, all three finales won), the Chapter 3 view (crew
