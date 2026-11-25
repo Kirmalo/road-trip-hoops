@@ -160,8 +160,10 @@ const CHAPTERS := [
 		"finale": {"target": 21, "legends": ["lg_deep_end", "lg_toolbox", "lg_skylight"], "label": "PRESENT FINALE"},
 		"intro_scene": "legends_present_intro",
 		"finale_scenes": {"before": "legends_present_finale_before", "after": "legends_present_finale_after"},
-		# P6 a: a step harder than Chapter 2 (69 / 14 / 56); a first guess, P11-23 tunes them
-		"challenge_avg": 72, "mate_drop": 14, "finale_stage_avg": 57,
+		# P6 a: a step harder than Chapter 2 (69 / 14 / 56). P11-23 (docs/qa/phase11-challenges.md): 72 / 14 kept (the
+		# first guess; expected crew Normal 50%, Hard 40% on 240 games each), finale_stage_avg 57 -> 63 (finale Hard 55%
+		# at 57, 33% at 63; Normal 75 -> 53)
+		"challenge_avg": 72, "mate_drop": 14, "finale_stage_avg": 63,
 	},
 	{
 		"id": "next", "name": "THE NEW GENERATION", "built": false,

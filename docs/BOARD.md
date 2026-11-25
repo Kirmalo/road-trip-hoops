@@ -547,7 +547,10 @@ Everything below (Tasks by wave).
   a Chapter 2 challenge / `--humantest` / `era_present` are byte for byte the base build's. Fires per game to 21 (3
   holders): contest 24, extra_pass 15, catch_shoot 13, board_work 2, off_dribble 4, side_step 0 in 5 games (rare: a
   block try at a BLUE layup inside the 5% band; for P11-26)
-- **P11-23** | QA: Chapter 3 challenge balance
+- **P11-23** | REVIEW (1,210 games, 0 errors; `docs/qa/phase11-challenges.md`: 72 / 14 kept, `finale_stage_avg` 57 -> 63;
+  expected crew Easy 66.7%, Normal 50.0%, Hard 40.0% (240 each), LEGEND 38.3%; finale N 53% / H 33%; the levels sit 10
+  points apart, the keys can't widen it (code lever proposed); Switch `min` 5 met 15% (kept); step-back a small edge,
+  no change; no story line stale) | QA: Chapter 3 challenge balance
   | qa-balance-tester | `docs/qa/phase11-challenges.md`; may tune the Chapter 3 goal numbers and its per-chapter rating
   keys in `scripts/legends_data.gd`
   | `--challenge <id> --autoplay` with `--expected-roster` / `--best-roster` on every Present legend and the finale, Easy
