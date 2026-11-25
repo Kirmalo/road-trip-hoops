@@ -120,6 +120,7 @@ tablet with a joystick and two buttons.
 | Phase 10 perk sizes (after P10-26) | Owner: raise the three weak Fathers perks to about 2 stat points like the rest: rise_up +2.5% (was 1.5), handle 15% (was 5), blind_pass 15% fewer interceptions (was 5); pull_up, strong_hold, quick_hands stay (docs/qa/phase10-ramp.md) |
 | Phase 10 era music | Owner: A, "Headspin" by congusbongus (CC0, OpenGameArt) as `legends_fathers` (docs/audio_preview/LIST.md) |
 | Phase 11 start (owner, 2026-11-25) | "Go on to the next" after Phase 10: Phase 11 is Legends Chapter 3, the Present, planned on the board first like Phases 9-10 (open questions to the owner before building) |
+| Phase 11 answers P1-P8 (docs/legends-plan.md) | P1 a: the six Present types with the name-check fixes (Calloway "Deep End" Whitlock, no beard; Theo "Toolbox" Lindqvist; Ozren "Stretch" Halvorsen with short hair; Ellery "Switch" Achterberg; Bodie "Skylight" Castellano; Lucien "Zigzag" Moreau), new names checked again, numbers and kits shown at the look check. P2 a: SPACE THE FLOOR = shots beyond the arc +8%, off-ball players 2 ft wider, a jumper right after a crossover or spin +10% (everyone). P3 a: Deep End fire (to 15), Toolbox comeback from 0-1 (to 15), Stretch race 11 before 10, Switch score 5 yourself and win (to 11), Skylight 2 stops (to 15), Zigzag hold under 6 (to 11); finale Deep End, Toolbox, Skylight to 21. P4 c: the play edges plus **both** new animations, Deep End's step-back and Zigzag's Euro-step (previews to the owner first). P5 a: six new perks (about 2 stat points each). P6 a: a step harder than Chapter 2 (Normal about 55-60%, Hard about 35%, the finale a bit harder). P7 a: 48 stars or 30 tokens, no Chapter 2 finale needed. P8 b: era teams in Quick Game (GRANDFATHERS, FATHERS, PRESENT on YOUR TEAM / OPPONENT once 3 of an era are unlocked; their 3 best, stats averaged to 50), and (owner, follow-up) each era court with its era rules joins the Quick Game COURT list once that era's team is open |
 
 ## Technical constraints
 - Godot 4.3+ (GDScript), GL Compatibility renderer, 1280x720 landscape. See `CLAUDE.md` for code conventions.
@@ -204,7 +205,7 @@ level), replays of beaten city games from the map, the ramp retuned, 1.0.0 saves
   questions" F1-F8: the six Fathers legends, the ISO BALL era rules, the challenge per legend, signature moves and a
   new animation, the Fathers perks, how hard Chapter 2 is, what opens it, and anything beyond Chapter 2. Each names the
   board tasks it blocks.
-- Phase 11 (Legends, Chapter 3, the Present), before the build past wave 1: `docs/legends-plan.md` "Phase 11 open
+- (Answered 2026-11-25, see "Phase 11 answers P1-P8") Phase 11 (Legends, Chapter 3, the Present), before the build past wave 1: `docs/legends-plan.md` "Phase 11 open
   questions" P1-P8: the six Present legends after the name and look check, the SPACE THE FLOOR era rules, the challenge
   per legend and the finale, signature moves and a new animation, the Present perks, how hard Chapter 3 is, what opens
   it, and anything beyond Chapter 3. Each names the board tasks it blocks.
