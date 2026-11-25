@@ -104,6 +104,9 @@ The finale: Rooftop, Midrange and Freight to 21, no goal.
 | Bodie "Skylight" Ferreira | Rim-running big | Athletic, high-top fade | Alley-oop slam from anywhere near the rim | 0 / -20 / +20 / +5 / -5 |
 | Santi "Zigzag" Moreau | Slasher | Slim, curly hair, headband | Euro-step layup | +10 / -5 / +10 / -10 / -5 |
 
+Draft only. The Phase 11 board (`docs/BOARD.md`, the hard rule's table) flags all six for a name or a look that
+points too close to one famous player of today and proposes changes; question P1 below asks the owner.
+
 ### Chapter 4: New Generation
 | Legend | Archetype | Look notes | Signature move | Shape |
 |---|---|---|---|---|
@@ -434,3 +437,84 @@ numbers set the win shares, the ratings barely do, so this mostly picks the goal
 - b) Add era teams in Quick Game: GRANDFATHERS and FATHERS on YOUR TEAM / OPPONENT once 3 of an era are unlocked (their
   3 best, stats averaged to 50 like the Quick Game crews), with the era court and its rules on COURT
 - c) Add the token ladder with Legends cosmetics (an era jersey and an era ball in the LOCKER)
+
+## Phase 11 open questions (lead-producer, 2026-11-25; answer with the letter, (a) is the recommendation)
+
+Phase 11 builds Chapter 3, the Present, end to end (`docs/BOARD.md`). Wave 1 of the board starts without these
+answers; each question names the tasks it blocks.
+
+**P1. The six Present legends.** Today's stars are the players everyone knows by sight, so the draft in part 3 sits
+too close to some of them. (blocks P11-11 data, P11-14 sheets, P11-15 portraits, P11-16 story)
+- a) The same six types, with these changes (P11-02 checks every new name against the real-player lists first):
+  Calloway "Deep End" **Whitlock**, step-back shooter, no beard (Briggs is one letter from a real surname; step-back plus
+  beard is one famous guard); Theo "**Toolbox**" Lindqvist, point-forward ("Swiss Knife" is too close to a knife
+  maker's trademark); Ozren "Stretch" Halvorsen, stretch big, short hair instead of shaggy (a famous European big's
+  look); **Ellery** "Switch" Achterberg, two-way wing, bald with a short beard ("Idris" points at a famous actor);
+  Bodie "Skylight" **Castellano**, rim-running big (Ferreira is a real player's surname); **Lucien** "Zigzag" Moreau,
+  slasher, no headband ("Santi" is a current player's name). Numbers and kits shown to you at the look check
+  **(recommended)**
+- b) The same six types, but the team brings two full new name sets to pick from
+- c) You change some of them (say which names, types or looks)
+
+**P2. The SPACE THE FLOOR era rules.** One rule set for both teams, like OLD SCHOOL and ISO BALL. (blocks P11-12, P11-21)
+- a) Shots from beyond the arc go in about 8% more, players away from the ball stand about 2 ft wider (more room to
+  drive and kick), and a jumper right after a crossover or spin goes in about 10% more (everyone) **(recommended)**
+- b) Only the first two: long shots +8% and the wider spacing (one hook less to tune)
+- c) As a), plus a shorter shot clock (20 s instead of 24): a faster, modern pace
+- d) No era rules (the era is its court, music and legends only)
+
+**P3. Which challenge each Present legend gives, and the finale.** Numbers start from Chapter 2's tuned ones and QA
+tunes them, as before. (blocks P11-11, P11-13, P11-16, P11-23)
+- a) Deep End: beat the fire (he starts on fire, to 15). Toolbox: comeback (start down 0-1, to 15). Stretch: race
+  (reach 11 before his crew gets 10). Switch: score on him (you score 5 of your team's points yourself and win, to 11;
+  one less than Lockbox). Skylight: stop the move (2 blocks or steals on him and win, to 15). Zigzag: hold him under 6
+  (to 11). The finale: Deep End, Toolbox and Skylight, to 21 **(recommended)**
+- b) As a), but Switch gets a hold (under 6, to 11) instead, so only one "score on him" game in the whole mode
+- c) As a), plus one cheap new goal for the era: Stretch's game becomes "from deep" (your team scores 6 points from
+  beyond the arc and wins, to 15)
+
+**P4. Signature moves, and one new animation?** Every legend gets a small play edge only he has, on today's moves:
+Deep End's long jumpers after his crossover lose half the contest (a step-back); Toolbox runs coast to coast after a
+defensive rebound without tiring; Stretch drifts to the arc when his man helps, and his catch-and-shoot long shots are
+hard to contest; Switch gets a burst of speed after a steal; lobs to Skylight are caught from further out; Zigzag's
+layups slip past the man in front (a Euro-step). No new buttons: they come out of today's controls. (blocks P11-05b,
+P11-14, P11-17)
+- a) The edges, plus one new animation: Deep End's step-back (a slide back before the jumper, like Midrange's fadeaway;
+  a preview for your look check first) **(recommended)**
+- b) The edges, plus Zigzag's Euro-step as a new animation instead
+- c) The edges, plus both new animations (more art and test time)
+- d) The edges only, no new frames
+
+**P5. The Present mentor perks.** One per legend, each worth about 2 stat points like the Phase 10 perks after their
+resize, one per player, Road Trip games only. (blocks P11-11 PERKS, P11-22, P11-26)
+- a) Six new perks, none the same as an earlier one: Deep End jumpers right after a crossover +1.5%; Toolbox a
+  teammate's shot right after his pass +1.5%; Stretch catch-and-shoot jumpers +1.5%; Switch the man he guards shoots
+  1.5% worse; Skylight reaches rebounds 5% further; Zigzag 5% harder to block on layups (QA resizes any that measure
+  weak, with your yes) **(recommended)**
+- b) Reuse earlier perks where they fit (Deep End "shots beyond the arc +1.5%" like Set Shot, Zigzag "contested
+  layups +1.5%" like Velvet, Switch "steal window 5% wider" like Lockbox), new ones only for Toolbox, Stretch and
+  Skylight
+- c) No perks for the Present (they unlock, play in the draft and hang in the Hall only)
+
+**P6. How hard is Chapter 3 next to Chapter 2?** Chapter 2 measured about 64% on Easy, 63% on Normal and 44% on Hard
+with the end-of-trip crew. The goal numbers decide most of it, the legends' ratings a little. (blocks P11-11 rating
+keys, P11-23 bands)
+- a) A step harder again: Normal about 55-60%, Hard about 35%, the finale a bit harder than Chapter 2's
+  **(recommended)**
+- b) The same as Chapter 2
+- c) Clearly harder: Normal about 45%, Hard about 25% (the mode's last built chapter as a real wall)
+
+**P7. What opens Chapter 3?** The data says 48 trip stars or 30 legend tokens, whichever comes first. 48 stars is a
+whole trip on Normal. Both chapters won on Normal give 28 tokens, so that player also needs 2 tokens more (two
+challenges replayed on Hard) or the stars. (blocks P11-18, P11-09's gate check)
+- a) Keep 48 stars or 30 tokens; Chapter 2's finale is not needed **(recommended)**
+- b) 48 stars or 28 tokens, so both chapters on Normal open it
+- c) 48 stars or 30 tokens, and Chapter 2's finale won
+
+**P8. Anything beyond Chapter 3 in Phase 11?** (adds tasks; a) adds none)
+- a) No: Chapter 4, era teams and single legends in Quick Game, one-on-one, Legends cosmetics and the token ladder stay
+  for later phases **(recommended)**
+- b) Add era teams in Quick Game: GRANDFATHERS, FATHERS and PRESENT on YOUR TEAM / OPPONENT once 3 of an era are
+  unlocked (their 3 best, stats averaged to 50), with the era court and its rules on COURT
+- c) Add the token ladder with Legends cosmetics (an era jersey and an era ball in the LOCKER)
+- d) Start Chapter 4, the New Generation, in the same phase (about twice the art and test time)

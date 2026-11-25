@@ -119,6 +119,7 @@ tablet with a joystick and two buttons.
 | Phase 10 tuning (after P10-23) | Lockbox keeps the owner's 6 points (P10-23 measured 3; the score goal is meant to be the hardest, met about 17% or less in tests). Eyes Closed starts 0-1 (P10-23). Chapter 1's finale a bit harder: `FINALE_STAGE_AVG` 52 -> 55 (Hard had won 50% of 80 games, aim 35-50) |
 | Phase 10 perk sizes (after P10-26) | Owner: raise the three weak Fathers perks to about 2 stat points like the rest: rise_up +2.5% (was 1.5), handle 15% (was 5), blind_pass 15% fewer interceptions (was 5); pull_up, strong_hold, quick_hands stay (docs/qa/phase10-ramp.md) |
 | Phase 10 era music | Owner: A, "Headspin" by congusbongus (CC0, OpenGameArt) as `legends_fathers` (docs/audio_preview/LIST.md) |
+| Phase 11 start (owner, 2026-11-25) | "Go on to the next" after Phase 10: Phase 11 is Legends Chapter 3, the Present, planned on the board first like Phases 9-10 (open questions to the owner before building) |
 
 ## Technical constraints
 - Godot 4.3+ (GDScript), GL Compatibility renderer, 1280x720 landscape. See `CLAUDE.md` for code conventions.
@@ -203,3 +204,9 @@ level), replays of beaten city games from the map, the ramp retuned, 1.0.0 saves
   questions" F1-F8: the six Fathers legends, the ISO BALL era rules, the challenge per legend, signature moves and a
   new animation, the Fathers perks, how hard Chapter 2 is, what opens it, and anything beyond Chapter 2. Each names the
   board tasks it blocks.
+- Phase 11 (Legends, Chapter 3, the Present), before the build past wave 1: `docs/legends-plan.md` "Phase 11 open
+  questions" P1-P8: the six Present legends after the name and look check, the SPACE THE FLOOR era rules, the challenge
+  per legend and the finale, signature moves and a new animation, the Present perks, how hard Chapter 3 is, what opens
+  it, and anything beyond Chapter 3. Each names the board tasks it blocks.
+- From the Phase 10 check-in, still open: Rooftop's cradle dunk is drawn as a windmill; keep it, or give it its own look
+  (board P11-10)?
