@@ -207,6 +207,16 @@ Everything below (Tasks by wave).
 ## Doing
 
 ## Review
+- **P11-11** (gameplay-programmer A): `legends_data.gd` `present` row built (SPACE THE FLOOR, `era_present` twist and
+  look, music `legends_present`, fallback `newyork`, gate 48 / 30, crew THE PRESENT `outside`, `ERA3_TEAL` /
+  `ERA3_CORAL`, teal `ui_color`, finale Deep End, Toolbox, Skylight to 21, keys 72 / 14 / 57), the six legends (ids,
+  names, numbers 26 / 38 / 49 / 29 / 52 / 58, the plan's shapes, challenges as the contract, signatures `step_back`,
+  `coast`, `pop`, `steal_break`, `lob_magnet`, `euro_step`, looks per the board's spread), the six perks (data only),
+  P11-02's lists in `REAL_NICKNAMES` / `REAL_NAMES`, `NUMBER_AVOID` + 4, 7, 77, five new probes; namecheck doc's Chapter
+  3 table final. `--legendtest` LEGENDTEST OK (notes: twist, music, story, sheets, portraits not there yet). Two small
+  test-only fixes outside the row, needed for a third built chapter: `legends.gd` `_check_chapter_walk()` checks a
+  shipped chapter's scenes strictly once story_text.gd has its intro (LegendsData's rule), `trip.gd` self test expects
+  a LEGENDS row per built chapter (was exactly two). 18 legends, max tokens 63.
 - **P11-05b** (art B, P4 c: both; on the branch, waits for the owner's look check): `make_players_v2.py` EXTRA rows `stepback` (12 frames: drive step, plant with the
   last dribble, push back, hop, land square, then today's jumper; events `fade` [1, 4], `fade_ft` `STEP_FT` 2.0,
   release 8, air [6, 10]) and `eurostep` (13 frames: gather, long step right, plant, long step back left, plant on

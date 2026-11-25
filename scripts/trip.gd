@@ -2653,7 +2653,7 @@ static func _check_legends() -> bool:
 	# P10-19: a legend of another chapter fills a third slot; the limit counts both eras together
 	var other: String = _other_era_legend("lg_steeple")
 	if other != "":
-		var row_chs: Array = []   # both eras still have a row (each has legends left to draft)
+		var row_chs: Array = []   # every era still has a row (each has legends left to draft; P11-11: three eras)
 		for row in draft_pool_by_crew():
 			if str(row.get("city", "")) == LEGENDS_ROW:
 				row_chs.append(str(row.get("chapter", "")))
@@ -2662,7 +2662,7 @@ static func _check_legends() -> bool:
 				and starters_ok([other, "ht_boss", "ud_jojo"]) == ""
 				and not set_starters(["ud_jojo", other, "lg_steeple"]) and starters[0] == "lg_steeple"
 				and set_starters(["ud_jojo", other, "ht_boss"]) and set_starters(["lg_steeple", "ht_boss", "ud_jojo"])
-				and row_chs == [LegendsData.chapter_of("lg_steeple"), LegendsData.chapter_of(other)],
+				and row_chs == LegendsData.built_chapters() and row_chs.has(LegendsData.chapter_of(other)),
 				"legends: %s (%s) drafted; %s + %s refused, %s + a boss start" % [other, LegendsData.chapter_of(other),
 				"lg_steeple", other, other]) and ok
 	record_result({"won": true})
