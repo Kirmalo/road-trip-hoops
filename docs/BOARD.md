@@ -554,11 +554,18 @@ Everything below (Tasks by wave).
   and a mid-trip crew (48-star stage) reported; Chapters 1-2 re-run on Normal and Hard (expected crew) to show no change,
   and the Phase 10 watch item (Chapter 2 on Easy / Normal, Lockbox) reported; any story line made stale is listed for
   P11-29 | P11-17, P11-18, P11-21 tuned
-- **P11-24** | Trip test: a drafted Present legend
+- **P11-24** | REVIEW | Trip test: a drafted Present legend
   | gameplay-programmer C | `scripts/trip_test.gd`
   | with `--legends-unlock-all --stars 24`: `LEGEND_DRAFT_CHAPTERS` gains `present` (the first legend draft signs a
   Present legend from his chapter's row, the second one of another era), the lineup refuses two legends and accepts one
   + a boss; "TRIP legend eras" lists three rows; TRIP END on every level; `--trip-resume` works | P11-19
+  | Result: `LEGEND_DRAFT_CHAPTERS` ["present", "fathers", "grand"], `LEGEND_DRAFTS` 3 (a 3rd only with a 3rd slot);
+  the driver scrolls the draft to the legend's row (`scroll_to_row()`) before the tap; the refusal tries the oldest
+  era on the roster then another, legend + boss starts the first draft's era; TRIP END checks every built chapter
+  with an open legend had a row and the drafts followed the order. `--legends-unlock-all --stars 24` TRIP END on Easy
+  (38 games), Normal (43), Hard (69): drafted present + fathers, refusal fathers/present, legend + boss present;
+  `--difficulty legend --stars 72` (50 games) drafted all three eras, refusal grand/present; Normal stop after Chicago
+  then `--trip-resume`: TRIP END, refusal and legend + boss checked again on the loaded save.
 - **P11-33** (P8 b) | REVIEW | Era teams on the Quick Game team lists
   | gameplay-programmer F | `scripts/difficulty.gd` (`quick_teams()`, `team_info()`, `team_unlocked()` know the era
   ids; `all_teams()` for the trip unchanged), `scripts/trip.gd` (`quick_team()` hands an era id to `EraTeams.team()`,
