@@ -38,6 +38,11 @@ extends RefCounted
 # offers ALWAYS_OPEN plus the court of every city whose boss you have beaten (owner Q9, menu.gd quick_courts()).
 # The reward looks (midnight, gold_hall) belong to no city and are not ALWAYS_OPEN, so quick_courts() leaves them out
 # until the star rewards are wired in (Cosmetics.open_court_looks()); --court <look> shows them in a test run.
+# The era looks (era_grand, era_fathers, era_present) are the Legends chapters' courts (legends_data.gd "look"). In
+# Quick Game the COURT list adds each one once its era team is open (P11-34, menu.gd quick_courts(), EraTeams.look_of()),
+# after the city courts and before the reward looks; the twist comes from the chapter row (EraTeams.twist_of_look()),
+# never from the look. Their "music" is the chapter's own track (legends_data.gd "music"); music() plays the
+# chapter's "fallback_music" while that file is missing.
 const LOOKS := {
 	"gym": {
 		"name": "GYM",
@@ -342,7 +347,8 @@ const LOOKS := {
 		"twist": "none",
 	},
 	# ---- Phase 9 era court (P9-05; tools/art/make_courts.py --era, --print-looks): the Legends Chapter 1 court, an
-	# old wood gym. No twist key (the legends match brings era_grand), no reward, not a city: never in quick_courts().
+	# old wood gym. No twist key (the legends match, or the chapter row in Quick Game, brings era_grand), no reward,
+	# not a city: in quick_courts() once the Grandfathers era team is open (P11-34).
 	# Music: the era's own track, Bebop (P9-16, owner's pick; assets/music/legends_grand.ogg) ----
 	"era_grand": {
 		"name": "OLD GYM",
@@ -369,11 +375,12 @@ const LOOKS := {
 		"net": Color(0.96, 0.94, 0.89, 0.85),
 	},
 	# ---- Phase 10 era court (P10-05; tools/art/make_courts.py --era fathers, --print-looks): the Legends Chapter 2
-	# court, a night playground under light towers. No twist key (the legends match brings the era twist), no reward,
-	# not a city: never in quick_courts(). Music: an existing track until the era's own (P10-20) ----
+	# court, a night playground under light towers. No twist key (the legends match, or the chapter row in Quick Game,
+	# brings the era twist), no reward, not a city: in quick_courts() once the Fathers era team is open (P11-34).
+	# Music: the era's own track, Headspin (P10-20; P11-34 set it here, was "blacktop", for Quick Game) ----
 	"era_fathers": {
 		"name": "NIGHT PARK",
-		"music": "blacktop",
+		"music": "legends_fathers",
 		"floor_texture": "res://assets/courts/era_fathers_floor.png",
 		"floor_scale": 2.0,
 		"floor": Color(0.33, 0.30, 0.29),
@@ -397,8 +404,9 @@ const LOOKS := {
 	},
 	# ---- Phase 11 era court (P11-06; tools/art/make_courts.py --era present, --print-looks): the Legends Chapter 3
 	# court, a made-up modern arena (ash floor, teal key, dark bowl, abstract ribbon boards). No twist key (the legends
-	# match brings the era twist), no reward, not a city: never in quick_courts(). Music: an existing track until the
-	# era's own (P11-20). Name BIG STAGE (owner, look check) ----
+	# match, or the chapter row in Quick Game, brings the era twist), no reward, not a city: in quick_courts() once the
+	# Present era team is open (P11-34). Music: the era's own track, Techno drive (P11-20). Name BIG STAGE (owner,
+	# look check) ----
 	"era_present": {
 		"name": "BIG STAGE",
 		"music": "legends_present",
@@ -424,6 +432,8 @@ const LOOKS := {
 		"net": Color(1.00, 1.00, 1.00, 0.85),
 	},
 }
+const LegendsData = preload("res://scripts/legends_data.gd")   # the era looks' chapter rows (music fallback, P11-34)
+const MUSIC_DIR := "res://assets/music/"   # where audio.gd finds <track>.ogg
 const DEFAULT := "gym"
 const ALWAYS_OPEN := ["gym", "blacktop"]   # Quick Game courts that need no unlock (twist none)
 
@@ -470,9 +480,16 @@ static func next_name() -> String:
 	var i: int = keys.find(current)
 	return keys[(i + 1) % keys.size()]
 
-# the music track of the current look (P4-11 passes it to audio.play_music)
+# the music track of the current look (P4-11 passes it to audio.play_music). An era look whose track file is missing
+# plays its chapter's fallback_music (P11-34; legends_data.gd preloads nothing, so no cycle)
 static func music() -> String:
-	return look().get("music", "")
+	var track: String = str(look().get("music", ""))
+	if track == "" or ResourceLoader.exists(MUSIC_DIR + track + ".ogg") or ResourceLoader.exists(MUSIC_DIR + track + ".wav"):
+		return track
+	for row in LegendsData.chapter_rows():
+		if str((row as Dictionary).get("look", "")) == current and str((row as Dictionary).get("fallback_music", "")) != "":
+			return str((row as Dictionary)["fallback_music"])
+	return track
 
 # a texture of the current look by key ("floor_texture", "backdrop_texture"), or null when the file isn't there yet
 static func texture(key: String) -> Texture2D:
