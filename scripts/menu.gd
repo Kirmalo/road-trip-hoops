@@ -21,6 +21,12 @@ extends CanvasLayer
 # Test runs (autoplay, humantest, screenshots) play the Kings vs the Bridge Runners unless --quick-teams <blue>,<red>.
 # P8-19: a 4th level button, LEGEND, once the stars open it (Difficulty.offered_levels(); --stars 72 in a test run),
 # and the COURT button also cycles the star reward courts (Cosmetics.open_court_looks(): MIDNIGHT, GOLD HALL; no twist).
+# P11-34 (owner P8 b): the era teams (era_teams.gd, open once their finale three are unlocked in Legends) are in the
+# YOUR TEAM / OPPONENT lists (Difficulty.quick_teams(), the button in the era crew's color), and each open era team's
+# court (EraTeams.look_of(): OLD GYM, NIGHT PARK, BIG STAGE) joins the COURT list after the city courts and before the
+# star reward courts. An era court brings its chapter's twist (EraTeams.twist_of_look(): OLD SCHOOL, ISO BALL, SPACE
+# THE FLOOR) in the twist line, the banner and the pause line, and its era's music (the look's "music" track). A closed
+# era's court is not offered; --court era_grand plays its twist only when that era is open (or --unlock-all).
 
 const Difficulty = preload("res://scripts/difficulty.gd")
 const Looks = preload("res://scripts/court_looks.gd")
@@ -28,6 +34,7 @@ const Flow = preload("res://scripts/flow.gd")
 const Cities = preload("res://scripts/cities.gd")     # which city owns a court look, and its twist (P6-17)
 const Twists = preload("res://scripts/twists.gd")     # the twist's line under the buttons
 const Cosmetics = preload("res://scripts/cosmetics.gd")   # open_court_looks(): the star reward courts (P8-19)
+const ERA_TEAMS_PATH := "res://scripts/era_teams.gd"     # era teams and their courts (P11-34), loaded at run time
 
 const BUTTON_SIZE := Vector2(300, 140)   # px at the 1280x720 base: finger-sized on a tablet (board: at least 200x110)
 const BUTTON_GAP := 40                   # px between the buttons
@@ -125,17 +132,24 @@ static func set_music(on: bool) -> void:
 
 # ---------------- Quick Game courts and twists (P6-17) ----------------
 
-# The courts the COURT button offers, in Looks.names() order: gym, blacktop, every unlocked city's court, then the
-# star reward courts that are open (P8-19, Cosmetics.open_court_looks())
+# The courts the COURT button offers: gym, blacktop, every unlocked city's court (Looks.names() order), then the court
+# of every open era team (P11-34, timeline order), then the star reward courts that are open (P8-19,
+# Cosmetics.open_court_looks())
 static func quick_courts() -> Array:
 	var open_cities: Array = Difficulty.unlocked_cities(Cities.ROUTE)
 	var rewards: Array = Cosmetics.open_court_looks()
 	var out: Array = []
+	var tail: Array = []
 	for n in Looks.names():
 		var c: String = city_of_look(str(n))
-		if Looks.always_open(str(n)) or (c != "" and open_cities.has(c)) or rewards.has(str(n)):
+		if Looks.always_open(str(n)) or (c != "" and open_cities.has(c)):
 			out.append(str(n))
-	return out
+		elif rewards.has(str(n)):
+			tail.append(str(n))
+	for look in open_era_looks():
+		if not out.has(look) and not tail.has(look):
+			out.append(look)
+	return out + tail
 
 # the city whose court this look is ("" for gym, blacktop or an unknown look)
 static func city_of_look(look_id: String) -> String:
@@ -144,11 +158,44 @@ static func city_of_look(look_id: String) -> String:
 			return str(id)
 	return ""
 
-# The twist of a Quick Game on the current court: the city's twist on an unlocked city court, else "none". main.gd
-# calls it before the court is built, so the -- --court test flag is read here first (a locked court from --court
-# plays without the twist, unless --unlock-all).
+# era_teams.gd, or null when it is missing (then no era courts)
+static func _era_teams() -> GDScript:
+	if not ResourceLoader.exists(ERA_TEAMS_PATH):
+		return null
+	return load(ERA_TEAMS_PATH) as GDScript
+
+# the court looks of the open era teams, in timeline order (only looks court_looks.gd has)
+static func open_era_looks() -> Array:
+	var out: Array = []
+	var et: GDScript = _era_teams()
+	if et == null:
+		return out
+	for eid in et.call("open_ids"):
+		var look: String = str(et.call("look_of", str(eid)))
+		if look != "" and Looks.LOOKS.has(look) and not out.has(look):
+			out.append(look)
+	return out
+
+# the twist an era court brings in Quick Game: its chapter's twist while its era team is open, else "" (also "" for
+# every other look)
+static func era_twist(look_id: String) -> String:
+	var et: GDScript = _era_teams()
+	if et == null:
+		return ""
+	var eid: String = str(et.call("era_of_look", look_id))
+	if eid == "" or not bool(et.call("is_open", eid)):
+		return ""
+	var t: String = str(et.call("twist_of_look", look_id))
+	return t if Twists.TWISTS.has(t) else ""
+
+# The twist of a Quick Game on the current court: the city's twist on an unlocked city court, the chapter's twist on
+# an open era team's court (P11-34), else "none". main.gd calls it before the court is built, so the -- --court test
+# flag is read here first (a locked court from --court plays without the twist, unless --unlock-all).
 static func quick_twist() -> String:
 	Looks.parse_args()
+	var et_twist: String = era_twist(Looks.current)
+	if et_twist != "":
+		return et_twist
 	var c: String = city_of_look(Looks.current)
 	if c == "" or Looks.always_open(Looks.current) or not Difficulty.is_court_unlocked(c):
 		return "none"
@@ -161,8 +208,9 @@ static func twist_line(twist_id: String) -> String:
 		return ""
 	var banner: String = str(Twists.info(twist_id).get("banner", ""))
 	var cut: int = banner.find(":")
-	if cut < 0:
-		return banner
+	if cut < 0:   # a banner without its "Name:" (P11-34: era_present's) gets the twist's name in front
+		var tname: String = str(Twists.info(twist_id).get("name", ""))
+		return banner if tname == "" or banner == "" else "%s: %s" % [tname.to_upper(), banner]
 	return banner.substr(0, cut).to_upper() + banner.substr(cut)
 
 # ---------------- Quick Game teams (P6-T3) ----------------
@@ -212,6 +260,10 @@ static func _all_ids() -> Array:
 	var out: Array = []
 	for t in Difficulty.all_teams():
 		out.append(str((t as Dictionary)["id"]))
+	var et: GDScript = _era_teams()
+	if et != null:
+		for eid in et.call("ids"):   # the era teams too (P11-34), open or not, like the crews
+			out.append(str(eid))
 	return out
 
 static func _test_run() -> bool:
