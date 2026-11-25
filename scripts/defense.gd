@@ -259,6 +259,8 @@ func _update_block_jump(delta: float) -> void:
 			phase = "rim"
 		elif "fake_t" in s and s.fake_t > 0.0:
 			phase = "fake"
+		elif s.euro_t >= 0.0:
+			phase = ""   # P11-17: a Euro-step's steps (on the floor, the ball held): he reads the take-off ("rim")
 		elif s.shooting or ball.state == ball.SHOT:
 			phase = "shot"
 	if phase != _watch_phase:
@@ -376,8 +378,12 @@ static func rim_blocker(g, shooter, kind: String):
 static func _sig_escape(g, shooter, d) -> void:
 	var sig: String = str(shooter.signature)
 	g.stat("sig_%s_escapes_t%d" % [sig, shooter.team])
-	shooter.sig_log(sig, "%s the block try of %s" % ["through" if sig == shooter.SIG_SHOULDER else "over",
-			d.pname if d.pname != "" else d.pid])
+	var how: String = "over"
+	if sig == shooter.SIG_SHOULDER:
+		how = "through"
+	elif sig == shooter.SIG_EURO_STEP:
+		how = "past"   # P11-17: the Euro-step layup
+	shooter.sig_log(sig, "%s the block try of %s" % [how, d.pname if d.pname != "" else d.pid])
 
 # P10-17 chase_down: his block chance at `shooter` from behind (x CHASE_DOWN_MULT, at most 1.0); `chance` for anyone else
 static func _chase_chance(d, shooter, chance: float) -> float:

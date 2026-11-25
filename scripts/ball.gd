@@ -47,6 +47,7 @@ var loose_cause := ""      # why the ball is loose: "steal", "block", "rebound",
 var lob_drift := Vector2.ZERO   # wind (P6-04): where the lob lands, off its receiver (sim px), set at the throw
 var shot_curve := Vector2.ZERO  # wind (P6-04): how far a long jump shot bows downwind mid-flight (drawn only)
 var outlet := false        # P9-20: the current PASS is an outlet (faster, harder to pick off)
+var steal_by = null        # P11-17: the poker whose steal knocked this LOOSE ball out ("steal"), null otherwise
 
 # ---- dunk and layup flight (tuning) ----
 const DUNK_FLIGHT := 0.12      # seconds from the hand to the rim on a dunk (a quick slam)
@@ -131,6 +132,9 @@ func hold(p) -> void:
 		passer.sig_log("outlet", "outlet caught by %s %.0f ft from the rim" % [p.pname if p.pname != "" else p.pid,
 				p.position.distance_to(game.attack_hoop(p.team)) / game.FT])
 	outlet = false
+	if p != null and "signature" in p:
+		_sig_on_hold(p)   # P11-17: a catch (everyone's since_catch), coast, steal_break
+	steal_by = null
 	state = HELD
 	holder = p
 	last_touch_team = p.team
@@ -156,6 +160,11 @@ func pass_to(from_p, to_p, lob_mode := -1) -> void:
 	outlet = false
 	if make_lob and to_p != null:
 		throw_lob(from_p, to_p)
+		if to_p.has_method("lob_extra_ft") and to_p.lob_extra_ft() > 0.0 \
+				and to_p.position.distance_to(game.attack_hoop(to_p.team)) > ALLEY_FT * game.FT:
+			game.stat("sig_lob_magnet_far_lobs_t%d" % to_p.team)   # P11-17: a lob only the lob magnet's range allowed
+			to_p.sig_log(to_p.SIG_LOB_MAGNET, "lob thrown to him %.1f ft from the rim" % (
+					to_p.position.distance_to(game.attack_hoop(to_p.team)) / game.FT))
 	elif to_p != null and from_p != null and "signature" in from_p and from_p.signature == from_p.SIG_OUTLET \
 			and from_p.position.distance_to(to_p.position) >= from_p.OUTLET_MIN_FT * game.FT:
 		outlet = true   # P9-20: the long outlet pass
@@ -181,7 +190,8 @@ func is_lob_target(p, from_p = null) -> bool:
 	var hoop: Vector2 = game.attack_hoop(p.team)
 	var to_hoop: Vector2 = hoop - p.position
 	var d_ft := to_hoop.length() / FT
-	if d_ft > ALLEY_FT or d_ft < ALLEY_MIN_FT:
+	var alley_ft: float = ALLEY_FT + (float(p.lob_extra_ft()) if p.has_method("lob_extra_ft") else 0.0)   # P11-17
+	if d_ft > alley_ft or d_ft < ALLEY_MIN_FT:
 		return false
 	var dir := to_hoop.normalized()
 	var cutting: bool = p.alley_cut or p.velocity.dot(dir) >= ALLEY_CUT_SPEED * p.speed
@@ -264,9 +274,12 @@ func shoot(p, hoop: Vector2, made: bool, points: int) -> void:
 # handler still holds it or the shot is still in the air): a held ball or a shot came loose off a defender's hand.
 # The rim-out below overrides it with the shooter's team.
 func make_loose(from: Vector2, v: Vector2, height := 20.0, up := 150.0) -> void:
+	steal_by = null
 	if state == HELD and holder != null:
 		last_touch_team = 1 - holder.team
 		loose_cause = "block" if holder.rim_kind != "" else "steal"
+		if loose_cause == "steal":
+			steal_by = _poker_of(holder)   # P11-17 steal_break (main.attempt_steal just set his cooldown)
 	elif state == SHOT and shooter != null:
 		last_touch_team = 1 - shooter.team
 		loose_cause = "block"
@@ -495,6 +508,30 @@ func _update_lob(delta: float) -> void:
 					game.stat("alleyoop_picks")
 					hold(p)
 					return
+
+# P11-17: the hold that ends this PASS / LOOSE ball, seen before it changes (`state` is still the old one). A pass
+# caught by its receiver starts his since_catch (everyone; read only by the pop man's catch-and-shoot); a missed
+# shot's loose ball taken by the other team is a defensive rebound (coast); a steal recovered by the poker's team, or
+# a pass picked off, is the stealer's (steal_break). The player's methods check his signature.
+func _sig_on_hold(p) -> void:
+	if state == PASS and p == receiver:
+		p.since_catch = 0.0
+	elif state == PASS and passer != null and p.team != passer.team:
+		p.sig_steal_won(p)   # a pick-off is his steal
+	elif state == LOOSE and loose_cause == "rebound" and p.team != last_touch_team:
+		p.start_coast()
+	elif state == LOOSE and loose_cause == "steal" and steal_by != null and steal_by.team == p.team:
+		steal_by.sig_steal_won(p)
+
+# the defender whose poke just knocked the ball out of `h`'s hands: the opponent with the freshest steal cooldown
+func _poker_of(h):
+	var best = null
+	var best_cd := 0.0
+	for o in game.teams[1 - h.team]:
+		if o.steal_cooldown > best_cd:
+			best_cd = o.steal_cooldown
+			best = o
+	return best
 
 # the passer's interception multiplier (P10-17 no_look; 1.0 for everyone else, and for a passer without pick_mult())
 func _pick_mult() -> float:

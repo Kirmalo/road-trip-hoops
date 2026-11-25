@@ -207,6 +207,23 @@ Everything below (Tasks by wave).
 ## Doing
 
 ## Review
+- **P11-17** (gameplay A, on the branch): the six Present moves in `player.gd` (constants at the top, block "P11-17"),
+  each only for its signature: `step_back` (a jumper 16 ft+ within 1.0 s of his crossover hops back the stepback
+  row's `fade_ft` 2.0 over its `fade` frames during the windup, keeps 0.5 of the contest; CPU sets it up with more
+  crossovers and rises at 0.7 through P11-12's `try_cpu_cross_pullup`, twist or not), `coast` (a defensive rebound:
+  6 s of sprinting with the ball with no drain, no lock, no CPU reserve; the CPU runs it to the rim), `pop` (CPU off
+  the ball drifts out to 24.5 ft while his man is 10 ft+ off him; any catch-and-shoot jumper within 1.0 s keeps 0.5 of
+  the contest; `since_catch` for everyone, set in `ball.hold`), `steal_break` (his poke recovered by his team, or his
+  pick-off: x1.15 speed for 2 s; the CPU runs the lane), `lob_magnet` (ball.gd's lob range and his take-off range +3 ft;
+  the CPU cuts at 0.16), `euro_step` (a layup from 5 ft+ with a man within 6 ft in front: the steps on the floor along
+  the eurostep row's `euro_path` and its ms (0.36 s, 2.5 ft in), then the layup with block chance x0.5 and 0.5 of the
+  rim contest; defense.gd reads the take-off, not the steps). `stepback` / `eurostep` frames when `Sheets.has_anim()`,
+  counts `anim_stepback` / `anim_eurostep`; `sig_<id>_t<team>` plus detail counts. No new input. Test flag
+  `--signature <id>[,..]` (BLUE only, like `--perk`) for `--humantest`. Seeded A/B (a scratch copy with a fixed seed):
+  `--autoplay`, `--autoplay --twist era_present`, `--humantest`, `--challenge lg_steeple`, `--challenge lg_midrange`
+  byte for byte the same logs as before. Each move seen in the 7 Present `--challenge` runs (11 games: step-back 19,
+  anim_stepback 19, Euro-step 8, anim_eurostep 8, pop 44, coast 5, steal_break 5, lob_magnet 2) and as the human.
+  For P11-29: CLAUDE.md's player.gd line and the test flags need the six moves and `--signature`.
 - **P11-20** (art E): `assets/music/legends_present.ogg` (383 KB) from "Techno DRIVE!!!" v2.5 (`racing tecno_v2.5.ogg`),
   Centurion_of_war, CC-BY 4.0, credited "Techno drive": loop 47.86-87.86 s (the last 20 whole bars, 120 bpm; the
   track builds, so no whole-file loop), 30 ms crossfade before the downbeat, mono, -20.1 LUFS (from -13.2), true peak

@@ -124,7 +124,69 @@ const CHASE_DOWN_MULT := 1.6      # his block chance x this on a try from behind
 const CHASE_DOWN_REACH_FT := 1.5  # ... and this much more reach (rim and jumper blocks)
 const CHASE_DOWN_DOT := -0.2      # "from behind": cosine of me-from-the-shooter to the shooter's hoop direction under this
 const CHASE_DOWN_JUMP_FT := 9.0   # CPU chase-down man: jumps at a rim move from behind this close (CPU_JUMP_FT otherwise)
+# ---- P11-17 the Present's signature moves (owner P4 c; legends_data.gd ids). Same model: "" = today's game.
+const SIG_STEP_BACK := "step_back"        # Deep End: a long jumper right after his crossover is a step-back (stepback frames)
+const SIG_COAST := "coast"                # Toolbox: after a defensive rebound he runs the floor without tiring
+const SIG_POP := "pop"                    # Stretch: drifts to the arc when his man helps; his catch-and-shoot jumpers slip
+                                          # part of the contest
+const SIG_STEAL_BREAK := "steal_break"    # Switch: a burst of speed right after his steals (ball.gd tells him)
+const SIG_LOB_MAGNET := "lob_magnet"      # Skylight: lobs to him are thrown and caught from further out (ball.gd asks)
+const SIG_EURO_STEP := "euro_step"        # Zigzag: a layup with a man in front is a Euro-step (eurostep frames)
+const STEP_BACK_ANIM := "stepback"        # format.json extra (P11-14, lg_deep_end only)
+const STEP_BACK_WINDOW := 1.0     # a jumper of his started this soon after his crossover started (= PULLUP_WINDOW) ...
+const STEP_BACK_MIN_FT := 16.0    # ... this far from the rim or further is a step-back
+const STEP_BACK_KEEP := 0.5       # a step-back keeps this fraction of main's jumper contest penalty
+const STEP_BACK_FT := 2.0         # the hop back before the rise (owner); format.json's stepback "fade_ft" wins
+const STEP_BACK_FRAMES := [1, 4]  # the hop's frames (format.json "fade"), before the release frame STEP_BACK_RELEASE
+const STEP_BACK_RELEASE := 8
+const STEP_BACK_CPU_CROSS := 0.12 # CPU step-back man: CPU_CROSS_CHANCE per decision becomes this (he sets it up)
+const STEP_BACK_CPU_CHANCE := 0.7 # CPU step-back man after his crossover: chance he rises for it (once per crossover,
+const STEP_BACK_CPU_MAX_FT := 27.0  # inside this from the rim, no room needed: the hop makes it; try_cpu_cross_pullup)
+const COAST_TIME := 6.0           # seconds after his defensive rebound he sprints without tiring (while he has the ball)
+const POP_CATCH_T := 1.0          # a jumper of his this soon after a catch is catch-and-shoot (= CPU_CATCH_SHOT_T) ...
+const POP_KEEP := 0.5             # ... and keeps this fraction of main's jumper contest penalty
+const POP_HELP_FT := 10.0         # CPU pop man off the ball: his man this far off him (helping) ...
+const POP_HELP_HYST_FT := 2.0     # (a drift goes on until his man is back within POP_HELP_FT - this: no flicker)
+const POP_ARC_FT := 24.5          # ... and he drifts out to this far from the rim (just beyond the arc)
+const POP_CPU_CHANCE := 0.6       # CPU pop man just caught it outside LAYUP_RANGE, inside CPU_THREE_MAX_FT: chance he shoots
+const STEAL_BREAK_TIME := 2.0     # seconds of the burst after his steal (a poke his team recovers, or a pick-off)
+const STEAL_BREAK_SPEED_MULT := 1.15  # x his speed during it
+const STEAL_BREAK_LANE_FT := 8.0  # CPU: off the ball during the burst he runs to this far out from the rim
+const LOB_MAGNET_EXTRA_FT := 3.0  # ball.ALLEY_FT (how far out a lob to him can be thrown) and ALLEY_REACH_FT (how far
+                                  # out he goes up for it) + this
+const LOB_MAGNET_CUT_CHANCE := 0.16   # CPU lob magnet off the ball: CPU_CUT_CHANCE becomes this
+const EURO_ANIM := "eurostep"     # format.json extra (P11-14, lg_zigzag only)
+const EURO_FRONT_FT := 6.0        # a layup of his with a defender this close in front (EURO_FRONT_CONE) ...
+const EURO_FRONT_CONE := 60.0
+const EURO_MIN_FT := 5.0          # ... started this far from the rim or further is a Euro-step (two steps, then the layup)
+const EURO_FORWARD_FT := 2.5      # the two steps carry him this far toward the rim before the take-off
+const EURO_KEEP := 0.5            # the layup keeps this fraction of main's rim contest penalty
+const EURO_BLOCK_MULT := 0.5      # block chance x this on it (defense.gd asks sig_block_mult)
+const EURO_PATH := [[0, 0.0], [2, -1.5], [4, 0.9]]  # [frame, feet to his left] (format.json "euro_path" wins)
+const EURO_TAKEOFF := 5           # the take-off frame (format.json "takeoff"); the steps are the frames before it ...
+const EURO_MS := [70, 80, 70, 80, 60, 50, 50, 50, 60, 60, 60, 80, 100]   # ... at these frame times (format.json "ms")
+const EURO_CPU_LAYUP := 0.75      # CPU Euro-step man entering LAYUP_RANGE with a man on him: chance he goes up for it
+const SIG_TEST_FLAG := "--signature"   # test only: -- --signature <id>[,<id>,<id>] gives BLUE these moves (one id: all
+                                  # 3; else id i for player i, "-" = none), so --humantest drives a move as the human
 var signature := ""               # P9-20: his move id ("" = none)
+var step_shot := false            # P11-17: the current / last jumper is a step-back (drawn with the stepback frames)
+var step_dir := Vector2.ZERO      # the hop's way (unit vector, away from the hoop)
+var step_done := 0.0              # sim px of the hop done so far
+static var _step_cache := {}      # the step-back timing from format.json (or the constants), read once
+var coast_t := 0.0                # P11-17 coast: seconds left running without tiring
+var _coast_from := Vector2.ZERO
+var since_catch := 99.0           # seconds since he caught a pass (ball.hold sets 0; everyone, read by the pop)
+var pop_shot := false             # P11-17: the current / last jumper is his catch-and-shoot
+var _pop_drift := false           # CPU pop man is drifting to the arc (logged once per drift)
+var steal_break_t := 0.0          # P11-17 steal_break: seconds left of the burst
+var euro_t := -1.0                # P11-17: seconds into the Euro-step's steps (< 0: not stepping)
+var euro_shot := false            # the current / last layup came out of a Euro-step
+var _euro_origin := Vector2.ZERO
+var _euro_fwd := Vector2.ZERO
+var _euro_left := Vector2.ZERO
+static var _euro_cache := {}      # the Euro-step timing from format.json (or the constants), read once
+var _v_step_seen := -1            # game.shot_serial of the last step-back counted in anim_stepback
+var _v_euro_seen := false         # this Euro-step was counted in anim_eurostep
 var fade_shot := false            # P10-17: the current / last jumper is a fadeaway (drawn with the fadeaway frames)
 var fade_dir := Vector2.ZERO      # the slide's way (unit vector, away from the hoop)
 var fade_left := 0.0              # sim px of the slide still to go
@@ -468,6 +530,7 @@ func setup(g, t: int, i: int, tex: Texture2D, pdict: Dictionary = {}) -> void:
 	def = Defense.new(self, g)
 	ratings = (RATINGS_BY_INDEX[i] as Dictionary).duplicate()
 	_apply_pdict(pdict)
+	_apply_sig_test()
 	speed = Ratings.speed_px(BASE_SPEED, rating("speed")) * Twists.value("speed_mult", 1.0)   # crowd 1.04, sand 0.9
 	if t == Difficulty.CPU_TEAM and i == 0:
 		Difficulty.init_once()   # saved level, then --difficulty (autoplay/humantest default to Hard)
@@ -498,6 +561,28 @@ func _apply_pdict(pdict: Dictionary) -> void:
 			ratings["steal"] = Ratings.derived(dfn, int(pdict.get("steal_bias", 0)))
 		if not r.has("block"):
 			ratings["block"] = Ratings.derived(dfn, int(pdict.get("block_bias", 0)))
+
+# test only (SIG_TEST_FLAG): BLUE player `index` plays this signature move (any id; his sheet stays his own, so the
+# extra frames show only on a sheet that carries them). Prints SIGNATURE TEST BLUE <i> <id>
+func _apply_sig_test() -> void:
+	if team != 0:
+		return
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var v := ""
+	for i in args.size():
+		if args[i].begins_with(SIG_TEST_FLAG + "="):
+			v = args[i].get_slice("=", 1)
+		elif args[i] == SIG_TEST_FLAG and i + 1 < args.size():
+			v = args[i + 1]
+	var ids: PackedStringArray = v.to_lower().split(",", false)
+	if ids.is_empty():
+		return
+	var id: String = ids[0] if ids.size() == 1 else (ids[index] if index < ids.size() else "")
+	if id == "" or id == "-":
+		return
+	signature = id
+	_sig_print = true
+	print("SIGNATURE TEST BLUE %d %s" % [index, id])
 
 # P9-24: the match dict's mentor perk; anything but a well-formed perk on BLUE leaves him without one
 func _apply_perk(pk) -> void:
@@ -537,6 +622,9 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	poke_t = maxf(0.0, poke_t - delta)
 	cross_cd = maxf(0.0, cross_cd - delta)
 	since_cross += delta
+	since_catch += delta
+	if signature != "":
+		_sig_timers(delta)   # P11-17 coast, steal_break
 	if pullup_mark and not shooting and not has_ball():
 		pullup_mark = false
 	cpu_side_t = maxf(0.0, cpu_side_t - delta)
@@ -555,8 +643,12 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		desired = update_rim_move(delta)
 	elif block_jump_t >= 0.0:
 		desired = update_block_jump(delta)
+	elif euro_t >= 0.0:
+		desired = update_euro(delta)   # P11-17: the Euro-step's two steps, then the layup
 	elif shooting:
 		shot_elapsed += delta
+		if step_shot and has_ball():
+			_step_slide(_fade_windup())   # P11-17: the step-back's hop back before the rise
 		if has_ball() and is_closely_contested():
 			shot_contest_t += delta
 		if fade_shot and has_ball():
@@ -607,11 +699,14 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	elif stumble_t > 0.0:
 		desired *= STUMBLE_SPEED_MULT
 		want_turbo = false
-	elif has_ball() and not is_airborne() and cross_t <= 0.0 and is_guarded(desired):
+	elif has_ball() and not is_airborne() and cross_t <= 0.0 and euro_t < 0.0 and is_guarded(desired):
 		desired *= GUARD_SLOW
 		game.stat("guard_slow_frames_t%d" % team)
 	if update_turbo(delta, want_turbo, is_human):
 		desired *= Twists.value("turbo_mult", TURBO_SPEED_MULT) * (TURBO_BALL_MULT if has_ball() else 1.0)
+	if steal_break_t > 0.0 and not is_airborne() and stumble_t <= 0.0 and poke_t <= 0.0:
+		desired *= STEAL_BREAK_SPEED_MULT   # P11-17 steal_break: the burst after his steal
+		game.stat("sig_steal_break_frames_t%d" % team)
 	desired *= Difficulty.value(team, "speed_mult", 1.0)   # Q6 b knob (1.0 on every level until answered)
 	update_dribble_hand(delta)
 	accel *= wet_grip(delta, desired)
@@ -764,7 +859,7 @@ func is_guarded(move: Vector2) -> bool:
 # A quick cut toward `dir` with the ball switching hands in front of the body. Called by human_input.gd on a flick
 # and by the CPU handler. Owner (Q1): crossover only, so every kind (including "spin") is a crossover.
 func start_crossover(dir: Vector2, kind: String) -> void:
-	if not has_ball() or shooting or is_airborne() or stumble_t > 0.0 or ft_frozen():
+	if not has_ball() or shooting or is_airborne() or stumble_t > 0.0 or ft_frozen() or euro_t >= 0.0:
 		return
 	if cross_cd > 0.0 or cross_t > 0.0:
 		if game.is_human(self):
@@ -1027,20 +1122,23 @@ func human_turbo_input() -> bool:
 
 # Drains or refills stamina and returns true if this player sprints this frame.
 func update_turbo(delta: float, want: bool, is_human: bool) -> bool:
+	var coasting: bool = coast_t > 0.0 and has_ball()   # P11-17 coast: no reserve, no lock, no drain
 	if not is_human:
 		# the CPU keeps a reserve: it never sprints itself below TURBO_MIN_RESTART
 		if stamina <= TURBO_MIN_RESTART:
 			cpu_tired = true
 		elif stamina >= CPU_TURBO_RESUME:
 			cpu_tired = false
-		if cpu_tired:
+		if cpu_tired and not coasting:
 			want = false
 	if turbo_locked and stamina >= TURBO_MIN_RESTART:
 		turbo_locked = false
-	turbo = want and not turbo_locked and not shooting and not is_airborne()
+	turbo = want and (not turbo_locked or coasting) and not shooting and not is_airborne()
 	if turbo:
 		since_turbo = 0.0
-		if on_fire:
+		if coasting:
+			game.stat("sig_coast_frames_t%d" % team)   # coast to coast: stamina doesn't drain
+		elif on_fire:
 			game.stat("fire_turbo_frames")   # on fire: stamina doesn't drain
 		else:
 			stamina = maxf(0.0, stamina - Ratings.stamina_drain(Difficulty.value(team, "stamina_drain", STAMINA_DRAIN),
@@ -1111,6 +1209,9 @@ func start_shot() -> void:
 		hook_shot = false
 		fade_shot = false
 		fade_air_t = 0.0
+		step_shot = false
+		pop_shot = false
+		euro_shot = false
 		if fake_t > 0.0:
 			end_pump_fake()   # out of a pump fake straight into the real shot
 			game.stat("pump_then_shoot_t%d" % team)
@@ -1127,6 +1228,8 @@ func start_shot() -> void:
 		if fade_shot:
 			fade_dir = (position - game.attack_hoop(team)).normalized()
 			fade_left = float(_fade_timing()["ft"]) * game.FT
+		if signature == SIG_STEP_BACK or signature == SIG_POP:
+			_sig_jumper_start(d_ft)   # P11-17 step-back, catch-and-shoot
 		cpu_shot_time = game.rng.randf_range(CPU_WINDUP_MIN, CPU_WINDUP_MAX)
 		if _cpu_catch_t <= CPU_CATCH_SHOT_T and not game.is_human(self) and not at_free_throw():
 			cpu_shot_time = game.rng.randf_range(CPU_CATCH_WINDUP_MIN, CPU_CATCH_WINDUP_MAX)   # catch and shoot
@@ -1136,8 +1239,8 @@ func start_shot() -> void:
 		shot_contest_t = shot_grace if is_closely_contested() else 0.0   # already on me: never a late closeout
 
 func release_shot() -> void:
-	if not shooting or rim_kind != "":
-		return  # dunks and layups release on their own
+	if not shooting or rim_kind != "" or euro_t >= 0.0:
+		return  # dunks and layups (and a Euro-step's steps) release on their own
 	if game.is_human(self) and is_pump_tap():
 		if at_free_throw():
 			shooting = false      # no pump fake at the line: a short tap is ignored (hold and release to shoot)
@@ -1202,6 +1305,8 @@ func release_shot() -> void:
 		fade_air_rate = fade_left / fade_air_t
 		sig_log(SIG_FADEAWAY, "fadeaway from %.1f ft, %.1f ft slid before the release (odds x%.2f)" % [
 				position.distance_to(hoop) / game.FT, float(_fade_timing()["ft"]) - fade_left / game.FT, maxf(fm / late, 1.0)])
+	if counted and (step_shot or pop_shot):
+		quality *= _sig_jumper_release(hoop, three)   # P11-17 step-back, catch-and-shoot
 	if cpu_three_try and counted and not three:
 		game.stat("cpu_threes_inside")   # a CPU 2 that drifted inside the arc during the windup (worth 1)
 	var two_src := ""
@@ -1312,6 +1417,8 @@ func sig_block_mult(kind: String) -> float:
 		if kind == "" and game.ball.shot_start.distance_to(game.attack_hoop(team)) <= SHOULDER_CLOSE_FT * game.FT:
 			return SHOULDER_BLOCK_MULT
 		return 1.0
+	if signature == SIG_EURO_STEP:
+		return EURO_BLOCK_MULT if kind == "layup" and euro_shot else 1.0   # P11-17: the Euro-step layup
 	if signature != SIG_HOOK:
 		return 1.0
 	if kind == "layup" or (kind == "" and hook_shot):
@@ -1341,6 +1448,229 @@ func pick_mult() -> float:
 	if perk_key != "":
 		m *= perk("pass_safe_mult", 1.0)
 	return m
+
+# ---------------- P11-17 the Present's signature moves ----------------
+# Same model as P9-20 / P10-17: each rule runs only for the player whose "signature" it is (update() calls _sig_timers
+# only for a player with a signature; ball.gd calls start_coast / sig_steal_won only on a hold that qualifies), so a
+# game without a Present legend draws no extra random number and plays exactly as before.
+
+# coast and steal_break timers (only for a player with a signature)
+func _sig_timers(delta: float) -> void:
+	if coast_t > 0.0:
+		coast_t = maxf(0.0, coast_t - delta)
+		if coast_t <= 0.0 or not has_ball():
+			_end_coast()
+	steal_break_t = maxf(0.0, steal_break_t - delta)
+
+# ball.gd: he took a defensive rebound (a missed shot of theirs, loose off the rim)
+func start_coast() -> void:
+	if signature != SIG_COAST:
+		return
+	coast_t = COAST_TIME
+	_coast_from = position
+	sig_log(SIG_COAST, "defensive rebound %.0f ft from the rim he defends: coast to coast" % [
+			position.distance_to(game.attack_hoop(1 - team)) / game.FT])
+
+func _end_coast() -> void:
+	coast_t = 0.0
+	var ft: float = position.distance_to(_coast_from) / game.FT
+	game.stat_add("sig_coast_ft_t%d" % team, int(ft))
+	if game.in_frontcourt(position, team):
+		game.stat("sig_coast_frontcourt_t%d" % team)   # he carried it over half court himself
+	if _sig_print:
+		print("SIGNATURE coast %s (team %d, %d-%d): carried it %.0f ft%s" % [pname if pname != "" else pid, team,
+				int(game.score[0]), int(game.score[1]), ft, ", into the frontcourt" if game.in_frontcourt(position, team) else ""])
+
+# ball.gd: a steal of his (his poke, recovered by his team, `by`) or his pick-off (by = himself)
+func sig_steal_won(by) -> void:
+	if signature != SIG_STEAL_BREAK:
+		return
+	steal_break_t = STEAL_BREAK_TIME
+	sig_log(SIG_STEAL_BREAK, "steal (%s): the burst" % ("he has it" if by == self else
+			"%s has it" % (by.pname if by.pname != "" else by.pid)))
+
+# ball.gd: the extra feet a lob to him may be thrown from and he goes up for it from (0 for everyone else)
+func lob_extra_ft() -> float:
+	return LOB_MAGNET_EXTRA_FT if signature == SIG_LOB_MAGNET else 0.0
+
+# how far from the rim he goes up for a lob (ALLEY_REACH_FT; the lob magnet further)
+func alley_reach() -> float:
+	return ALLEY_REACH_FT + lob_extra_ft()
+
+# start_shot: is this jumper a step-back (his crossover just now, far enough out) or a catch-and-shoot of the pop man
+func _sig_jumper_start(d_ft: float) -> void:
+	if at_free_throw():
+		return
+	step_shot = signature == SIG_STEP_BACK and since_cross <= STEP_BACK_WINDOW and d_ft >= STEP_BACK_MIN_FT
+	if step_shot:
+		step_dir = (position - game.attack_hoop(team)).normalized()
+		step_done = 0.0
+		if game.is_human(self):
+			game.stat("human_step_backs")
+	pop_shot = signature == SIG_POP and since_catch <= POP_CATCH_T
+
+# release_shot: the step-back or catch-and-shoot's quality x (all but its KEEP of the contest, not on top of the
+# late-closeout ease, like the fadeaway); counted and logged
+func _sig_jumper_release(hoop: Vector2, three: bool) -> float:
+	var late: float = CLOSEOUT_SOFT_MULT if game.openness(self) < CLOSEOUT_FT \
+			and (shot_contest_t < shot_grace or not is_closely_contested()) else 1.0
+	var m: float = contest_keep_mult(STEP_BACK_KEEP if step_shot else POP_KEEP, false)
+	var gain: float = maxf(m / late, 1.0)
+	var id: String = SIG_STEP_BACK if step_shot else SIG_POP
+	if gain > 1.0:
+		game.stat("sig_%s_eased_t%d" % [id, team])   # a contest it took part of away
+	var d: float = position.distance_to(hoop) / game.FT
+	if step_shot:
+		sig_log(id, "step-back %s from %.1f ft, %.1f ft hopped back (odds x%.2f)" % ["three" if three else "jumper", d,
+				step_done / game.FT, gain])
+	else:
+		sig_log(id, "catch-and-shoot %s from %.1f ft, %.2f s after the catch (odds x%.2f)" % ["three" if three else
+				"jumper", d, since_catch, gain])
+	return gain
+
+# P11-17: the step-back's timing from format.json's "stepback" extra (its "fade" frames, "fade_ft" and release), else
+# the constants: "ft" the hop, "start" / "end" the windup fractions it runs between (its frames / the release frame,
+# as the drawn windup runs). Read once (static data, the same for every sheet).
+static func _step_timing() -> Dictionary:
+	if not _step_cache.is_empty():
+		return _step_cache
+	var row: Dictionary = (Sheets.extra_anims(Sheets.v2_format()).get(STEP_BACK_ANIM, {}) as Dictionary)
+	var fr = row.get("fade", STEP_BACK_FRAMES)
+	var a: int = int(fr[0]) if fr is Array and (fr as Array).size() == 2 else int(STEP_BACK_FRAMES[0])
+	var b: int = int(fr[1]) if fr is Array and (fr as Array).size() == 2 else int(STEP_BACK_FRAMES[1])
+	var rel: int = int(row.get("release", STEP_BACK_RELEASE))
+	if a < 0 or a >= b or b > rel:
+		a = int(STEP_BACK_FRAMES[0])
+		b = int(STEP_BACK_FRAMES[1])
+		rel = STEP_BACK_RELEASE
+	_step_cache = {"ft": float(row.get("fade_ft", STEP_BACK_FT)), "start": float(a) / float(rel),
+			"end": float(b) / float(rel)}
+	return _step_cache
+
+# the step-back's hop back (a sim move): eased over the windup from "start" to "end", STEP_BACK_FT in all
+func _step_slide(windup: float) -> void:
+	var tm: Dictionary = _step_timing()
+	var u: float = clampf((windup - float(tm["start"])) / maxf(float(tm["end"]) - float(tm["start"]), 0.01), 0.0, 1.0)
+	var want: float = float(tm["ft"]) * game.FT * u * u * (3.0 - 2.0 * u)
+	if want <= step_done:
+		return
+	var step: float = want - step_done
+	step_done = want
+	position = game.clamp_to_court(position + step_dir * step)
+	game.stat("sig_step_back_slide_frames_t%d" % team)
+
+# the defender close in front of my drive (a Euro-step goes past him), or null
+func _euro_man(d_ft: float):
+	if d_ft < EURO_MIN_FT:
+		return null
+	var dir: Vector2 = (game.attack_hoop(team) - position).normalized()
+	var cos_cone := cos(deg_to_rad(EURO_FRONT_CONE))
+	var best = null
+	var best_d: float = EURO_FRONT_FT * game.FT
+	for o in game.teams[1 - team]:
+		var r: Vector2 = o.position - position
+		var d := r.length()
+		if d < best_d and d > 0.1 and dir.dot(r / d) >= cos_cone and o.stumble_t <= 0.0:
+			best_d = d
+			best = o
+	return best
+
+# the Euro-step starts: on the floor (shooting, so no other move), two steps along the path, then the layup
+func start_euro() -> void:
+	var hoop: Vector2 = game.attack_hoop(team)
+	_euro_fwd = (hoop - position).normalized()
+	_euro_left = _euro_fwd.rotated(-PI / 2.0)   # his left (= Vector2.from_angle(facing - PI / 2) facing the rim)
+	_euro_origin = position
+	euro_t = 0.0
+	euro_shot = true
+	shooting = true
+	cross_t = 0.0
+	_v_euro_seen = false
+	game.stat("sig_euro_steps_t%d" % team)
+	if game.is_human(self):
+		game.stat("human_euro_steps")
+
+# Runs every frame of the steps: the sideways sway along the path (moved straight into the position, so his facing
+# stays on the rim and the drawn steps match) and a slow walk in; at the take-off frame the layup starts
+func update_euro(delta: float) -> Vector2:
+	if not has_ball() or not shooting or ft_frozen():
+		euro_t = -1.0   # stripped, a reset, or free throws: no layup
+		if not has_ball():
+			shooting = false
+		return Vector2.ZERO
+	var tm: Dictionary = _euro_timing()
+	var total: float = float(tm["time"])
+	var before: float = _euro_offset(euro_t)
+	euro_t += delta
+	var after: float = _euro_offset(minf(euro_t, total))
+	position = game.clamp_to_court(position + _euro_left * (after - before) * game.FT)
+	if euro_t >= total:
+		euro_t = -1.0
+		begin_rim_move(false)
+	return _euro_fwd * (EURO_FORWARD_FT * game.FT / maxf(total, 0.05))
+
+# P11-17: the Euro-step's timing from format.json's "eurostep" extra ("ms", "takeoff", "euro_path"), else the
+# constants: "time" the steps' seconds (the frames before the take-off), "pts" [seconds, feet to his left]. Read once.
+static func _euro_timing() -> Dictionary:
+	if not _euro_cache.is_empty():
+		return _euro_cache
+	var row: Dictionary = (Sheets.extra_anims(Sheets.v2_format()).get(EURO_ANIM, {}) as Dictionary)
+	var ms = row.get("ms", EURO_MS)
+	var tk: int = int(row.get("takeoff", EURO_TAKEOFF))
+	var path = row.get("euro_path", EURO_PATH)
+	if not (ms is Array) or (ms as Array).size() <= tk or tk < 1 or not (path is Array) or (path as Array).is_empty():
+		ms = EURO_MS
+		tk = EURO_TAKEOFF
+		path = EURO_PATH
+	var starts: Array = [0.0]
+	for i in tk:
+		starts.append(float(starts[i]) + float(ms[i]) / 1000.0)
+	var pts: Array = []
+	for pt in path:
+		var k: int = clampi(int(pt[0]), 0, tk)
+		pts.append([float(starts[k]), float(pt[1])])
+	_euro_cache = {"time": float(starts[tk]), "pts": pts}
+	return _euro_cache
+
+# feet to his left at `t` seconds into the steps (eased between the path's points, as the art's preview moves him)
+static func _euro_offset(t: float) -> float:
+	var pts: Array = _euro_timing()["pts"]
+	if t <= float(pts[0][0]):
+		return float(pts[0][1])
+	for i in range(1, pts.size()):
+		var a: Array = pts[i - 1]
+		var b: Array = pts[i]
+		if t < float(b[0]):
+			var u: float = clampf((t - float(a[0])) / maxf(float(b[0]) - float(a[0]), 0.0001), 0.0, 1.0)
+			return lerpf(float(a[1]), float(b[1]), u * u * (3.0 - 2.0 * u))
+	return float(pts[pts.size() - 1][1])
+
+# CPU off the ball (only a player with a signature): steal_break runs ahead after his steal (true: target set, skip
+# the rest); the pop man drifts out to the arc while his man helps (the target moved, the rest still applies)
+func _sig_offball(hoop: Vector2) -> bool:
+	if signature == SIG_STEAL_BREAK and steal_break_t > 0.0 and game.possession == team:
+		target = hoop + Vector2(game.inward(hoop) * STEAL_BREAK_LANE_FT * game.FT, 0)
+		cpu_turbo_want = true
+		return true
+	if signature != SIG_POP:
+		return false
+	var ball = game.ball
+	var man = game.teams[1 - team][index]
+	var helping: bool = ball.state == ball.HELD and ball.holder != null and ball.holder.team == team \
+			and game.in_frontcourt(position, team) \
+			and man.position.distance_to(position) > (POP_HELP_FT - (POP_HELP_HYST_FT if _pop_drift else 0.0)) * game.FT
+	var off: Vector2 = target - hoop
+	if not helping or off.length() < 1.0 or off.length() >= POP_ARC_FT * game.FT:
+		_pop_drift = false
+		return false
+	var e: float = SPACING_EDGE_FT * game.FT
+	var p: Vector2 = hoop + off.normalized() * POP_ARC_FT * game.FT
+	target = Vector2(clampf(p.x, e, View.COURT_W - e), clampf(p.y, e, View.COURT_H - e))
+	game.stat("sig_pop_drift_frames_t%d" % team)
+	if not _pop_drift:
+		_pop_drift = true
+		sig_log(SIG_POP, "his man helps %.0f ft off him: drifts to the arc" % (man.position.distance_to(position) / game.FT))
+	return false
 
 # P10-17: the fadeaway's timing, from format.json's "fadeaway" extra (its "fade" frames, "fade_ft", release and "ms"),
 # else the constants above: "ft" the slide, "start" the windup fraction it starts at (its first frame / the release
@@ -1457,6 +1787,13 @@ func start_rim_move(d_ft: float) -> void:
 		perk_log("dunk from %.1f ft (reach %.1f ft)" % [d_ft, dunk_reach()])   # P9-24 dunk_reach_mult
 	elif dunk and d_ft > DUNK_RANGE:
 		game.stat("iso_far_dunks_t%d" % team)   # ISO BALL (P10-12): a take-off only the twist's longer range allows
+	if signature == SIG_EURO_STEP and not dunk and _euro_man(d_ft) != null:
+		start_euro()   # P11-17: two steps past the man in front, then this layup (begin_rim_move)
+		return
+	begin_rim_move(dunk)
+
+# the take-off itself (a rim move decided by start_rim_move; P11-17: also the end of a Euro-step)
+func begin_rim_move(dunk: bool) -> void:
 	alley_oop = false
 	rim_kind = "dunk" if dunk else "layup"
 	jump_time = DUNK_TIME if dunk else LAYUP_TIME
@@ -1544,6 +1881,10 @@ func release_rim_shot() -> void:
 		var cm: float = contest_keep_mult(CRADLE_KEEP, true)
 		soft = maxf(soft, cm)   # P10-17 cradle: slips part of the contest (not on top of the soft-contest ease)
 		sig_log(SIG_CRADLE, "cradle dunk from %.1f ft (odds x%.2f)" % [d_ft, maxf(cm, 1.0)])
+	if euro_shot and rim_kind == "layup":
+		var em: float = contest_keep_mult(EURO_KEEP, true)
+		soft = maxf(soft, em)   # P11-17 Euro-step: slips part of the contest (not on top of the soft-contest ease)
+		sig_log(SIG_EURO_STEP, "Euro-step layup from %.1f ft (odds x%.2f)" % [d_ft, maxf(em, 1.0)])
 	game.release_shot(self, target / base * rim_quality * fire_mult * alley_mult * soft)
 	count_pump_and_score()
 	if ball.state == ball.SHOT:
@@ -1632,19 +1973,34 @@ func spaced_spot(hoop: Vector2, t: Vector2) -> Vector2:
 
 # SPACE THE FLOOR (P11-12): the CPU handler pulls up for the jumper right after a crossover, once the burst is over and
 # he has room (rolled once per crossover); never without the twist's pullup_mult (no roll: today's game)
+# P11-17: the step-back man rolls it with or without the twist, from STEP_BACK_MIN_FT to STEP_BACK_CPU_MAX_FT, without
+# needing room (the hop back makes it), at STEP_BACK_CPU_CHANCE
 func try_cpu_cross_pullup(dist_ft: float, open_ft: float, guard_behind: bool) -> bool:
-	if Twists.value("pullup_mult", 1.0) <= 1.0 or _pullup_rolled:
+	var sb: bool = signature == SIG_STEP_BACK
+	if (Twists.value("pullup_mult", 1.0) <= 1.0 and not sb) or _pullup_rolled:
 		return false
 	if since_cross < PULLUP_CPU_DELAY or since_cross > PULLUP_WINDOW - 0.1 or shooting or rim_kind != "":
 		return false
-	if dist_ft <= LAYUP_RANGE or dist_ft > PULLUP_CPU_MAX_FT or (open_ft < PULLUP_CPU_ROOM_FT and not guard_behind):
+	if sb:
+		if dist_ft < STEP_BACK_MIN_FT or dist_ft > STEP_BACK_CPU_MAX_FT:
+			return false
+	elif dist_ft <= LAYUP_RANGE or dist_ft > PULLUP_CPU_MAX_FT or (open_ft < PULLUP_CPU_ROOM_FT and not guard_behind):
 		return false
 	_pullup_rolled = true
-	if game.rng.randf() >= PULLUP_CPU_CHANCE:
+	if game.rng.randf() >= (STEP_BACK_CPU_CHANCE if sb else PULLUP_CPU_CHANCE):
 		return false
-	game.stat("cpu_cross_pullups_t%d" % team)
+	game.stat("cpu_step_backs_t%d" % team if sb else "cpu_cross_pullups_t%d" % team)
 	start_shot()
 	return shooting
+
+# the CPU handler's crossover chance per decision (CPU_CROSS_CHANCE; the double-crosser and P11-17 the step-back man
+# set theirs up more often)
+func _cpu_cross_chance() -> float:
+	if signature == SIG_DOUBLE_CROSS:
+		return DOUBLE_CROSS_CPU_CHANCE
+	if signature == SIG_STEP_BACK:
+		return STEP_BACK_CPU_CROSS
+	return CPU_CROSS_CHANCE
 
 # ---------------- free throws (P3-06) ----------------
 
@@ -1816,6 +2172,8 @@ func offball_ai(delta: float, hoop: Vector2) -> void:
 		if choices.size() > 0:
 			spot_index = choices[game.rng.randi() % choices.size()]
 	target = spaced_spot(hoop, spot_pos(hoop, spot_index))
+	if signature != "" and _sig_offball(hoop):
+		return   # P11-17 steal_break: running ahead after his steal
 	# stay out of the ball handler's way
 	var ball = game.ball
 	if ball.holder != null and ball.holder != self:
@@ -1840,6 +2198,9 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 			cpu_turbo_want = true
 		if signature == SIG_OUTLET and not cpu_call_hold():
 			try_cpu_outlet(hoop)   # P9-20: the long pass to a teammate who leaked out
+		if (coast_t > 0.0 or steal_break_t > 0.0) and not cpu_call_hold():
+			target = hoop + Vector2(game.inward(hoop) * 3.0 * FT, 0)   # P11-17 coast / steal_break: run it all the way
+			cpu_turbo_want = true
 		return
 	# drive to the rim, sidestepping a defender who is in the way
 	target = hoop + Vector2(game.inward(hoop) * 3.0 * FT, 0)
@@ -1880,6 +2241,8 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 			lay_p = CRADLE_CPU_LAYUP        # P10-17: the cradle man keeps going for the dunk
 		elif signature == SIG_SHOULDER and open_ft < CPU_LAYUP_GUARD_FT:
 			lay_p = SHOULDER_CPU_LAYUP      # P10-17: the shoulder man goes up through the man on him
+		elif signature == SIG_EURO_STEP and open_ft < CPU_LAYUP_GUARD_FT:
+			lay_p = EURO_CPU_LAYUP          # P11-17: the Euro-step past the man on him
 		if game.rng.randf() < lay_p:
 			start_shot()
 			return
@@ -1887,7 +2250,9 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		start_shot()
 		return
 	if try_cpu_cross_pullup(dist_ft, open_ft, guard_behind):
-		return   # P11-12 SPACE THE FLOOR: the jumper off the crossover
+		return   # P11-12 SPACE THE FLOOR: the jumper off the crossover (P11-17: the step-back man's step-back)
+	if coast_t > 0.0 and (open_ft > 6.0 or fast_break) and dist_ft > 8.0:
+		cpu_turbo_want = true   # P11-17 coast: still sprinting the floor
 	decision_timer -= delta
 	if decision_timer > 0.0:
 		return
@@ -1901,6 +2266,11 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		start_shot()
 	elif try_cpu_lob():
 		pass   # alley-oop lob to a cutter
+	elif signature == SIG_POP and _cpu_catch_t <= POP_CATCH_T and dist_ft > LAYUP_RANGE and dist_ft <= CPU_THREE_MAX_FT \
+			and game.rng.randf() < POP_CPU_CHANCE:
+		game.stat("cpu_pops_t%d" % team)
+		start_shot()   # P11-17: the pick-and-pop catch-and-shoot
+		cpu_three_try = shooting and three
 	elif signature == SIG_HOOK and dist_ft > LAYUP_RANGE and dist_ft <= HOOK_MAX_FT and open_ft < HOOK_CPU_GUARD_FT \
 			and game.rng.randf() < HOOK_CPU_CHANCE:
 		game.stat("cpu_hooks_t%d" % team)
@@ -1910,7 +2280,7 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		game.stat("cpu_fadeaways_t%d" % team)
 		start_shot()   # P10-17: the fadeaway over the man on him
 	elif step_side != 0.0 and open_ft < CPU_CROSS_FT and dist_ft > LAYUP_RANGE and cross_cd <= 0.0 \
-			and not lane_open(hoop) and game.rng.randf() < (DOUBLE_CROSS_CPU_CHANCE if signature == SIG_DOUBLE_CROSS else CPU_CROSS_CHANCE):
+			and not lane_open(hoop) and game.rng.randf() < _cpu_cross_chance():
 		# crossover: cut back the other way, behind a defender sliding with the sidestep
 		cpu_side = -step_side
 		cpu_side_t = CPU_CROSS_COMMIT
@@ -1992,9 +2362,12 @@ func start_alley_dunk() -> void:
 	if is_airborne() or stumble_t > 0.0 or has_ball():
 		return
 	var d_ft: float = position.distance_to(game.attack_hoop(team)) / game.FT
-	if d_ft > ALLEY_REACH_FT:
+	if d_ft > alley_reach():
 		game.stat("alleyoop_too_far")
 		return
+	if d_ft > ALLEY_REACH_FT:
+		game.stat("sig_lob_magnet_far_catches_t%d" % team)   # P11-17: only the lob magnet goes up from here
+		sig_log(SIG_LOB_MAGNET, "goes up for the lob %.1f ft from the rim" % d_ft)
 	if fake_t > 0.0:
 		end_pump_fake()
 	cross_t = 0.0
@@ -2044,7 +2417,10 @@ func try_cpu_cut(hoop: Vector2) -> bool:
 	var man = game.teams[1 - team][index]
 	if man.position.distance_to(position) < CPU_CUT_MAN_FT * game.FT:
 		return false
-	if game.rng.randf() >= Difficulty.value(team, "cut_chance", CPU_CUT_CHANCE):
+	var cut_p: float = Difficulty.value(team, "cut_chance", CPU_CUT_CHANCE)
+	if signature == SIG_LOB_MAGNET:
+		cut_p *= LOB_MAGNET_CUT_CHANCE / CPU_CUT_CHANCE   # P11-17: the lob catcher cuts for it more often
+	if game.rng.randf() >= cut_p:
 		return false
 	alley_cut_t = CPU_CUT_TIME
 	alley_cut = true
@@ -2531,7 +2907,7 @@ func _draw_view_overlay() -> void:
 	n.draw_rect(Rect2(bo, Vector2(bw * stamina, 10)), col)
 	var mark := bo.x + bw * TURBO_MIN_RESTART
 	n.draw_line(Vector2(mark, bo.y), Vector2(mark, bo.y + 10), Color(1, 1, 1, 0.5), 1.0)
-	if shooting:
+	if shooting and euro_t < 0.0:   # (no meter over a Euro-step's steps)
 		var w := 56.0
 		var o := head + Vector2(-w / 2, -32)
 		n.draw_rect(Rect2(o, Vector2(w, 10)), Color(0, 0, 0, 0.7))
@@ -2743,6 +3119,11 @@ func _v2_phase_x(anim: String, p: float) -> float:
 # P9-20: a hook shot plays the sheet's "hook" frames when it carries them (Sheets.has_anim; P9-04c extra pages), else
 # the normal jump shot. Drawing only: hook_shot is the sim's.
 func _v2_shot_anim() -> String:
+	if step_shot and Sheets.has_anim(_v_fmt, STEP_BACK_ANIM):
+		if shooting and _v_step_seen != game.shot_serial:
+			_v_step_seen = game.shot_serial   # P11-17: Deep End's step-back frames (P11-14 extra pages)
+			game.stat("anim_stepback")
+		return STEP_BACK_ANIM
 	if fade_shot and Sheets.has_anim(_v_fmt, SIG_FADEAWAY):
 		if shooting and _v_fade_seen != game.shot_serial:
 			_v_fade_seen = game.shot_serial   # P10-17: Midrange's fadeaway frames (P10-14 extra pages)
@@ -2908,7 +3289,7 @@ func _update_sheet_frame_v2(delta: float) -> void:
 			anchors.append([1.0, float(rim) + 0.5])
 			x = _v2_anchor_x(anchors, f)
 		else:
-			anim = Sheets.resolve(fmt, "layup")
+			anim = Sheets.resolve(fmt, EURO_ANIM if euro_shot else "layup")   # P11-17: the Euro-step's own layup
 			var n2: int = Sheets.anim_frames(fmt, anim)
 			var rel2: int = Sheets.anim_event(fmt, anim, "release", n2 >> 1)
 			var tk2: int = clampi(Sheets.anim_event(fmt, anim, "takeoff", 0), 0, rel2)
@@ -2926,6 +3307,17 @@ func _update_sheet_frame_v2(delta: float) -> void:
 		var top: int = mini(PUMP_TOP_FRAME, maxi(0, Sheets.anim_event(fmt, anim, "release", 1) - 1))
 		var g: float = clampf(1.0 - fake_t / PUMP_TIME, 0.0, 1.0)
 		x = (1.0 - absf(2.0 * g - 1.0)) * float(top)
+	elif euro_t >= 0.0:
+		# P11-17: the Euro-step's two steps (its frames before the take-off; a sheet without them: the layup's gather)
+		anim = Sheets.resolve(fmt, EURO_ANIM)
+		var tk3: int = maxi(1, Sheets.anim_event(fmt, anim, "takeoff", 1))
+		if anim == EURO_ANIM:
+			x = minf(_v2_clock_x(anim, euro_t, false), float(tk3) - 0.001)
+			if not _v_euro_seen:
+				_v_euro_seen = true
+				game.stat("anim_eurostep")
+		else:
+			x = clampf(euro_t / maxf(float(_euro_timing()["time"]), 0.01), 0.0, 0.999) * float(tk3)
 	elif shooting:
 		anim = Sheets.resolve(fmt, _v2_shot_anim())   # jumper or free throw: gather and rise through the windup / meter
 		var fs := 0.0
