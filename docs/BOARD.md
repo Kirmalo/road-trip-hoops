@@ -155,6 +155,12 @@ Everything below (Tasks by wave).
 ## Doing
 
 ## Review
+- **P11-06** (art C): `era_present` court done: `make_courts.py --era present` (wide cool ash planks, teal key, dark
+  centre circle and apron, charcoal bowl, black seats, teal / coral ribbon boards with stripes and chevrons only, phone
+  lights; no word, digit or logo), `era_present_floor.png` 969 B, `era_present_backdrop.png` 15.8 KB, a
+  `court_looks.gd` row (name proposed "NEW ARENA", music `newyork` until P11-20). Checked angled and flat shots;
+  not in the COURT list (`--menushot --unlock-all --stars 72`); `--era` rewrites the older era files byte for byte.
+  Teal is a first guess until P11-05's palettes.
 
 ## Done
 
