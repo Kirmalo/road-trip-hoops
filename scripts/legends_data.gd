@@ -482,15 +482,17 @@ const NAMECHECK_PROBES := [
 static var notes: Array = []        # self_test(): things that fall back for now (art or story not merged yet)
 
 # ---------------------------------------------------------------------------------------------------- test data hook
-# P10-02: a test-only stand-in for the rows, so the multi-chapter paths are tested before a second chapter's real data
-# is merged (Legends.self_test(): set_test_data(two_chapter_test_data()), then clear_test_data()). Never set in a game;
+# P10-02: a test-only stand-in for the rows, so the multi-chapter paths are tested before a chapter's real data is
+# merged (Legends.self_test(): set_test_data(stand_in_test_data(ch)), then clear_test_data()). Never set in a game;
 # empty = the shipped CHAPTERS / LEGENDS. Every getter below reads the rows through chapter_rows() / legend_rows();
-# the name check and self_test() read the shipped consts only.
+# the name check and self_test() read the shipped consts only. P11-03: stand_in_test_data(chapter_id) builds any row
+# (two_chapter_test_data() = the Phase 10 one, "fathers"), so three built chapters run before Chapter 3's rows land.
 static var _test_chapters: Array = []
 static var _test_legends: Dictionary = {}
 
 const TEST_CHAPTER := "fathers"     # two_chapter_test_data(): the chapter row it builds (a stand-in, not the real one)
-const TEST_PREFIX := "lg_zz_"       # its legend ids: lg_zz_1 .. lg_zz_6 (never a shipped id)
+const TEST_PREFIX := "lg_zz_"       # stand-in legend ids: lg_zz_1 .. lg_zz_6 for TEST_CHAPTER (as in Phase 10),
+                                    # lg_zz_<chapter>_1 .. 6 for any other row (never a shipped id)
 const TEST_CHALLENGE_AVG := 70      # its per-chapter rating keys (all unlike the defaults, so the test sees them)
 const TEST_MATE_DROP := 10
 const TEST_FINALE_STAGE_AVG := 56
@@ -512,25 +514,42 @@ static func chapter_rows() -> Array:
 static func legend_rows() -> Dictionary:
 	return _test_legends if not _test_legends.is_empty() else LEGENDS
 
-# The shipped rows with TEST_CHAPTER replaced by a built stand-in: 6 legends lg_zz_1..6 (copies of the first built
-# chapter's: shapes, challenges, perks; names "ZZ ONE".. "ZZ SIX"), its finale (the copies of the first chapter's
-# finale three), the per-chapter keys TEST_*, a look, twist and music that don't exist (so the fallbacks play: gym,
-# none, the first chapter's fallback_music) and story scenes that don't exist (skipped).
-# Returns {"chapters": [...], "legends": {...}} for set_test_data().
+# The Phase 10 stand-in: stand_in_test_data(TEST_CHAPTER), the same rows as before P11-03.
 static func two_chapter_test_data() -> Dictionary:
+	return stand_in_test_data(TEST_CHAPTER)
+
+# The stand-in id prefix of a chapter's copies: "lg_zz_" for TEST_CHAPTER, "lg_zz_<chapter>_" for any other.
+static func stand_in_prefix(chapter_id: String) -> String:
+	return TEST_PREFIX if chapter_id == TEST_CHAPTER else TEST_PREFIX + chapter_id + "_"
+
+# The shipped rows with chapter_id's row replaced by a built stand-in (built or not before: its real legends, once it
+# has some, step aside): 6 legends <stand_in_prefix()>1..6 (copies of the first other built chapter's: shapes,
+# challenges, perks; names "ZZ ONE".. "ZZ SIX"), its finale (the copies of that chapter's finale three), the
+# per-chapter keys TEST_*, its own gate and name, a look, twist and music that don't exist (so the fallbacks play:
+# gym, none, the source chapter's fallback_music) and story scenes that don't exist (skipped). An unknown chapter id
+# (or no other built chapter to copy): the shipped rows unchanged.
+# Returns {"chapters": [...], "legends": {...}} for set_test_data().
+static func stand_in_test_data(chapter_id: String) -> Dictionary:
 	var src: Dictionary = {}
+	var known: bool = false
 	for row in CHAPTERS:
-		if bool(row.get("built", false)):
+		var rid: String = str(row.get("id", ""))
+		if rid == chapter_id:
+			known = true
+		elif src.is_empty() and bool(row.get("built", false)):
 			src = row
-			break
+	if not known or src.is_empty():
+		return {"chapters": CHAPTERS.duplicate(true), "legends": LEGENDS.duplicate(true)}
+	var prefix: String = stand_in_prefix(chapter_id)
+	var tag: String = "zz_" if chapter_id == TEST_CHAPTER else "zz_" + chapter_id + "_"   # its scene and file names
 	var words: Array = ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX"]
 	var map: Dictionary = {}
 	var src_ids: Array = src.get("legends", [])
 	for i in src_ids.size():
-		map[str(src_ids[i])] = TEST_PREFIX + str(i + 1)
+		map[str(src_ids[i])] = prefix + str(i + 1)
 	var legends: Dictionary = {}
 	for id in LEGENDS:
-		if str(LEGENDS[id].get("chapter", "")) != TEST_CHAPTER:   # the real row's legends (once built) step aside
+		if str(LEGENDS[id].get("chapter", "")) != chapter_id:   # the real row's legends (once built) step aside
 			legends[id] = (LEGENDS[id] as Dictionary).duplicate(true)
 	var new_ids: Array = []
 	for i in src_ids.size():
@@ -542,7 +561,7 @@ static func two_chapter_test_data() -> Dictionary:
 		p["first"] = "Test"
 		p["last"] = "Standin"
 		p["full"] = "Test \"%s\" Standin" % str(p["name"]).capitalize()
-		p["chapter"] = TEST_CHAPTER
+		p["chapter"] = chapter_id
 		p["unlock_scene"] = nid + "_unlock"
 		var c: Dictionary = p.get("challenge", {})
 		var mates: Array = []
@@ -559,20 +578,20 @@ static func two_chapter_test_data() -> Dictionary:
 	var chapters: Array = []
 	for row in CHAPTERS:
 		var r: Dictionary = (row as Dictionary).duplicate(true)
-		if str(row.get("id", "")) == TEST_CHAPTER:
+		if str(row.get("id", "")) == chapter_id:
 			r["built"] = true
 			r["rules"] = "ZZ RULES"
-			r["twist"] = "zz_no_twist"
-			r["look"] = "zz_no_look"
-			r["music"] = "zz_no_music"
+			r["twist"] = tag + "no_twist"
+			r["look"] = tag + "no_look"
+			r["music"] = tag + "no_music"
 			r["fallback_music"] = str(src.get("fallback_music", ""))
 			r["crew"] = {"name": "ZZ CREW", "style": str((src.get("crew", {}) as Dictionary).get("style", "")),
 				"colors": ((src.get("crew", {}) as Dictionary).get("colors", []) as Array).duplicate(),
 				"ui_color": Color(0.2, 0.4, 0.8)}
 			r["legends"] = new_ids
 			r["finale"] = {"target": int(fin_src.get("target", 21)), "legends": fin_ids, "label": "ZZ FINALE"}
-			r["intro_scene"] = "zz_intro"
-			r["finale_scenes"] = {"before": "zz_finale_before", "after": "zz_finale_after"}
+			r["intro_scene"] = tag + "intro"
+			r["finale_scenes"] = {"before": tag + "finale_before", "after": tag + "finale_after"}
 			r["challenge_avg"] = TEST_CHALLENGE_AVG
 			r["mate_drop"] = TEST_MATE_DROP
 			r["finale_stage_avg"] = TEST_FINALE_STAGE_AVG
