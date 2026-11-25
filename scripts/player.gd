@@ -146,6 +146,7 @@ const COAST_TIME := 6.0           # seconds after his defensive rebound he sprin
 const POP_CATCH_T := 1.0          # a jumper of his this soon after a catch is catch-and-shoot (= CPU_CATCH_SHOT_T) ...
 const POP_KEEP := 0.5             # ... and keeps this fraction of main's jumper contest penalty
 const POP_HELP_FT := 10.0         # CPU pop man off the ball: his man this far off him (helping) ...
+const POP_HELP_HYST_FT := 2.0     # (a drift goes on until his man is back within POP_HELP_FT - this: no flicker)
 const POP_ARC_FT := 24.5          # ... and he drifts out to this far from the rim (just beyond the arc)
 const POP_CPU_CHANCE := 0.6       # CPU pop man just caught it outside LAYUP_RANGE, inside CPU_THREE_MAX_FT: chance he shoots
 const STEAL_BREAK_TIME := 2.0     # seconds of the burst after his steal (a poke his team recovers, or a pick-off)
@@ -165,6 +166,8 @@ const EURO_PATH := [[0, 0.0], [2, -1.5], [4, 0.9]]  # [frame, feet to his left] 
 const EURO_TAKEOFF := 5           # the take-off frame (format.json "takeoff"); the steps are the frames before it ...
 const EURO_MS := [70, 80, 70, 80, 60, 50, 50, 50, 60, 60, 60, 80, 100]   # ... at these frame times (format.json "ms")
 const EURO_CPU_LAYUP := 0.75      # CPU Euro-step man entering LAYUP_RANGE with a man on him: chance he goes up for it
+const SIG_TEST_FLAG := "--signature"   # test only: -- --signature <id>[,<id>,<id>] gives BLUE these moves (one id: all
+                                  # 3; else id i for player i, "-" = none), so --humantest drives a move as the human
 var signature := ""               # P9-20: his move id ("" = none)
 var step_shot := false            # P11-17: the current / last jumper is a step-back (drawn with the stepback frames)
 var step_dir := Vector2.ZERO      # the hop's way (unit vector, away from the hoop)
@@ -527,6 +530,7 @@ func setup(g, t: int, i: int, tex: Texture2D, pdict: Dictionary = {}) -> void:
 	def = Defense.new(self, g)
 	ratings = (RATINGS_BY_INDEX[i] as Dictionary).duplicate()
 	_apply_pdict(pdict)
+	_apply_sig_test()
 	speed = Ratings.speed_px(BASE_SPEED, rating("speed")) * Twists.value("speed_mult", 1.0)   # crowd 1.04, sand 0.9
 	if t == Difficulty.CPU_TEAM and i == 0:
 		Difficulty.init_once()   # saved level, then --difficulty (autoplay/humantest default to Hard)
@@ -557,6 +561,28 @@ func _apply_pdict(pdict: Dictionary) -> void:
 			ratings["steal"] = Ratings.derived(dfn, int(pdict.get("steal_bias", 0)))
 		if not r.has("block"):
 			ratings["block"] = Ratings.derived(dfn, int(pdict.get("block_bias", 0)))
+
+# test only (SIG_TEST_FLAG): BLUE player `index` plays this signature move (any id; his sheet stays his own, so the
+# extra frames show only on a sheet that carries them). Prints SIGNATURE TEST BLUE <i> <id>
+func _apply_sig_test() -> void:
+	if team != 0:
+		return
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var v := ""
+	for i in args.size():
+		if args[i].begins_with(SIG_TEST_FLAG + "="):
+			v = args[i].get_slice("=", 1)
+		elif args[i] == SIG_TEST_FLAG and i + 1 < args.size():
+			v = args[i + 1]
+	var ids: PackedStringArray = v.to_lower().split(",", false)
+	if ids.is_empty():
+		return
+	var id: String = ids[0] if ids.size() == 1 else (ids[index] if index < ids.size() else "")
+	if id == "" or id == "-":
+		return
+	signature = id
+	_sig_print = true
+	print("SIGNATURE TEST BLUE %d %s" % [index, id])
 
 # P9-24: the match dict's mentor perk; anything but a well-formed perk on BLUE leaves him without one
 func _apply_perk(pk) -> void:
@@ -1479,6 +1505,8 @@ func _sig_jumper_start(d_ft: float) -> void:
 	if step_shot:
 		step_dir = (position - game.attack_hoop(team)).normalized()
 		step_done = 0.0
+		if game.is_human(self):
+			game.stat("human_step_backs")
 	pop_shot = signature == SIG_POP and since_catch <= POP_CATCH_T
 
 # release_shot: the step-back or catch-and-shoot's quality x (all but its KEEP of the contest, not on top of the
@@ -1629,7 +1657,8 @@ func _sig_offball(hoop: Vector2) -> bool:
 	var ball = game.ball
 	var man = game.teams[1 - team][index]
 	var helping: bool = ball.state == ball.HELD and ball.holder != null and ball.holder.team == team \
-			and game.in_frontcourt(position, team) and man.position.distance_to(position) > POP_HELP_FT * game.FT
+			and game.in_frontcourt(position, team) \
+			and man.position.distance_to(position) > (POP_HELP_FT - (POP_HELP_HYST_FT if _pop_drift else 0.0)) * game.FT
 	var off: Vector2 = target - hoop
 	if not helping or off.length() < 1.0 or off.length() >= POP_ARC_FT * game.FT:
 		_pop_drift = false
