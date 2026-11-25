@@ -398,7 +398,7 @@ Everything below (Tasks by wave).
   tokens (P7 a, unchanged), the six `PERKS` rows of the contract (P5 a, data only), the six signatures with `step_back`
   and `euro_step` (P4 c); the doc's Chapter 3 table final; `--legendtest` LEGENDTEST OK (name check included) | P11-02,
   P11-03 merged
-- **P11-12** | The SPACE THE FLOOR era rules
+- **P11-12** | REVIEW (recovered by the coordinator from the agent's scratch copy after its worktree was removed; twisttest/legendtest OK, twist none byte-identical in seeded autoplay, 8 era games: 17 threes at 37%, 10.4 pull-ups off a cross at 63% (P11-21 to judge), banner shortened to fit) | The SPACE THE FLOOR era rules
   | gameplay-programmer B | `scripts/twists.gd`, `scripts/player.gd` (the spacing hook on the off-ball spots, the
   pull-up mark), `scripts/main.gd` (`pullup_mult` in `shot_probability()`), `scripts/twist_fx.gd` (banner icon)
   | P2 a: `long_shot_mult` 1.08, `spacing_ft` 2.0, `pullup_mult` 1.10 (no shot clock change); each key one

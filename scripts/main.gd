@@ -878,6 +878,13 @@ func _twist_summary() -> String:
 		"cage":
 			line += " | fence bounces %d, out of bounds %d (sideline %d, baseline %d)" % [g.call("fence_bounces"),
 					g.call("out_of_bounds"), g.call("oob_sideline"), g.call("oob_baseline")]
+	# P11-12 (keyed on the hooks, not the twist id): SPACE THE FLOOR's spacing and pull-ups off a crossover
+	if Twists.base_value("spacing_ft", 0.0) != 0.0 or Twists.base_value("pullup_mult", 1.0) != 1.0:
+		line += " | long shots %d/%d | spacing %.1f ft | pull-ups off a cross %d/%d (CPU went up %d)" % [long_makes,
+				long_shots, Twists.base_value("spacing_ft", 0.0),
+				g.call("pullups_cross_makes_t0") + g.call("pullups_cross_makes_t1"),
+				g.call("pullups_cross_t0") + g.call("pullups_cross_t1"),
+				g.call("cpu_cross_pullups_t0") + g.call("cpu_cross_pullups_t1")]
 	return line
 
 # after rules.gd is made: a trip game's target (side switch at (target + 1) / 2, as --target does; a --target flag
@@ -1256,6 +1263,8 @@ func shot_probability(p, quality: float) -> float:
 	var rim: bool = p.rim_kind != ""
 	if rim or d < SHOT_CLOSE_FT:
 		base *= Twists.value("inside_mult", 1.0)   # close shots, layups and dunks (era_grand); 1.0 without a twist
+	if not rim and "pullup_mark" in p and p.pullup_mark:
+		base *= Twists.value("pullup_mult", 1.0)   # P11-12: a jumper off a crossover (era_present); 1.0 without a twist
 	base = maxf(base, SHOT_MIN)
 	var cont := openness(p)
 	if cont < CONTEST_TIGHT_FT:

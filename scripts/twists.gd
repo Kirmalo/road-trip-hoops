@@ -15,6 +15,10 @@ extends RefCounted
 #   cross_beat_mult          x how often a crossover beats the defender in front, CPU and human defenders alike
 #                            (player.cross_beat_check, P10-12); 1.0 = today
 #   dunk_range_mult          x the dunk range (player.DUNK_RANGE, 6 ft today, in player.dunk_reach; P10-12); 1.0 = today
+#   spacing_ft               feet every off-ball spot moves out, away from the hoop (player.spot_pos in offball_ai,
+#                            kept inside the court; P11-12); 0.0 = today
+#   pullup_mult              x make chance of a jumper started within player.PULLUP_WINDOW s of a crossover (or spin)
+#                            (the pull-up mark, player.pullup_mark; main.shot_probability; P11-12); 1.0 = today
 #   shot_clock               seconds on the shot clock (main.SHOT_CLOCK_LENGTH, 24 today)
 #   speed_mult               x every player's top speed (player.speed, after the speed rating)
 #   turbo_mult               the turbo speed multiplier itself (player.TURBO_SPEED_MULT, 1.35 today)
@@ -101,6 +105,14 @@ const TWISTS := {
 		"dunk_range_mult": 1.1,       # dunks take off from 10% further out (6 -> 6.6 ft)
 		"arc_mult": 1.05,             # jump shots and lobs drawn a little higher (drawing only)
 	},
+	# Legends, Chapter 3 (P11-12, owner P2 a): the Present era, "SPACE THE FLOOR". Starting values; QA tunes them (P11-21)
+	"era_present": {
+		"name": "SPACE THE FLOOR", "banner": "Threes fall, wider spacing, pull-ups off a crossover",
+		"icon": "era_present",
+		"long_shot_mult": 1.08,       # shots beyond the arc go in 8% more often
+		"spacing_ft": 2.0,            # off-ball players stand 2 ft wider (further from the hoop)
+		"pullup_mult": 1.10,          # a jumper right after a crossover or spin goes in 10% more often (everyone)
+	},
 }
 
 # Today's value of every hook key (what each hook passes as `default`; listed so the table can be checked)
@@ -109,7 +121,7 @@ const DEFAULTS := {
 	"stamina_drain_mult": 1.0, "stamina_refill_mult": 1.0, "cut_grip": 1.0, "cut_min_speed": 0.8,
 	"cut_angle_deg": 60.0, "lob_drift_ft": 0.0, "shot_curve_ft": 0.0, "lob_time_mult": 1.0, "arc_mult": 1.0,
 	"sideline_fence": 0.0, "fence_bounce": 0.6, "crowd_db": 0.0, "inside_mult": 1.0, "foul_mult": 1.0,
-	"cross_beat_mult": 1.0, "dunk_range_mult": 1.0,
+	"cross_beat_mult": 1.0, "dunk_range_mult": 1.0, "spacing_ft": 0.0, "pullup_mult": 1.0,
 }
 const TEXT_KEYS := ["name", "banner", "icon", "gust_min", "gust_keys"]
 

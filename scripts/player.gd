@@ -185,6 +185,17 @@ const CPU_CROSS_CHANCE := 0.04    # CPU handler, defender close in front and the
 const CPU_CROSS_FT := 5.0         # "close" for that decision
 const CPU_CROSS_COMMIT := 0.7     # seconds the CPU keeps going the new way after a crossover
 const BEAT_POPUP_COLOR := Color(1.0, 0.95, 0.3)
+# ---- SPACE THE FLOOR (P11-12, twists.gd era_present: spacing_ft, pullup_mult; both off without that twist) ----
+const PULLUP_WINDOW := 1.0        # a jumper started this many seconds after a crossover (or spin) starts is a pull-up
+const PULLUP_CPU_DELAY := 0.3     # CPU: looks for the pull-up once the crossover burst is over (CROSS_TIME) ...
+const PULLUP_CPU_ROOM_FT := 3.5   # ... with the nearest defender at least this far off (or behind him) ...
+const PULLUP_CPU_MAX_FT := 26.0   # ... inside this from the rim (and outside LAYUP_RANGE) ...
+const PULLUP_CPU_CHANCE := 0.5    # ... at this chance, rolled once per crossover
+const SPACING_EDGE_FT := 2.0      # a spaced-out spot stays at least this far inside the sidelines and baselines
+
+var since_cross := 99.0           # seconds since this player's last crossover started
+var pullup_mark := false          # this jumper started within PULLUP_WINDOW of a crossover (main.shot_probability)
+var _pullup_rolled := false       # CPU: the pull-up after the last crossover has been rolled
 
 var cross_cd := 0.0               # seconds until the next crossover is allowed
 var cross_dir := Vector2.ZERO     # direction of the current crossover burst
@@ -525,6 +536,9 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	stumble_t = maxf(0.0, stumble_t - delta)
 	poke_t = maxf(0.0, poke_t - delta)
 	cross_cd = maxf(0.0, cross_cd - delta)
+	since_cross += delta
+	if pullup_mark and not shooting and not has_ball():
+		pullup_mark = false
 	cpu_side_t = maxf(0.0, cpu_side_t - delta)
 	cpu_drive_t = maxf(0.0, cpu_drive_t - delta)
 	update_pump_fake(delta)
@@ -766,6 +780,8 @@ func start_crossover(dir: Vector2, kind: String) -> void:
 	cross_dir = dir.normalized()
 	cross_t = CROSS_TIME
 	cross_cd = CROSS_COOLDOWN
+	since_cross = 0.0
+	_pullup_rolled = false
 	dribble_side = -dribble_side
 	hand_switch_t = 0.0
 	game.stat("crossovers_t%d" % team)
@@ -1091,6 +1107,7 @@ func seek(t: Vector2, mult: float) -> Vector2:
 func start_shot() -> void:
 	if has_ball() and not shooting and rim_kind == "":
 		cpu_three_try = false
+		pullup_mark = false
 		hook_shot = false
 		fade_shot = false
 		fade_air_t = 0.0
@@ -1103,6 +1120,7 @@ func start_shot() -> void:
 			return
 		shooting = true
 		shot_charge = 0.0
+		pullup_mark = since_cross <= PULLUP_WINDOW and not at_free_throw()   # P11-12: only pullup_mult reads it
 		hook_shot = signature == SIG_HOOK and d_ft <= HOOK_MAX_FT and not at_free_throw()   # P9-20
 		fade_shot = signature == SIG_FADEAWAY and d_ft <= FADE_MAX_FT and not at_free_throw() \
 				and not game.is_three(position, game.attack_hoop(team))   # P10-17
@@ -1196,9 +1214,15 @@ func release_shot() -> void:
 		game.stat("jumper_d%d" % int(position.distance_to(hoop) / game.FT / 5.0))
 		if three:
 			game.stat("jumper_threes_t%d" % team)
+	var pullup_counted: bool = counted and pullup_mark and Twists.value("pullup_mult", 1.0) != 1.0
+	if pullup_counted:
+		game.stat("pullups_cross_t%d" % team)   # P11-12: a jumper the SPACE THE FLOOR pull-up mark moved
 	game.release_shot(self, quality)
+	pullup_mark = false
 	var ball = game.ball
 	count_pump_and_score()
+	if pullup_counted and ball.state == ball.SHOT and ball.shot_made:
+		game.stat("pullups_cross_makes_t%d" % team)
 	if counted and ball.state == ball.SHOT and ball.shot_made:
 		game.stat("jumper_makes_t%d" % team)
 		if three:
@@ -1595,6 +1619,33 @@ func spot_pos(hoop: Vector2, i: int) -> Vector2:
 	var dir: float = game.inward(hoop)
 	return hoop + Vector2(dir * s.x * game.FT, dir * s.y * game.FT)
 
+# SPACE THE FLOOR (P11-12): an off-ball spot moved Twists spacing_ft further from the hoop (0 = today: unchanged),
+# kept SPACING_EDGE_FT inside the court
+func spaced_spot(hoop: Vector2, t: Vector2) -> Vector2:
+	var sp: float = Twists.value("spacing_ft", 0.0)
+	var off: Vector2 = t - hoop
+	if sp == 0.0 or off.length() < 1.0:
+		return t
+	var e: float = SPACING_EDGE_FT * game.FT
+	var p: Vector2 = hoop + off.normalized() * (off.length() + sp * game.FT)
+	return Vector2(clampf(p.x, e, View.COURT_W - e), clampf(p.y, e, View.COURT_H - e))
+
+# SPACE THE FLOOR (P11-12): the CPU handler pulls up for the jumper right after a crossover, once the burst is over and
+# he has room (rolled once per crossover); never without the twist's pullup_mult (no roll: today's game)
+func try_cpu_cross_pullup(dist_ft: float, open_ft: float, guard_behind: bool) -> bool:
+	if Twists.value("pullup_mult", 1.0) <= 1.0 or _pullup_rolled:
+		return false
+	if since_cross < PULLUP_CPU_DELAY or since_cross > PULLUP_WINDOW - 0.1 or shooting or rim_kind != "":
+		return false
+	if dist_ft <= LAYUP_RANGE or dist_ft > PULLUP_CPU_MAX_FT or (open_ft < PULLUP_CPU_ROOM_FT and not guard_behind):
+		return false
+	_pullup_rolled = true
+	if game.rng.randf() >= PULLUP_CPU_CHANCE:
+		return false
+	game.stat("cpu_cross_pullups_t%d" % team)
+	start_shot()
+	return shooting
+
 # ---------------- free throws (P3-06) ----------------
 
 # rules.ft_active (P3-05); false while that isn't merged
@@ -1764,7 +1815,7 @@ func offball_ai(delta: float, hoop: Vector2) -> void:
 				choices.append(i)
 		if choices.size() > 0:
 			spot_index = choices[game.rng.randi() % choices.size()]
-	target = spot_pos(hoop, spot_index)
+	target = spaced_spot(hoop, spot_pos(hoop, spot_index))
 	# stay out of the ball handler's way
 	var ball = game.ball
 	if ball.holder != null and ball.holder != self:
@@ -1835,6 +1886,8 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 	if dist_ft <= dunk_range() and is_dunk_speed():
 		start_shot()
 		return
+	if try_cpu_cross_pullup(dist_ft, open_ft, guard_behind):
+		return   # P11-12 SPACE THE FLOOR: the jumper off the crossover
 	decision_timer -= delta
 	if decision_timer > 0.0:
 		return

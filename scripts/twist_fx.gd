@@ -768,6 +768,22 @@ func _draw_icon(n: CanvasItem, icon: String, c: Vector2, s: float) -> void:
 			var d2: Vector2 = (zz[3] - zz[2]).normalized()
 			var o2: Vector2 = d2.orthogonal() * 5.0
 			n.draw_colored_polygon(PackedVector2Array([tip + d2 * 6.0, tip + o2, tip - o2]), Color(1.0, 0.95, 0.3))
+		"era_present":
+			# SPACE THE FLOOR (P11-12): a half court from above in the era's teal and coral: the arc, the hoop, and
+			# three shooters' dots spread out beyond it with little arrows pointing wider
+			var teal := Color(0.18, 0.78, 0.74)
+			var coral := Color(1.0, 0.5, 0.4)
+			var hp: Vector2 = c + Vector2(0.0, s * 0.75)
+			n.draw_arc(hp, s * 0.75, PI + 0.15, TAU - 0.15, 16, teal, 3.0)
+			n.draw_line(hp + Vector2(-s * 0.3, s * 0.05), hp + Vector2(s * 0.3, s * 0.05), white, 2.0)
+			n.draw_circle(hp + Vector2(0.0, -s * 0.12), s * 0.12, coral)
+			for i in 3:
+				var a: float = PI + 0.45 + (PI - 0.9) * float(i) / 2.0
+				var u := Vector2(cos(a), sin(a))
+				var dp: Vector2 = hp + u * s * 1.02
+				n.draw_circle(dp, s * 0.17 + 1.0, Color(0.05, 0.08, 0.1))
+				n.draw_circle(dp, s * 0.17, coral)
+				n.draw_line(hp + u * s * 0.4, hp + u * s * 0.66, white, 1.5)
 		_:
 			n.draw_circle(c, s * 0.4, white)
 
