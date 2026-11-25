@@ -135,7 +135,7 @@ today's game, like every hook. Starting values, QA tunes them.
 | Era twist | Existing keys | New keys (default = today) |
 |---|---|---|
 | `era_grand` "OLD SCHOOL" | `speed_mult` 0.94, `long_shot_mult` 0.88 | `foul_mult` 0.6 (fewer fouls called: rougher defense), `inside_mult` 1.08 (layups, dunks and close shots go in more) |
-| `era_fathers` "ISO BALL" | `arc_mult` 1.05 | `cross_beat_mult` 1.2 (crossovers beat the defender more), `dunk_reach_mult` 1.1 (dunks from a little further out) |
+| `era_fathers` "ISO BALL" | `arc_mult` 1.05 | `cross_beat_mult` 1.2 (crossovers beat the defender more), `dunk_range_mult` 1.1 (dunks from a little further out) |
 | `era_present` "SPACE THE FLOOR" (as shipped, P11-12; P11-21 and the owner kept the numbers) | `long_shot_mult` 1.08 | `spacing_ft` 2.0 (off-ball players stand 2 ft further from the hoop), `pullup_mult` 1.10 (a jump shot within 1.0 s of a crossover or spin, everyone) |
 | `era_next` "HYPERSPEED" | `speed_mult` 1.08, `turbo_mult` 1.45, `stamina_refill_mult` 1.2, `shot_clock` 18 | none |
 
