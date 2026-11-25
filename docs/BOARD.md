@@ -156,6 +156,15 @@ Everything below (Tasks by wave).
 
 ## Review
 
+- **P11-08** | Era music listening list
+  | art-audio-integrator E | `docs/audio_preview/LIST.md` ("Legends: Present"), `docs/audio_preview/present_*.ogg`
+  | 3-5 upbeat chiptune tracks with a modern arena feel (electro, trap-style drums, big synth hooks; not New York's,
+  Headspin or Bebop), CC0 or CC-BY only (no share-alike, no non-commercial), each license link checked on its page; the
+  owner picks one during the build | none
+  | Result: 5 samples `docs/audio_preview/present_a..e_*.ogg` (30 s, -20 LUFS, 232-288 KB each, 1.26 MB total): The Bass of the
+  Future (CC0), Royal run (CC0), 8-Bit Hero Quest (CC-BY 4.0), Techno DRIVE!!! v2.5 (CC-BY 4.0), TECHNOCADE (CC-BY 3.0);
+  list in `LIST.md` "Legends: Present"; the owner picks one
+
 ## Done
 
 ## Tasks by wave
@@ -214,12 +223,6 @@ Everything below (Tasks by wave).
   `pin_present_done.png`, `ui.json`), `docs/art/legends_ui.png`
   | the Present card frame and pins in the approved style, era colors from P11-05's palettes (a first guess until the
   look check; rerun after it if they change); Chapters 1-2 files byte for byte unchanged | none
-- **P11-08** | Era music listening list
-  | art-audio-integrator E | `docs/audio_preview/LIST.md` ("Legends: Present"), `docs/audio_preview/present_*.ogg`
-  | 3-5 upbeat chiptune tracks with a modern arena feel (electro, trap-style drums, big synth hooks; not New York's,
-  Headspin or Bebop), CC0 or CC-BY only (no share-alike, no non-commercial), each license link checked on its page; the
-  owner picks one during the build | none
-
 ### Wave 2 (P11-09 needs no answer; the rest need P1-P7 and the look check)
 - **P11-09** | Legends test driver: three chapters
   | gameplay-programmer E | `scripts/legends_test.gd`
