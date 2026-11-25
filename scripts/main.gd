@@ -207,6 +207,7 @@ const BACKTEST_STARS := 12          # the star total --backtest plays with (P8-2
 const BACKTEST_LEGEND_STARS := 24   # the star total from the Legends steps on (P9-28): Chapter 1's gate
 const BACKTEST_CHAPTER := "grand"    # the chapter the Legends steps open (its first legend is the challenge)
 const BACKTEST_CHAPTER2 := "fathers" # P10-25: the Chapter 2 steps (its gate's stars are forced if it isn't open)
+const BACKTEST_CHAPTER3 := "present" # P11-25: the Chapter 3 steps, the same way (48 stars unless --stars / --tokens)
 static var _backtest_node: Node = null   # the --backtest driver (on the root, survives the reloads)
 # rebound stats: every missed field goal ends as an offensive rebound (the shooting team holds it
 # first), a defensive rebound or out of bounds; a putback is a shot by the rebounding team within PUTBACK_SECS
@@ -2649,7 +2650,8 @@ func _update_hud() -> void:
 # test save (user://trip_test.json). Prints BACKTEST lines, then BACKTEST OK (exit 0) or BACKTEST FAILED (exit 1).
 # P9-28: the Legends screens too (tour, Hall, the mentor picker, a challenge game and its QUIT); they never write the
 # Legends file (saving off, unlocks and stars for this run only). P10-25: the same for Chapter 2 (BACKTEST_CHAPTER2;
-# the run gets that chapter's gate stars if neither --stars nor --tokens opens it).
+# the run gets that chapter's gate stars if neither --stars nor --tokens opens it). P11-25: and for Chapter 3
+# (BACKTEST_CHAPTER3, the same way).
 #   godot --headless --path . --fixed-fps 60 --quit-after 20000 -- --backtest
 class BackTest extends Node:
 	const FlowS = preload("res://scripts/flow.gd")
@@ -2725,6 +2727,27 @@ class BackTest extends Node:
 		{"go": "", "expect": "game", "did": "resume", "paused": false},
 		{"go": "", "expect": "game", "did": "pause", "paused": true},
 		{"go": "", "action": "quit", "expect": "legends", "did": "", "chapter": BACKTEST_CHAPTER2, "paused": false},
+		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "", "expect": "title", "did": "escape"},
+		# P11-25: Chapter 3, the same steps
+		{"go": "legends", "legends": true, "ch": BACKTEST_CHAPTER3, "args": {"chapter": BACKTEST_CHAPTER3},
+				"at_chapter": BACKTEST_CHAPTER3, "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "", "expect": "title", "did": "escape"},
+		{"go": "hall", "legends": true, "ch": BACKTEST_CHAPTER3, "pick_first": true,
+				"args": {"back": "legends", "back_args": {"chapter": BACKTEST_CHAPTER3}},
+				"expect": "legends", "did": "escape", "chapter": BACKTEST_CHAPTER3},
+		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "hall", "legends": true, "ch": BACKTEST_CHAPTER3, "pick_first": true, "args": {"back": "crew"},
+				"expect": "crew", "did": "escape"},
+		{"go": "hall", "legends": true, "ch": BACKTEST_CHAPTER3, "pick_first": true, "args": {"back": "legends"},
+				"prep": "mentor_picker", "expect": "hall", "did": "escape", "closed": "_picker"},
+		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "", "expect": "title", "did": "escape"},
+		{"go": "game", "legends": true, "challenge": true, "ch": BACKTEST_CHAPTER3, "expect": "game", "did": "pause",
+				"paused": true},
+		{"go": "", "expect": "game", "did": "resume", "paused": false},
+		{"go": "", "expect": "game", "did": "pause", "paused": true},
+		{"go": "", "action": "quit", "expect": "legends", "did": "", "chapter": BACKTEST_CHAPTER3, "paused": false},
 		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
 		{"go": "", "expect": "title", "did": "escape"},
 		# "countdown": the request goes out during the 3-2-1 (P8-31), and the pause holds the count
