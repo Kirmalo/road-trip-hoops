@@ -33,6 +33,13 @@ extends RefCounted
 # Their running joke: the shorts (Tank's grandpa says they are too long). Cautions (docs/legends-namecheck.md
 # "Chapter 2"): move names stay plain words (cradle dunk, double crossover, turnaround fadeaway, shoulder-in, no-look
 # pass, chase-down block); never "the answer", "the truth", "franchise", "big shot", "Air ...", no brand or tour name.
+# Legends, Chapter 3 (P11-16): the Present, the generation after the Fathers (the Fathers' "kids" grown up, the
+# Grandfathers' grandkids: theme only, no families between legends), on the BIG STAGE, a new arena with a giant screen
+# and light ribbons; SPACE THE FLOOR. Running jokes: the giant screen, Toolbox's screwdriver, Switch's few words, and
+# Tank's grandpa, who finds the shorts the right length at last. Cautions (docs/legends-namecheck.md "Chapter 3"):
+# plain move names (step-back, side step, pick-and-pop, extra pass, alley-oop, steal and run); no celebration or
+# slogan ("night night", "too small", "let him cook", ...), no "logo", "splash", "shimmy", "heat check", "money",
+# "buckets", "the kid"; Skylight is never "Sky", Deep End never "Deep" alone.
 
 const SCENES := {
 	# the title's NEW TRIP, before the map
@@ -521,6 +528,137 @@ const SCENES := {
 		{"who": "narrator", "side": "left",
 			"text": "And so the Fathers left the park lights on for the {crew}, and turned the boom box down. Some. CHAPTER 2: DONE."},
 	],
+
+	# ---------------- Legends, Chapter 3: the Present (P11-16) ----------------
+	# the first time the chapter opens: the BIG STAGE arena, the six, the deal, a hint of the SPACE THE FLOOR rules
+	"legends_present_intro": [
+		{"who": "narrator", "side": "left",
+			"text": "Downtown there's a brand new arena: BIG STAGE. Glass backboards, a giant screen, light ribbons all the way around."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math says this place cost more than every town we drove through. Put together. Twice."},
+		{"who": "lg_toolbox", "side": "right",
+			"text": "Theo Lindqvist. Toolbox. Our dads played under the park lights, our grandpas in the wood gym. We play here."},
+		{"who": "lg_deep_end", "side": "right",
+			"text": "Calloway Whitlock. Deep End. We grew up watching both of them. Then we took a step back. Then a few more."},
+		{"who": "ud_tank", "side": "left",
+			"text": "Grandpa's up in the very last row. He says the shorts are the right length at last. First time in his life."},
+		{"who": "lg_deep_end", "side": "right", "mood": "happy",
+			"text": "Here it's SPACE THE FLOOR: everybody stands wide, long shots fall, and a jumper off a crossover or a spin drops."},
+		{"who": "lg_toolbox", "side": "right", "mood": "happy",
+			"text": "Same deal our dads gave you: beat each of us at his own game and we teach you. Then our best three take you on."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "Long shots, wide spacing, and a giant screen showing my knee brace to ten thousand people. Great."},
+	],
+
+	# Deep End's challenge won (he starts on fire, win to 15)
+	"lg_deep_end_unlock": [
+		{"who": "lg_deep_end", "side": "right",
+			"text": "I started on FIRE. And you still beat me to fifteen. Two misses in a row, and the flame just... went out."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Sir, you took one from the tunnel. The security guard had to step aside."},
+		{"who": "lg_deep_end", "side": "right", "mood": "happy",
+			"text": "He always steps aside. He knows. Find me in the Hall: I'll teach your shooters a jumper right off the crossover."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "Can you teach me to back up one more step too?"},
+		{"who": "lg_deep_end", "side": "right",
+			"text": "Big man, one more step back for you is the parking lot. Let's start with the free-throw line."},
+	],
+
+	# Toolbox's challenge won (start down 0-1, come back, to 15)
+	"lg_toolbox_unlock": [
+		{"who": "lg_toolbox", "side": "right",
+			"text": "Down one before the tip, and you came back. I can fix any scoreboard in this building, but not that one."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "Down one is our normal, Mr. Lindqvist. Down two, too. Ask the old men."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "What's the screwdriver for? You held it the whole timeout."},
+		{"who": "lg_toolbox", "side": "right", "mood": "happy",
+			"text": "The shot clock squeaks. Find me in the Hall and I'll teach your crew the extra pass: the shot after it falls more."},
+	],
+
+	# Stretch's challenge won (reach 11 before his crew gets 10)
+	"lg_stretch_unlock": [
+		{"who": "lg_stretch", "side": "right",
+			"text": "Eleven before ten. I set the screen, I stepped back to the line, I waited... and you were already at eleven."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "You stood so far from the rim, I forgot I was supposed to guard you."},
+		{"who": "lg_stretch", "side": "right",
+			"text": "That is the whole idea. A big man near the rim only blocks the view."},
+		{"who": "lg_stretch", "side": "right", "mood": "happy",
+			"text": "Call me Stretch. Come by the Hall and I'll teach your shooters to let it go the moment they catch it."},
+	],
+
+	# Switch's challenge won (score 5 points yourself on him, and win, to 11)
+	"lg_switch_unlock": [
+		{"who": "lg_switch", "side": "right",
+			"text": "Five."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Five what? Five points? Five words? That's the most you've said all night, Mr. Achterberg."},
+		{"who": "lg_switch", "side": "right",
+			"text": "Five. Yours. On me. Then the win."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "He guarded all three of us. At the same time, I'm pretty sure."},
+		{"who": "lg_switch", "side": "right", "mood": "happy",
+			"text": "Hall. I teach guarding. Your man shoots worse. Mine."},
+	],
+
+	# Skylight's challenge won (2 blocks or steals on him, and win, to 15)
+	"lg_skylight_unlock": [
+		{"who": "lg_skylight", "side": "right",
+			"text": "Two stops on me. Twice you got a hand on it before I got it to the glass. Nobody gets up there with me."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "I jumped as soon as the lob went up. Grandpa says jump early, say sorry later."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math: you go up so high, the giant screen had to tilt to keep you in it."},
+		{"who": "lg_skylight", "side": "right", "mood": "happy",
+			"text": "Ha! Find me in the Hall, and I'll teach your bigs to get to rebounds from a step further out."},
+	],
+
+	# Zigzag's challenge won (hold him under 6, to 11)
+	"lg_zigzag_unlock": [
+		{"who": "lg_zigzag", "side": "right",
+			"text": "Under six. I went left, then right, then left again, and every time somebody was already standing there."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "We didn't chase you, Mr. Moreau. We just stood still and waited for you to come back."},
+		{"who": "lg_zigzag", "side": "right",
+			"text": "...That is very annoying. And very smart."},
+		{"who": "lg_zigzag", "side": "right", "mood": "happy",
+			"text": "Find me in the Hall. I'll teach you a side step into the layup that hands can't find. Never the straight road."},
+	],
+
+	# before the Present finale (the Kings against Deep End, Toolbox and Skylight, to 21)
+	"legends_present_finale_before": [
+		{"who": "narrator", "side": "left",
+			"text": "BIG STAGE is sold out. The light ribbons turn teal and coral, the giant screen counts down, the floor shines."},
+		{"who": "lg_toolbox", "side": "right",
+			"text": "We picked our three: me, Deep End and Skylight. SPACE THE FLOOR, to twenty-one."},
+		{"who": "lg_deep_end", "side": "right", "mood": "happy",
+			"text": "Don't guard me at the arc tonight. Guard me from the tunnel. That's where I start."},
+		{"who": "lg_skylight", "side": "right",
+			"text": "Throw it anywhere near the glass. I'll be there before the ball is."},
+		{"who": "ud_tank", "side": "left",
+			"text": "Grandpa's in the last row again. He brought binoculars and his \"sensible\" shorts. Still very short."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math: the old men, the night park, now this. The napkin ran out. I'm writing on my arm."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "The wood gym, the park court, the big stage. Underdogs every time. {crew}, ball up."},
+	],
+
+	# the finale won: the end of Chapter 3
+	"legends_present_finale_after": [
+		{"who": "lg_toolbox", "side": "right", "mood": "happy",
+			"text": "That's the game. The old men, the night park, and now us. You beat three generations. Who does that?"},
+		{"who": "lg_deep_end", "side": "right", "mood": "happy",
+			"text": "I backed up all night, and you just kept walking out to meet me. Respect."},
+		{"who": "lg_skylight", "side": "right", "mood": "happy",
+			"text": "Your faces go up on the giant screen now. It's the biggest screen we've got. That's a LOT of Jojo."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "Three chapters, one knee, no regrets. Okay, a few regrets. Mostly about the knee."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "Grandpa says right shorts, right rules, right kids. He's crying again. It's still not the popcorn."},
+		{"who": "narrator", "side": "left",
+			"text": "And so the Present put the {crew} up on the giant screen, and left a light ribbon on. CHAPTER 3: DONE."},
+	],
 }
 
 # The recruit's joining line (owner Q4: "the recruit joins with a funny line"): recruit.gd shows it with his portrait
@@ -570,6 +708,13 @@ const RECRUIT_LINES := {
 	"lg_freight": "I'll take the back seat. All of the back seat. Need a road block in the paint? I'm the road block.",
 	"lg_eyes_closed": "Don't worry, I'm watching the road. You can't tell, but I am. Somebody else should still drive.",
 	"lg_lockbox": "I'll guard their best man in every city. And the snacks. Nobody gets the snacks past me.",
+	# Legends, the Present (P11-16; plain move names only, see the Chapter 3 cautions at the top)
+	"lg_deep_end": "I'll shoot from the back seat of the van if I have to. Just warn the driver before I let it go.",
+	"lg_toolbox": "I packed the screwdriver. The van squeaks, I fix it. Somebody's open, I find him. That's the job.",
+	"lg_stretch": "I'll stand way out by the line and wait for the pass. In the van I'll take the seat by the door. Legs.",
+	"lg_switch": "Guard anybody. Ride anywhere. Mine.",
+	"lg_skylight": "Throw it high and I'll go get it. Does the van have a sunroof? Good. The hair needs the room.",
+	"lg_zigzag": "I never take the straight road. So maybe somebody else should read the map.",
 }
 
 # a recruit's joining line ("" for a player without one)
