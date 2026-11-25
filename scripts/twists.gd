@@ -107,7 +107,7 @@ const TWISTS := {
 	},
 	# Legends, Chapter 3 (P11-12, owner P2 a): the Present era, "SPACE THE FLOOR". Starting values; QA tunes them (P11-21)
 	"era_present": {
-		"name": "SPACE THE FLOOR", "banner": "Threes fall, wider spacing, pull-ups off a crossover",
+		"name": "SPACE THE FLOOR", "banner": "Space: threes fall, wider spacing, pull-ups off a crossover",
 		"icon": "era_present",
 		"long_shot_mult": 1.08,       # shots beyond the arc go in 8% more often
 		"spacing_ft": 2.0,            # off-ball players stand 2 ft wider (further from the hoop)
