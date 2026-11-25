@@ -95,17 +95,21 @@ by the name check; looks spread so no legend copies one famous player; challenge
 The finale: Rooftop, Midrange and Freight to 21, no goal.
 
 ### Chapter 3: Present
-| Legend | Archetype | Look notes | Signature move | Shape |
-|---|---|---|---|---|
-| Calloway "Deep End" Briggs | Step-back shooter | Slim guard, beard, tight shorts | Step-back from deep | +5 / +25 / -10 / -10 / -10 |
-| Theo "Swiss Knife" Lindqvist | Point-forward | Big and strong, man bun | Coast-to-coast drive and kick | +5 / 0 / +5 / 0 / -10 |
-| Ozren "Stretch" Halvorsen | Stretch big | Seven-footer, shaggy hair | Pick-and-pop long shot | -10 / +15 / 0 / +5 / -10 |
-| Idris "Switch" Achterberg | Two-way wing | Long arms, short twists | Steal straight into a breakaway | +5 / -5 / 0 / +15 / -15 |
-| Bodie "Skylight" Ferreira | Rim-running big | Athletic, high-top fade | Alley-oop slam from anywhere near the rim | 0 / -20 / +20 / +5 / -5 |
-| Santi "Zigzag" Moreau | Slasher | Slim, curly hair, headband | Euro-step layup | +10 / -5 / +10 / -10 / -5 |
+As shipped in Phase 11 (owner, VISION "Phase 11 answers P1-P8", "Phase 11 names (after P11-02)", "Phase 11 look
+check" and "Phase 11 Zigzag first name"; the draft names Briggs, Swiss Knife, Ozren, Idris, Ferreira and Santi were
+changed by the name check; looks spread so no legend copies one famous player; era kits teal and coral; challenges as
+tuned by P11-23 and the owner):
+| Legend | # | Archetype | Look notes | Signature move | Challenge | Shape (spd/sht/fin/def/sta) |
+|---|---|---|---|---|---|---|
+| Calloway "Deep End" Whitlock | 26 | Step-back shooter | Slim guard, waves, thin mustache, no beard, right-leg tights | Step-back jumper (its own animation) | He starts on fire (to 15) | +5 / +25 / -10 / -10 / -10 |
+| Theo "Toolbox" Lindqvist | 38 | Point-forward | Big and strong, low man bun, clean-shaven, no headband | Coast to coast (no tiring after a defensive rebound) | Comeback from 0-1 (to 15) | +5 / 0 / +5 / 0 / -10 |
+| Sigurd "Stretch" Halvorsen | 49 | Stretch big | Tall, medium build, close-cropped dark hair, short boxed beard, full tights | Pick-and-pop (drifts to the arc, catch-and-shoot) | Race: 11 before his crew gets 10 | -10 / +15 / 0 / +5 / -10 |
+| Ellery "Switch" Achterberg | 29 | Two-way wing | Long arms, bald, short beard, bare arms | Steal and run (a burst of speed after his steals) | Score 5 yourself on him and win (to 11) | +5 / -5 / 0 / +15 / -15 |
+| Bodie "Skylight" Castellano | 52 | Rim-running big | Athletic, high-top fade | Alley-oop catcher (lobs caught from further out) | 2 blocks or steals on him and win (to 15) | 0 / -20 / +20 / +5 / -5 |
+| Bastien "Zigzag" Moreau | 58 | Slasher | Slim, short brown curls, left knee sleeve, no headband | Euro-step layup (its own animation) | Hold him under 6 (to 11) | +10 / -5 / +10 / -10 / -5 |
 
-Draft only. The Phase 11 board (`docs/BOARD.md`, the hard rule's table) flags all six for a name or a look that
-points too close to one famous player of today and proposes changes; question P1 below asks the owner.
+The finale: Deep End, Toolbox and Skylight to 21, no goal. The era's rules: SPACE THE FLOOR (part 4); the court: the
+BIG STAGE; the music: "Techno drive" by Centurion_of_war (CC-BY 4.0).
 
 ### Chapter 4: New Generation
 | Legend | Archetype | Look notes | Signature move | Shape |
@@ -132,7 +136,7 @@ today's game, like every hook. Starting values, QA tunes them.
 |---|---|---|
 | `era_grand` "OLD SCHOOL" | `speed_mult` 0.94, `long_shot_mult` 0.88 | `foul_mult` 0.6 (fewer fouls called: rougher defense), `inside_mult` 1.08 (layups, dunks and close shots go in more) |
 | `era_fathers` "ISO BALL" | `arc_mult` 1.05 | `cross_beat_mult` 1.2 (crossovers beat the defender more), `dunk_reach_mult` 1.1 (dunks from a little further out) |
-| `era_present` "SPACE THE FLOOR" | `long_shot_mult` 1.08 | `spacing_ft` 2.0 (off-ball players stand 2 ft wider), `stepback_mult` 1.1 (pull-ups after a move a little better) |
+| `era_present` "SPACE THE FLOOR" (as shipped, P11-12; P11-21 and the owner kept the numbers) | `long_shot_mult` 1.08 | `spacing_ft` 2.0 (off-ball players stand 2 ft further from the hoop), `pullup_mult` 1.10 (a jump shot within 1.0 s of a crossover or spin, everyone) |
 | `era_next` "HYPERSPEED" | `speed_mult` 1.08, `turbo_mult` 1.45, `stamina_refill_mult` 1.2, `shot_clock` 18 | none |
 
 Every new key is one `Twists.value(key, default)` in the sim. None of them reads a team, so the era rules are fair.

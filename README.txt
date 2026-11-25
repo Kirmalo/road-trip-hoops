@@ -75,11 +75,16 @@ QUICK GAME
   Runners are always there; every crew you beat on a Road Trip joins the list for good (a city's crew when you beat
   its boss, a New York crew when you win its round). Quick Game players are evened out (their stats average 50),
   so any matchup is fair; each crew keeps its own colors. The same crew can't be on both sides.
+  Era teams: THE GRANDFATHERS, THE FATHERS and THE PRESENT join the list once you have unlocked that era's three
+  finale legends in LEGENDS (Steeple, Velvet and Quarterback; Rooftop, Midrange and Freight; Deep End, Toolbox and
+  Skylight). They play as those three, evened out to 50 like every Quick Game team, in their era kits and with their
+  signature moves (mentor perks never play in Quick Game).
 - COURT: GYM, COURT: BLACKTOP, ... Tap it to pick the next court (an indoor gym with bleachers, an outdoor
   blacktop, and every city court you have unlocked). A city's court unlocks when you beat that city's boss on a Road
   Trip, and stays unlocked (a new trip doesn't lock it again). Two more courts open with stars: MIDNIGHT (30
-  stars) and GOLD HALL (60). A city court brings its city's twist, shown in a line under the buttons; the gym, the
-  blacktop and the star courts have none.
+  stars) and GOLD HALL (60). Each open era team also brings its era's court with the era's rules and music: the OLD
+  GYM (OLD SCHOOL), the NIGHT PARK (ISO BALL) and the BIG STAGE (SPACE THE FLOOR). A city court brings its city's
+  twist, shown in a line under the buttons; the gym, the blacktop and the star courts have none.
 - MUSIC: ON / MUSIC: OFF switches the music at once.
 The panel comes back with the new teams or court behind it; then tap a level to play. The game remembers all of it.
 
@@ -238,13 +243,14 @@ STARS AND THE LOCKER
   are too close to your jersey, your team wears its normal jersey for that game.
 
 LEGENDS
-The Legends mode is a tour through the eras of the game. You beat old-time legends in challenge games and unlock
+The Legends mode is a tour through the eras of the game. You beat the legends of each era in challenge games and unlock
 them for good. Every legend is a made-up character with his own name and looks, not a real player.
 - Opening it: the LEGENDS button on the title opens once you have 24 stars, from any trip games (a whole trip on
   EASY gives exactly 24).
 - The era tour: a timeline of four chapters. Chapter 1, THE GRANDFATHERS, opens at 24 stars; Chapter 2, THE
-  FATHERS, at 36 stars or 12 legend tokens (whichever comes first; until then its panel is LOCKED with that line).
-  THE PRESENT and THE NEW GENERATION show as COMING LATER, with what will open them. Tap an open chapter (or its
+  FATHERS, at 36 stars or 12 legend tokens (whichever comes first; until then its panel is LOCKED with that line);
+  Chapter 3, THE PRESENT, at 48 stars or 30 tokens (you don't need to win the Fathers' finale first). THE NEW
+  GENERATION shows as COMING LATER, with what will open it. Tap an open chapter (or its
   PLAY button). The first time, a story scene introduces the era. A chapter whose finale you won shows FINALE WON.
   HALL opens the Hall of Legends; BACK goes to the title.
 - The chapter view: the six legends' plaques (a locked one is a silhouette with "?" and his challenge), the finale
@@ -272,12 +278,21 @@ them for good. Every legend is a made-up character with his own name and looks, 
   - Eyes Closed, the no-look passer: you start down 0-1; come back and win (to 15).
   - Lockbox, the lockdown wing defender: you yourself (YOU, your first starter) score at least 6 of your team's
     points and win (to 11). The line shows your points so far ("SCORE 6 ON LOCKBOX: 2"). The hardest one.
+  The Present (a step harder again):
+  - Deep End, the step-back shooter: he starts on fire and cools down only after 2 misses in a row; win (to 15).
+  - Toolbox, the point-forward: you start down 0-1; come back and win (to 15).
+  - Stretch, the stretch big: reach 11 before his crew gets 10.
+  - Switch, the two-way wing: you yourself score at least 5 of your team's points and win (to 11). The hardest one
+    of the era.
+  - Skylight, the rim-running big: block or steal the ball on him 2 times and win (to 15).
+  - Zigzag, the slasher: hold him under 6 points and win (to 11).
 - Tokens: a won challenge gives 1 token on EASY, 2 on NORMAL, 3 on HARD or LEGEND. Only your best result for each
   game counts, so play a game again on a higher level for more: 21 tokens in each chapter (6 challenges and the
-  finale, 3 each), 42 in all. Your first win against a legend unlocks him for good: he says a few words, and his plaque goes into the
+  finale, 3 each), 63 in all. Your first win against a legend unlocks him for good: he says a few words, and his plaque goes into the
   Hall of Legends.
 - The finale: once all six of a chapter are beaten, its finale opens: the GRANDFATHERS FINALE (Steeple, Velvet and
-  Quarterback) or the FATHERS FINALE (Rooftop, Midrange and Freight), to 21, with no special goal. A story scene
+  Quarterback), the FATHERS FINALE (Rooftop, Midrange and Freight) or the PRESENT FINALE (Deep End, Toolbox and
+  Skylight), to 21, with no special goal. A story scene
   comes before and after it; winning it finishes the chapter.
 - OLD SCHOOL rules: every Grandfathers game is played in the OLD GYM with the era's rules, the same for both teams
   (a banner shows them at the tip-off): everyone is 6% slower, shots beyond the arc go in 20% less often, close
@@ -286,13 +301,22 @@ them for good. Every legend is a made-up character with his own name and looks, 
   the same for both teams: a crossover beats the defender in front about 20% more often, dunks take off from 10%
   further out, and shots fly on a slightly higher arc. The Fathers have their own music track, a laid-back hip-hop beat
   ("Headspin" by congusbongus).
+- SPACE THE FLOOR rules: every Present game is played on the BIG STAGE (a modern arena) with the era's rules, the
+  same for both teams: shots beyond the arc go in 8% more often, the players without the ball stand 2 ft wider,
+  and a jump shot right after a crossover or spin goes in 10% more often. The Present's music is a fast chiptune
+  techno track ("Techno drive" by Centurion_of_war).
 - Signature moves: each legend has one small edge only he has. Steeple shoots hook shots close to the rim (hard to
   block), Gate's blocks stay in play (he keeps the ball or tips it to a teammate), Set Shot's long range starts
   further out, Boxcar dunks from further out, Velvet's finger rolls slip past defenders, and Quarterback throws
   long outlet passes. Rooftop's cradle dunks slip past part of a contest, Ankles' double crossover beats his man
   more often (and more defenders fall), Midrange's turnaround fadeaway (its own animation) loses less to a contest,
   Freight's close shots and dunks are harder to block, Eyes Closed's no-look passes are harder to intercept, and
-  Lockbox's chase-down blocks from behind work more often.
+  Lockbox's chase-down blocks from behind work more often. Deep End's step-back (its own animation: a hop back
+  before a long jumper right after his crossover) loses half the contest, Toolbox runs the floor without tiring
+  after a defensive rebound, Stretch drifts out to the arc and his catch-and-shoot shots are hard to contest,
+  Switch gets a burst of speed after his steals, Skylight catches lobs from further out, and Zigzag's Euro-step
+  (its own animation: a step one way, then the other) slips past the man in front into a layup that is hard to
+  block.
 - The Hall of Legends: HALL on the tour, or HALL OF LEGENDS on CREW & CREDITS. One row of plaques per era. Tap an
   unlocked legend to see his card, name, archetype, number, tokens, his strengths (the rating shape), his signature
   move and his mentor perk; REPLAY STORY plays his unlock scene again.
@@ -302,14 +326,16 @@ them for good. Every legend is a made-up character with his own name and looks, 
   Boxcar: dunks from a little further out; Velvet: contested layups +1.5%; Quarterback: passes 5% faster;
   Rooftop: contested dunks +2.5%; Ankles: crossovers beat the defender 15% more often; Midrange: jumpers inside the
   arc +1.5%; Freight: 5% harder to strip; Eyes Closed: passes 15% harder to intercept; Lockbox: steal timing window
-  5% wider.
+  5% wider; Deep End: jumpers right after his crossover +1.5%; Toolbox: a teammate's shot right after his pass
+  +1.5%; Stretch: jumpers right after a catch +1.5%; Switch: the man he guards shoots 1.5% worse; Skylight: reaches
+  rebounds 5% further; Zigzag: layups 5% harder to block.
   Each player has one mentor at most and each legend trains one player at a time. SWITCH moves him to another
   player and STOP TRAINING ends it (both ask first). Mentors coach your regular players only (a drafted legend can't
   be trained). Perks work in Road Trip games only, not in Quick Game or Legends games, and they stay when you start
   a new trip.
 - Drafting a legend: every legend you have unlocked joins the DRAFT list for your open star roster slots (one
-  LEGENDS row per era at the end, "UNLOCKED IN LEGENDS - THE FATHERS"). He joins boss-level for the part of the trip you have reached, with his own strengths (no stat
-  above 95). Only one legend can start (from any era), but he may start next to one boss.
+  LEGENDS row per era at the end: THE GRANDFATHERS, THE FATHERS, THE PRESENT). He joins boss-level for the part of
+  the trip you have reached, with his own strengths (no stat above 95). Only one legend can start (from any era), but he may start next to one boss.
 - Saving: the Legends progress (tokens, unlocked legends, scenes seen, mentors) is saved by itself, apart from the
   trip; a NEW TRIP keeps it.
 
@@ -440,11 +466,14 @@ scripts/twists.gd (the city twists):
   slower), "shot_clock": 18.0 (Memphis), "stamina_refill_mult": 0.7 (humid: 30% slower). The "banner" text is what
   the banner, the map card and the pause screen show. "era_grand" is the Grandfathers' OLD SCHOOL rules
   ("inside_mult": close shots, "foul_mult": fouls called), "era_fathers" the Fathers' ISO BALL rules
-  ("cross_beat_mult": crossovers that beat the man, "dunk_range_mult": how far out a dunk starts).
+  ("cross_beat_mult": crossovers that beat the man, "dunk_range_mult": how far out a dunk starts), "era_present"
+  the Present's SPACE THE FLOOR rules ("spacing_ft": how much wider the players without the ball stand,
+  "pullup_mult": jump shots right after a crossover or spin).
 scripts/legends_data.gd (the Legends mode, all plain data):
-- CHAPTERS: the four eras (THE GRANDFATHERS and THE FATHERS are built): name, court, music, era rules, the stars
-  or tokens that open it ("gate"), its six legends and the finale; a chapter may set its own "challenge_avg",
-  "mate_drop" and "finale_stage_avg" (the Fathers: 69, 14 and 56)
+- CHAPTERS: the four eras (THE GRANDFATHERS, THE FATHERS and THE PRESENT are built): name, court, music, era
+  rules, the stars or tokens that open it ("gate"), its six legends and the finale; a chapter may set its own
+  "challenge_avg", "mate_drop" and "finale_stage_avg" (the Fathers: 69, 14 and 56; the Present: 72, 14 and 63).
+  Its "crew" is also its Quick Game era team (name, style, colors; its finale three play)
 - LEGENDS: one block per legend: names, number, "shape" (his five stats around his level; they add up to 0),
   "signature", "challenge" (the goal and its numbers, and "line", the text the game shows), "perk", "bio"
 - PERKS: the mentor perks and their sizes
@@ -606,6 +635,7 @@ Legends:
 - legends_tour.gd: the era tour screen (the timeline and the chapter view)
 - hall.gd: the Hall of Legends and the mentor picker
 - legends_test.gd: a test that plays the Legends chapters by itself (for the team, not used in play)
+- era_teams.gd: the era teams and era courts of Quick Game (which are open, who plays, their court and rules)
 - anim_test.gd: a test that checks every player's pictures (for the team, not used in play)
 - howto_shots.gd: takes the game screenshots the How to Play pictures are made from (for the team, not used
   in play)
@@ -629,9 +659,10 @@ The pictures are drawn by scripts, not by hand, so they can be changed and made 
 - python3 tools/art/make_portraits_v2.py   makes the story portraits in assets/portraits (comic style).
 - python3 tools/art/make_map.py       makes the trip map, pins, van and van paints in assets/map.
 - Legends: make_players_v2.py --only lg_steeple,... makes the legend players (the Grandfathers with their
-  hook-shot pages, Midrange with his fadeaway pages, lg_<id>_x0.png); make_portraits_v2.py --legends (or --legends
-  fathers) their portraits; make_courts.py --era the OLD GYM and the NIGHT PARK (--era fathers: only the NIGHT
-  PARK); python3 tools/art/make_legends_ui.py   the tour timeline, chapter pins and Hall frames in assets/legends.
+  hook-shot pages, Midrange with his fadeaway pages, Deep End with his step-back and Zigzag with his Euro-step
+  pages, lg_<id>_x0.png); make_portraits_v2.py --legends (or --legends fathers, --legends present) their portraits;
+  make_courts.py --era the OLD GYM, the NIGHT PARK and the BIG STAGE (--era fathers or --era present: only that
+  one); python3 tools/art/make_legends_ui.py   the tour timeline, chapter pins and Hall frames in assets/legends.
 - python3 tools/art/make_cosmetics_preview.py   puts every star reward (jerseys, balls, vans, courts) on one
   picture, docs/art/cosmetics_preview.png.
 - python3 tools/art/make_icon.py      makes the app icons in assets/icon and the itch.io cover

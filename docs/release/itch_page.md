@@ -67,6 +67,8 @@ Each city plays a little differently, and the twist is the same for both teams:
 ## Quick Game
 One game to 21 whenever you like. Pick the level, the court and the music, plus your team and your opponent. Each
 city court and each crew you beat on the road trip joins Quick Game for good, and so do the two star courts.
+Unlock an era's three finale legends and that era joins Quick Game too: the Grandfathers, the Fathers or the
+Present as a team, and their era court with its rules.
 
 ## Legends
 Earn 24 stars and the Legends tour opens: a trip back through the eras of the game. Chapter 1 is the Grandfathers,
@@ -80,8 +82,12 @@ high flyer, a crossover artist, a fadeaway scorer and more, on a blacktop under 
 crossovers shake defenders and dunks start further out. Their challenges are a step harder, and one asks you to
 score 6 points yourself on the best defender of the era.
 
+Chapter 3 is the Present (it opens at 48 stars or 30 tokens): six legends of today's game, a step-back shooter, a
+point-forward, a stretch big, a Euro-step slasher and more, in a big modern arena under SPACE THE FLOOR rules: threes
+fall more often, the floor is spread wider and pull-ups off a crossover drop. The hardest challenges yet.
+
 Unlocked legends hang in the Hall of Legends, coach your players with a small perk on the road trip, and one of
-them (from either era) can join your starting three, right next to a boss.
+them (from any era) can join your starting three, right next to a boss.
 
 ## Controls
 - Touch: drag anywhere on the left half of the screen to move (pull past the ring to sprint). Two buttons on the

@@ -297,6 +297,22 @@ Everything below (Tasks by wave).
   Present legend sits in exactly his own games). Breaking the Present gate or its swap fails the test. `--legendtest`
   OK; `--legends-test --difficulty hard` LEGENDS END (30 games, 63/63, Present opens by 42 tokens, its intro played);
   `--legends-chapter present` END (14/21); 3 `--autoplay`, 1 `--humantest`, `--challenge lg_deep_end` (met 15-14).
+- **P11-29** (gameplay C): docs in step with Phase 11, every fact read from the merged code. `CLAUDE.md`: the
+  `present` row (gate 48 / 30, 72 / 14 / 63, `ui_color` #0a7385), the 18 legends, their challenges, signatures (the
+  P11-17 constants) and perks (the P11-22 hooks in main.gd / defense.gd), the finale three, max tokens 63, SPACE THE
+  FLOOR (`spacing_ft`, `pullup_mult`, the PULLUP_* constants), BIG STAGE, `legends_present.ogg`, the stepback /
+  eurostep extras, `era_teams.gd` (finale three, open once they are unlocked), the Quick Game COURT and team lists
+  (the old "never in the COURT list" line replaced; NIGHT PARK's music `legends_fathers`), three draft and Hall rows,
+  HALL from a chapter view, `--signature`, `--legends-test-three`, `BACKTEST_CHAPTER3`, the titletest era checks, the
+  trip-test draft order present -> fathers -> grand, `--tokens 30`, era ids for `--court` / `--twist` /
+  `--quick-teams` / `--unlock-all`, and `--twistshots` needing a game mode (main.gd's skip list has no
+  `--twistshots`). The ramp line stays Phase 10's (no `docs/qa/phase11-ramp.md` yet). `README.txt`: Chapter 3, era
+  teams and courts, the Present's rules, moves, perks and tokens. `CREDITS.md`: 4 Present art rows, the CC-BY note
+  names Techno drive (its music row was already complete); `CREDITS_LIST` names the Present. `docs/legends-plan.md`:
+  the Present table and the `era_present` row as shipped. `docs/release/itch_page.md`: Chapter 3 and era teams. No
+  story line was stale (P11-23). `--import` OK, `--legendtest` LEGENDTEST OK (18 legends, 3 built, 63 tokens, era
+  teams OK), `--titletest` TITLE TEST DONE (6 CC-BY rows, 6 shown); the CREW & CREDITS list scrolls to the license
+  under xvfb.
 
 ## Done
 - **P11-01** (qa, merged) Phase 10 save fixtures: `docs/qa/fixtures/` legends_v1_ch2_mid / _ch2_done, trip_v2_father, settings_v2_48, make_ / check_fixtures_v4 (README "Phase 10 save fixtures"); scripted like P10-01, not a test-driver stop (README says why)
@@ -710,7 +726,7 @@ Everything below (Tasks by wave).
   Phase 10 Quick Game. Nothing changed; owner choices in the report (leave the Present lean, or a lower Present average)
 
 ### Wave 6
-- **P11-29** | Docs
+- **P11-29** | REVIEW | Docs
   | gameplay-programmer C | `CLAUDE.md`, `README.txt`, `CREDITS.md` (the Present art rows), `scripts/title.gd`
   (`CREDITS_LIST`), `docs/legends-plan.md` (part 3's Present table and part 4's row as shipped), `docs/release/itch_page.md`,
   `scripts/story_text.gd` (goal numbers in lines only, from P11-23's list)
