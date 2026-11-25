@@ -111,7 +111,7 @@ and the Hall; so Chapter 3 is mostly data, art, story and one era twist):
   `"finale_stage_avg"` (P6 a, a step harder than Chapter 2; first guess 72 / 14 / 57, P11-23 tunes them).
 - Legend ids (fixed by P1 a and VISION "Phase 11 names (after P11-02)"): `lg_deep_end` (Calloway "Deep End" Whitlock), `lg_toolbox` (Theo "Toolbox" Lindqvist),
   `lg_stretch` (Sigurd "Stretch" Halvorsen), `lg_switch` (Ellery "Switch" Achterberg), `lg_skylight` (Bodie "Skylight"
-  Castellano), `lg_zigzag` (Lucien "Zigzag" Moreau). Each row has every Chapter 1-2 key (`name`,
+  Castellano), `lg_zigzag` (Bastien "Zigzag" Moreau). Each row has every Chapter 1-2 key (`name`,
   `full`, `first`, `last`, `chapter: "present"`, `archetype` (short enough for the draft card, P10-B5), `role`, `tier:
   "legend"`, `sheet`, `portrait`, `number`, `shape` (sum 0), `spec`, `steal_bias`, `block_bias`, `signature`,
   `challenge` (its `mates`: 2 other Present legends), `perk`, `colors`, `look`, `bio`, `unlock_scene: "lg_<id>_unlock"`).
