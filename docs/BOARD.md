@@ -666,7 +666,7 @@ Everything below (Tasks by wave).
   | cause: the portrait rows differ from `tools/art/crews.json` (888, 896, 878): Switch teal/light (sheet ink/teal),
   Skylight ink/coral (sheet deep teal/light), Stretch skin tan (sheet light). Fix: ERA3_INK/ERA3_TEAL,
   ERA3_DEEP_TEAL/ERA3_LIGHT, skin "light"; rerun `--legends present` | P11-28
-- **P11-B2** | The Present's teal LEGEND tags and draft band look like the Fathers' mint (Low, readability)
+- **P11-B2** | The Present's teal LEGEND tags and draft band look like the Fathers' mint (Low, readability) | DONE: owner picked the darker teal #0a7385 (legends_data.gd ui_color)
   | gameplay or art (data only) | `scripts/legends_data.gd` line 158 (the Present crew `ui_color`)
   | `#17a8a1` vs the Fathers `#5cc7a1` is 1.42:1 (lineup tags side by side), yellow LEGEND text on it 2.1:1. Proposed
   `Color(0.04, 0.45, 0.52)` (`#0a7385`, still teal): 2.7:1 vs mint, text 3.9:1; also darkens the Quick Game team button.

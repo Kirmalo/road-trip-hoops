@@ -155,7 +155,7 @@ const CHAPTERS := [
 		"twist": "era_present", "look": "era_present", "music": "legends_present", "fallback_music": "newyork",
 		"gate": {"stars": 48, "tokens": 30},   # P7 a: 48 trip stars or 30 legend tokens, no Chapter 2 finale needed
 		"crew": {"name": "THE PRESENT", "style": "outside", "colors": ["ERA3_TEAL", "ERA3_CORAL"],
-			"ui_color": Color(0.09, 0.66, 0.63)},   # the look check: teal (the era court's key paint) + coral
+			"ui_color": Color(0.04, 0.45, 0.52)},   # the look check: teal + coral; P11-B2 (owner): darker teal #0a7385
 		"legends": ["lg_deep_end", "lg_toolbox", "lg_stretch", "lg_switch", "lg_skylight", "lg_zigzag"],
 		"finale": {"target": 21, "legends": ["lg_deep_end", "lg_toolbox", "lg_skylight"], "label": "PRESENT FINALE"},
 		"intro_scene": "legends_present_intro",
