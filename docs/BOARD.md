@@ -155,6 +155,15 @@ Everything below (Tasks by wave).
 ## Doing
 
 ## Review
+- **P11-05b** (art B, P4 c: both): `make_players_v2.py` EXTRA rows `stepback` (12 frames: drive step, plant with the
+  last dribble, push back, hop, land square, then today's jumper; events `fade` [1, 4], `fade_ft` `STEP_FT` 2.0,
+  release 8, air [6, 10]) and `eurostep` (13 frames: gather, long step right, plant, long step back left, plant on
+  the takeoff foot, then today's layup; `steps` [1, 3], `euro_path` [[0, 0], [2, -1.5], [4, 0.9]] feet to his left
+  (the game moves him), takeoff 5, release 8, air [5, 10]); carried by no sheet yet (`EXTRA_CREWS` empty), so
+  `format.json`, `hands.json` and every sheet stay as they are. Previews `docs/art/stepback_v1.gif` (1.47 MB, vs the
+  jump shot) and `docs/art/eurostep_v1.gif` (1.50 MB, vs the layup), 5 directions, drift drawn, 0 hand/ball check
+  problems; stand-in bodies `sea_g1` (slim guard, short fade, no beard) and `den_g2` (slim guard, short twists, no
+  headband) until the legends' sheets exist. For the owner's look check with P11-05.
 - **P11-07** (art D): `frame_present.png` (56 x 88, 3541 B), `pin_present.png` (854 B), `pin_present_done.png` (876 B),
   listed in `ui.json` (`frames.present`, `pins.present.open/done`); preview `docs/art/legends_ui.png` (Chapter 3 row).
   Made-up modern arena: graphite glass band, magenta LED strip, centre-hung screen crest (bars only), magenta plate,

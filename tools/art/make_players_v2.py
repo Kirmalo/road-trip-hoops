@@ -40,6 +40,8 @@ Usage:  python3 tools/art/make_players_v2.py [--only ID[,ID...] | --all] [--jobs
         [--hook-strip ID DIR]        (a still strip of the hook in 5 directions to DIR)
         [--extra-preview NAME [ID]]  (P10-04b: only that extra's preview gif, e.g. fadeaway: docs/art/fadeaway_v1.gif)
         [--extra-strip NAME ID DIR]  (a still strip of that extra in 5 directions to DIR)
+                                     P11-05b: NAME stepback (docs/art/stepback_v1.gif) or eurostep
+                                     (docs/art/eurostep_v1.gif); no sheet carries them yet
         [--legends-strip [fathers]]  (P9-09: only docs/art/legends_grand.png, the six lg_ sheets with the hook, from
                                      the written files; the sheets themselves: --only <the LEGENDS ids>. P10-14:
                                      fathers = docs/art/legends_fathers.png, Midrange with the fadeaway;
@@ -1179,6 +1181,82 @@ def k_fadeaway(D):
     ]
 
 
+STEP_FT = 2.0            # P11-05b: how far back the step-back slides over its "fade" frames (the game moves him)
+
+
+def k_stepback(D):
+    """Step-back jumper (P11-05b, P4 c: Deep End's signature move), off the left hand like today's jump shot.
+    0 the drive step (right foot forward, the ball on the right hand); 1 the hard plant on the right foot with the
+    last low dribble in front of it; 2 the push back off the right foot (the left foot reaches back, the ball comes
+    up into both hands); 3 the hop back (both feet just off the floor); 4 land square and balanced, the dip and the
+    ball to the set point; 5-11 today's jump shot from its set point (rise, release at 8, follow-through, land). The
+    slide back is the game's (events fade [1, 4], fade_ft STEP_FT, as the fadeaway's fade_ft): the art stays over
+    his floor point. Feet leave the floor 6-10 for the jumper (the game adds the jump); the hop at 3 is in the art."""
+    hw, L, sw = D["hw"], D["L"], D["sw"]
+    xr = -(sw + 3.8)
+    low = ("hR", 0.0, -(BR + 1.5), 0.6)                            # the ball under the dribbling hand
+    fe = {"fL": F(hw + 1.6, 1.6, turn=0.2), "fR": F(-hw - 1.6, -0.4, turn=0.25)}   # k_shoot's stance
+    shot = lambda bx, by, bz: {"ball": ("chest", bx, by, bz), "hL": ("ball", 0.3, -(BR + 0.2), -1.6),
+                               "hR": ("ball", -(BR + 0.4), 0.0, 0.2)}
+    keys = [
+        (0.0, K(fL=F(hw + 1.4, -0.26 * L, turn=0.3), fR=F(-hw - 1.0, 0.30 * L, turn=0.15), root=(0.0, 0.4),
+                   h=0.80, lean=22, twist=-10, head_up=22, head_yaw=6, hR=("w", xr, 16.4, 6.0), ball=low,
+                   hL=("chest", 5.5, -1.0, 7.0), pR=(-1, -0.4, -0.6), pL=(1, -0.7, -0.3))),
+        (1.0, K(fL=F(hw + 1.6, -0.30 * L, ANK + 0.8, -0.4, 0.3), fR=F(-hw - 1.2, 0.36 * L, turn=0.15),
+                   root=(-0.4, 1.4), h=0.68, lean=28, twist=-12, head_up=26, hR=("w", xr + 0.6, 8.6, 9.0),
+                   ball=("w", xr + 0.8, BR + 0.6, 9.6))),
+        (2.0, K(fL=F(hw + 1.4, -0.40 * L, ANK + 1.4, -0.6, 0.3), fR=F(-hw - 1.2, 0.42 * L, turn=0.15),
+                   root=(-0.2, 0.6), h=0.72, lean=16, twist=-8, head_up=20, head_yaw=2, shrug=0.2,
+                   ball=("chest", -2.6, -4.0, 6.0), hR=("ball", -(BR + 0.4), 0.0, -0.4),
+                   hL=("ball", BR + 0.4, 0.4, -0.2), pR=(-1, -0.6, -0.3), pL=(1, -0.6, -0.3))),
+        (3.0, K(fL=F(hw + 1.6, -0.06 * L, ANK + 1.8, -0.7, 0.25), fR=F(-hw - 1.4, 0.16 * L, ANK + 2.4, -0.7, 0.2),
+                   root=(0.0, 0.1), h=0.90, lean=6, twist=-4, head_up=18, head_yaw=0, shrug=0.2,
+                   ball=("chest", -1.0, -3.0, 6.0))),
+        (4.0, K(fe, shot(0.8, 2.0, 5.0), root=(0.0, 0.0), h=0.76, lean=10, twist=0, head_up=16, shrug=0.0,
+                   pL=(1, -1, 0.0), pR=(-1, -0.8, -0.3))),
+    ]
+    keys += [(t + 2.0, spec) for t, spec in k_shoot(D) if t >= 3.0]        # today's jumper from its set point
+    return keys
+
+
+EURO_FT = 1.5            # P11-05b: how far the Euro-step's first step goes sideways (events euro_path, in feet)
+
+
+def k_eurostep(D):
+    """Euro-step layup (P11-05b, P4 c: Zigzag's signature move): one way, then the other, into today's right-hand
+    layup. 0 the gather (two hands on the ball at the right hip, the left foot forward); 1 the first long step out to
+    his right with the right foot, the ball kept on the right hip; 2 the plant on it, the left foot swinging across;
+    3 the second long step back across to his left with the left foot, the ball swept high over to the middle (away
+    from the man in front); 4 the plant on the left foot (the takeoff foot), load; 5-12 today's layup from its takeoff
+    (release at 8, land 11). The pelvis sways in the art; the game moves him sideways along euro_path ([frame, feet to
+    his left]: right, then back across), the art ends over his floor point. Feet leave the floor 5-10 (the game adds
+    the jump)."""
+    hw, L = D["hw"], D["L"]
+    hip = ("chest", -3.4, -6.0, 4.6)
+    keys = [
+        (0.0, K(two(0.2), ball=hip, fL=F(hw + 0.3, 0.30 * L), fR=F(-hw - 0.3, -0.30 * L, ANK + 1.2, -0.7, 0.1),
+                   root=(0.0, 0.0), h=0.80, lean=18, head_up=18, twist=-10, head_yaw=0,
+                   pL=(1, -0.5, -0.3), pR=(-1, -0.5, -0.3))),
+        (1.0, K(two(0.2), ball=("chest", -3.8, -5.0, 4.4), fL=F(hw + 0.6, -0.16 * L, ANK + 1.4, -0.6, 0.2),
+                   fR=F(-hw - 0.42 * L, 0.26 * L, turn=-0.2), root=(-2.6, 0.8), h=0.70, lean=22, twist=-18,
+                   head_up=20, head_yaw=10)),
+        (2.0, K(two(0.2), ball=("chest", -2.8, -4.0, 5.0), fL=F(-hw * 0.4, 0.06 * L, ANK + 2.6, -0.6, 0.1),
+                   fR=F(-hw - 0.36 * L, 0.24 * L, turn=-0.2), root=(-3.0, 1.2), h=0.66, lean=26, twist=-10,
+                   head_up=24, head_yaw=4)),
+        (3.0, K(two(0.3), ball=("chest", 0.6, -0.5, 6.4), fL=F(hw + 0.40 * L, 0.30 * L, turn=0.4),
+                   fR=F(-hw - 0.10 * L, -0.06 * L, ANK + 1.6, -0.7, 0.1), root=(1.6, 0.8), h=0.70, lean=22,
+                   twist=8, head_up=24, head_yaw=-8)),
+        (4.0, K(two(0.3), ball=("chest", -0.6, -2.0, 6.0), fL=F(hw + 0.30 * L, 0.20 * L, turn=0.3),
+                   fR=F(-hw * 0.4, -0.20 * L, ANK + 1.0, -0.6, 0.1), root=(1.4, 0.8), h=0.64, lean=28, twist=0,
+                   head_up=28, head_yaw=-2, pL=(1, 0.2, -0.6), pR=(-1, 0.2, -0.6))),
+    ]
+    ease = {2.0: (0.8, 0.5), 3.0: (0.3, 0.2)}             # the pelvis back over his floor point through the takeoff
+    for t, spec in k_layup(D):
+        if t >= 2.0:
+            keys.append((t + 3.0, K(spec, root=ease.get(t, (0.0, 0.0)))))
+    return keys
+
+
 # name -> definition, fps, ms, events (as ANIMS). Each extra keeps its start in the extra column space (EXTRA order)
 # on every sheet, so a new one goes at the end: the sheets carrying the earlier ones keep their columns.
 EXTRA = [
@@ -1188,6 +1266,12 @@ EXTRA = [
     ("fadeaway", keyed(k_fadeaway, 13), 0.0, [100, 120, 60, 60, 70, 60, 60, 60, 60, 120, 80, 90, 120],
      {"post": [0, 1], "turn": [1, 4], "gather": [4, 5], "takeoff": 5, "rise": [6, 7], "top": 7, "release": 8,
       "follow": [9, 10], "air": [5, 10], "land": 11, "fade": [6, 11], "fade_ft": FADE_FT, "hand": "L"}),
+    ("stepback", keyed(k_stepback, 12), 0.0, [70, 60, 60, 70, 70, 60, 50, 50, 60, 120, 100, 120],
+     {"floor": 1, "plant": 1, "hop": [2, 3], "gather": [2, 5], "rise": [6, 7], "release": 8, "follow": [9, 11],
+      "air": [6, 10], "fade": [1, 4], "fade_ft": STEP_FT, "hand": "L"}),
+    ("eurostep", keyed(k_eurostep, 13), 0.0, [70, 80, 70, 80, 60, 50, 50, 50, 60, 60, 60, 80, 100],
+     {"gather": 0, "steps": [1, 3], "takeoff": 5, "release": 8, "air": [5, 10], "land": 11,
+      "euro_path": [[0, 0.0], [2, -EURO_FT], [4, round(EURO_FT * 0.6, 2)]], "hand": "R"}),
 ]
 EXTRA_ANIM = {a[0]: a for a in EXTRA}
 # Who carries an extra is data (P10-04b): EXTRA_CREWS names the crews.json crews whose sheets carry it (Chapter 1's
@@ -1195,10 +1279,12 @@ EXTRA_ANIM = {a[0]: a for a in EXTRA}
 # each keeps its own columns). P10-14: the Fathers (crew "FA") carry no hook; only Midrange lists "extra":
 # ["fadeaway"], so his x page holds the fadeaway in its own columns (11..23, the hook's 0..10 left empty).
 # --extra-sheets id,... makes those sheets carry every extra this run; --extra-sheets name:id,... only that extra.
-EXTRA_CREWS = {"hook": ("GR",), "fadeaway": ()}
+EXTRA_CREWS = {"hook": ("GR",), "fadeaway": (), "stepback": (), "eurostep": ()}   # P11-05b: nobody carries those yet
 EXTRA_FORCE = set()
 PREVIEW_LIFT["hook"] = [0, 0, 0, 4, 12, 17, 18, 15, 7, 0, 0]
 PREVIEW_LIFT["fadeaway"] = [0, 0, 0, 0, 0, 3, 9, 15, 17, 15, 8, 0, 0]
+PREVIEW_LIFT["stepback"] = [0, 0, 0, 0, 0, 0, 6, 12, 14, 12, 5, 0]        # the jumper's lift (the hop is in the art)
+PREVIEW_LIFT["eurostep"] = [0, 0, 0, 0, 0, 4, 12, 18, 20, 18, 10, 0, 0]   # the layup's lift
 HOOK_GIF = os.path.join(ROOT, "docs", "art", "hook_shot_v1.gif")
 HOOK_BODY = "ht_a1"      # the preview body: a wiry center (as the hook-shot legend), a drafted player in his colors
 
@@ -1289,6 +1375,15 @@ PREVIEWS = {             # --extra-preview NAME: the extra, the move it stands i
     "fadeaway": {"vs": "shoot", "path": FADE_GIF, "body": FADE_BODY, "tag": "P10-04b turnaround fadeaway preview",
                  "title": "TURNAROUND FADEAWAY (new, Fathers sheets only)",
                  "note": "drifts back %.1f ft (the game moves him; the art stays over his spot)" % FADE_FT},
+    # P11-05b (P4 c): the Present legends' sheets don't exist yet, so these draw on stand-in bodies close to the
+    # board's proposals: Deep End a slim guard with no beard (sea_g1: short fade), Zigzag slim with curly hair and
+    # no headband (den_g2: short twists). Rerun on lg_deep_end / lg_zigzag once their sheets exist.
+    "stepback": {"vs": "shoot", "path": os.path.join(ROOT, "docs", "art", "stepback_v1.gif"), "body": "sea_g1",
+                 "tag": "P11-05b step-back preview", "title": "STEP-BACK JUMPER (new, Deep End only)",
+                 "note": "slides back %.1f ft (the game moves him)" % STEP_FT},
+    "eurostep": {"vs": "layup", "path": os.path.join(ROOT, "docs", "art", "eurostep_v1.gif"), "body": "den_g2",
+                 "tag": "P11-05b Euro-step preview", "title": "EURO-STEP LAYUP (new, Zigzag only)",
+                 "note": "steps %.1f ft right, then left (the game moves him)" % EURO_FT},
 }
 
 
@@ -1296,6 +1391,16 @@ def preview_drift(name, k, yaw):
     """Previews only: (dx, dy) art px of the step back an extra's "fade" / "fade_ft" events ask the game for (frame
     k, direction yaw); (0, 0) for everything else."""
     ev = (EXTRA_ANIM.get(name) or ANIM[name])[4]
+    if "euro_path" in ev:      # P11-05b: sideways ([frame, feet to his left] points, eased between them)
+        pts = ev["euro_path"]
+        ft = pts[-1][1] if k >= pts[-1][0] else pts[0][1]
+        for (a, fa), (b, fb) in zip(pts, pts[1:]):
+            if a <= k < b:
+                u = (k - a) / float(b - a)
+                ft = fa + (fb - fa) * u * u * (3 - 2 * u)
+        v = S.cam_matrix(yaw) @ np.array([1.0, 0.0, 0.0])     # his left (body x), from the facing direction
+        d = ft * ART_PX_FT
+        return int(round(v[0] * d)), int(round(-v[1] * d))
     if "fade" not in ev:
         return 0, 0
     f0, f1 = ev["fade"]
@@ -1304,6 +1409,14 @@ def preview_drift(name, k, yaw):
     v = S.cam_matrix(yaw) @ np.array([0.0, 0.0, -1.0])        # backward, from the facing direction
     d = ev.get("fade_ft", 0.0) * ART_PX_FT * u
     return int(round(v[0] * d)), int(round(-v[1] * d))
+
+
+def drift_room(name):
+    """Previews only: the most feet an animation's events move him (the fade back or the Euro-step's sway)."""
+    ev = (EXTRA_ANIM.get(name) or ANIM[name])[4]
+    if "euro_path" in ev:
+        return max(abs(f) for _, f in ev["euro_path"])
+    return ev.get("fade_ft", 0.0) if "fade" in ev else 0.0
 
 
 def extra_preview(name, sid=None, path=None):
@@ -1329,10 +1442,10 @@ def extra_preview(name, sid=None, path=None):
                 seq.append((img, rec))
             row[dname] = seq
         rows.append((nm, row, probs))
-    drifts = any("fade" in (EXTRA_ANIM.get(nm) or ANIM[nm])[4] for nm, _, _ in rows)
+    room = max(drift_room(nm) for nm, _, _ in rows)
     Z = 2
     top = 30
-    pad = 6 + (2 * int(FADE_FT * ART_PX_FT) * Z if drifts else 0)     # room for the step back
+    pad = 6 + 2 * int(room * ART_PX_FT) * Z                           # room for the step back (or the sway)
     head = 22
     lab = 18
     cw, ch = FW * Z, (FH + top) * Z
@@ -1927,6 +2040,12 @@ def write_format():
             fmt["_help_extra"] += (" fadeaway: turnaround fadeaway jumper off the left hand; post (back to the hoop), "
                                    "turn (the pivot), rise, top; fade [first, last] = the frames over which the game "
                                    "moves him fade_ft feet back (the art stays over his floor point).")
+        if "stepback" in extra:    # P11-05b: only once a sheet carries it
+            fmt["_help_extra"] += (" stepback: step-back jumper off the left hand; plant, hop, then today's jumper; "
+                                   "fade [first, last] = the frames over which the game slides him fade_ft feet back.")
+        if "eurostep" in extra:    # P11-05b: only once a sheet carries it
+            fmt["_help_extra"] += (" eurostep: Euro-step into today's right-hand layup; steps [first, second]; "
+                                   "euro_path = [frame, feet to his left] points the game moves him through, eased.")
         fmt["extra_cols"] = xcols
         fmt["extra"] = extra
     with open(os.path.join(OUT_DIR, "format.json"), "w") as f:
