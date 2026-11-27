@@ -617,10 +617,10 @@ proposal is two existing keys plus two new ones. Each new key has a default that
 
 | Key | Value | What it does | Where |
 |---|---|---|---|
-| `speed_mult` (exists) | 1.05 | everyone 5% faster | player.gd, as today |
+| `speed_mult` (exists) | 1.08 (owner, after P12-21; was 1.05) | everyone 8% faster | player.gd, as today |
 | `stamina_refill_mult` (exists) | 1.15 | stamina comes back 15% faster, so the pace lasts | player.gd, as today |
 | `dead_ball_mult` (new, default 1.0) | 0.6 | the dead-ball pauses after a make, an out of bounds and a reaching foul are 40% shorter (`MADE_WAIT`, `OOB_WAIT`, `FOUL_WAIT`), so the ball is back in play at once | rules.gd |
-| `break_mult` (new, default 1.0) | 1.10 | a shot within `BREAK_WINDOW` 5 s of his team getting the ball (a steal, a rebound or an inbound) goes in 10% more often: fast-break shots, for everyone | main.gd `shot_probability()`, with the window as a constant at the top of main.gd |
+| `break_mult` (new, default 1.0) | 1.20 (owner, after P12-21; was 1.10) | a shot within `BREAK_WINDOW` 5 s of his team getting the ball (a steal, a rebound or an inbound) goes in 20% more often: fast-break shots, for everyone | main.gd `shot_probability()`, with the window as a constant at the top of main.gd |
 
 The shot clock does not change (Memphis keeps its 18 s as its own). The banner says "Fast break: a quicker game,
 early shots fall". The twist is not called "HYPERSPEED", because that would sit next to Hyperdrive's nickname. What

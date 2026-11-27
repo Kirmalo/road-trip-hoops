@@ -140,6 +140,7 @@ tablet with a joystick and two buttons.
 | Phase 12 court (after P12-06) | Owner: approves the court `era_next` as is and its name NEON DOME (dark glass floor, lime lines, violet key, black dome with violet light rings, chrome rail; `docs/art/era_next_preview.png`) |
 | Phase 12 portraits (after P12-15) | Owner: approves the twelve portraits `docs/art/legends_next_portraits.png` as is; Overclock's braces shown by their lime glow up the tank (no lower framing) |
 | Phase 12 UI art (after P12-07) | Owner: approves the Chapter 4 timeline panel, pins and card frame as shown; Chapter 4's `ui_color` goes darker, #466e14 (tags, draft row, Quick Game team button readable), the court and kits keep their bright lime |
+| Phase 12 FAST BREAK (after P12-21) | Owner: the middle step: `speed_mult` 1.08 (was 1.05) and `break_mult` 1.20 (was 1.10); `stamina_refill_mult` 1.15 and `dead_ball_mult` 0.6 kept. The effect stays subtle (early shots about +2 points over later ones in 40 games, `docs/qa/phase12-era.md`); not the tester's 1.30 |
 
 ## Technical constraints
 - Godot 4.3+ (GDScript), GL Compatibility renderer, 1280x720 landscape. See `CLAUDE.md` for code conventions.

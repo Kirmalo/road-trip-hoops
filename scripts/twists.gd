@@ -121,10 +121,10 @@ const TWISTS := {
 	"era_next": {
 		"name": "FAST BREAK", "banner": "Fast break: a quicker game, early shots fall",
 		"icon": "era_next",
-		"speed_mult": 1.05,           # everyone 5% faster
+		"speed_mult": 1.08,           # everyone 8% faster (P12-21, owner: was 1.05)
 		"stamina_refill_mult": 1.15,  # stamina comes back 15% faster, so the pace lasts
 		"dead_ball_mult": 0.6,        # the pauses after a make, an out of bounds or a reaching foul are 40% shorter
-		"break_mult": 1.10,           # a shot within main.BREAK_WINDOW (5 s) of his team getting the ball: 10% more often
+		"break_mult": 1.20,           # a shot within main.BREAK_WINDOW (5 s) of his team getting the ball: 20% more often (P12-21, owner: was 1.10)
 	},
 }
 
