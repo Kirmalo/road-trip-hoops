@@ -494,10 +494,12 @@ name (P12-06), the music pick (P12-08).
   `--best-roster`), cells big enough to see Q3 a's bands (Normal about 45%, Hard about 30-35%, the finale a bit harder
   than Chapter 3's 53% / 33%); Firewall the hardest; the cyber legends no harder than the natural ones beyond their
   goal; any story line made stale listed for P12-29 | P12-17, P12-18 merged
-- **P12-24** | Trip test: a drafted New Generation legend
-  | gameplay-programmer C | `scripts/trip_test.gd`
-  | `LEGEND_DRAFT_CHAPTERS` next -> present -> fathers -> grand (the first legend draft signs a New Generation legend
-  from his row); refusals across eras; legend + boss starts; TRIP END checks every built chapter's row | P12-19 merged
+- **P12-24** | REVIEW | Trip test: a drafted New Generation legend
+  | Result: `LEGEND_DRAFT_CHAPTERS` next -> present -> fathers -> grand, `LEGEND_DRAFTS` 4 (the 4th slot at 48 stars
+  drafts a Grandfather); the rest already read the data. `--trip-test --target 3 --legends-unlock-all --stars 48` and
+  `--stars 72 --difficulty legend`: TRIP END, drafts [next, present, fathers, grand] (lg_overclock first, scrolled to
+  the last row), refusal Steeple then Overclock, Overclock + ht_boss start, 4 rows offered. `--stars 12`: one draft
+  (next), legend + boss ok. Plain: the Phase 8 driver (drafted ht_boss, no legend checks)
 
 ### Wave 8
 - **P12-25** | Back test and title test for Chapter 4

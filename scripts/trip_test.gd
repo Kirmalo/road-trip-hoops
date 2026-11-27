@@ -66,6 +66,10 @@ extends Node
 #   different eras (the oldest era on the roster first), LEGEND + BOSS starts the first draft's era (the Present).
 #   TRIP END ("TRIP legend eras") checks every built chapter with an open legend was offered a row (three with
 #   --legends-unlock-all), the drafts followed LEGEND_DRAFT_CHAPTERS over the rows offered, each from another era.
+# Phase 12 (P12-24), four eras: LEGEND_DRAFT_CHAPTERS starts with "next", so the first legend draft signs a New
+#   Generation legend (the last LEGENDS row, scrolled to), then a Present legend, a Father (3rd slot, --stars 36+) and
+#   a Grandfather (4th slot, --stars 48+, LEGEND_DRAFTS 4). ONE LEGEND still tries the oldest era on the roster then
+#   another era; LEGEND + BOSS starts the first draft's era (the New Generation); TRIP END checks all four rows.
 
 const Flow = preload("res://scripts/flow.gd")
 const Trip = preload("res://scripts/trip.gd")
@@ -89,9 +93,11 @@ const DRAFT_TEST := true          # P8-23: draft one player through the lineup's
 const REPLAY_AFTER := "memphis"   # P8-23: replay this city's first won game from the map once it is beaten ("" = off)
 const ALL_GAMES := 24             # games that pay at TRIP END (Stars.all_keys(): 8 cities x 3)
 const MAPSHOT_FLAG := "--mapshot" # trip_map.gd's test: it drives its own replay on the first map
-const LEGEND_DRAFTS := 3          # P9-29: legends a legend run drafts (one per open slot; the 2nd tests the refusal;
-                                  # P11-24: up to one per era, a 3rd only with a 3rd slot open)
-const LEGEND_DRAFT_CHAPTERS := ["present", "fathers", "grand"]   # P10-24 / P11-24: the chapter row each legend draft
+const LEGEND_DRAFTS := 4          # P9-29: legends a legend run drafts (one per open slot; the 2nd tests the refusal;
+                                  # P11-24: up to one per era, a 3rd only with a 3rd slot open; P12-24: a 4th with
+                                  # the 4th slot, Stars 48+)
+const LEGEND_DRAFT_CHAPTERS := ["next", "present", "fathers", "grand"]   # P10-24 / P11-24 / P12-24: the chapter row
+                                  # each legend draft
                                   # picks from, in order (that row's first legend; a chapter without a row is skipped;
                                   # no row of these left: the first legend offered)
 
@@ -725,7 +731,8 @@ func _draft_pick_step() -> void:
 				if str((pl as Dictionary).get("id", "")) == _draft_pick:
 					row_ch = str(row.get("chapter", "-"))
 					row_i = i
-	# P11-24: scroll the list to his row first, as a finger would (three LEGENDS rows sit low in the list)
+	# P11-24: scroll the list to his row first, as a finger would (the LEGENDS rows sit low in the list; P12-24: the
+	# New Generation row is the last)
 	var scrolled: bool = row_i >= 0 and node.has_method("scroll_to_row") and bool(node.call("scroll_to_row", row_i))
 	print("TRIP draft scrolled to row %d (%s): %s" % [row_i, row_ch, "ok" if scrolled else "NO"])
 	if not scrolled:
@@ -855,7 +862,7 @@ func _legend_boss_test() -> void:
 		return
 	var lgs: Array = _roster_legends()
 	var lg: String = str(lgs[0])
-	# P10-24 / P11-24: the first draft's era (a Present legend) when one is on the roster
+	# P10-24 / P11-24 / P12-24: the first draft's era (a New Generation legend) when one is on the roster
 	var want_eras: Array = _want_chapters()
 	var first_ch: String = str(_lg_chapters[0]) if not _lg_chapters.is_empty() else \
 			(str(want_eras[0]) if not want_eras.is_empty() else "")
@@ -1055,7 +1062,7 @@ func _legend_end_checks() -> bool:
 			str(_lg_offered.keys()), str(rows_want), str(_lg_chapters), str(seq), str(_lg_refused_eras),
 			_lg_boss_ch if _lg_boss_ch != "" else "-", "ok" if eras_ok else "WRONG (%s)" % why_not])
 	if not eras_ok:
-		_fail("the legend run did not draft / refuse / start the eras as P10-24 / P11-24 ask: %s" % why_not)
+		_fail("the legend run did not draft / refuse / start the eras as P10-24 / P11-24 / P12-24 ask: %s" % why_not)
 		return false
 	return true
 
