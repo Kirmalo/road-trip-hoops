@@ -200,6 +200,13 @@ Everything in "Tasks by wave" not marked DONE.
   72` 56/84 end "next is the last chapter", LEGENDS END; `--backtest` OK, `--trip-test` (unlock-all, 48 stars) TRIP END,
   `--titletest` DONE
 
+- **P12-08** Era music listening list (art-audio A): `docs/audio_preview/LIST.md` "Legends: New Generation", five
+  30 s samples `docs/audio_preview/next_a..e_*.ogg` (-20.0/-20.1 LUFS, 241-267 KB each, 1.26 MB together), all
+  OpenGameArt, each license read on its page: Escalate (congusbongus, CC-BY 3.0, ~167 bpm), Hammer (yubatake, CC-BY
+  4.0, 170), Fever Stadium (MintoDog, CC0, 165), Ramming Speed (congusbongus, CC-BY 4.0, ~167), Neon Hyperdrive
+  (adiutorium, CC0, ~140). Art-audio's pick: Ramming Speed; Hammer if the owner wants no 4th congusbongus track.
+  For the owner to pick (P12-20)
+
 ## Done
 - **P12-09** Midrange's skin brown on his sheet and card (before the phase; ANIM OK, LEGENDTEST OK)
 - **P12-10a** Rooftop's cradle dunk preview `docs/art/cradle_v1.gif` (before the phase)
@@ -264,7 +271,7 @@ none, static glow). The lead writes the answers into the contract and VISION.
   phone lights. No word, digit or logo; it does not read as MIDNIGHT or BIG STAGE. Era colors from owner check 1.
   Checked in angled and flat shots; `--era` rewrites the older era files byte for byte; not in the COURT list. A name
   proposal (first idea NEON DOME) for owner check 2 | P12-05 merged, owner check 1
-- **P12-08** | Era music listening list
+- **P12-08** | REVIEW | Era music listening list
   | art-audio-integrator A | `docs/audio_preview/LIST.md` ("Legends: New Generation"),
   `docs/audio_preview/next_*.ogg`
   | 3-5 fast chiptune or electro tracks (160-175 bpm, bright synth leads, a futuristic "machine" feel; not New York's

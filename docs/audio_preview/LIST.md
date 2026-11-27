@@ -124,3 +124,43 @@ Notes:
   the other LOOP BOX #1 trap loops ("Friendly Trap", "Evil Trap": darker and not chiptune; one loop there is named
   after a sportswear slogan, so the pack's other titles were not used), "Epic - Trap Beat" and "Trap Menu Theme"
   (CC-BY 4.0, trap beats but not chiptune).
+
+## Legends: New Generation (P12-08)
+
+The fourth era's chapter track (Chapter 4, the New Generation, a made-up future): fast chiptune or electro with
+bright synth leads and a "machine" feel, about 160-175 bpm. Not New York's "Slam-Funk", Bebop, Headspin or Techno
+drive, and no track already in the game. Five candidates; each `next_*.ogg` here is a 30-second sample made like the
+samples above (mono, -20 LUFS, faded in and out, the busiest 30 s after the first 4 s, `python3 tools/make_music.py
+preview SRC OUT`; where a page has a loop file, the sample is cut from that file). Pick one (or "none of these"); the
+pick then gets cut into a loop `assets/music/legends_next.ogg` (P12-20), with a row in `CREDITS.md` and
+`CREDITS_LIST`. Nothing here is in the game.
+
+All from OpenGameArt; each license was read on the track's own page and its license link checked there (November
+2026): CC0 or CC-BY only (where a page also offers OGA-BY, we would use the CC-BY one). Tempos: the page's number where
+it gives one, else a rough measurement from the file.
+
+| Sample | Title | Author | License | Page | Length, bpm | Feel | Loop notes |
+|---|---|---|---|---|---|---|---|
+| `next_a_escalate.ogg` | Escalate | congusbongus | CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/; also offered: OGA-BY 3.0) | https://opengameart.org/content/escalate | 3:28 full, 2:11 loop file (Ogg), about 167 bpm | OPL3 FM chiptune (RADTracker): "your futuristic fighter jet powers up as ground control clears you for takeoff"; a build-up that keeps climbing | The page has `escalate_intro.ogg` + `escalate_loop.ogg` (play the intro, then loop the loop file); we would use the loop file, whole, with a short wrap blend. -14 LUFS brought down; about 0.1% of samples at the ceiling, check for grit. Credit row "Escalate" by congusbongus, CC-BY 3.0. The composer already has 3 tracks in the game (Memphis, Denver, the Fathers) |
+| `next_b_hammer.ogg` | Hammer | yubatake | CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/) | https://opengameart.org/content/hammer-2 | 3:39 (Ogg, also FLAC), 170 bpm (page) | "High-tempo electronica": drum and bass break with synth lines; the most modern and least "chip" of the five, a new composer for the game | A whole song, no loop file: loop on a phrase (8 or 16 bars) with a crossfade, from the FLAC. -14 LUFS brought down, not clipped. Credit row "Hammer" by yubatake, CC-BY 4.0 |
+| `next_c_fever_stadium.ogg` | Fever Stadium | MintoDog | CC0 (https://creativecommons.org/publicdomain/zero/1.0/) | https://opengameart.org/content/fever-stadium | 1:26 (Ogg), 165 bpm (file name) | Eurobeat for a racing game, "let's lift your spirits": bright, busy synth leads and a pumping beat; more racing than robot | The page says it loops: whole file, short wrap blend. -11 LUFS brought down, not clipped. The page also has a "Climax" version at 180 bpm (final lap) that is not sampled here. Courtesy credit (CC0; same composer as Los Angeles's spare "Beach Stage", not in the game) |
+| `next_d_ramming_speed.ogg` | Ramming Speed | congusbongus | CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/; also offered: OGA-BY 4.0) | https://opengameart.org/content/ramming-speed | 2:24 loop file (Ogg), about 167 bpm | FM chiptune (RADTracker 2), "flying at ramming speed in your space fighter through the enemy fleet": hard, driving, metallic FM leads, the most "machine" of the five | The page has `ram_intro.ogg` + `ram_loop.ogg` (play the intro, then loop the loop file); we would use the loop file, whole (about 100 bars, so it repeats little), short wrap blend. -14.6 LUFS brought down, not clipped. Credit row "Ramming Speed" by congusbongus, CC-BY 4.0. Same composer note as Escalate |
+| `next_e_neon_hyperdrive.ogg` | Neon Hyperdrive | adiutorium | CC0 (https://creativecommons.org/publicdomain/zero/1.0/) | https://opengameart.org/content/neon-hyperdrive | 2:10 (MP3), about 140 bpm | "A fast paced futuristic music": EDM/techno with risers and a hyper synth drive, sci-fi pursuit; slower than the brief's 160-175, here as the slower option | No loop file: loop on a phrase with a crossfade, cut after the opening riser. -11 LUFS brought down, hardly clipped (0.02%). Courtesy credit (CC0) |
+
+Notes:
+- Order of fit (art-audio's view, for a game in a future arena): Ramming Speed (the most machine-like, fast, a long
+  loop file ready to use), then Hammer (the most modern sound, a new composer), then Escalate (like Ramming Speed but
+  more of a build-up), then Fever Stadium (bright and fast, but eurobeat racing more than future), then Neon Hyperdrive
+  (futuristic, but slower).
+- If the owner would rather not have a fourth congusbongus track in the game, Hammer is the pick.
+- Looked at and left out: "Quirky Fast DNB 8bit Drums And Bass" (dagameknower, CC0, 175 bpm 8-bit DnB, but 38 s and
+  mostly drums, no lead), "Pulsar [Famitracker 2A03]" (CC0, 180 bpm NES, a 27 s loop), "Lo-fi chiptune glitch D'n'B"
+  (CC0, 180 bpm, lo-fi rather than bright), "hardcore chiptune theme" (CC0, no notes on the page, tempo unclear),
+  "As fast as you can" (Centurion_of_war, CC0; the composer of the Present's track, so not a new sound), "Chase"
+  (adiutorium, CC0, a spare at about 143 bpm), "Electronic Outlaw" and "Pixel Sprinter" (Zane Little, CC0, about 135
+  and 140 bpm), "Cybermatic pulse" (CC-BY 4.0, middle tempo), "Echelon" (p0ss, CC-BY 3.0, dark trance), "Last Cyber
+  Dance" (CC-BY 3.0, mastered very loud and found off-site), the Eric Matyas runner tracks (about 120-128 bpm), and
+  "Cyberpunk Boss" (aroldv, "Content ID disabled", the same doubt as in the Present list). Left out for licensing:
+  "Lines of Code", "Augmented", "Agent 6", "Wub The Robot", "Droid Glitch", "The Core", "I wouldn't", "Vector Racing"
+  (share-alike), "Pound the Stage" (share-alike), "Wreckless" (OGA-BY only), and "BURNING HANDS" (made "in the style
+  of" a named commercial game's track).
