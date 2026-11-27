@@ -22,6 +22,8 @@ extends CanvasLayer
 #   P11-19: three eras, the same way from the data: GRANDFATHERS, FATHERS, then "UNLOCKED IN LEGENDS - THE PRESENT",
 #   each in its frame and tag colour; the list scrolls down to the last row. The open screen prints "DRAFT legends rows"
 #   (chapter and count per row, list order); scroll_to_row(i) / scroll_to_last() are for test drivers and screenshots.
+#   P12-19: four eras, still from the data: the 4th row "UNLOCKED IN LEGENDS - THE NEW GENERATION" last, in
+#   frame_next and Chapter 4's ui_color (the owner's darker lime #466e14, so the gold LEGEND tag reads on it).
 # Taps are ignored for ARM_T s when the screen opens and SIGN for PICK_ARM_T s after a pick (a double tap can't
 # confirm). Desktop: Escape = BACK (closes the confirm panel first; on the joining line it goes on); main.gd turns the
 # Android back gesture into an Escape press. auto_step() (test drivers): draft the first card if a slot is open (no

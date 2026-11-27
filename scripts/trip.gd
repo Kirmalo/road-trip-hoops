@@ -77,6 +77,10 @@ extends RefCounted
 # FATHERS, then THE PRESENT (timeline order, from the data), LEGEND_LIMIT still counts every era together (one legend
 # of any era + one boss), and sim_chapters_for() lets a Chapter 3 run's best crew draft from all three eras (a Chapter
 # 1 or 2 run never a Present legend; a --city run, any built chapter). No chapter id here: all of it reads the data.
+# Four eras (P12-19): nothing new in the logic. The rows are THE GRANDFATHERS, THE FATHERS, THE PRESENT, then THE NEW
+# GENERATION (its ui_color, the owner's darker lime), LEGEND_LIMIT still counts all four together, a Chapter 4 run's
+# best crew may draft from every era. The self test checks each built era on its own (_check_each_era()) and that a
+# save with a legend this build has no row for (a Phase 11 build reading a New Generation draft) loads without him.
 # Mentors (P9-23, owner L8 a): roster_player() adds "perk" (legends.gd perks_for(): {"id", "key", "value", "text",
 # "mentor"}) to a player an unlocked legend trains, only on a loaded trip (never the --city crews without a trip, never
 # the in-memory ramp sims: _perks_off). The sims give no perk: P9-30 measured the bound with --perk on top instead
@@ -2780,10 +2784,77 @@ static func _check_legends() -> bool:
 			"legends: end_of_trip_crew best %s (legend %s), avoid ok, the trip put back" % [str(be_ids),
 			picked if picked != "" else "-"]) and ok
 	ok = _check_sim_chapters(picked) and ok
+	ok = _check_each_era() and ok
 	Stars.force_total = old_force
 	_legends_override = ""
 	saving = was
 	_reset()
+	return ok
+
+# P12-19: every built era on its own (four since Phase 12, the New Generation last): a fresh trip, the era's LEGENDS
+# row in timeline order in its chapter's colour, its first legend drafted into a star slot (sheet, signature), one
+# legend of each other era next to him (as the slots allow), each refused with him; he starts with a boss and plays
+# YOU; a version 2 save keeps them all also when this run has them locked. Then a save holding a legend this build
+# doesn't know (how a Phase 11 build reads a New Generation legend, P12-27): he is dropped and a legal three starts.
+# Needs the caller's Stars.force_total (48: the 4 star slots open). In memory, nothing saved.
+static func _check_each_era() -> bool:
+	var ok := true
+	var built: Array = LegendsData.built_chapters()
+	for ch in built:
+		var lid: String = str(LegendsData.legend_ids(str(ch))[0])
+		_legends_override = "all"
+		new_trip("normal")
+		for i in GAMES_PER_CITY:
+			record_result({"won": true})
+		finish_points()
+		recruit("ht_boss")
+		var row_chs: Array = []
+		var row_ok := false
+		for row in draft_pool_by_crew():
+			if str(row.get("city", "")) != LEGENDS_ROW:
+				continue
+			row_chs.append(str(row.get("chapter", "")))
+			if str(row.get("chapter", "")) == str(ch):
+				var ids: Array = []
+				for pd in row.get("players", []):
+					ids.append(str((pd as Dictionary).get("id", "")))
+				row_ok = row.get("color", null) == chapter_color(str(ch)) and ids == LegendsData.legend_ids(str(ch))
+		var sig: String = str((LegendsData.legend(lid).get("signature", {}) as Dictionary).get("id", ""))
+		ok = _check(row_ok and row_chs == built and draft(lid) and str(_entry(lid).via) == DRAFT_VIA
+				and str(roster_player(lid).sheet).begins_with(lid + "_crew") and sig != ""
+				and str(roster_player(lid).get("signature", "")) == sig,
+				"legends: era %s, its row (rows %s), %s drafted (%s)" % [ch, str(row_chs), lid, sig]) and ok
+		var others: Array = []
+		for oc in built:
+			if str(oc) != str(ch) and open_slots() > 0:
+				var oid: String = str(LegendsData.legend_ids(str(oc))[0])
+				if draft(oid):
+					others.append(oid)
+		var refused: bool = others.size() > 0 or built.size() < 2
+		for oid in others:
+			refused = refused and starters_ok([lid, str(oid), "ud_jojo"]) == LEGEND_RULE \
+					and starters_ok([str(oid), "ht_boss", lid]) == LEGEND_RULE and not set_starters([str(oid), lid, "ud_tank"])
+		ok = _check(refused and set_starters([lid, "ht_boss", "ud_jojo"]) and human == lid
+				and str(match_for().teams[0].players[0].id) == lid,
+				"legends: era %s, %s + a boss start, refused with %s" % [ch, lid, str(others)]) and ok
+		var d: Dictionary = JSON.parse_string(JSON.stringify(to_dict()))
+		d["version"] = Save.VERSION
+		_legends_override = "none"
+		ok = _check(from_dict(d) and drafted_ids() == [lid] + others and starters == [lid, "ht_boss", "ud_jojo"],
+				"legends: era %s, %s kept by a save while locked" % [ch, lid]) and ok
+	# a legend of a later build (an "lg_" id this build has no row for): dropped on load, a legal three starts
+	_legends_override = "all"
+	new_trip("normal")
+	var fd: Dictionary = JSON.parse_string(JSON.stringify(to_dict()))
+	fd["version"] = Save.VERSION
+	var later := "lg_zz_later_era"
+	(fd["roster"] as Array).append({"id": later, "ratings": {}, "pts": 0, "via": DRAFT_VIA})
+	fd["starters"] = [later, "ud_tank", "ud_deuce"]
+	fd["human"] = later
+	ok = _check(not is_legend(later) and from_dict(fd) and not roster_ids().has(later) and not drafted_ids().has(later)
+			and starters.size() == STARTERS and not starters.has(later) and human != later and starters_ok(starters) == "",
+			"legends: a later build's legend dropped on load, starters %s" % str(starters)) and ok
+	_legends_override = ""
 	return ok
 
 # P10-N1 / P11-19: end_of_trip_crew(true) in a legends game drafts only from the chapters up to the game's own

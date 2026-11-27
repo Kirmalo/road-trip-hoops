@@ -441,7 +441,16 @@ name (P12-06), the music pick (P12-08).
   `legends_complete` once, then LEGENDS COMPLETE on the timeline (the header or a banner, no new panel) and a full-Hall
   banner; replays never play it again. A CYBER / NATURAL tag only if owner check 1 asked for one. No "next" string in
   the logic. `--legendtest` OK; `--legends-test --difficulty hard` LEGENDS END (84/84) | P12-11, P12-16 merged
-- **P12-19** | Draft and lineup with four eras
+- **P12-19** | REVIEW | Draft and lineup with four eras
+  | Result: no logic change needed (rows, colors, frames and the limit all read the data); the 4th row "UNLOCKED IN
+  LEGENDS - THE NEW GENERATION" shows last in `frame_next` and #466e14, the gold LEGEND tag reads on it (about 4.2:1)
+  on the draft and the lineup. trip.gd `_check_each_era()`: per built era a fresh trip, its row (order, color, ids), its
+  first legend drafted (sheet, signature), refused next to one legend of each other era, starts with a boss as YOU,
+  kept by a save while locked; a save with an `lg_` id this build doesn't know loads without him (a legal three
+  starts), the way a Phase 11 build reads a New Generation draft. Headers in draft.gd / lineup.gd. `--triptest-data`
+  (and `--load`) OK, `--trip-test --target 3 --legends-unlock-all --stars 48` TRIP END (4 rows offered, drafts present
+  -> fathers -> grand as P12-24's driver still wants), plain `--trip-test --target 3` TRIP END, `--legendtest` OK,
+  `--backtest` OK. `LEGEND_DRAFT_CHAPTERS` left to P12-24
   | gameplay-programmer C | `scripts/trip.gd`, `scripts/draft.gd`, `scripts/lineup.gd`
   | A 4th LEGENDS row ("UNLOCKED IN LEGENDS - THE NEW GENERATION", timeline order, era frame and color); the one-legend
   rule over four eras; the trip self test expects a row per built chapter; a Phase 11 build drops a New Generation
