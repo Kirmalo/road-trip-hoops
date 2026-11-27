@@ -482,11 +482,18 @@ name (P12-06), the music pick (P12-08).
   owner's yes) | P12-12, P12-17 merged
 
 ### Wave 7
-- **P12-22** | Mentor perks for the New Generation
+- **P12-22** | REVIEW | Mentor perks for the New Generation
   | gameplay-programmer A | `scripts/player.gd`, `scripts/main.gd`, `scripts/defense.gd`, `scripts/ball.gd` (only if a
   hook lives there)
   | The six hooks, each a default that is today's game; `--perk` takes the new ids, with a `PERK` line the first time
   each changes a play; seeded A/B without a new perk byte-identical | P12-17 merged
+  | Result: `sprint_drain_mult` in player `update_turbo()` (`_perk_drain_mult()`), `break_speed_mult` in
+  `_perk_speed_mult()` (inside `main.in_break_window()`, live ball), `putback_bonus` / `early_shot_bonus` in main
+  `_perk_shot_bonus()` (new `in_putback_window()`: a rim move or a jumper inside 14 ft; `gain_time()` getter),
+  `fake_bite_mult` in defense `_update_block_jump()`, `jumper_block_mult` in `_closeout_chance()`; ball.gd untouched.
+  Counters `perk_<id>_t0`, plus `_frames_` (fresh_legs, head_start) and `_tries_` (pump_fake, closeout). Seeded A/B
+  byte-identical (autoplay, era twists, an older perk, humantest, a Chapter 3 challenge). closeout and pump_fake
+  barely fire in autoplay (P12-26 to measure).
 - **P12-23** | QA: Chapter 4 challenges and finale
   | qa-balance-tester | `docs/qa/phase12-challenges.md`, `scripts/legends_data.gd` (challenge numbers and rating
   keys only)

@@ -290,11 +290,20 @@ func _update_block_jump(delta: float) -> void:
 		if p.signature == p.SIG_SWAT:
 			chance *= p.SWAT_CPU_JUMP_CHANCE / CPU_JUMPER_JUMP_CHANCE   # P12-17: the swat man goes up at more jumpers
 	chance *= 1.0 + CPU_JUMP_RATING_SPAN * p.rating_frac("block")
-	if game.rng.randf() < chance and p.start_block_jump():
+	var base_chance: float = chance
+	if phase == "fake" and s.perk_key != "":
+		chance = minf(1.0, chance * s.perk("fake_bite_mult", 1.0))   # P12-22 pump_fake: his fakes bite more often
+		if chance != base_chance:
+			game.stat("perk_%s_tries_t%d" % [s.perk_id, s.team])   # every bite roll the perk sized
+	var roll: float = game.rng.randf()
+	if roll < chance and p.start_block_jump():
 		game.stat("cpu_block_jumps")
 		if phase == "fake":
 			game.stat("cpu_fake_bites")
 			game.stat("cpu_fake_bites_t%d" % p.team)
+			if roll >= base_chance:   # only the perk got him up
+				s.perk_log("pump fake got %s up (chance %.2f, was %.2f)" % [p.pname if p.pname != "" else p.pid,
+						chance, base_chance])
 	elif phase == "fake":
 		game.stat("cpu_fake_reads")
 
@@ -439,6 +448,25 @@ static func _shoulder_log(g, shooter, d, sm: float, blocked: bool, what: String)
 		g.stat("sig_shoulder_holds_t%d" % shooter.team)
 	shooter.sig_log(shooter.SIG_SHOULDER, "%s through %s's block try (chance x%.2f): %s" % [what,
 			d.pname if d.pname != "" else d.pid, sm, "blocked anyway" if blocked else "not blocked"])
+
+# P12-22 closeout (a mentor perk): his block chance at a jump shot (not a layup) x his jumper_block_mult, at most 1.0;
+# `chance` for every other shot and everyone without the perk
+static func _closeout_chance(d, layup: bool, chance: float) -> float:
+	if layup or d.perk_key == "":
+		return chance
+	var m: float = d.perk("jumper_block_mult", 1.0)
+	return chance if m == 1.0 else minf(1.0, chance * m)
+
+# P12-22 closeout: a jumper block only the perk made (roll between the two chances) is counted and, the first time,
+# logged
+static func _closeout_log(d, shooter, roll: float, chance: float, base: float, mult: float) -> void:
+	if chance == base:
+		return
+	d.game.stat("perk_%s_tries_t%d" % [d.perk_id, d.team])   # every jumper block try the perk sized
+	if roll < base * mult or roll >= chance * mult:
+		return
+	d.perk_log("blocked %s's jumper (chance %.2f, was %.2f)" % [shooter.pname if shooter.pname != "" else shooter.pid,
+			chance * mult, base * mult])
 
 # P11-22 side_step (a mentor perk): x his layup_block_mult on a block try at his layup (at the release in rim_blocker()
 # and in the air in check_jump_shot_block()); 1.0 for every other shot and everyone without the perk
@@ -642,12 +670,15 @@ static func check_jump_shot_block(g) -> void:
 		c = _chase_chance(d, shooter, c)   # P10-17 chase_down from behind; the same chance for everyone else
 		var sw_c: float = c
 		c = _swat_chance(d, ball.shot_kind, c)   # P12-17 swat on a jumper; the same chance for everyone else
+		var cl_c: float = c
+		c = _closeout_chance(d, layup, c)   # P12-22 closeout on a jumper; the same chance without the perk
 		var roll: float = g.rng.randf()
 		var sm: float = shooter.sig_block_mult(ball.shot_kind)   # P9-20 hook, P10-17 shoulder: x1.0 for everyone else
 		var pm: float = _side_step_mult(shooter, ball.shot_kind)   # P11-22 side_step: x1.0 without the perk
 		_side_step_log(shooter, d, pm, roll, c * sm)
 		var what: String = "layup" if layup else "jumper"
-		_swat_log(g, d, shooter, roll < c * sm * pm, roll >= sw_c * sm * pm or dist > reach, c, sw_c)
+		_closeout_log(d, shooter, roll, c, cl_c, sm * pm)
+		_swat_log(g, d, shooter, roll < c * sm * pm, roll >= sw_c * sm * pm or dist > reach, cl_c, sw_c)
 		if roll < c * sm * pm:
 			_chase_log(g, d, shooter, true, roll >= base_c * sm * pm, what)
 			_shoulder_log(g, shooter, d, sm, true, what)
