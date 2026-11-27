@@ -220,6 +220,17 @@ Everything in "Tasks by wave" not marked DONE.
   `era_teams.gd` `self_test()` still assumed Chapter 4 unbuilt; with them `--legendtest` OK (24 legends, 84 tokens),
   without them 2 fails. `--legends-test --stars 24 --target 3 --difficulty hard` LEGENDS END 84/84; `--titletest` DONE;
   `--backtest` OK (`--titletest --legends-unlock-all --stars 72` fails until P12-06's `era_next` court row lands)
+- **P12-12** The era rules (gameplay-programmer B): twist `era_next` "FAST BREAK" in `twists.gd` (`speed_mult` 1.05,
+  `stamina_refill_mult` 1.15, new `dead_ball_mult` 0.6 and `break_mult` 1.10, both 1.0 in `DEFAULTS`), `rules.gd`
+  `dead_wait()` on `MADE_WAIT` / `OOB_WAIT` / `FOUL_WAIT` (made field goals in main.gd, made last free throws, out of
+  bounds, reaching fouls), `main.gd` `BREAK_WINDOW` 5.0 and `in_break_window()` (the shooter's team got the ball, i.e.
+  the shot clock restarted, at most 5 s ago) in `shot_probability()` (the CPU's shoot odds read it too), the TWIST line's
+  early / later shots and dead-ball seconds (counted only under the twist), and the banner icon (a ball with lime speed
+  lines and violet chevrons). TWISTTEST OK, LEGENDTEST OK; seeded A/B against the base build byte for byte: `--autoplay`
+  with no twist and each of the 10 older twists, `--humantest`, `--force-fouls`, `--challenge steeple` / `rooftop` /
+  `deep_end`. 24 seeded `--autoplay --twist era_next` games vs 24 without (same seeds): game 8.9 vs 9.0 min, dead balls
+  22 vs 34 s, shots 56.8 vs 56.0, FG 57.9% vs 56.0%, all ended, no errors; early shots 30% of shots. `--humantest
+  --twist era_next` 21-19, the `--twistshots` banner checked
 
 ## Done
 - **P12-09** Midrange's skin brown on his sheet and card (before the phase; ANIM OK, LEGENDTEST OK)
@@ -310,7 +321,7 @@ none, static glow). The lead writes the answers into the contract and VISION.
   six perks as data, and the new names, probes (a cyborg name or two among them) and numbers in the lists. The
   namecheck doc's Chapter 4 table is final. `--legendtest` LEGENDTEST OK (notes for art not there yet). 24 legends,
   max tokens 84 | owner check 1, P12-02, P12-03 merged
-- **P12-12** | The era rules
+- **P12-12** | REVIEW | The era rules
   | gameplay-programmer B | `scripts/twists.gd`, `scripts/rules.gd` (the `dead_ball_mult` hook), `scripts/main.gd`
   (the `break_mult` hook, `BREAK_WINDOW`), `scripts/twist_fx.gd` (the banner icon)
   | `era_next` as in the contract; `--twisttest` TWISTTEST OK; twist `none` and every older twist give byte-identical

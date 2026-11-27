@@ -12,6 +12,7 @@ extends Node2D
 #   wet       rain with splashes on the floor, a cool tint, splashes at running feet (a spray while a cut slides)
 #   sand      sand puffs at the feet (bigger on turbo and landings)
 #   cage      the banner only (the fence is court.gd's, the rattle ball.gd's)
+#   era_*     the banner only (the era twists: OLD SCHOOL, ISO BALL, SPACE THE FLOOR, FAST BREAK)
 # Ambience: audio.play_ambience() with the court look's "ambience" key if it has one, else AMBIENCE below.
 # For P6-23's dust: ground_kind() ("sand", "wet" or "") and dust_color(default).
 # Cost: one draw node on the floor (decals), one in the air (overlay) and the HUD; at most about 150 particles.
@@ -784,6 +785,27 @@ func _draw_icon(n: CanvasItem, icon: String, c: Vector2, s: float) -> void:
 				n.draw_circle(dp, s * 0.17 + 1.0, Color(0.05, 0.08, 0.1))
 				n.draw_circle(dp, s * 0.17, coral)
 				n.draw_line(hp + u * s * 0.4, hp + u * s * 0.66, white, 1.5)
+		"era_next":
+			# FAST BREAK (P12-12): a ball racing to the right, lime speed lines behind it and a violet double chevron
+			# ahead (the era's lime and violet glow tones)
+			var lime := Color(0.72, 1.0, 0.25)
+			var violet := Color(0.68, 0.42, 1.0)
+			var fb: Vector2 = c + Vector2(s * 0.12, 0.0)
+			var fr: float = s * 0.5
+			for i in 3:
+				var ly2: float = fb.y - fr * 0.6 + fr * 0.6 * float(i)
+				var l0: float = s * (0.55 if i == 1 else 0.35)
+				n.draw_line(Vector2(fb.x - fr - 3.0 - l0 * 1.1, ly2), Vector2(fb.x - fr - 3.0, ly2), lime, 2.5)
+			n.draw_circle(fb, fr + 2.0, Color(0.06, 0.05, 0.08))
+			n.draw_circle(fb, fr, Color(0.95, 0.5, 0.14))
+			var fsm := Color(0.1, 0.06, 0.04)
+			n.draw_line(fb + Vector2(-fr, 0.0), fb + Vector2(fr, 0.0), fsm, 1.5)
+			n.draw_line(fb + Vector2(0.0, -fr), fb + Vector2(0.0, fr), fsm, 1.5)
+			n.draw_arc(fb + Vector2(-fr * 1.2, 0.0), fr * 0.95, -0.8, 0.8, 8, fsm, 1.5)
+			for i in 2:
+				var vx: float = fb.x + fr + 3.0 + s * 0.24 * float(i)
+				n.draw_polyline(PackedVector2Array([Vector2(vx, c.y - s * 0.34), Vector2(vx + s * 0.2, c.y),
+						Vector2(vx, c.y + s * 0.34)]), violet, 3.0)
 		_:
 			n.draw_circle(c, s * 0.4, white)
 
