@@ -185,6 +185,13 @@ Everything in "Tasks by wave" not marked DONE.
 ## Doing
 
 ## Review
+- **P12-21** QA of FAST BREAK (qa): `docs/qa/phase12-era.md`. 200 `--autoplay --twist era_next` vs 200 twist none
+  (Kings vs Runners), all ended, no errors, 0 shot-clock violations: game 8.98 vs 9.73 min, shots 58.9 vs 60.7, FG
+  55.8 vs 54.1 %, dead balls 22.0 vs 35.3 s, fouls 2.16 vs 2.06, OREB 24.8 vs 25.4 %, RED 47 vs 57 % (a 2 SE lean).
+  Early shots (within 5 s) 31 % of shots, made 57.4 % vs later 58.1 % (no twist: 52.5 vs 57.8: early shots are longer,
+  fewer at the rim), so 1.10 only cancels their handicap. Candidates (scratch only): break 1.20 +0.7, 1.30 +5.6, speed
+  1.08 + break 1.30 **+8.4** (8.62 min, FG 56.2 %, RED 52.5 %, 40 games), break 1.45 +8.8 but FG 59 %, RED 40 %.
+  Suggested for the owner: `break_mult` 1.30, `speed_mult` 1.08 (twists.gd not changed)
 - **P12-33** The 4th era team in Quick Game (gameplay B): no logic change needed, the data opens it. `era_teams.gd` self test only: `SHIPPED_IDS` (the four teams), timeline order, `STAND_IN_CHECKS` (stand-in Present and stand-in New Generation rows), team and info color = the crew's `ui_color`. `menu.gd` untouched. LEGENDTEST era teams [grandfathers, fathers, present, new_generation] OK; `--titletest` DONE plain / `--legends-unlock-all --stars 72` (COURT gym > blacktop > era_grand > era_fathers > era_present > era_next > midnight > gold_hall, NEON DOME twist era_next music legends_next) / `--legends-unlock-none` (none open); 4 autoplays NEW GENERATION vs Kings on NEON DOME 21-18, 19-21, 16-21, 18-21 (8:17-9:46, music_legends_next).
 - **P12-18** Chapter flow, the gate and the ending (gameplay B): `legends.gd`, `legends_tour.gd`, `hall.gd`, and the
   `--legends-test` driver's checks (`legends_test.gd`, as the coordinator asked). `SHIPPED_CHAPTERS` 4 (gate 72 stars
@@ -459,7 +466,7 @@ name (P12-06), the music pick (P12-08).
   | A 4th LEGENDS row ("UNLOCKED IN LEGENDS - THE NEW GENERATION", timeline order, era frame and color); the one-legend
   rule over four eras; the trip self test expects a row per built chapter; a Phase 11 build drops a New Generation
   legend safely (P12-27 checks) | P12-11, P12-14 merged
-- **P12-21** | QA: the era rules
+- **P12-21** | REVIEW | QA: the era rules
   | qa-balance-tester | `docs/qa/phase12-era.md`, `scripts/twists.gd` (`era_next` numbers only)
   | 200+ `--autoplay --twist era_next` games against Phase 11's bands: game length, shots, early-possession shots,
   make rate, fouls, rebounds; the numbers tuned if the era doesn't feel faster or the stats leave the bands (with the
