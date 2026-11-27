@@ -313,7 +313,7 @@ const LEGENDS := {
 			"line": "MIDRANGE STARTS ON FIRE: WIN THE GAME TO 15"},
 		"perk": "pull_up",
 		"colors": ["ERA2_GRAPE", "ERA2_ICE"],
-		"look": "wiry wing, light brown skin, low fade haircut, grape tank with white trim, long baggy grape shorts, a white leg sleeve, white crew socks",
+		"look": "wiry wing, brown skin, low fade haircut, grape tank with white trim, long baggy grape shorts, a white leg sleeve, white crew socks",
 		"bio": "Clears out one side of the floor, waves everybody away and takes the shot the coach told him not to. It goes in.",
 		"unlock_scene": "lg_midrange_unlock",
 	},

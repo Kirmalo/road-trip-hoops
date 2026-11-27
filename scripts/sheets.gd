@@ -133,6 +133,7 @@ const ALIASES := {
 	"fadeaway": ["shoot"],   # P10: Midrange's extra; any other sheet plays the jump shot
 	"stepback": ["shoot"],   # P11: Deep End's extra; any other sheet plays the jump shot
 	"eurostep": ["layup"],   # P11: Zigzag's extra; any other sheet plays the layup
+	"cradle": ["dunk_windmill", "dunk_tomahawk", "dunk_two", "dunk"],   # P11-10: Rooftop's dunk; else the windmill
 }
 
 static var v2_dir := V2_DIR           # tests point this at a scratch folder (then clear_cache())

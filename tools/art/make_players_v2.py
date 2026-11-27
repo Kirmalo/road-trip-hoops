@@ -1260,6 +1260,53 @@ def k_eurostep(D):
     return keys
 
 
+def k_cradle(D):
+    """Cradle dunk (P11-10, the owner's own look for Rooftop's signature dunk; was the windmill), right hand, an
+    original move: 0-1 today's dunk approach; 2 takeoff with the ball scooped low on the right hip (the hand under
+    it, the left hand letting go); 3 the swing up the front with a bent arm, the right knee driving up; 4 the ball
+    rolled into the crook of the arm (forearm up, the ball hugged against the shoulder), the left arm out wide;
+    5 the cradle carried up beside the head; 6-7 rocked back behind the head in the one bent arm, the elbow pointing
+    at the rim, the body arched back over the split legs (the hang); 8 the forearm whips over the top; 9 thrown down
+    (release); 10 the hand on the rim; 11 land. Reads apart from the windmill (no straight-arm circle: the arm stays
+    bent and the ball goes up the front, not round the back), the tomahawk (one hand from the hip, no two-hand lift)
+    and the one- and two-hand dunks. Feet leave the floor 2-10 (the game adds the jump)."""
+    hw, L = D["hw"], D["L"]
+    keys = approach(D, carry_hip)
+    top = PY(D, 0.86)
+    split = lambda a, b, za, zb: {"fL": F(hw * 0.9, za, ANK + a, -0.9, 0.1), "fR": F(-hw * 0.9, zb, ANK + b, -0.7, 0.1)}
+    keys += [
+        (2.0, K(fL=F(hw * 0.8, -0.22 * L, ANK + 1.4, -1.0, 0.1), fR=F(-hw, 0.36 * L, PY(D, 0.93) - 0.9 - 0.30 * L,
+                   -0.5, 0.1), h=0.93, lean=10, head_up=22, twist=-14, ball=("chest", -4.6, -9.0, 3.2),
+                   hR=("ball", 0.0, -(BR + 0.6), -0.6), hL=("sh", 3.0, -6.0, 6.0), pR=(-1, -0.6, -0.4),
+                   pL=(1, -0.6, -0.2))),
+        (3.0, K(split(1.0, 4.4, -0.16 * L, 0.26 * L), h=0.88, lean=6, head_up=24, twist=-12, shrug=0.8,
+                   ball=("chest", -3.6, -3.0, 7.6), hR=("ball", -0.2, -(BR + 0.6), -0.6), hL=("sh", 5.6, -1.0, 2.0),
+                   pR=(-1, -0.8, 0.0), pL=(1, -0.2, -0.4))),
+        (4.0, K(split(1.6, 5.6, -0.22 * L, 0.30 * L), h=0.86, lean=2, head_up=24, twist=-8, shrug=1.2,
+                   ball=("chest", -3.8, 4.0, 4.6), hR=("ball", -0.4, BR + 0.2, -0.8), hL=("sh", 6.6, 2.0, 0.0),
+                   pR=(-0.6, -1.0, 0.8), pL=(1, 0.2, -0.4))),
+        (5.0, K(split(2.2, 6.2, -0.26 * L, 0.30 * L), lean=-2, head_up=24, twist=-6, shrug=1.6,
+                   ball=("chest", -3.8, 10.0, 2.4), hR=("ball", -0.4, BR + 0.4, -0.4), hL=("sh", 6.8, 4.0, -1.0),
+                   pR=(-0.4, -0.6, 1.0))),
+        (6.0, K(split(2.8, 6.4, -0.30 * L, 0.28 * L), lean=-8, head_up=22, twist=-4, shrug=1.8,
+                   ball=("w", -3.2, top + 20.6, -6.8), hR=("ball", 0.0, 0.2, BR + 0.6), hL=("sh", 6.8, 5.0, -1.0),
+                   pR=(-0.4, 0.8, 1.0))),
+        (7.0, K(split(3.0, 6.4, -0.32 * L, 0.26 * L), lean=-13, head_up=24, ball=("w", -3.4, top + 19.2, -8.4),
+                   hR=("ball", 0.0, -0.2, BR + 0.6), pR=(-0.4, 1.0, 0.8))),
+        (8.0, K(split(3.0, 5.4, -0.20 * L, 0.20 * L), lean=-2, head_up=20, twist=-6, shrug=1.6,
+                   ball=("w", -2.8, top + 29.0, 2.6), hR=("ball", 0.0, -0.4, -(BR + 0.6)), hL=("sh", 5.6, 2.0, 2.0),
+                   pR=(-1, -0.4, 0.4))),
+        (9.0, K(lean=16, head_up=12, shrug=1.0, ball=("w", -2.2, top + 19.0, 11.4),
+                   hR=("ball", 0.0, BR + 0.4, -1.4), hL=("sh", 5.0, -3.0, 2.0), pR=(-1, -0.5, -0.2),
+                   **split(3.4, 2.4, 0.20 * L, 0.08 * L))),
+        (10.0, K(lean=8, head_up=18, shrug=1.6, ball=None, hR=("w", -2.6, top + 24.5, 8.0),
+                    hL=("sh", 5.0, -4.0, 2.0), **split(1.8, 0.8, 0.06 * L, -0.02 * L))),
+        (11.0, K(fL=F(hw + 1.4, 2.0), fR=F(-hw - 1.4, -0.6), h=0.66, lean=20, head_up=20, shrug=0.0,
+                    hR=("sh", 3.5, -6.0, 6.0), hL=("sh", 3.5, -6.0, 6.0), pL=(1, 0.3, -0.6), pR=(-1, 0.3, -0.6))),
+    ]
+    return keys
+
+
 # name -> definition, fps, ms, events (as ANIMS). Each extra keeps its start in the extra column space (EXTRA order)
 # on every sheet, so a new one goes at the end: the sheets carrying the earlier ones keep their columns.
 EXTRA = [
@@ -1275,6 +1322,8 @@ EXTRA = [
     ("eurostep", keyed(k_eurostep, 13), 0.0, [70, 80, 70, 80, 60, 50, 50, 50, 60, 60, 60, 80, 100],
      {"gather": 0, "steps": [1, 3], "takeoff": 5, "release": 8, "air": [5, 10], "land": 11,
       "euro_path": [[0, 0.0], [2, -EURO_FT], [4, round(EURO_FT * 0.6, 2)]], "hand": "R"}),
+    ("cradle", keyed(k_cradle, 12), 0.0, [80, 90, 60, 60, 70, 80, 140, 90, 60, 60, 200, 300],
+     {"takeoff": 2, "cradle": [4, 5], "hang": 6, "release": 9, "rim": 10, "air": [2, 10], "land": 11, "hand": "R"}),
 ]
 EXTRA_ANIM = {a[0]: a for a in EXTRA}
 # Who carries an extra is data (P10-04b): EXTRA_CREWS names the crews.json crews whose sheets carry it (Chapter 1's
@@ -1283,17 +1332,19 @@ EXTRA_ANIM = {a[0]: a for a in EXTRA}
 # ["fadeaway"], so his x page holds the fadeaway in its own columns (11..23, the hook's 0..10 left empty).
 # --extra-sheets id,... makes those sheets carry every extra this run; --extra-sheets name:id,... only that extra.
 # P11-14: Deep End lists "extra": ["stepback"] and Zigzag "extra": ["eurostep"] in crews.json (no crew carries them).
-EXTRA_CREWS = {"hook": ("GR",), "fadeaway": (), "stepback": (), "eurostep": ()}
+# P11-10: Rooftop lists "extra": ["cradle"] (his signature dunk's own look; the game drew the windmill before).
+EXTRA_CREWS = {"hook": ("GR",), "fadeaway": (), "stepback": (), "eurostep": (), "cradle": ()}
 # P11-14: an extra may start its own lane in the extra column space (EXTRA_LANE name -> start column) instead of after
 # the ones before it: the Present's two extras start at column 0, on their own sheet's first x page (lg_deep_end_x0,
 # lg_zigzag_x0), since no sheet carries one of them together with another extra (extra_columns() checks). The hook
 # and the fadeaway keep their columns (0..10, 11..23), so their pages and format.json rows stay as they were.
-EXTRA_LANE = {"stepback": 0, "eurostep": 0}
+EXTRA_LANE = {"stepback": 0, "eurostep": 0, "cradle": 0}     # P11-10: the cradle on lg_rooftop_x0, column 0 too
 EXTRA_FORCE = set()
 PREVIEW_LIFT["hook"] = [0, 0, 0, 4, 12, 17, 18, 15, 7, 0, 0]
 PREVIEW_LIFT["fadeaway"] = [0, 0, 0, 0, 0, 3, 9, 15, 17, 15, 8, 0, 0]
 PREVIEW_LIFT["stepback"] = [0, 0, 0, 0, 0, 0, 6, 12, 14, 12, 5, 0]        # the jumper's lift (the hop is in the art)
 PREVIEW_LIFT["eurostep"] = [0, 0, 0, 0, 0, 4, 12, 18, 20, 18, 10, 0, 0]   # the layup's lift
+PREVIEW_LIFT["cradle"] = [0, 0, 4, 12, 17, 20, 22, 23, 22, 21, 19, 0]     # the windmill's lift (same air time)
 HOOK_GIF = os.path.join(ROOT, "docs", "art", "hook_shot_v1.gif")
 HOOK_BODY = "ht_a1"      # the preview body: a wiry center (as the hook-shot legend), a drafted player in his colors
 
@@ -1402,6 +1453,9 @@ PREVIEWS = {             # --extra-preview NAME: the extra, the move it stands i
     "eurostep": {"vs": "layup", "path": os.path.join(ROOT, "docs", "art", "eurostep_v1.gif"), "body": "den_g2",
                  "tag": "P11-05b Euro-step preview", "title": "EURO-STEP LAYUP (new, Zigzag only)",
                  "note": "steps %.1f ft right, then left (the game moves him)" % EURO_FT},
+    # P11-10: on Rooftop's own sheet; the bottom row is the windmill his dunks were drawn with before
+    "cradle": {"vs": "dunk_windmill", "path": os.path.join(ROOT, "docs", "art", "cradle_v1.gif"), "body": "lg_rooftop",
+               "tag": "P11-10 cradle dunk preview", "title": "CRADLE DUNK (new, Rooftop only)"},
 }
 
 
@@ -2064,6 +2118,10 @@ def write_format():
         if "eurostep" in extra:    # P11-05b: only once a sheet carries it
             fmt["_help_extra"] += (" eurostep: Euro-step into today's right-hand layup; steps [first, second]; "
                                    "euro_path = [frame, feet to his left] points the game moves him through, eased.")
+        if "cradle" in extra:      # P11-10: only once a sheet carries it
+            fmt["_help_extra"] += (" cradle: cradle dunk, right hand (Rooftop's signature dunk): scooped off the right "
+                                   "hip, cradled in the bent arm [cradle], rocked back behind the head (hang), thrown "
+                                   "down; the dunk events of dunk_windmill.")
         fmt["extra_cols"] = xcols
         fmt["extra"] = extra
     with open(os.path.join(OUT_DIR, "format.json"), "w") as f:
@@ -2435,8 +2493,10 @@ LEGENDS_PRESENT = ["lg_deep_end", "lg_toolbox", "lg_stretch", "lg_switch", "lg_s
 LEGENDS_PRESENT_STRIP = os.path.join(ROOT, "docs", "art", "legends_present.png")
 LEGEND_STEP = [("E", k) for k in (0, 1, 3, 5, 7, 8)] + [("S", 8), ("SE", 8)]
 LEGEND_EURO = [("E", k) for k in (0, 1, 3, 5, 7, 8)] + [("S", 8), ("SE", 8)]
+LEGEND_CRADLE = [("E", k) for k in (2, 4, 5, 7, 8, 9)] + [("S", 7), ("SE", 7)]     # P11-10: Rooftop's cradle dunk
 LEGEND_EXTRA_CELLS = {"hook": ("HOOK", LEGEND_HOOK), "fadeaway": ("FADEAWAY", LEGEND_FADE),
-                      "stepback": ("STEP-BACK", LEGEND_STEP), "eurostep": ("EURO-STEP", LEGEND_EURO)}
+                      "stepback": ("STEP-BACK", LEGEND_STEP), "eurostep": ("EURO-STEP", LEGEND_EURO),
+                      "cradle": ("CRADLE DUNK", LEGEND_CRADLE)}
 LEGEND_STRIPS = {
     "grand": (LEGENDS, LEGENDS_STRIP,
               "Legends Chapter 1, the Grandfathers (P9-09): the six legend sheets as the game draws them "
@@ -2447,8 +2507,9 @@ LEGEND_STRIPS = {
                 "Legends Chapter 2, the Fathers (P10-14): the six legend sheets as the game draws them "
                 "(index pages + palettes), 2x. Original characters; owner-approved names and numbers.",
                 "Top: era colors (idle S SE E NE N, run dribble SE, jump shot E, block S | Midrange's FADEAWAY: E "
-                "post, turn, gather, top, release, follow; release S, SE). Bottom: your colors (_crew, star jerseys "
-                "%s) | the _crew fadeaway. No hook on these sheets."),
+                "post, turn, gather, top, release, follow; release S, SE; Rooftop's CRADLE DUNK (P11-10): E scoop, "
+                "cradle, carry, rock back, whip, slam; rock back S, SE). Bottom: your colors (_crew, star jerseys "
+                "%s) | the _crew extra. No hook on these sheets."),
     "present": (LEGENDS_PRESENT, LEGENDS_PRESENT_STRIP,
                 "Legends Chapter 3, the Present (P11-14): the six legend sheets as the game draws them "
                 "(index pages + palettes), 2x. Original characters; owner-approved names, numbers and era colors.",

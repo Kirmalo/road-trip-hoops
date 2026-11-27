@@ -183,7 +183,7 @@ Format: **id** | title | owner | files it may touch | done when | waits for.
   cleanly after the **last** chapter (no next-gate check when there is none). Shipped output is byte for byte the same
   as before: `--legendtest` OK, `--legends-test --stars 24 --target 3` LEGENDS END, and the three-chapter run
   unchanged | none
-- **P12-10a** | Rooftop's cradle dunk: its own look, a preview (carry-over, the owner asked)
+- **P12-10a** | DONE (before Phase 12: `docs/art/cradle_v1.gif`, see P12-10b) | Rooftop's cradle dunk: its own look, a preview (carry-over, the owner asked)
   | art-audio-integrator A | `tools/art/make_players_v2.py` (a `cradle` EXTRA row, carried by no sheet yet),
   `docs/art/cradle_v1.gif`
   | A dunk where he swings the ball from his hip in one arm and lays it in high, next to today's windmill, in 5
@@ -215,7 +215,7 @@ Format: **id** | title | owner | files it may touch | done when | waits for.
   | Each extra next to the move it replaces, 5 directions, events in the row (Q4 a `combo`: the crossover's timing so
   the sim is unchanged; Q4 b `tipdunk`: takeoff, catch and release frames); stand-in bodies until the legends' sheets
   exist; 0 hand/ball check problems. For the owner's look check | Q4, P12-05 merged (Q4 d: dropped)
-- **P12-09** | Midrange's skin goes brown on his sheet and card (carry-over)
+- **P12-09** | DONE (before Phase 12: crews.json skin "brown", his sheet, palettes, cards and `docs/art/legends_fathers.png` regenerated; ANIM OK, LEGENDTEST OK) | Midrange's skin goes brown on his sheet and card (carry-over)
   | art-audio-integrator A | `tools/art/crews.json` (the `lg_midrange` entry only), `assets/players2/lg_midrange*`,
   `assets/players2/cards/lg_midrange*`
   | Regenerated with `--only lg_midrange` (his fadeaway extra kept). His skin matches his portrait's; no other sheet
@@ -302,7 +302,7 @@ writes the answers into the contract.
   | 200+ `--autoplay --twist era_next` games against Phase 11's bands: game length, shots, early-possession shots,
   make rate, fouls, rebounds; the numbers tuned if the era doesn't feel faster or the stats leave the bands (with the
   owner's yes) | P12-12, P12-17 merged
-- **P12-10b** | The cradle on Rooftop's sheet
+- **P12-10b** | DONE (before Phase 12: a `cradle` extra, 12 frames, on `lg_rooftop_x0.png` only, `EXTRA_LANE` 0: scooped off the right hip, cradled in the bent arm, rocked back behind the head, thrown down; player.gd `CRADLE_ANIM` when `Sheets.has_anim()`, else the windmill; counted `anim_cradle`; sheets.gd alias `cradle` -> windmill; no sim change; ANIM OK, `--anim-fake-v2` OK, LEGENDTEST OK, `--challenge rooftop` 3 SIGNATURE cradle lines, `anim_cradle` 2. The owner sees the gif at the look check) | The cradle on Rooftop's sheet
   | art-audio-integrator A | `tools/art/make_players_v2.py`, `assets/players2/lg_rooftop*`, `assets/players2/format.json`,
   `scripts/player.gd` (the `CRADLE_STYLE` line only)
   | `cradle` extra on `lg_rooftop` only, as approved; `--anim-test` ANIM OK; `--challenge lg_rooftop` shows
