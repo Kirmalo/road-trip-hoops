@@ -185,6 +185,16 @@ Everything in "Tasks by wave" not marked DONE.
 ## Doing
 
 ## Review
+- **P12-15** New Generation portraits (art B): `make_portraits_v2.py --legends next` (LG4, `next_kit()` follows the
+  crews.json sheets once P12-14 adds them; until then the sample's parts), twelve `assets/portraits/lg_<six>[_happy].png`
+  (about 196 KB), `docs/art/legends_next_portraits.png`. Firewall's thin flat lime visor with chrome temple ends; Glitch's
+  chrome right forearm and hand raised, the ball on his index finger, violet wrist and knuckle seams, no star;
+  Overclock's all-lime crop, no mask, his braces shown by their lime light from below (a halftone on the tank and a
+  lime line under the jaw: proposal, owner may ask for a lower framing instead); Long Shadow's locs and wooden bead tie,
+  Updraft's mohawk and raised hand with taped fingers, Halfcourt's freckles, sandy curls, white cotton headband.
+  New parts opt-in (comic.py `glow()` / `reglow()` / `tint()`; hair `mohawk` / `two_tone` / `locs_up` and the extras
+  `visor`, `raised_hand`, `brace_glow` in `cast_member`): a full rerun gives all 143 older portraits and sheets byte
+  for byte the same (md5). `--legendtest` OK, no portraits note for Chapter 4
 - **P12-05** New Generation era parts, cyber parts and the look sample: `make_players.py` "Phase 12 era parts"
   (opt-in: `leg_braces`, `chrome_arm`, `visor`, hair `two_tone` / `locs_up`, `cotton_band`, `low_cut`, `tape_fingers`,
   `wristband`, `freckles`), `pixel3d.py` `FLAT` `glow_lime` / `glow_violet` and `CHROME`, `crews.json` `ERA4_*`;
@@ -349,7 +359,7 @@ name (P12-06), the music pick (P12-08).
   their glow the same in every recolor; the natural three with no chrome or glow pixel; the strip
   `docs/art/legends_next.png`; the `combo` extra on `lg_glitch` only (listed in `"extra"`, own lane); no older sheet
   changes byte for byte; `--anim-test` ANIM OK | owner check 2, P12-11 merged
-- **P12-15** | The New Generation portraits
+- **P12-15** | REVIEW | The New Generation portraits
   | art-audio-integrator B | `tools/art/make_portraits_v2.py`, `tools/art/comic.py` (new opt-in kit parts only),
   `assets/portraits/lg_<six>*`, `docs/art/legends_next_portraits.png`
   | Twelve portraits (neutral, happy) in the era kits; the visor on Firewall, the chrome hand on Glitch (raised, the

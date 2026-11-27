@@ -17,6 +17,8 @@ Usage:  python3 tools/art/make_portraits_v2.py              every portrait + the
         python3 tools/art/make_portraits_v2.py --legends fathers   only the Fathers (LG2 below) + their sheet
         python3 tools/art/make_portraits_v2.py --legends present   only the Present (LG3 below) + their sheet
                                                             (kit colors follow their crews.json sheets if present)
+        python3 tools/art/make_portraits_v2.py --legends next      only the New Generation (LG4 below) + their
+                                                            sheet (the same; P12-15)
         python3 tools/art/make_portraits_v2.py ht_g1 ...    a quick row of those characters (ROW_OUT), writes nothing
 Output: assets/portraits/<id>.png           288 x 336 (the 96 x 112 contract at 3x), base portrait
         assets/portraits/<id>_<mood>.png    the moods story_text.gd uses (happy; bosses also smug)
@@ -26,6 +28,7 @@ Output: assets/portraits/<id>.png           288 x 336 (the 96 x 112 contract at 
         docs/art/legends_portraits.png      the six Grandfathers of Legends Chapter 1 (P9-10, specs in LG below)
         docs/art/legends_fathers_portraits.png   the six Fathers of Legends Chapter 2 (P10-15, specs in LG2)
         docs/art/legends_present_portraits.png   the six Present legends of Legends Chapter 3 (P11-15, specs in LG3)
+        docs/art/legends_next_portraits.png      the six New Generation legends of Chapter 4 (P12-15, specs in LG4)
 Needs:  Pillow, numpy
 """
 import json
@@ -1757,6 +1760,12 @@ def cast_member(s):
             beanie(cv, T, P(s["cap"]), P(s["cuff"]), hair)
         elif style == "backcap":
             backcap(cv, T, P(s["cap"]), P(s["brim"]), hair)
+        elif style == "mohawk":
+            mohawk(cv, T, hair)
+        elif style == "two_tone":
+            two_tone(cv, T, hair, P(s["hair2_pal"]))
+        elif style == "locs_up":
+            locs_up(cv, T, hair, P(s["bead_pal"]))
         if s.get("goatee"):
             goatee(cv, T, hair, expr, chin=s.get("chin", 0))
             draw_mouth(cv, T, skin, expr, beard=True)
@@ -1779,6 +1788,14 @@ def cast_member(s):
             whistle(cv, X, P(ex["whistle"][0]), P(ex["whistle"][1]))
         if "collar_shades" in ex:
             collar_shades(cv, X, P(ex["collar_shades"]))
+        if "visor" in ex:
+            visor(cv, T, skin, head)
+        if "raised_hand" in ex:
+            rh = ex["raised_hand"]
+            raised_hand(cv, skin, chrome=rh.get("chrome", False), ball=rh.get("ball", False),
+                        tape=P(s.get("tape", "TAPE")) if rh.get("tape") else None)
+        if "brace_glow" in ex:
+            brace_glow(cv, head, M)
 
     return draw
 
@@ -2127,6 +2144,251 @@ def present_kit(players, pal, skins):
                 spec[dst] = v
 
 
+# Phase 12 (P12-15): the six New Generation legends (Legends Chapter 4, Q1 a and the roster rows). Original characters
+# from the kit's parts; looks, skins, hair and kit colors from the approved look sample
+# (docs/art/legends_next_sample_v1.png, make_players.py NEXT_LOOKS) and the "look" of their rows in
+# scripts/legends_data.gd. Three cyber, three natural (VISION "Phase 12 look check 1"):
+#   Overclock  an all-lime crop, no mask; his chrome shin braces are below the bust, so their lime light comes up
+#              from the bottom of the frame (brace_glow: P12-15's proposal for "a lower framing or their glow")
+#   Glitch     two-tone hair (black sides, platinum top); his right forearm and hand chrome from the elbow down,
+#              violet seams at the wrist and knuckles, a hand of normal size raised with the ball on his fingers
+#              (no star or emblem)
+#   Firewall   a buzz cut and a thin flat lime visor across the eyes, chrome ends at the temples (never gold, no
+#              slats, nothing round the back of the head)
+#   Long Shadow  locs tied up at the back of the crown with a wooden bead tie (natural: no chrome, no glow)
+#   Updraft    a natural black mohawk; his raised hand shows the taped fingers (natural)
+#   Halfcourt  (Emrys) freckles, sandy curls under a plain white cotton headband, clean-shaven (natural)
+# The cyber parts use make_players.py's materials: pixel3d.CHROME (the chrome ramp) and pixel3d.FLAT glow_lime /
+# glow_violet (flat, unshaded; put back over the back light by comic.Canvas.reglow()). Era colors lime + violet on
+# near-black (ERA4_*). Every part here is opt-in (a spec key only these six use), so older portraits do not change.
+# When crews.json has a player with the same id (P12-14), his skin, hair and kit colors win (next_kit()), so a rerun
+# follows the sheets.
+NEXT_PALETTES = {      # the sample's era palettes (crews.json, P12-05); only added where crews.json lacks the row
+    "ERA4_NIGHT": ["#4c4a5c", "#24222e", "#16151d", "#0a090e"],
+    "ERA4_LIME": ["#e8ff9c", "#a6e236", "#6ea420", "#3a6012"],
+    "ERA4_VIOLET": ["#c8aaff", "#7c4ee0", "#5230a6", "#2a1662"],
+    "ERA4_HAIR_LIME": ["#d2f070", "#94c42e", "#5e8a1e", "#2e4a10"],
+    "ERA4_PLATINUM": ["#eeead6", "#c8c1a6", "#958e74", "#5a5646"],
+    "ERA4_WOOD": ["#d8a66c", "#a8743e", "#7a4e2a", "#48301c"],
+    "ERA4_COTTON": ["#ffffff", "#f4f0e6", "#cac4b6", "#8a8476"],
+}
+CHROME = ["#f6faff", "#a4b0c4", "#626c82", "#2e3444"]          # pixel3d.CHROME
+GLOW_LIME, GLOW_VIOLET = (206, 255, 92), (178, 112, 255)       # pixel3d.FLAT glow_lime / glow_violet
+BALL = {"hi": (255, 196, 140), "lt": (250, 150, 80), "base": (230, 110, 40), "sh": (176, 70, 24), "dp": (110, 40, 16)}
+
+
+def two_tone(cv, T, hair, top):
+    """Black line-up sides and back (a crop) under a lighter top (Glitch): a short rounded platinum block."""
+    crop(cv, T, hair)
+    pts = [(-44, -56), (-50, -76), (-32, -96), (4, -102), (38, -94), (56, -76), (59, -58, 0), (44, -60), (22, -66),
+           (0, -68), (-24, -64)]
+    tm = cv.poly(T(pts))
+    sh = cv.crescent(tm, 7) | cv.poly(T([(-52, -80), (-36, -78), (-30, -56), (-48, -54)]))
+    cv.cel(tm, top, shadow=sh, hi=cv.sheen(tm, 2.0, 3.0), ink=2.0, dots=True, dot_sp=3.0)
+    rng = np.random.default_rng(29)
+    for _ in range(34):
+        x, y = rng.uniform(-40, 50), rng.uniform(-96, -66)
+        m = cv.line(T([(x, y + 6), (x + 3, y - 2), (x + 7, y - 6)]), 1.0, taper=(0.4, 0.5)) & tm & ~cv.k
+        cv.rgb[m] = top["sh"] if rng.random() < 0.6 else top["hi"]
+    return tm
+
+
+def locs_up(cv, T, hair, wood):
+    """Locs pulled up to a wooden bead tie at the back of the crown, a short bunch of locs above it (Long Shadow)."""
+    tie = (-36, -88)
+    base = cv.poly(T([(-58, -6), (-64, -34), (-54, -66), (-24, -90), (14, -92), (46, -80), (60, -58), (61, -46),
+                      (48, -50), (26, -56), (6, -52), (-6, -40), (-9, -16), (-13, -13), (-24, -18), (-36, -16),
+                      (-48, -6)]))
+    cv.cel(base, hair, shadow=cv.crescent(base, 8), ink=2.0, dots=False)
+    for x, y in ((56, -50), (44, -58), (30, -62), (14, -60), (0, -54), (-8, -40), (-10, -22), (-30, -16), (-50, -8),
+                 (-60, -30)):
+        mid = ((x + tie[0]) / 2 + 4, (y + tie[1]) / 2 - 6)
+        m = cv.line(T([(x, y), mid, tie]), 7.5 * T.scale(), taper=(0.3, 0.1)) & base
+        cv.cel(m, hair, shadow=cv.crescent(m, 2), hi=cv.sheen(m, 0.5, 1.0), ink=1.0, dots=False)
+    for dx, dy, bx in ((-14, -30, -6), (-28, -22, -14), (-38, -8, -24), (2, -32, 4), (-44, 8, -30)):
+        a = (tie[0] + dx * 0.5 + bx * 0.2, tie[1] + dy * 0.5)
+        b = (tie[0] + dx + bx * 0.4, tie[1] + dy * 0.6 + 14)
+        m = cv.line(T([tie, a, b]), 8.0 * T.scale(), taper=(0.05, 0.4))
+        cv.cel(m, hair, shadow=cv.crescent(m, 2.5), hi=cv.sheen(m, 0.6, 1.2), ink=1.4, dots=False)
+        for t in (0.35, 0.6, 0.82):
+            x = tie[0] + (b[0] - tie[0]) * t
+            y = tie[1] + (b[1] - tie[1]) * t - 6 * math.sin(t * math.pi)
+            cv.rgb[cv.line(T([(x - 2, y - 2), (x + 2, y + 2)]), 0.9, taper=(0.3, 0.3)) & m & ~cv.k] = hair["dp"]
+    sc = T.scale()
+    band = cv.ellipse(*T([tie])[0], 9.5 * sc, 6.5 * sc)
+    cv.cel(band, wood, shadow=cv.crescent(band, 3), hi=cv.sheen(band, 0.6, 1.2), ink=1.6, dots=False)
+    for bx, by in ((-6, 2), (2, 7), (10, 3)):        # wooden beads on the tie
+        bm = cv.ellipse(*T([(tie[0] + bx, tie[1] + by)])[0], 4.0 * sc, 4.0 * sc)
+        cv.cel(bm, wood, shadow=cv.crescent(bm, 1.6), hi=cv.sheen(bm, 0.4, 1.0), ink=1.2, dots=False)
+
+
+def visor(cv, T, skin, head):
+    """A thin flat lime visor across both eyes, a chrome end at each temple (Firewall). Front only, no slats."""
+    lens = cv.poly(T([(-4, -9, 0), (16, -10), (40, -9), (67, -8, 0), (68, 1, 0), (40, 1), (16, 2), (-4, 2, 0)]))
+    near_end = cv.poly(T([(-4, -9.5, 0), (-16, -6, 0), (-18, 0, 0), (-4, 2.5, 0)]))
+    far_end = cv.poly(T([(67, -8.5, 0), (72, -7, 0), (72, -1, 0), (68, 1.5, 0)])) & head
+    chrome = C.ramp(CHROME)
+    spill = cv.band(lens, 5.0, 1.0, 1.0, dirs=24) & head & ~cv.k
+    cv.tint(cv.soft(lens, 2.5) * spill * 0.9, GLOW_LIME, keep=spill)      # its light on the skin, inside the face
+    cv.glow(lens, GLOW_LIME)
+    glint = cv.line(T([(0, -6), (20, -7), (42, -6), (62, -5)]), 1.0 * T.scale(), taper=(0.2, 0.2)) & lens
+    cv.glow(glint, C.mix(GLOW_LIME, (255, 255, 255), 0.6))
+    for m in (near_end, far_end):
+        cv.cel(m, chrome, shadow=cv.crescent(m, 2), hi=cv.sheen(m, 0.5, 1.2), ink=0, dots=False)
+    cv.ink(cv.band(lens | near_end | far_end, 1.8, 0.7, 1.4, dirs=24))
+
+
+HAND_SCALE = 1.32            # the hand and forearm drawn at this size about HAND_ORIGIN (a hand of normal size)
+HAND_ORIGIN = (40.0, 352.0)
+HAND_SHIFT = (6.0, 0.0)
+
+
+def raised_hand(cv, skin, chrome=False, ball=False, tape=None):
+    """A forearm coming up from below the frame on the near side, the hand raised in front of the shoulder (canvas
+    px). chrome: Glitch's chrome forearm and hand, violet seams at the wrist and knuckles; ball: the ball spinning on
+    his index finger; tape: Updraft's taped fingers (an open hand). A hand of normal size, no star or emblem."""
+    k = HAND_SCALE
+    ox, oy = HAND_ORIGIN
+
+    def H(pts):
+        return [(ox + (p[0] - ox) * k + HAND_SHIFT[0], oy + (p[1] - oy) * k + HAND_SHIFT[1]) + tuple(p[2:])
+                for p in pts]
+
+    def L(pts, w, **kw):
+        return cv.line(H(pts), w * k, **kw)
+
+    mat = C.ramp(CHROME) if chrome else skin
+    fore = cv.poly(H([(16, 352), (12, 320), (22, 280), (34, 246, 0), (64, 246, 0), (64, 280), (58, 320), (56, 352)]))
+    if chrome:
+        sh = cv.crescent(fore, 9)
+        hi = L([(26, 340), (30, 300), (40, 256)], 3.0, taper=(0.2, 0.3))
+        cv.cel(fore, mat, shadow=sh, hi=hi, ink=2.2, dots=False)
+        cv.rgb[L([(48, 346), (54, 300), (58, 258)], 2.0, taper=(0.3, 0.3)) & fore] = mat["sh"]   # a reflection
+    else:
+        cv.cel(fore, mat, shadow=cv.crescent(fore, 8), hi=cv.sheen(fore, 2.5, 3.0), ink=2.2, dots=False)
+    palm = cv.poly(H([(30, 252), (28, 226), (32, 206, 0), (66, 204, 0), (70, 226), (68, 252)]))
+    cv.cel(palm, mat, shadow=cv.crescent(palm, 6), hi=None if chrome else cv.sheen(palm, 2, 2.5), ink=2.0,
+           dots=False)
+    if chrome:
+        cv.rgb[L([(36, 248), (36, 226), (40, 210)], 2.4, taper=(0.3, 0.3)) & palm] = mat["hi"]
+    # fingers (index first): base, tip. With the ball the index points straight up and the others curl lower.
+    if ball:
+        fingers = [((60, 206), (61, 170)), ((50, 206), (47, 184)), ((41, 208), (36, 190)), ((33, 212), (26, 198))]
+    else:
+        fingers = [((60, 206), (66, 172)), ((51, 205), (52, 166)), ((42, 207), (38, 170)), ((33, 211), (24, 180))]
+    fm = cv.empty()
+    for n, (b, t) in enumerate(fingers):
+        mid = ((b[0] + t[0]) / 2 + 1, (b[1] + t[1]) / 2)
+        f = L([b, mid, t], 9.0 - n * 0.6, taper=(0.0, 0.18))
+        cv.cel(f, mat, shadow=cv.crescent(f, 2.5), hi=cv.sheen(f, 0.6, 1.2) if chrome else None, ink=1.6, dots=False)
+        fm |= f
+        if tape is not None and n < 3:          # two bands of tape on the index, middle and ring fingers
+            for u in (0.38, 0.7):
+                x, y = b[0] + (t[0] - b[0]) * u, b[1] + (t[1] - b[1]) * u
+                tb = L([(x - 6, y + 1), (x + 6, y - 1)], 4.0, taper=(0, 0)) & f
+                cv.cel(tb, tape, shadow=cv.crescent(tb, 1.2), ink=1.0, dots=False)
+        if chrome:                              # the knuckle seam
+            cv.glow(L([(b[0] - 3.5, b[1] + 5), (b[0] + 3.5, b[1] + 4)], 1.8, taper=(0, 0)) & f, GLOW_VIOLET)
+    th = L([(66, 236), (78, 222), (82, 208)], 9.5, taper=(0.0, 0.2))      # the thumb, out to the side
+    cv.cel(th, mat, shadow=cv.crescent(th, 2.5), hi=cv.sheen(th, 0.6, 1.2) if chrome else None, ink=1.6, dots=False)
+    if tape is not None:
+        tb = L([(73, 222), (82, 226)], 4.0, taper=(0, 0)) & th
+        cv.cel(tb, tape, shadow=cv.crescent(tb, 1.2), ink=1.0, dots=False)
+    if chrome:
+        cv.ink(L([(30, 238), (66, 236)], 1.4, taper=(0, 0)) & palm)
+        cv.glow(L([(30, 250), (48, 252), (66, 250)], 2.6, taper=(0, 0)) & (fore | palm), GLOW_VIOLET)   # the wrist
+        cv.ink(L([(26, 300), (60, 296)], 1.2, taper=(0.1, 0.1)) & fore)                                # a plate line
+    if ball:
+        r = 29.0
+        bx, by = H([(61.0, 170.0 - r + 1.5)])[0]
+        r *= k
+        bm = cv.ellipse(bx, by, r, r)
+        cv.cel(bm, BALL, shadow=cv.crescent(bm, 11), hi=cv.sheen(bm, 3.0, 4.0), ink=2.4, dots=True, dot_sp=3.0)
+        seams = [[(bx - r, by - 2), (bx, by + 5), (bx + r, by - 2)],
+                 [(bx + 2, by - r), (bx - 5, by), (bx + 2, by + r)],
+                 [(bx - r * 0.7, by - r * 0.72), (bx - r * 0.38, by), (bx - r * 0.7, by + r * 0.72)],
+                 [(bx + r * 0.72, by - r * 0.7), (bx + r * 0.42, by), (bx + r * 0.72, by + r * 0.7)]]
+        for sm in seams:
+            cv.ink(cv.line(sm, 1.8, taper=(0.1, 0.1)) & bm)
+        for a in (0.5, 1.3):                    # the spin, two short arcs round the ball's middle
+            pts = [(bx + (r + 8) * math.cos(t), by + (r + 8) * 0.3 * math.sin(t) + r * 0.5)
+                   for t in np.linspace(a, a + 0.9, 8)]
+            cv.ink(cv.line(pts, 1.6, taper=(0.5, 0.5)) & ~bm & ~fm)
+
+
+def brace_glow(cv, head, tank):
+    """Overclock's shin braces are below the bust: their lime light comes up from the bottom of the frame, on the
+    tank (strong) and the arms (faint), and under the jaw (light from below)."""
+    y = cv.yy
+    # a halftone of lime dots growing toward the bottom (a comic tone: no smooth gradient to band in the 255-color
+    # file), strong on the tank, faint on the skin
+    dm = cv.dots(np.clip((y - 262.0) / 70.0, 0, 1), 3.0, 0.72, 40)
+    cv.tint(dm * 0.75, GLOW_LIME, keep=tank)
+    cv.tint(dm * 0.3, GLOW_LIME, keep=~tank)
+    under = head & ~cv.samp(head, 0, 3.0, fill=True) & ~cv.k        # the head's edges that face down
+    cv.tint(np.full(head.shape, 0.55, np.float32), GLOW_LIME, keep=under)
+
+
+LG4 = {
+    # speedster point guard: small, dark brown skin, an all-lime crop, no mask (the braces' light from below)
+    "lg_overclock": dict(name="OVERCLOCK", skin="umber", top="tank", top_pal="ERA4_NIGHT", trim_pal="ERA4_LIME",
+                         broad=0.88, sx=0.92, sy=0.98, cy=142, jaw=-2, chin=0, nose=0.0, wide=0.8, lips=True,
+                         tilt=4.0, hair="crop", hair_pal="ERA4_HAIR_LIME", brow=(16, 8, 10),
+                         extras={"brace_glow": True}),
+    # seven-foot rim runner: very tall and broad, deep brown skin, locs tied up with a wooden bead tie
+    "lg_long_shadow": dict(name="LONG SHADOW", skin="deep", top="tank", top_pal="ERA4_NIGHT", trim_pal="ERA4_LIME",
+                           broad=1.22, sx=1.08, sxn=1.2, cy=136, jaw=5, chin=3, crown=1, wide=1.2, lips=True,
+                           tilt=1.0, hair="locs_up", hair_pal="HAIR_BLACK", bead_pal="ERA4_WOOD", brow=(14, 8, 10),
+                           brow_w=1.4),
+    # trick handler: slim, light olive-tan skin, two-tone hair, the chrome right forearm raised with the ball
+    "lg_glitch": dict(name="GLITCH", skin="tan", top="tank", top_pal="ERA4_NIGHT", trim_pal="ERA4_LIME",
+                      broad=0.9, sx=0.92, sy=1.02, cy=140, jaw=-3, chin=1, nose=1.0, wide=0.4, tilt=3.0,
+                      hair="two_tone", hair_pal="HAIR_BLACK", hair2_pal="ERA4_PLATINUM", brow=(22, 14, 16),
+                      iris=(70, 60, 40), extras={"raised_hand": {"chrome": True, "ball": True}}),
+    # highest leaper: wiry, tan skin, a natural black mohawk, the raised hand shows his taped fingers
+    "lg_updraft": dict(name="UPDRAFT", skin="tan", top="tank", top_pal="ERA4_NIGHT", trim_pal="ERA4_VIOLET",
+                       broad=0.94, sx=0.94, sy=1.04, cy=140, jaw=0, chin=2, nose=1.5, wide=0.6, tilt=2.0,
+                       hair="mohawk", hair_pal="HAIR_BLACK", tape="TAPE", brow=(20, 12, 14),
+                       extras={"raised_hand": {"tape": True}}),
+    # range shooter: lean, pale skin with freckles, sandy curls under a white cotton headband, clean-shaven
+    "lg_halfcourt": dict(name="HALFCOURT", skin="light", top="tank", top_pal="ERA4_NIGHT", trim_pal="ERA4_LIME",
+                         broad=0.92, sx=0.92, sy=1.04, cy=140, jaw=-2, chin=2, nose=1.0, tilt=3.0, hair="curls",
+                         hair_pal="HAIR_SANDY", curl_rx=60.0, curl_ry=50.0, seed=39, headband="ERA4_COTTON",
+                         iris=(70, 110, 140), extras={"freckles": 17}),
+    # switching shot blocker: strong medium build, brown skin, a buzz cut, the thin lime visor
+    "lg_firewall": dict(name="FIREWALL", skin="brown", top="tank", top_pal="ERA4_NIGHT", trim_pal="ERA4_LIME",
+                        broad=1.1, sx=1.02, sxn=1.1, cy=136, jaw=3, chin=2, wide=0.9, lips=True, tilt=1.0,
+                        hair="buzz", hair_pal="HAIR_BLACK", brow=(14, 8, 10), brow_w=1.3,
+                        extras={"visor": True}),
+}
+NEXT_KIT_KEYS = dict(FATHERS_KIT_KEYS, hair2_pal="hair2_pal", bead_pal="bead_pal", tape_pal="tape")
+LG4_RIM = (200, 240, 120)
+LG4_SHEET = os.path.join(ROOT, "docs", "art", "legends_next_portraits.png")
+LG4_ANCHOR = {"two_tone": 160, "locs_up": 110, "mohawk": 110, "curls": 160}
+for _pid, _s in LG4.items():
+    CAST[_pid] = (_s["name"], cast_member(_s), LG4_RIM, [("neutral", ""), ("happy", "_happy")],
+                  LG4_ANCHOR.get(_s["hair"], 250))
+CREW_CARD["LG4"] = (110, 70, 200)
+
+
+def next_kit(players, pal, skins):
+    """The New Generation's era palettes (only those crews.json lacks) and, when their crews.json sheets exist
+    (P12-14), the sheets' skin, hair and kit colors; prints what changed. Never writes crews.json."""
+    for k, v in NEXT_PALETTES.items():
+        pal.setdefault(k, v)
+    for pid, spec in LG4.items():
+        p = players.get(pid)
+        if not p:
+            continue
+        for src, dst in NEXT_KIT_KEYS.items():
+            v = p.get(src)
+            if not isinstance(v, str) or dst not in spec or v not in (skins if dst == "skin" else pal):
+                continue
+            if spec.get(dst) != v:
+                print("kit", pid, dst, spec.get(dst), "->", v)
+                spec[dst] = v
+
+
 
 # ----------------------------------------------------------------------------- the sample sheet
 
@@ -2183,6 +2445,7 @@ def portrait(pid, expr, pal, skins):
     cv = C.Canvas(PW, PH, zoom=ZOOM, anchor=(150, ay))
     draw(cv, pal, skins, expr)
     cv.rim(rim, width=3.0, strength=0.55)
+    cv.reglow()           # flat glow parts stay their own color (only Phase 12 parts make any)
     # bold outer contour round the whole bust
     cv.ink(cv.band(cv.a, 1.6, 0.6, 1.5))
     return cv.image()
@@ -2196,9 +2459,10 @@ def save(img, path):
 def main():
     pal, skins, players = load()
     argv = sys.argv[1:]
-    # "--legends": the Grandfathers; "--legends fathers": the Fathers (P10-15); "--legends present" (P11-15)
+    # "--legends": the Grandfathers; "--legends fathers": the Fathers (P10-15); "--legends present" (P11-15);
+    # "--legends next": the New Generation (P12-15)
     legends_only = None
-    tables = {"grand": LG, "fathers": LG2, "present": LG3}
+    tables = {"grand": LG, "fathers": LG2, "present": LG3, "next": LG4}
     for i, a in enumerate(argv):
         if a == "--legends":
             legends_only = "grand"
@@ -2207,12 +2471,13 @@ def main():
         elif a.startswith("--legends="):
             legends_only = a.split("=", 1)[1] or "grand"
     if legends_only not in (None,) + tuple(tables):
-        sys.exit("unknown --legends chapter: %s (grand, fathers, present)" % legends_only)
+        sys.exit("unknown --legends chapter: %s (grand, fathers, present, next)" % legends_only)
     args = [a for k, a in enumerate(argv) if not a.startswith("--")
             and not (k > 0 and argv[k - 1] == "--legends" and a in tables)]
     sample = "--sample" in sys.argv
     fathers_kit(players, pal, skins)
     present_kit(players, pal, skins)
+    next_kit(players, pal, skins)
     if args:
         # quick look at some characters: a row of their moods, nothing written to assets/
         made = [portrait(pid, e, pal, skins) for pid in args for e, _ in CAST[pid][3]]
@@ -2241,6 +2506,8 @@ def main():
         fathers_sheet(made, pal, skins)
     if legends_only in (None, "present"):
         present_sheet(made, pal, skins)
+    if legends_only in (None, "next"):
+        next_sheet(made, pal, skins)
     if legends_only:
         return
     if sample:
@@ -2303,6 +2570,22 @@ def present_sheet(made, pal, skins):
                        "You backed off a step. Thanks.", "That's all the room I need."),
                       (("ud_jojo", "happy"), ("lg_toolbox", "happy"), "right", "TOOLBOX",
                        "Point guard? Forward? Yes.", "Whatever the play needs, I've got it in the box.")])
+
+
+def next_sheet(made, pal, skins):
+    """docs/art/legends_next_portraits.png (P12-15): the six New Generation legends, two story mock-ups and every
+    mood. The mock-ups' crew portraits are drawn here when --legends next did not make them (nothing more is
+    written); the mock-up lines are only for the look check (Chapter 4's story is in scripts/story_text.gd)."""
+    for key in (("ud_deuce", "focus"), ("ud_jojo", "happy")):
+        if key not in made:
+            made[key] = portrait(key[0], key[1], pal, skins)
+    full_sheet(made, crews=[("LEGENDS CHAPTER 4: THE NEW GENERATION", "LG4", list(LG4))], path=LG4_SHEET,
+               heading="Story portraits, the New Generation (P12-15) - drawn comic style v2, 288 x 336 (shown 1:1); "
+                       "the first of each legend is the base portrait",
+               mocks=[(("ud_deuce", "focus"), ("lg_glitch", "neutral"), "right", "GLITCH",
+                       "Watch the ball. No, the other one.", "See? It skipped a frame."),
+                      (("ud_jojo", "happy"), ("lg_halfcourt", "happy"), "right", "HALFCOURT",
+                       "Two in a row. You know what that means.", "Nobody cools me down now.")])
 
 
 def full_sheet(made, crews=None, mocks=None, path=FULL_SHEET,
