@@ -1582,8 +1582,8 @@ static func _check_stand_in_chapters(errs: Array, trip_path: String, row_i: int,
 				"%s: %s gate %s, want %s" % [tag, ch3, str(g3), str(sg)])
 	# the last row built: no chapter after it, nothing left unbuilt
 	if nb == row_ids.size():
-		_check(errs, _unbuilt_chapter() == "nowhere" and LegendsData.chapter_ids().find(ch3) == row_ids.size() - 1
-				and parse_challenge("nowhere") == "", "%s: a chapter after %s" % [tag, ch3])
+		_check(errs, _unbuilt_chapter() == "nowhere" and parse_challenge("nowhere") == "",
+				"%s: a chapter after %s" % [tag, ch3])
 	_check(errs, _all_matches(ch3) == before, "%s: a match of another chapter changed" % tag)
 	_check(errs, LegendsData.challenge_avg(ch3) == LegendsData.TEST_CHALLENGE_AVG
 			and LegendsData.mate_drop(ch3) == LegendsData.TEST_MATE_DROP

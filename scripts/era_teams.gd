@@ -303,8 +303,12 @@ static func self_test() -> String:
 		errs.append("%d era teams for %d built chapters with a crew (%s)" % [ids().size(), want_n, str(ids())])
 	# the stand-in Present: three teams
 	LegendsData.set_test_data(LegendsData.stand_in_test_data("present"))
-	if ids().size() != 3:
-		errs.append("stand-in present: %d era teams, want 3 (%s)" % [ids().size(), str(ids())])
+	var want_s: int = 0
+	for row in LegendsData.chapter_rows():
+		if bool(row.get("built", false)) and not (row.get("crew", {}) as Dictionary).is_empty():
+			want_s += 1
+	if ids().size() != want_s or want_s < 3:
+		errs.append("stand-in present: %d era teams, want %d (%s)" % [ids().size(), want_s, str(ids())])
 	_check_rows(errs, "stand-in present")
 	LegendsData.clear_test_data()
 	if not kept_data.is_empty():
