@@ -185,6 +185,7 @@ Everything in "Tasks by wave" not marked DONE.
 ## Doing
 
 ## Review
+- **P12-33** The 4th era team in Quick Game (gameplay B): no logic change needed, the data opens it. `era_teams.gd` self test only: `SHIPPED_IDS` (the four teams), timeline order, `STAND_IN_CHECKS` (stand-in Present and stand-in New Generation rows), team and info color = the crew's `ui_color`. `menu.gd` untouched. LEGENDTEST era teams [grandfathers, fathers, present, new_generation] OK; `--titletest` DONE plain / `--legends-unlock-all --stars 72` (COURT gym > blacktop > era_grand > era_fathers > era_present > era_next > midnight > gold_hall, NEON DOME twist era_next music legends_next) / `--legends-unlock-none` (none open); 4 autoplays NEW GENERATION vs Kings on NEON DOME 21-18, 19-21, 16-21, 18-21 (8:17-9:46, music_legends_next).
 - **P12-18** Chapter flow, the gate and the ending (gameplay B): `legends.gd`, `legends_tour.gd`, `hall.gd`, and the
   `--legends-test` driver's checks (`legends_test.gd`, as the coordinator asked). `SHIPPED_CHAPTERS` 4 (gate 72 stars
   or 48 tokens checked; the chapter walk runs on four eras). `Legends.legends_complete()` (every timeline row built,
@@ -489,7 +490,7 @@ name (P12-06), the music pick (P12-08).
   | qa-balance-tester | `docs/qa/phase12-ramp.md`, `scripts/legends_data.gd` (perk numbers only)
   | `--best-roster` with a New Generation legend and the strongest new perks: Hard RED share against Phase 11's 44%;
   each perk measured at about 2 stat points, resized with the owner's yes | P12-22, P12-23 merged
-- **P12-33** | The 4th era team and its court in Quick Game
+- **P12-33** | REVIEW | The 4th era team and its court in Quick Game
   | gameplay-programmer B | `scripts/era_teams.gd` (self test expectations; logic only if the data needs it),
   `scripts/menu.gd` (only if the COURT order needs it)
   | `new_generation` opens with its finale three; `--quick-teams new_generation,grandfathers` works; the court follows

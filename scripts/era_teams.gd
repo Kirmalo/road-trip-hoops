@@ -6,7 +6,8 @@ extends RefCounted
 #
 # Everything comes from LegendsData.CHAPTERS / LEGENDS: an era team exists for every built chapter row with a crew,
 # ERA_TEAM_MIN+ legends and a lineup of 3 (no chapter id in the logic; the Present's team appears by itself once its
-# row is built). Its id is the crew name in lower case with "_", a leading "the_" dropped (grandfathers, fathers).
+# row is built). Its id is the crew name in lower case with "_", a leading "the_" dropped (grandfathers, fathers,
+# present, new_generation: P12-33, Chapter 4's team by itself from its row, NEON DOME its court, FAST BREAK its twist).
 #   open      (finale pick, owner) the team's own three unlocked; (shape pick) ERA_TEAM_MIN of the chapter's legends unlocked in the Legends file (Legends.is_unlocked(), legends.gd
 #             loaded at run time; missing = no era teams). Never the trip save, never stars. --legends-unlock-all /
 #             -none act through Legends.is_unlocked(); --unlock-all opens every era team, --unlock-none closes them
@@ -36,6 +37,9 @@ const DIFFICULTY_PATH := "res://scripts/difficulty.gd"
 const UNLOCK_ALL_FLAG := "--unlock-all"      # = Difficulty.UNLOCK_ALL_FLAG
 const UNLOCK_NONE_FLAG := "--unlock-none"    # = Difficulty.UNLOCK_NONE_FLAG
 const FLAG_IGNORE := "-"                     # flag_override: act as if neither flag were given (self_test)
+# self_test() only (tests may name ids): the shipped era teams, and the stand-in rows checked as [chapter, min teams]
+const SHIPPED_IDS := ["grandfathers", "fathers", "present", "new_generation"]
+const STAND_IN_CHECKS := [["present", 3], ["next", 4]]
 
 static var flag_override: String = ""          # self_test(): "all" / "none" stand in for the flags, "-" = no flag,
                                                # "" = the command line
@@ -301,16 +305,30 @@ static func self_test() -> String:
 			want_n += 1
 	if ids().size() != want_n:
 		errs.append("%d era teams for %d built chapters with a crew (%s)" % [ids().size(), want_n, str(ids())])
-	# the stand-in Present: three teams
-	LegendsData.set_test_data(LegendsData.stand_in_test_data("present"))
-	var want_s: int = 0
+	# timeline order: ids() follows the chapter rows; the last built row's team is the last one (P12-33)
+	var order: Array = []
 	for row in LegendsData.chapter_rows():
-		if bool(row.get("built", false)) and not (row.get("crew", {}) as Dictionary).is_empty():
-			want_s += 1
-	if ids().size() != want_s or want_s < 3:
-		errs.append("stand-in present: %d era teams, want %d (%s)" % [ids().size(), want_s, str(ids())])
-	_check_rows(errs, "stand-in present")
-	LegendsData.clear_test_data()
+		var rid: String = _id_of_row(row)
+		if rid != "":
+			order.append(rid)
+	if ids() != order:
+		errs.append("era teams %s not in timeline order %s" % [str(ids()), str(order)])
+	if kept_data.is_empty():
+		for want_id in SHIPPED_IDS:
+			if not ids().has(want_id):
+				errs.append("shipped: no era team %s (%s)" % [want_id, str(ids())])
+	# the stand-in Present (three teams or more) and, P12-33, the stand-in New Generation (four)
+	for sc in STAND_IN_CHECKS:
+		var ch: String = str(sc[0])
+		LegendsData.set_test_data(LegendsData.stand_in_test_data(ch))
+		var want_s: int = 0
+		for row in LegendsData.chapter_rows():
+			if bool(row.get("built", false)) and not (row.get("crew", {}) as Dictionary).is_empty():
+				want_s += 1
+		if ids().size() != want_s or want_s < int(sc[1]):
+			errs.append("stand-in %s: %d era teams, want %d (%s)" % [ch, ids().size(), want_s, str(ids())])
+		_check_rows(errs, "stand-in " + ch)
+		LegendsData.clear_test_data()
 	if not kept_data.is_empty():
 		LegendsData.set_test_data(kept_data)
 	# a built row without a crew, or with too few legends, gives no team
@@ -404,6 +422,8 @@ static func _check_rows(errs: Array, tag: String) -> void:
 		# the team dict
 		var tm: Dictionary = team(eid)
 		var crew: Dictionary = row.get("crew", {})
+		if info(eid).get("color", null) != crew.get("ui_color", Color.GRAY) or tm.get("color", null) != crew.get("ui_color", Color.GRAY):
+			errs.append("%s %s: team color is not the crew's ui_color" % [tag, eid])
 		for k in ["id", "name", "style", "color", "players", "colors"]:
 			if not tm.has(k):
 				errs.append("%s %s: team has no %s" % [tag, eid, k])
