@@ -137,6 +137,7 @@ tablet with a joystick and two buttons.
 | Phase 12 Halfcourt's first name (after P12-02) | Owner: Emrys (Emrys "Halfcourt" Tregarth), not Ezra (2 letters from Earl, the Hometown boss: our own first-name rule) |
 | Phase 12 look check 1 (after P12-05) | Owner: approves the look sample `docs/art/legends_next_sample_v1.*` as is (Overclock's chrome leg braces with a lime line, Glitch's chrome right forearm with violet seams, Firewall's thin lime visor; Long Shadow's locs and bead tie, Updraft's mohawk and taped fingers, Halfcourt's freckles, curls and headband; glow and chrome kept in every recolor). Era colors lime + violet on near-black for all six kits. Era music: "Escalate" by congusbongus (CC-BY 3.0, OpenGameArt; `docs/audio_preview/next_a_escalate.ogg`; check the loop for grit at the ceiling) |
 | Phase 12 combo dribble (after P12-05b) | Owner: approves Glitch's combo `docs/art/combo_v1.gif` as is (between the legs, behind the back, back to the chrome hand; the crossover's timing). It ends in his starting hand, so the game keeps his ball hand after it |
+| Phase 12 court (after P12-06) | Owner: approves the court `era_next` as is and its name NEON DOME (dark glass floor, lime lines, violet key, black dome with violet light rings, chrome rail; `docs/art/era_next_preview.png`) |
 
 ## Technical constraints
 - Godot 4.3+ (GDScript), GL Compatibility renderer, 1280x720 landscape. See `CLAUDE.md` for code conventions.
