@@ -189,8 +189,8 @@ Everything in "Tasks by wave" not marked DONE.
   P12-02 list additions (2024-2026 drafts, young stars and nicknames, dunk contest, Japan, Europe, shoe lines, famous
   fictional cyborgs and robots and their looks). Step 1: `nba_api` 1.12.0 (Oct 21 2026, 6,426 entries, holds the 2026
   class). All six pass the hard rule and the data test's rules (Python dry run of `name_hit()`: six pass, the 18
-  shipped still pass, 7 new probes fail); numbers pass. **One fail of our own rule, not applied**: Ezra is 2 letters
-  from Earl (Earl "Mayor" Pruitt, `cities.gd`); owner: keep Ezra, or Leander (12.9) or Emrys. `--legendtest` OK
+  shipped still pass, 7 new probes fail); numbers pass. **One fail of our own rule, not applied**: Emrys is 2 letters
+  from Earl (Earl "Mayor" Pruitt, `cities.gd`); owner: keep Emrys, or Leander (12.9) or Emrys. `--legendtest` OK
   (doc only, nothing else changed)
 
 ## Done
@@ -212,7 +212,7 @@ Format: **id** | title | owner | files it may touch | done when | waits for.
   and **famous fictional cyborgs and robots** (film, games, comics: names and their signature looks, e.g. a metal arm
   with a star, a red visor, a gold visor band). Then a "Chapter 4 (P12-02): first check" section for 12.9's six
   (Tavian "Overclock" Brightwell, Calder "Long Shadow" Ostrander, Cosimo "Glitch" Draycott, Silvan "Updraft" Ingleby,
-  Ezra "Halfcourt" Tregarth, Kasimir "Firewall" Oyelaran): the `nba_api` step, 1-letter near misses, first names
+  Emrys "Halfcourt" Tregarth, Kasimir "Firewall" Oyelaran): the `nba_api` step, 1-letter near misses, first names
   within 2 letters of a game name, the nicknames against brands and fictional characters, the look combinations in
   words (the five real-player sets **and** the cyborg looks), the numbers 17 / 56 / 25 / 57 / 39 / 51, and a short
   summary for the owner. A name that fails comes with two passing alternatives (12.9 lists backups) | none

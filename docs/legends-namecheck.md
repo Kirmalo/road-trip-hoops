@@ -544,3 +544,5 @@ like "Jr." are left off: the test reads the last word as the surname.)
 
 The full NBA list (step 1) is too long to copy into the game; it was checked once here, and the table above is its
 result. A new legend gets a row in the table and the same step-1 check before his art is made.
+
+> Owner (after P12-02): Halfcourt is **Emrys** Tregarth (the Ezra / Earl clash above). Emrys: nothing within 2 letters of any real or game first name.
