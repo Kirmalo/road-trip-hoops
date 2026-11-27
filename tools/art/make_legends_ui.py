@@ -3,14 +3,14 @@
 
 Original pixel art made here, nothing downloaded or traced. The Grandfathers art uses the P9-05 OLD GYM palette
 (make_courts.py: aged maple, dark wainscot wood, felt banners, late-day window light) and its court textures; the
-Fathers panel shows its NIGHT PARK court (era_fathers) and the Present panel its BIG STAGE (era_present) in colour too;
-the last chapter (4) shows only a dimmed, colourless hint of a court, a padlock and its gate (drawn by the game).
+Fathers panel shows its NIGHT PARK court (era_fathers), the Present panel its BIG STAGE (era_present) and (P12-07) the
+New Generation panel its NEON DOME (era_next) in colour too; the game dims a panel whose gate is not met.
 No names, letters, years of real seasons, teams, leagues, arenas or marks.
 
 Usage:  python3 tools/art/make_legends_ui.py
 Output (assets/legends/; texel = one pixel of these images, drawn at 2 canvas px per texel like the map):
   timeline.png            640 x 360 era tour backdrop (2x = 1280 x 720): rows 0..HEADER_H-1 kept for the screen
-                          header, four era panels left to right (1-3 in colour, 4 dimmed), a timeline
+                          header, four era panels left to right (all four in colour), a timeline
                           rail across them; no labels or pins baked in. On 1280 x 800 centre it (y + 40) and fill
                           the bars with "bar_bg".
   pin_grand.png           32 x 40 chapter pin, Chapter 1 open (brass medallion, an old laced ball)
@@ -31,6 +31,14 @@ Output (assets/legends/; texel = one pixel of these images, drawn at 2 canvas px
                           skyline, chain fence, a pool of sodium light) and an empty rim-orange name plate
   pin_fathers.png         Chapter 2 open (green fence-steel medallion, the chain-net hoop under a pool of light)
   pin_fathers_done.png    Chapter 2 finished (gold, the hoop and a star)
+  pin_present.png         Chapter 3 open (teal LED medallion, a modern ball), pin_present_done.png finished
+  frame_present.png       56 x 88 era card frame (Present, P11-07): graphite glass, a teal LED strip, a coral plate
+  pin_next.png            Chapter 4 open (P12-07: violet medallion, a lime bolt in a lime LED ring on the black dome)
+  pin_next_done.png       Chapter 4 finished (gold, the lime bolt and a star); pin_next_locked.png stays P9-11's
+  frame_next.png          56 x 88 era card frame (New Generation, P12-07): black glass with a violet lattice, a chrome
+                          bevel, a lime LED strip, a violet light ring on top, NEON DOME in the window (black dome,
+                          a hanging violet ring, a dark crowd with phone lights, a chrome rail, a lime edge light,
+                          dark glass floor) and an empty lime name plate (ui.json "colors" next: dark plate text)
   silhouette.png          40 x 60 a generic player silhouette that fits the window (from a player card's shape)
   ui.json                 the numbers above for the screens (see "_help" inside)
   docs/art/legends_ui.png preview for the owner: the tour mock-up at 1280 x 720 (header, labels, pins drawn as the
@@ -68,7 +76,8 @@ CHAPTERS = [
     {"id": "fathers", "court": "era_fathers", "open": True},
     # Chapter 3 shows P11-06's BIG STAGE (era_present) in colour the same way (after the Phase 11 look check)
     {"id": "present", "court": "era_present", "open": True},
-    {"id": "next", "court": "midnight", "open": False},
+    # Chapter 4 shows P12-06's NEON DOME (era_next) lit the same way (P12-07, after owner check 2)
+    {"id": "next", "court": "era_next", "open": True},
 ]
 MARGIN, POST = 7, 6
 PANEL_W = (W - 2 * MARGIN - 3 * POST) // 4      # 152
@@ -148,6 +157,30 @@ def era3(name):
 TEAL, CORAL, GRAPHITE = era3("TEAL"), era3("CORAL"), era3("GRAPHITE")
 LIGHT3, FLOOR3 = era3("LIGHT"), era3("FLOOR")
 
+# Chapter 4, the New Generation (P12-07): the owner's era colours, electric lime + violet on near-black with chrome
+# (VISION "Phase 12 look check 1", "Phase 12 court"). The ramps are make_courts.py's era_next ones (LIME, VIOLET,
+# CHROME, the dome NDOME and the glass floor GLASS), so the frame, the pins and the timeline panel match NEON DOME.
+# A lime LED strip, a lime name plate (dark text, like the other eras' light plates), violet light rings, a chrome
+# bevel, a black dome and a dark crowd with phone lights in the window. No CYBER tag, letter, logo or mark.
+ERA4 = {
+    "LIME": ["#f0ffc0", "#b8ff3a", "#7ad81e", "#3e7a12"],          # lime glow, light .. dark (= the court's LIME)
+    "VIOLET": ["#e8c8ff", "#a65cff", "#6a2ad0", "#3a1478"],        # violet light rings (= the court's VIOLET)
+    "CHROME": ["#f4f6fa", "#c4ccd8", "#848ea0", "#444a58"],        # chrome bevel, rails, cables (= the court's CHROME)
+    "DOME": ["#1a1726", "#131120", "#0e0c18", "#08070f"],          # the black dome (= the court's NDOME)
+    "GLASS": ["#2e2b3c", "#24222f", "#1c1a27", "#181622"],         # dark glass band and floor, lit .. shade
+}
+
+
+def era4(name):
+    """One New Generation palette as 4 RGB tuples (this script's own values)."""
+    return [H_(c) for c in ERA4[name]]
+
+
+LIME4, VIOLET4, CHROME4 = era4("LIME"), era4("VIOLET"), era4("CHROME")
+DOME4, GLASS4 = era4("DOME"), era4("GLASS")
+NEXT_PLATE_TEXT = "#16151d"                        # dark plate text on the lime plate (contrast checked, P12-07)
+LIFT4 = 1.18                                      # the timeline panel's NEON DOME is lifted this much (it is near-black)
+
 
 def mix(a, b, t):
     return tuple(int(round(a[k] * (1 - t) + b[k] * t)) for k in range(3))
@@ -224,7 +257,7 @@ def court_scene(look, w, h):
     out = np.zeros((h, w, 3), np.uint8)
     top = BD_Y - PANEL_Y0
     bh = bd.shape[0]
-    x0 = {"era_grand": 150, "era_fathers": 92, "era_present": 150, "blacktop": 40, "gold_hall": 200, "midnight": 60}.get(look, 0)  # a busy part of each
+    x0 = {"era_grand": 150, "era_fathers": 92, "era_present": 150, "era_next": 100, "blacktop": 40, "gold_hall": 200, "midnight": 60}.get(look, 0)  # a busy part of each
     cols = [(x0 + x) % bd.shape[1] for x in range(w)]
     out[:top, :] = bd[0, cols][None, :, :]
     out[top:top + bh, :] = bd[:, cols][: max(0, min(bh, h - top))]
@@ -233,7 +266,7 @@ def court_scene(look, w, h):
         out[y, :] = fl[(y - fy) % fl.shape[0], [x % fl.shape[1] for x in range(w)]]
     # the far sideline and the apron's shadow under the backdrop
     out[fy:fy + 2, :] = (out[fy:fy + 2, :].astype(float) * 0.62).astype(np.uint8)
-    line = (240, 236, 220) if look != "midnight" else (120, 220, 255)
+    line = {"midnight": (120, 220, 255), "era_next": LIME4[1]}.get(look, (240, 236, 220))
     out[fy + 9, :] = (out[fy + 9, :].astype(float) * 0.3 + np.array(line) * 0.7).astype(np.uint8)
     return out
 
@@ -256,6 +289,8 @@ def draw_timeline():
             y = (sc * np.array([0.3, 0.59, 0.11])).sum(axis=2, keepdims=True)
             sc = sc * 0.15 + y * 0.85
             sc = sc * 0.48 + np.array([40, 38, 62]) * 0.30
+        elif ch["id"] == "next":                              # NEON DOME: lifted a little, a violet glow
+            sc = np.clip(sc * LIFT4 + np.array([120, 70, 220]) * 0.06, 0, 255)
         else:                                                 # late-day warmth on the open era
             sc = sc * 0.92 + np.array([255, 200, 120]) * 0.08
         # darken toward the bottom (the game writes the chapter name and gate there) and at the sides
@@ -377,7 +412,10 @@ def emblem(cv, kind, cx, cy, locked):
         for j, row in enumerate(bolt):
             for i, ch in enumerate(row):
                 if ch == "#":
-                    cv.put(cx - 4 + i, cy - 4 + j, g(H_("#ffe040") if i + j < 8 else H_("#f0a020")))
+                    if locked:                                # P9-11's colours: pin_next_locked.png unchanged
+                        cv.put(cx - 4 + i, cy - 4 + j, g(H_("#ffe040") if i + j < 8 else H_("#f0a020")))
+                    else:                                     # P12-07: a lime bolt
+                        cv.put(cx - 4 + i, cy - 4 + j, LIME4[0] if i + j < 8 else LIME4[1])
 
 
 def padlock(cv, x, y, body, dark):
@@ -393,7 +431,7 @@ def padlock(cv, x, y, body, dark):
 def pin_image(kind, state):
     """state: open, done or locked. The open pin wears its era's metal (Grandfathers brass, Fathers park-green
     fence steel); done is gold for every era, locked grey."""
-    rp = {"open": {"fathers": FENCE, "present": TEAL}.get(kind, BRASS), "done": GOLD, "locked": STEEL}[state]
+    rp = {"open": {"fathers": FENCE, "present": TEAL, "next": VIOLET4}.get(kind, BRASS), "done": GOLD, "locked": STEEL}[state]
     cv = Canvas(PIN_W, PIN_H)
     cx, cy, r = 16, 15, 13
     tip = PIN_ANCHOR
@@ -422,6 +460,8 @@ def pin_image(kind, state):
         face = ASPHALT[3]                                     # a night blacktop behind the chain-net hoop
     if kind == "present" and state != "locked":
         face = GRAPHITE[2]                                    # dark arena glass behind the modern ball
+    if kind == "next" and state != "locked":
+        face = DOME4[1]                                       # the black dome behind the lime bolt
     cv.disk(cx, cy, 9, face)
     cv.disk(cx, cy, 8, mix(face, (0, 0, 0), 0.25))
     if kind == "present" and state != "locked":               # an LED ring of dots round the ball
@@ -429,6 +469,11 @@ def pin_image(kind, state):
             a = k * math.pi / 6 + math.pi / 12
             cv.put(cx + round(math.cos(a) * 8), cy + round(math.sin(a) * 8),
                    CORAL[1] if k % 2 == 0 else LIGHT3[1])
+    if kind == "next" and state != "locked":                  # a lime LED ring round the bolt
+        for k in range(12):
+            a = k * math.pi / 6 + math.pi / 12
+            cv.put(cx + round(math.cos(a) * 8), cy + round(math.sin(a) * 8),
+                   LIME4[1] if k % 2 == 0 else LIME4[3])
     if kind == "fathers" and state != "locked":               # a pool of pole light under the net
         for y in range(cy + 2, cy + 9):
             for x in range(cx - 8, cx + 9):
@@ -695,6 +740,107 @@ def window_backing_present(cv):
                 cv.blend(x, y, (10, 8, 16), 0.15)
 
 
+def window_backing_next(cv):
+    """NEON DOME (made up, no real arena): a black dome with a faint violet lattice and a violet light ring hanging
+    on chrome cables, a dark crowd lit by white and lime phone lights, a chrome rail, a lime edge light, the dark
+    glass floor in big panels with the ring's violet sheen and a cool spotlight where he stands. The stands behind
+    his body are a little lifted (violet) so the era's near-black kits still read against them."""
+    wx, wy, ww, wh = WINDOW
+    floor_y = wy + 51
+    crowd0, rail0 = wy + 22, wy + 44                           # the crowd's rows, the chrome rail
+    mid = wx + ww / 2 - 0.5
+    for y in range(wy, wy + wh):
+        for x in range(wx, wx + ww):
+            if y < crowd0:                                     # the dome: black, a faint violet lattice
+                t = (y - wy) / float(crowd0 - wy)
+                c = mix(DOME4[3], DOME4[1], t)
+                if (x - wx + 2 * (y - wy)) % 9 == 0 or (x - wx - 2 * (y - wy)) % 9 == 0:
+                    c = mix(c, VIOLET4[3], 0.45)
+            elif y < rail0:                                    # the dark crowd in tiers, phone lights
+                t = (y - crowd0) / float(rail0 - crowd0)
+                c = mix(DOME4[2], mix(GLASS4[0], VIOLET4[3], 0.35), 0.4 + 0.6 * t)
+                if (y - crowd0) % 4 == 3:
+                    c = mix(c, DOME4[3], 0.6)                  # tier edges
+                elif (x * 5 + y * 3) % 7 == 0:
+                    c = mix(c, H_("#5c5a72"), 0.55)            # heads and shoulders in the dark
+                if (x * 7 + y * 11) % 47 == 0:
+                    c = CHROME4[0]                             # phone lights
+                elif (x * 13 + y * 5) % 59 == 0:
+                    c = LIME4[1]
+            elif y < floor_y - 2:                              # the chrome rail and its smoked glass
+                if y == rail0:
+                    c = CHROME4[0]
+                elif y == rail0 + 1:
+                    c = CHROME4[2]
+                else:
+                    c = mix(GLASS4[1], CHROME4[3], 0.35)
+                    if (x - wx) % 10 == 1:
+                        c = CHROME4[2]                         # posts
+            elif y < floor_y:                                  # the lime edge light at floor level
+                c = LIME4[1] if y == floor_y - 2 else LIME4[3]
+            else:                                              # dark glass panels, a lit seam
+                c = GLASS4[1] if ((x - wx) // 10 + (y - floor_y) // 6) % 2 else GLASS4[2]
+                if (x - wx) % 10 == 0 or (y - floor_y) % 6 == 5:
+                    c = H_("#3a3850")
+                if y - floor_y in (0, 1):
+                    c = mix(c, LIME4[2], 0.30)                 # the edge light in the gloss
+            cv.put(x, y, c)
+    # the hanging violet light ring (an ellipse) on two chrome cables
+    rcx, rcy, rx, ry = mid, wy + 15, 13.0, 3.0
+    for x in range(wx, wx + ww):
+        for y in range(wy, crowd0 + 4):
+            d = ((x - rcx) / rx) ** 2 + ((y - rcy) / ry) ** 2
+            if 0.62 <= d <= 1.25:
+                cv.put(x, y, VIOLET4[0] if y < rcy else VIOLET4[1])
+            elif 1.25 < d <= 2.2:
+                cv.blend(x, y, VIOLET4[2], 0.35)               # its glow
+    for cx_ in (int(rcx - 9), int(rcx + 10)):
+        cv.rect(cx_, wy, cx_, int(rcy) - 3, CHROME4[2])
+    for x in range(wx, wx + ww):                               # the ring's light on the crowd under it
+        for y in range(crowd0, rail0):
+            d = ((x - rcx) / 16.0) ** 2 + ((y - crowd0) / 10.0) ** 2
+            if d < 1:
+                cv.blend(x, y, VIOLET4[1], 0.20 * (1 - d))
+    for y in range(wy, floor_y):                               # the spotlight's cone
+        for x in range(wx, wx + ww):
+            half = 3 + (y - wy) * 0.34
+            if abs(x - mid) < half:
+                cv.blend(x, y, CHROME4[1], 0.06 + 0.06 * (1 - abs(x - mid) / half))
+    for y in range(floor_y, wy + wh):                          # its pool on the glass
+        for x in range(wx, wx + ww):
+            d = ((x - mid) / 16.0) ** 2 + ((y - (wy + 56)) / 4.0) ** 2
+            if d < 0.55:
+                cv.blend(x, y, VIOLET4[0], 0.38)
+            elif d < 1:
+                cv.blend(x, y, VIOLET4[1], 0.26 if (x + y) % 2 == 0 else 0.16)   # dithered edge
+            elif d < 1.5:
+                cv.blend(x, y, (6, 4, 12), 0.2)
+
+
+def dome_band(cv):
+    """The New Generation frame band: black glass with a fine violet lattice, chrome sheen stripes and a
+    lime LED strip running round the window (a steady glow, no pulse)."""
+    wx, wy, ww, wh = WINDOW
+    px, py, pw, ph = PLATE
+    for y in range(7, FRAME_H - 4):
+        for x in range(3, FRAME_W - 4):
+            inside = wx - 2 <= x <= wx + ww + 1 and wy - 2 <= y <= wy + wh + 1
+            plate = px - 1 <= x <= px + pw and py - 1 <= y <= py + ph
+            if inside or plate:
+                continue
+            c = mix(GLASS4[0], DOME4[1], (y - 7) / float(FRAME_H - 11))
+            if (x + 2 * y) % 12 == 0 or (x - 2 * y) % 12 == 0:
+                c = mix(c, VIOLET4[2], 0.55)                   # the dome's violet lattice
+            s = (x + y) % 40
+            if s in (0, 1):
+                c = mix(c, CHROME4[1], 0.40)                   # chrome sheen stripes
+            cv.put(x, y, c)
+    x0, x1, y0, y1 = wx - 4, wx + ww + 2, wy, wy + wh + 2
+    pts = [(x0, y) for y in range(y0, y1)] + [(x, y1) for x in range(x0, x1 + 1)] + [(x1, y) for y in range(y1 - 1, y0 - 1, -1)]
+    for k, (x, y) in enumerate(pts):
+        cv.put(x, y, LIME4[0] if k % 3 == 0 else LIME4[1])
+
+
 def glass_band(cv):
     """The Present frame band: smooth graphite glass with diagonal sheen stripes and an LED strip running round."""
     wx, wy, ww, wh = WINDOW
@@ -757,6 +903,17 @@ def crest(cv, kind):
         cv.rect(mid - 8, 4, mid + 8, 4, TEAL[2])           # the LED ring under the screen
         for x in range(mid - 8, mid + 9, 3):
             cv.put(x, 4, CORAL[1])
+    elif kind == "next":                                      # a violet light ring on a chrome mount, a lime core
+        cv.rect(mid - 9, 0, mid + 9, 5, INK)
+        cv.rect(mid - 8, 1, mid + 8, 4, DOME4[2])
+        cv.rect(mid - 8, 1, mid + 8, 1, CHROME4[1])
+        cv.rect(mid - 8, 4, mid + 8, 4, CHROME4[3])
+        cv.rect(mid - 6, 2, mid + 6, 3, VIOLET4[2])          # the ring seen edge on: violet, light at the ends
+        cv.rect(mid - 5, 2, mid + 5, 2, VIOLET4[1])
+        cv.put(mid - 6, 2, VIOLET4[0])
+        cv.put(mid + 6, 2, VIOLET4[0])
+        cv.rect(mid - 1, 2, mid + 1, 3, LIME4[1])
+        cv.put(mid, 2, LIME4[0])
     else:
         cv.rect(mid - 6, 0, mid + 6, 6, INK)
         cv.rect(mid - 5, 1, mid + 5, 5, DARKSTEEL[1])
@@ -808,6 +965,11 @@ def frame_image(kind):
         glass_band(cv)
         plate_paint(cv, CORAL, LIGHT3)
         window_backing_present(cv)
+    elif kind == "next":
+        frame_border(cv, GLASS4, CHROME4, True)
+        dome_band(cv)
+        plate_paint(cv, LIME4, CHROME4)
+        window_backing_next(cv)
     else:
         wood = [H_("#5a5260"), H_("#433c48"), H_("#2f2a34"), H_("#1e1a22")]
         frame_border(cv, wood, DARKSTEEL, False)
@@ -815,7 +977,7 @@ def frame_image(kind):
     crest(cv, kind)
     # corner rosettes on the era frame / bolts on the locked one
     for (x, y) in ((2, 6), (FRAME_W - 5, 6), (2, FRAME_H - 5), (FRAME_W - 5, FRAME_H - 5)):
-        m = {"grand": BRASS, "fathers": CHAIN, "present": LIGHT3}.get(kind, DARKSTEEL)
+        m = {"grand": BRASS, "fathers": CHAIN, "present": LIGHT3, "next": CHROME4}.get(kind, DARKSTEEL)
         cv.rect(x, y, x + 2, y + 2, m[2])
         cv.put(x, y, m[0])
         cv.put(x + 1, y + 1, m[1])
@@ -855,7 +1017,7 @@ def label(d, xy, s, sz, fill, anchor="mm"):
 
 def preview(tl, pins, frames, sil):
     S = 2
-    names = ["GRANDFATHERS", "FATHERS", "PRESENT", "NEXT GEN"]
+    names = ["GRANDFATHERS", "FATHERS", "PRESENT", "NEW GENERATION"]
     sub = ["6 LEGENDS  -  TOKENS 0/21", "36 STARS OR 12 TOKENS", "48 STARS OR 30 TOKENS", "72 STARS OR 48 TOKENS"]
     tour = tl.resize((W * S, H * S), Image.NEAREST).convert("RGBA")
     d = ImageDraw.Draw(tour)
@@ -872,19 +1034,19 @@ def preview(tl, pins, frames, sil):
         col = (255, 228, 140) if i == 0 else (200, 200, 212)
         label(d, (cx, (RAIL_Y + 22) * S), "CHAPTER %d" % (i + 1), 22, col)
         label(d, (cx, (RAIL_Y + 36) * S), names[i], 30, col)
-        label(d, (cx, (RAIL_Y + 52) * S), "PLAY" if i == 0 else "COMING LATER", 22,
-              (120, 230, 120) if i == 0 else (170, 170, 186))
+        label(d, (cx, (RAIL_Y + 52) * S), "PLAY" if i == 0 else "LOCKED", 22,
+              (120, 230, 120) if i == 0 else (255, 170, 90))
         label(d, (cx, (RAIL_Y + 64) * S), sub[i], 17, (230, 230, 238))
     d.text((12, 708), "mock-up: header, labels and buttons drawn by the game (P9-18); pins and backdrop from "
                       "assets/legends/", font=font(14), fill=(190, 190, 200), anchor="lm")
     # hall pieces
-    hall_h = 1530
+    hall_h = 2080
     pv = Image.new("RGBA", (1280, 720 + hall_h), (24, 22, 34, 255))
     pv.alpha_composite(tour, (0, 0))
     d2 = ImageDraw.Draw(pv)
     d2.rectangle([0, 720, 1279, 756], fill=(16, 14, 26))
     d2.text((12, 738), "Hall of Legends pieces at 2x (as in the game) and 4x: era frame with a stand-in card (the "
-                       "legend cards come in P9-09), the locked plaque, the silhouette; 8 pins below",
+                       "legend cards come in P9-09), the locked plaque, the silhouette; the pins below",
              font=font(16), fill=(235, 235, 245), anchor="lm")
     stand_in = card_crop(Image.open(os.path.join(CARDS, "ht_a1.png")).convert("RGBA"))
     fr_card = frames["grand"].copy()
@@ -978,10 +1140,45 @@ def preview(tl, pins, frames, sil):
     pv.alpha_composite(panel, (x, y))
     d2.text((x + panel.width // 2, y + panel.height + 14), "Chapter 3 open (mock-up)", font=font(15),
             fill=(220, 220, 230), anchor="mm")
-    # pins at 3x
-    x, y = 24, 2030
+    # Chapter 4, the New Generation (P12-07, lime + violet on near-black, court NEON DOME): the same row with a real
+    # legend card (Overclock in his era kit) and the timeline's Chapter 4 panel
+    y = 2050
+    d2.rectangle([0, y - 34, 1279, y - 8], fill=(16, 14, 26))
+    d2.text((12, y - 21), "Chapter 4, the New Generation (P12-07, lime + violet on near-black, court NEON DOME): "
+                          "frame_next, the Overclock card, the open pin on the Chapter 4 panel",
+             font=font(16), fill=(235, 235, 245), anchor="lm")
+    stand4 = card_crop(Image.open(os.path.join(CARDS, "lg_overclock.png")).convert("RGBA"))
+    fr4 = frames["next"].copy()
+    fr4.alpha_composite(stand4, WINDOW[:2])
+    x = 24
+    for im, tag in ((frames["next"], "frame_next"), (fr4, "+ card")):
+        pv.alpha_composite(im.resize((FRAME_W * 2, FRAME_H * 2), Image.NEAREST), (x, y))
+        d2.text((x + FRAME_W, y + FRAME_H * 2 + 14), tag, font=font(15), fill=(220, 220, 230), anchor="mm")
+        x += FRAME_W * 2 + 24
+    x += 10
+    pv.alpha_composite(fr4.resize((FRAME_W * 4, FRAME_H * 4), Image.NEAREST), (x, y))
+    ptxt = H_(NEXT_PLATE_TEXT)
+    for (px0, sc) in ((24 + FRAME_W * 2 + 24, 2), (x, 4)):
+        cxp = px0 + (PLATE[0] + PLATE[2] / 2) * sc
+        cyp = y + (PLATE[1] + PLATE[3] / 2) * sc
+        nm.text((cxp, cyp), "OVERCLOCK", font=font(7 * sc), fill=ptxt, anchor="mm")   # as the game: no outline
+    x += FRAME_W * 4 + 40
+    panel = tl.crop((panel_x(3) - 2, py0, panel_x(3) + PANEL_W + 2, py1)).convert("RGBA")
+    panel = panel.resize((panel.width * 2, panel.height * 2), Image.NEAREST)
+    pin4 = pins["next_open"].resize((PIN_W * 2, PIN_H * 2), Image.NEAREST)
+    panel.alpha_composite(pin4, ((PANEL_W // 2 + 2 - PIN_ANCHOR[0]) * 2, (RAIL_Y - py0 - PIN_ANCHOR[1]) * 2))
+    dp = ImageDraw.Draw(panel)
+    label(dp, (panel.width // 2, (RAIL_Y - py0 + 22) * 2), "NEW GENERATION", 26, (255, 228, 140))
+    label(dp, (panel.width // 2, (RAIL_Y - py0 + 36) * 2), "PLAY", 22, (120, 230, 120))
+    pv.alpha_composite(panel, (x, y))
+    d2.text((x + panel.width // 2, y + panel.height + 14), "Chapter 4 open (mock-up)", font=font(15),
+            fill=(220, 220, 230), anchor="mm")
+    # pins at 3x, two rows
+    x, y = 24, 2470
     for key in ("grand_open", "grand_done", "grand_locked", "fathers_open", "fathers_done", "fathers_locked",
-                "present_open", "present_done", "present_locked", "next_locked"):
+                "present_open", "present_done", "present_locked", "next_open", "next_done", "next_locked"):
+        if key == "present_open":
+            x, y = 24, y + PIN_H * 3 + 40                     # the second row: Chapters 3 and 4
         big = pins[key].resize((PIN_W * 3, PIN_H * 3), Image.NEAREST)
         pv.alpha_composite(big, (x, y))
         d2.text((x + PIN_W * 3 // 2, y + PIN_H * 3 + 12), "pin_" + key.replace("_open", ""), font=font(13),
@@ -1005,12 +1202,15 @@ def main():
         "fathers_done": pin_image("fathers", "done"),
         "present_open": pin_image("present", "open"),
         "present_done": pin_image("present", "done"),
+        "next_open": pin_image("next", "open"),
+        "next_done": pin_image("next", "done"),
     }
     frames = {"grand": frame_image("grand"), "fathers": frame_image("fathers"), "locked": frame_image("locked"),
-              "present": frame_image("present")}
+              "present": frame_image("present"), "next": frame_image("next")}
     sil = silhouette_image()
     files = {"timeline.png": tl, "frame_grand.png": frames["grand"], "frame_locked.png": frames["locked"],
-             "frame_fathers.png": frames["fathers"], "frame_present.png": frames["present"], "silhouette.png": sil}
+             "frame_fathers.png": frames["fathers"], "frame_present.png": frames["present"], "frame_next.png": frames["next"],
+             "silhouette.png": sil}
     for k, im in pins.items():
         files["pin_" + k.replace("_open", "") + ".png"] = im
     for fn, im in files.items():
@@ -1034,10 +1234,13 @@ def main():
                  "fathers": {"open": "pin_fathers.png", "done": "pin_fathers_done.png",
                              "locked": "pin_fathers_locked.png"}, "present": {"open": "pin_present.png", "done": "pin_present_done.png",
                              "locked": "pin_present_locked.png"},
-                 "next": {"locked": "pin_next_locked.png"}},
+                 "next": {"open": "pin_next.png", "done": "pin_next_done.png", "locked": "pin_next_locked.png"}},
         "frame_size": [FRAME_W, FRAME_H],
         "frames": {"grand": "frame_grand.png", "fathers": "frame_fathers.png", "present": "frame_present.png",
-                   "locked": "frame_locked.png"},
+                   "next": "frame_next.png", "locked": "frame_locked.png"},
+        # P12-07: the chapter view's name and the plaques' plate text (legends_tour.gd / hall.gd chapter_color());
+        # a chapter not listed keeps GOLD / PLATE_TEXT
+        "colors": {"next": {"title": "#%02x%02x%02x" % LIME4[1], "plate_text": NEXT_PLATE_TEXT}},
         "window": list(WINDOW), "card_crop": list(CARD_CROP), "name_plate": list(PLATE),
         "silhouette": "silhouette.png",
     }

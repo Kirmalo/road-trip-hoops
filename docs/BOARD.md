@@ -353,11 +353,20 @@ none, static glow). The lead writes the answers into the contract and VISION.
 name (P12-06), the music pick (P12-08).
 
 ### Wave 4 (after owner check 2)
-- **P12-07** | Legends UI art for Chapter 4
+- **P12-07** | REVIEW | Legends UI art for Chapter 4
   | art-audio-integrator C | `tools/art/make_legends_ui.py`, `assets/legends/frame_next.png`, `pin_next.png`,
   `pin_next_done.png`, `ui.json`, `timeline.png`, `docs/art/legends_ui.png`
   | In the chosen era colors (a chrome edge on the frame is fine). The 4th timeline panel shows the court lit. Chapters
   1-3 files byte for byte unchanged; `--legendtest` OK | owner check 2, P12-06 merged
+  | Result: `frame_next` (black glass band with a violet lattice, chrome bevel, lime LED strip, a violet light ring
+  on top, NEON DOME in the window, lime plate), `pin_next` (violet medallion, lime bolt in a lime LED ring) and
+  `pin_next_done` (gold); `pin_next_locked` kept byte for byte (same bolt). The 4th timeline panel shows NEON DOME lit
+  (only x 478-635 of `timeline.png` changed). `ui.json`: `next` pins and frame, new `"colors": {"next": {"title":
+  "#b8ff3a", "plate_text": "#16151d"}}` (plate text 10.1:1 on the lime plate). Every Chapter 1-3 file md5-identical.
+  `--legendtest` OK; xvfb shots of the timeline (72 and 48 stars), the Chapter 4 view and the Hall checked. For the
+  lead: the lineup LEGEND tag (gold text, no outline, on `ui_color` #6da321) is 2.1:1, below the Present's 3.8:1; a
+  darker lime `ui_color` like #466e14 gives 4.1:1 (legends_data.gd, not this row). No LEGENDS COMPLETE / full Hall
+  banner art (not in this row)
 - **P12-14** | REVIEW | The six New Generation sheets (+ the combo extra)
   | art-audio-integrator A | `tools/art/make_players_v2.py`, `tools/art/crews.json`, `assets/players2/lg_<six>*`,
   `assets/players2/format.json`, `assets/players2/hands.json` (only if needed), `scripts/sheets.gd` (`ALIASES`)

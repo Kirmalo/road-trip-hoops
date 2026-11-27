@@ -90,6 +90,8 @@
    "locked": "pin_present_locked.png"
   },
   "next": {
+   "open": "pin_next.png",
+   "done": "pin_next_done.png",
    "locked": "pin_next_locked.png"
   }
  },
@@ -101,7 +103,14 @@
   "grand": "frame_grand.png",
   "fathers": "frame_fathers.png",
   "present": "frame_present.png",
+  "next": "frame_next.png",
   "locked": "frame_locked.png"
+ },
+ "colors": {
+  "next": {
+   "title": "#b8ff3a",
+   "plate_text": "#16151d"
+  }
  },
  "window": [
   8,
