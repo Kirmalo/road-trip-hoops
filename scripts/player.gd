@@ -167,6 +167,33 @@ const EURO_PATH := [[0, 0.0], [2, -1.5], [4, 0.9]]  # [frame, feet to his left] 
 const EURO_TAKEOFF := 5           # the take-off frame (format.json "takeoff"); the steps are the frames before it ...
 const EURO_MS := [70, 80, 70, 80, 60, 50, 50, 50, 60, 60, 60, 80, 100]   # ... at these frame times (format.json "ms")
 const EURO_CPU_LAYUP := 0.75      # CPU Euro-step man entering LAYUP_RANGE with a man on him: chance he goes up for it
+# ---- P12-17 the New Generation's signature moves (owner Q1 / Q4 a; legends_data.gd ids). Same model: "" = today's
+# game. A cyber part (Overclock's braces, Glitch's forearm, Firewall's visor) is look only: no edge on top of the move.
+const SIG_TOP_GEAR := "top_gear"          # Overclock: his sprint is the fastest on the floor
+const SIG_RIM_RUN := "rim_run"            # Long Shadow: a burst right after his team gets the ball; the CPU runs him to the rim
+const SIG_HESITATION := "hesitation"      # Glitch: after his crossover the man in front stands still (drawn as the combo)
+const SIG_PUTBACK := "putback"            # Updraft: his team's miss he takes near the rim goes straight back up (ball.gd)
+const SIG_HOT_HAND := "hot_hand"          # Halfcourt: on fire after HOT_HAND_STREAK makes in a row
+const SIG_SWAT := "swat"                  # Firewall: his blocks on jump shots work more often and reach further (defense.gd)
+const TOP_GEAR_MULT := 1.10       # his sprint speed x this (TURBO_SPEED_MULT 1.35 -> 1.485 of his top speed)
+const TOP_GEAR_CPU_OPEN_FT := 4.0 # CPU top gear handler: sprints at an open lane with his man this far off (6 ft for
+                                  # everyone else), and pushes the ball up the floor on turbo in his backcourt
+const RIM_RUN_TIME := 3.0         # seconds after his team got the ball (main.gd: the shot clock restarted) ...
+const RIM_RUN_SPEED_MULT := 1.12  # ... that he runs at x this
+const RIM_RUN_MIN_FT := 8.0       # CPU off the ball in that window: sprints to the rim (alley_spot) from further than this
+const HESITATION_TIME := 0.3      # seconds the man in front of his crossover stands still (when it did not beat him)
+const HESITATION_CPU_CROSS := 0.12  # CPU hesitation man: CPU_CROSS_CHANCE per decision becomes this (he sets it up)
+const HESITATION_CPU_DRIVE := 0.6 # CPU: seconds he then drives to the rim past the frozen man (cpu_drive_t)
+const COMBO_ANIM := "combo"       # format.json extra (P12-14, lg_glitch only; "hand_end" R: back in his starting hand, so
+                                  # his crossover keeps the ball hand, lead call on P12-17; the beat and timing as ever)
+const PUTBACK_RIM_FT := 7.0       # his team's miss (off the rim) he takes this close to the rim goes straight back up ...
+const PUTBACK_REACH_Z := 12.0     # ... and he takes it up to this much higher than anyone (ball.gd's 30 -> 42 sim px)
+const PUTBACK_CRASH_FT := 14.0    # CPU: on his team's missed shot he crashes the rim from this close (not only the chaser)
+const HOT_HAND_STREAK := 2        # makes in a row that set him on fire (main.gd FIRE_STREAK 3 for everyone else)
+const SWAT_BLOCK_MULT := 1.5      # his block chance on a jump shot x this (at most 1.0); layups and dunks as today
+const SWAT_REACH_FT := 1.0        # ... and this much more reach on it (defense.gd JUMPER_BLOCK_REACH_FT 3.5)
+const SWAT_CPU_JUMP_CHANCE := 0.3 # CPU swat man: defense.gd CPU_JUMPER_JUMP_CHANCE 0.2 becomes this (he goes up more)
+const SIG_PRINT_CAP := 4          # top_gear and rim_run fire all game: a test run prints only the first this many lines
 const SIG_TEST_FLAG := "--signature"   # test only: -- --signature <id>[,<id>,<id>] gives BLUE these moves (one id: all
                                   # 3; else id i for player i, "-" = none), so --humantest drives a move as the human
 var signature := ""               # P9-20: his move id ("" = none)
@@ -197,6 +224,12 @@ static var _fade_cache := {}      # the fadeaway timing from format.json (or the
 var hook_shot := false            # the current / last jumper is a hook (drawn with the hook frames; harder to block)
 var long_dunk := false            # this dunk took off beyond DUNK_RANGE (glides further; drawn two-handed)
 var _sig_print := false           # test runs (any user argument) print a SIGNATURE line when a move fires
+var hesit_t := 0.0                # P12-17: seconds left standing still after a hesitation man's crossover (the defender)
+var putback_shot := false         # P12-17: the current / last rim move is a putback
+var _top_gear_on := false         # sprinting in top gear last frame (a new sprint is counted)
+var _rim_run_gain := -100.0       # game._gain_t of the last rim run counted
+var _sig_quiet := {}              # move id -> SIGNATURE lines so far (SIG_PRINT_CAP)
+var _v_combo_seen := false        # this crossover was counted in anim_combo
 
 # ---- mentor perks (P9-24, owner L8 a). The match dict's "perk" ({"id", "key", "value", "text", "mentor"}, P9-23
 # Trip.roster_player(); your side in Road Trip games only, challenges strip it) is read here once. The sim asks
@@ -498,7 +531,9 @@ const GREEN_HI := 0.95
 const FIRE_SHOT_BONUS := 1.15     # make-odds multiplier for CPU jumpers and everyone's dunks/layups while on fire
 const FIRE_RING_COLOR := Color(1.0, 0.45, 0.1)
 
-var make_streak := 0              # makes in a row by this player
+var make_streak := 0:             # makes in a row by this player (main.gd counts it and lights the fire at FIRE_STREAK)
+	set(v):
+		make_streak = _hot_hand_streak(v)   # P12-17 hot_hand: his HOT_HAND_STREAK-th make reads as FIRE_STREAK
 var on_fire := false
 var fire_misses := 0              # misses/blocks while on fire (main.FIRE_MISSES puts it out)
 var fire_anim := 0.0
@@ -626,6 +661,7 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 	steal_cooldown = max(0.0, steal_cooldown - delta)
 	stumble_t = maxf(0.0, stumble_t - delta)
 	poke_t = maxf(0.0, poke_t - delta)
+	hesit_t = maxf(0.0, hesit_t - delta)
 	cross_cd = maxf(0.0, cross_cd - delta)
 	since_cross += delta
 	since_catch += delta
@@ -702,14 +738,21 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		desired = Vector2.ZERO        # reaching for the ball: stands still, hit or miss
 		want_turbo = false
 		game.stat("poke_freeze_frames_t%d" % team)
+	elif hesit_t > 0.0 and rim_kind == "" and block_jump_t < 0.0:
+		desired = Vector2.ZERO        # P12-17: frozen by a hesitation crossover in front of him
+		want_turbo = false
+		game.stat("sig_hesitation_freeze_frames_t%d" % (1 - team))
 	elif stumble_t > 0.0:
 		desired *= STUMBLE_SPEED_MULT
 		want_turbo = false
 	elif has_ball() and not is_airborne() and cross_t <= 0.0 and euro_t < 0.0 and is_guarded(desired):
 		desired *= GUARD_SLOW
 		game.stat("guard_slow_frames_t%d" % team)
-	if update_turbo(delta, want_turbo, is_human):
+	var sprinting: bool = update_turbo(delta, want_turbo, is_human)
+	if sprinting:
 		desired *= Twists.value("turbo_mult", TURBO_SPEED_MULT) * (TURBO_BALL_MULT if has_ball() else 1.0)
+	if signature != "":
+		desired *= _sig_speed_mult(sprinting, is_human)   # P12-17 top gear, rim run (x1.0 for every other move)
 	if steal_break_t > 0.0 and not is_airborne() and stumble_t <= 0.0 and poke_t <= 0.0:
 		desired *= STEAL_BREAK_SPEED_MULT   # P11-17 steal_break: the burst after his steal
 		game.stat("sig_steal_break_frames_t%d" % team)
@@ -883,7 +926,9 @@ func start_crossover(dir: Vector2, kind: String) -> void:
 	cross_cd = CROSS_COOLDOWN
 	since_cross = 0.0
 	_pullup_rolled = false
-	dribble_side = -dribble_side
+	_v_combo_seen = false
+	if signature != SIG_HESITATION:
+		dribble_side = -dribble_side   # (P12-17: the hesitation man's combo ends in the hand it started in)
 	hand_switch_t = 0.0
 	game.stat("crossovers_t%d" % team)
 	if game.is_human(self):
@@ -944,6 +989,8 @@ func cross_beat_check() -> void:
 	if not beaten:
 		if signature == SIG_DOUBLE_CROSS:
 			sig_log(SIG_DOUBLE_CROSS, "double crossover read by %s" % (best.pname if best.pname != "" else best.pid))
+		if signature == SIG_HESITATION:
+			_hesitation(best, best_d)   # P12-17: he read it, but stands still for a moment
 		return
 	best.stumble(CROSS_STUN)
 	best.view_crossed(self, best_d / game.FT)   # drawing only: a close one is an ankle-breaker (he falls)
@@ -1219,6 +1266,7 @@ func start_shot() -> void:
 		step_shot = false
 		pop_shot = false
 		euro_shot = false
+		putback_shot = false
 		if fake_t > 0.0:
 			end_pump_fake()   # out of a pump fake straight into the real shot
 			game.stat("pump_then_shoot_t%d" % team)
@@ -1661,6 +1709,12 @@ func _sig_offball(hoop: Vector2) -> bool:
 		target = hoop + Vector2(game.inward(hoop) * STEAL_BREAK_LANE_FT * game.FT, 0)
 		cpu_turbo_want = true
 		return true
+	if signature == SIG_RIM_RUN and game.possession == team and rim_run_on() \
+			and position.distance_to(hoop) > RIM_RUN_MIN_FT * game.FT:
+		target = alley_spot()   # P12-17 rim run: he beats everyone down the floor to the rim
+		cpu_turbo_want = true
+		game.stat("sig_rim_run_cpu_frames_t%d" % team)
+		return true
 	if signature != SIG_POP:
 		return false
 	var ball = game.ball
@@ -1680,6 +1734,129 @@ func _sig_offball(hoop: Vector2) -> bool:
 		_pop_drift = true
 		sig_log(SIG_POP, "his man helps %.0f ft off him: drifts to the arc" % (man.position.distance_to(position) / game.FT))
 	return false
+
+# ---------------- P12-17 the New Generation's signature moves ----------------
+# Same model again: each rule runs only for the player whose "signature" it is (update() asks _sig_speed_mult only for a
+# player with a signature; ball.gd asks putback_reach_z / start_putback only of a putback man; the make_streak setter
+# and defense.gd's swat helpers return today's values for everyone else), and none of them draws a random number, so
+# a game without a New Generation legend plays exactly as before.
+
+# a move that fires all game (top gear, rim run): counted every time, the SIGNATURE line printed SIG_PRINT_CAP times
+func _sig_log_quiet(id: String, what: String) -> void:
+	var n: int = int(_sig_quiet.get(id, 0)) + 1
+	_sig_quiet[id] = n
+	if n <= SIG_PRINT_CAP:
+		sig_log(id, what + (" (more are counted, not printed)" if n == SIG_PRINT_CAP else ""))
+	else:
+		game.stat("sig_%s_t%d" % [id, team])
+
+# x his speed this frame: TOP_GEAR_MULT while he sprints (top gear), RIM_RUN_SPEED_MULT in the rim run's window
+# (both on the floor and on balance); 1.0 for every other move
+func _sig_speed_mult(sprinting: bool, is_human: bool) -> float:
+	var free: bool = not is_airborne() and stumble_t <= 0.0 and poke_t <= 0.0 and hesit_t <= 0.0
+	if signature == SIG_TOP_GEAR:
+		var on: bool = sprinting and free
+		if on and not _top_gear_on:
+			_sig_log_quiet(SIG_TOP_GEAR, "top gear %s, %.0f ft from the rim he attacks" % [
+					"with the ball" if has_ball() else "off the ball", position.distance_to(game.attack_hoop(team)) / game.FT])
+		_top_gear_on = on
+		if not on:
+			return 1.0
+		game.stat("sig_top_gear_frames_t%d" % team)
+		if is_human:
+			game.stat("human_top_gear_frames")
+		return TOP_GEAR_MULT
+	if signature == SIG_RIM_RUN and rim_run_on():
+		if float(game._gain_t) != _rim_run_gain:
+			_rim_run_gain = float(game._gain_t)
+			if is_human:
+				game.stat("human_rim_runs")
+			_sig_log_quiet(SIG_RIM_RUN, "his team has the ball: runs the floor from %.0f ft out" % (
+					position.distance_to(game.attack_hoop(team)) / game.FT))
+		if not free:
+			return 1.0
+		game.stat("sig_rim_run_frames_t%d" % team)
+		return RIM_RUN_SPEED_MULT
+	return 1.0
+
+# rim_run: his team got the ball (main.gd's _gain_team / _gain_t, the shot clock's restart) at most RIM_RUN_TIME ago
+func rim_run_on() -> bool:
+	if signature != SIG_RIM_RUN or not ("_gain_team" in game):
+		return false
+	return int(game._gain_team) == team and float(game.rules.play_time) - float(game._gain_t) <= RIM_RUN_TIME
+
+# hesitation: the man in front read the crossover (it did not beat him), but stands still for HESITATION_TIME; the
+# CPU drives past him
+func _hesitation(man, d_px: float) -> void:
+	man.hesit_t = maxf(man.hesit_t, HESITATION_TIME)
+	game.stat("sig_hesitation_freezes_t%d" % team)
+	if game.is_human(self):
+		game.stat("human_hesitations")
+	if game.is_human(man):
+		game.stat("human_hesitation_frozen")
+	if not game.is_human(self):
+		cpu_drive_t = maxf(cpu_drive_t, HESITATION_CPU_DRIVE)
+	sig_log(SIG_HESITATION, "hesitation: %s stands still %.1f ft in front of him" % [
+			man.pname if man.pname != "" else man.pid, d_px / game.FT])
+
+# ball.gd: how much higher than anyone he can take his team's miss near the rim (0 for everyone else)
+func putback_reach_z() -> float:
+	if signature != SIG_PUTBACK:
+		return 0.0
+	return PUTBACK_REACH_Z if position.distance_to(game.attack_hoop(team)) <= PUTBACK_RIM_FT * game.FT else 0.0
+
+# ball.gd: he took his team's miss off the rim: near the rim it goes straight back up, a dunk inside his dunk range
+# (any speed) or a tip (a layup) further out
+func start_putback(high: bool) -> void:
+	if signature != SIG_PUTBACK or not has_ball() or shooting or is_airborne() or stumble_t > 0.0 or ft_on():
+		return
+	var d_ft: float = position.distance_to(game.attack_hoop(team)) / game.FT
+	if d_ft > PUTBACK_RIM_FT:
+		return
+	cpu_three_try = false
+	pullup_mark = false
+	catch_mark = false
+	hook_shot = false
+	fade_shot = false
+	step_shot = false
+	pop_shot = false
+	euro_shot = false
+	long_dunk = false
+	cross_t = 0.0
+	if fake_t > 0.0:
+		end_pump_fake()
+	var dunk: bool = d_ft <= dunk_range()
+	putback_shot = true
+	game.stat("sig_putback_%s_t%d" % ["dunks" if dunk else "tips", team])
+	if high:
+		game.stat("sig_putback_high_t%d" % team)   # taken above everyone else's reach
+	if game.is_human(self):
+		game.stat("human_putbacks")
+	sig_log(SIG_PUTBACK, "putback %s from %.1f ft%s" % ["dunk" if dunk else "tip", d_ft,
+			", taken above the others' reach" if high else ""])
+	begin_rim_move(dunk)
+
+# the make_streak setter: a hot hand's HOT_HAND_STREAK-th make in a row reads as main.gd's FIRE_STREAK (so main lights
+# his fire, with its popup and sound); everyone else's count is kept as it is
+func _hot_hand_streak(v: int) -> int:
+	if signature != SIG_HOT_HAND or game == null or on_fire or v < HOT_HAND_STREAK:
+		return v
+	var fire: int = int(game.FIRE_STREAK)
+	if v >= fire:
+		return v
+	game.stat("sig_hot_hand_fires_t%d" % team)
+	if game.is_human(self):
+		game.stat("human_hot_hands")
+	sig_log(SIG_HOT_HAND, "%d makes in a row: on fire" % v)
+	return fire
+
+# defense.gd (swat): x this on my block chance at a shot of `kind` ("" = a jumper); 1.0 for everyone else
+func swat_mult(kind: String) -> float:
+	return SWAT_BLOCK_MULT if signature == SIG_SWAT and kind == "" else 1.0
+
+# defense.gd (swat): extra reach in feet on a block try at a shot of `kind`; 0 for everyone else
+func swat_reach(kind: String) -> float:
+	return SWAT_REACH_FT if signature == SIG_SWAT and kind == "" else 0.0
 
 # P10-17: the fadeaway's timing, from format.json's "fadeaway" extra (its "fade" frames, "fade_ft", release and "ms"),
 # else the constants above: "ft" the slide, "start" the windup fraction it starts at (its first frame / the release
@@ -2009,6 +2186,8 @@ func try_cpu_cross_pullup(dist_ft: float, open_ft: float, guard_behind: bool) ->
 func _cpu_cross_chance() -> float:
 	if signature == SIG_DOUBLE_CROSS:
 		return DOUBLE_CROSS_CPU_CHANCE
+	if signature == SIG_HESITATION:
+		return HESITATION_CPU_CROSS
 	if signature == SIG_STEP_BACK:
 		return STEP_BACK_CPU_CROSS
 	return CPU_CROSS_CHANCE
@@ -2099,6 +2278,12 @@ func rebound_ai(phase: String, delta: float) -> bool:
 		return true
 	if self == game.rebound_shooter() and not reb_follow:
 		target = Vector2(game.COURT_W / 2.0 + out.x * REB_BACK_FT * game.FT, lerpf(position.y, game.COURT_H / 2.0, 0.5))
+		return true
+	if signature == SIG_PUTBACK and position.distance_to(hoop) <= PUTBACK_CRASH_FT * game.FT:
+		# P12-17 putback: the leaper near the rim crashes it too (the putback is his)
+		target = ball.position if loose else hoop + out * REB_OFF_SPOT_FT * game.FT
+		cpu_turbo_want = position.distance_to(target) > (3.0 if loose else 6.0) * game.FT
+		game.stat("sig_putback_crash_frames_t%d" % team)
 		return true
 	return false   # the others stay on their spots (offball_ai)
 
@@ -2212,6 +2397,8 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		if (coast_t > 0.0 or steal_break_t > 0.0) and not cpu_call_hold():
 			target = hoop + Vector2(game.inward(hoop) * 3.0 * FT, 0)   # P11-17 coast / steal_break: run it all the way
 			cpu_turbo_want = true
+		if (signature == SIG_TOP_GEAR or rim_run_on()) and not cpu_call_hold():
+			cpu_turbo_want = true   # P12-17 top gear: he pushes it up the floor; rim run: in his window
 		return
 	# drive to the rim, sidestepping a defender who is in the way
 	target = hoop + Vector2(game.inward(hoop) * 3.0 * FT, 0)
@@ -2235,8 +2422,9 @@ func handler_ai(delta: float, hoop: Vector2) -> void:
 		target = hoop + Vector2(game.inward(hoop) * 3.0 * FT, 0)
 		cpu_turbo_want = true
 	# sprint on a fast break, or when the lane to the rim is open
-	if fast_break or (open_ft > 6.0 and dist_ft > 8.0 and lane_open(hoop)):
-		cpu_turbo_want = true
+	if fast_break or (open_ft > (TOP_GEAR_CPU_OPEN_FT if signature == SIG_TOP_GEAR else 6.0) and dist_ft > 8.0 \
+			and lane_open(hoop)):
+		cpu_turbo_want = true   # (P12-17: the top gear man takes a smaller opening)
 	# the human called for the ball: no new shot, pass or move until the call is answered or ends
 	if cpu_call_hold():
 		return
@@ -2384,6 +2572,7 @@ func start_alley_dunk() -> void:
 	cross_t = 0.0
 	alley_oop = true
 	long_dunk = false
+	putback_shot = false
 	rim_kind = "dunk"
 	jump_time = ALLEY_JUMP_TIME
 	jump_t = 0.0
@@ -3383,6 +3572,21 @@ func _update_sheet_frame_v2(delta: float) -> void:
 		if _v_catch_t > 0.0:
 			anim = "catch"
 			loop = false
+		elif cross_t > 0.0 and signature == SIG_HESITATION:
+			# P12-17: the hesitation man's crossover keeps his ball hand. On a sheet with the combo extra (P12-14,
+			# Glitch's) its frames over the burst; elsewhere the crossover there and back
+			var pg: float = clampf(1.0 - cross_t / CROSS_TIME, 0.0, 0.999)
+			if Sheets.has_anim(fmt, COMBO_ANIM):
+				anim = COMBO_ANIM
+				x = pg * float(Sheets.anim_frames(fmt, COMBO_ANIM))
+				if not _v_combo_seen:
+					_v_combo_seen = true
+					game.stat("anim_combo")
+					if (dribble_side > 0.0) == flip:
+						game.stat("anim_combo_off_hand")   # drawn from the other hand than the dribble's (no mirror pages)
+			else:
+				anim = "cross" if (dribble_side > 0.0) != flip else "cross_l"
+				x = (1.0 - absf(2.0 * pg - 1.0)) * float(Sheets.anim_frames(fmt, Sheets.resolve(fmt, anim))) * 0.999
 		elif cross_t > 0.0 or absf(hand_x) < 0.999:
 			# the crossover (or a slow switch of hands): "cross" ends in the left hand, "cross_l" in the right;
 			# a mirrored frame shows the other hand, so the mirrored version is the other one

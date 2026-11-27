@@ -115,6 +115,10 @@ const OUTLET_PICK_MULT := 0.35    # interception chance x this along its way (th
 const PICK_CHANCE := 0.15         # a defender near a pass's lane picks it off with this chance (once per pass); the
                                   # passer's pick_mult() (P10-17 no_look, player.gd NO_LOOK_PICK_MULT) scales it
 const GRAVITY := 900.0
+const GRAB_PX := 20.0             # a loose ball under GRAB_Z is picked up by the nearest player this close (main.REB_GRAB_PX)
+const GRAB_Z := 30.0              # (main.REB_GRAB_Z)
+const PUTBACK_Z_MAX := 12.0       # P12-17: the highest extra reach any player has (player.PUTBACK_REACH_Z); above it
+                                  # nobody can take it
 
 func setup(g) -> void:
 	game = g
@@ -132,8 +136,12 @@ func hold(p) -> void:
 		passer.sig_log("outlet", "outlet caught by %s %.0f ft from the rim" % [p.pname if p.pname != "" else p.pid,
 				p.position.distance_to(game.attack_hoop(p.team)) / game.FT])
 	outlet = false
+	var put: bool = false
 	if p != null and "signature" in p:
 		_sig_on_hold(p)   # P11-17: a catch (everyone's since_catch), coast, steal_break
+		# P12-17 putback: his team's miss off the rim (z: taken above the others' reach)
+		put = p.signature == p.SIG_PUTBACK and state == LOOSE and loose_cause == "rebound" and p.team == last_touch_team
+	var high: bool = put and z >= GRAB_Z
 	steal_by = null
 	state = HELD
 	holder = p
@@ -143,6 +151,8 @@ func hold(p) -> void:
 	shooter = null
 	vel = Vector2.ZERO
 	game.on_ball_held(p)
+	if put:
+		p.start_putback(high)   # near the rim it goes straight back up
 
 # lob: -1 = decide by the alley-oop rule (is_lob_target), 0 = never a lob, 1 = always a lob.
 # game.do_pass (the human's PASS, the CPU, P2-10's call) goes through here, so every pass to a cutter is a lob.
@@ -416,9 +426,9 @@ func update(delta: float) -> void:
 			if position.y < 0 or position.y > game.COURT_H:
 				vel.y = -vel.y
 				position.y = clamp(position.y, 0.0, game.COURT_H)
-			if z < 30.0:
+			if z < GRAB_Z:
 				var best = null
-				var best_d := 20.0
+				var best_d := GRAB_PX
 				for p in game.players:
 					var d: float = p.position.distance_to(position)
 					if d < best_d:
@@ -426,6 +436,10 @@ func update(delta: float) -> void:
 						best = p
 				if best != null:
 					hold(best)
+			elif loose_cause == "rebound" and z < GRAB_Z + PUTBACK_Z_MAX:
+				var pb = _putback_reacher()   # P12-17: only a putback man reaches this high (null without one)
+				if pb != null:
+					hold(pb)
 		DEAD:
 			z = max(0.0, z - 60.0 * delta)
 	sprite.position = Vector2(0, -z)
@@ -522,6 +536,20 @@ func _sig_on_hold(p) -> void:
 		p.start_coast()
 	elif state == LOOSE and loose_cause == "steal" and steal_by != null and steal_by.team == p.team:
 		steal_by.sig_steal_won(p)
+
+# P12-17 putback: a putback man of the team that missed (last_touch_team) within GRAB_PX of this loose ball, the ball
+# under GRAB_Z + his putback_reach_z() (only near the rim he attacks): the nearest one, or null
+func _putback_reacher():
+	var best = null
+	var best_d: float = GRAB_PX
+	for p in game.players:
+		if p.team != last_touch_team or not ("signature" in p) or p.signature != p.SIG_PUTBACK:
+			continue
+		var d: float = p.position.distance_to(position)
+		if d < best_d and z < GRAB_Z + p.putback_reach_z() and not p.is_airborne():
+			best_d = d
+			best = p
+	return best
 
 # the defender whose poke just knocked the ball out of `h`'s hands: the opponent with the freshest steal cooldown
 func _poker_of(h):

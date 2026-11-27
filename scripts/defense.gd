@@ -269,6 +269,8 @@ func _update_block_jump(delta: float) -> void:
 		var reach_ft: float = CPU_JUMP_FT
 		if phase == "rim" and p.signature == p.SIG_CHASE_DOWN and p.is_behind(s):
 			reach_ft = p.CHASE_DOWN_JUMP_FT   # P10-17: the chase-down man goes up at a rim move from behind
+		elif phase == "shot":
+			reach_ft += p.swat_reach("")   # P12-17 swat: he reaches a jumper from further (+ 0 for everyone else)
 		if phase != "" and p.position.distance_to(s.position) < reach_ft * game.FT:
 			_jump_wait = game.rng.randf_range(Difficulty.value(p.team, "jump_react_min", CPU_JUMP_REACT_MIN),
 					Difficulty.value(p.team, "jump_react_max", CPU_JUMP_REACT_MAX))
@@ -285,6 +287,8 @@ func _update_block_jump(delta: float) -> void:
 		chance = Difficulty.value(p.team, "fake_bite", CPU_FAKE_BITE)
 	elif phase == "shot":
 		chance = Difficulty.value(p.team, "jumper_jump_chance", CPU_JUMPER_JUMP_CHANCE)
+		if p.signature == p.SIG_SWAT:
+			chance *= p.SWAT_CPU_JUMP_CHANCE / CPU_JUMPER_JUMP_CHANCE   # P12-17: the swat man goes up at more jumpers
 	chance *= 1.0 + CPU_JUMP_RATING_SPAN * p.rating_frac("block")
 	if game.rng.randf() < chance and p.start_block_jump():
 		game.stat("cpu_block_jumps")
@@ -403,6 +407,29 @@ static func _chase_log(g, d, shooter, blocked: bool, extra: bool, what: String) 
 	d.sig_log(d.SIG_CHASE_DOWN, "chase-down try from behind on %s's %s: %s" % [
 			shooter.pname if shooter.pname != "" else shooter.pid, what,
 			("blocked (only from behind)" if extra else "blocked") if blocked else "missed"])
+
+# P12-17 swat: his block chance at a shot of `kind` (a jumper: x SWAT_BLOCK_MULT, at most 1.0); `chance` for anyone else
+static func _swat_chance(d, kind: String, chance: float) -> float:
+	var m: float = d.swat_mult(kind)
+	return chance if m == 1.0 else minf(1.0, chance * m)
+
+# P12-17 swat: a block try of his at a jumper (counted, logged; `extra`: only the swat made it a block, by its chance or
+# its reach)
+static func _swat_log(g, d, shooter, blocked: bool, extra: bool, chance: float, base: float) -> void:
+	if chance == base and d.swat_reach(g.ball.shot_kind) == 0.0:
+		return
+	g.stat("sig_swat_tries_t%d" % d.team)
+	if g.is_human(d):
+		g.stat("human_swat_tries")
+	if blocked:
+		g.stat("sig_swat_blocks_t%d" % d.team)
+		if g.is_human(d):
+			g.stat("human_swat_blocks")
+	if blocked and extra:
+		g.stat("sig_swat_extra_t%d" % d.team)
+	d.sig_log(d.SIG_SWAT, "swat try at %s's jumper (chance %.2f, was %.2f): %s" % [
+			shooter.pname if shooter.pname != "" else shooter.pid, chance, base,
+			("blocked (only the swat)" if extra else "blocked") if blocked else "missed"])
 
 # P10-17 shoulder: a block try at his close shot or dunk (block chance x SHOULDER_BLOCK_MULT; counted, logged)
 static func _shoulder_log(g, shooter, d, sm: float, blocked: bool, what: String) -> void:
@@ -598,8 +625,10 @@ static func check_jump_shot_block(g) -> void:
 	for d in g.teams[1 - ball.shooter.team]:
 		if d.block_jump_t < 0.0 or d.def.rolled_shot == g.shot_serial:
 			continue
-		if d.position.distance_to(ball.position) > (JUMPER_BLOCK_REACH_FT + _reach_bonus(g, d) + d.chase_down_reach(ball.shooter)) * g.FT:
-			continue
+		var reach: float = (JUMPER_BLOCK_REACH_FT + _reach_bonus(g, d) + d.chase_down_reach(ball.shooter)) * g.FT
+		var dist: float = d.position.distance_to(ball.position)
+		if dist > reach + d.swat_reach(ball.shot_kind) * g.FT:
+			continue   # (P12-17 swat: more reach on a jumper; + 0 for everyone else)
 		var tim := _jump_timing(d)
 		if tim == "wait":
 			continue
@@ -611,11 +640,14 @@ static func check_jump_shot_block(g) -> void:
 		var base_c: float = c
 		var shooter = ball.shooter
 		c = _chase_chance(d, shooter, c)   # P10-17 chase_down from behind; the same chance for everyone else
+		var sw_c: float = c
+		c = _swat_chance(d, ball.shot_kind, c)   # P12-17 swat on a jumper; the same chance for everyone else
 		var roll: float = g.rng.randf()
 		var sm: float = shooter.sig_block_mult(ball.shot_kind)   # P9-20 hook, P10-17 shoulder: x1.0 for everyone else
 		var pm: float = _side_step_mult(shooter, ball.shot_kind)   # P11-22 side_step: x1.0 without the perk
 		_side_step_log(shooter, d, pm, roll, c * sm)
 		var what: String = "layup" if layup else "jumper"
+		_swat_log(g, d, shooter, roll < c * sm * pm, roll >= sw_c * sm * pm or dist > reach, c, sw_c)
 		if roll < c * sm * pm:
 			_chase_log(g, d, shooter, true, roll >= base_c * sm * pm, what)
 			_shoulder_log(g, shooter, d, sm, true, what)
