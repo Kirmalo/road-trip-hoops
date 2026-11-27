@@ -190,6 +190,27 @@ Everything in "Tasks by wave" not marked DONE.
   `wristband`, `freckles`), `pixel3d.py` `FLAT` `glow_lime` / `glow_violet` and `CHROME`, `crews.json` `ERA4_*`;
   sample `docs/art/legends_next_sample_v1.png` / `.gif` (`make_players.py --legends-sample next`). Renderer checks 0
   problems, ANIM OK, `assets/` untouched, all 71 older sheets' test frames byte for byte the same. For owner check 1
+- **P12-02** (gameplay A, on the branch): `docs/legends-namecheck.md` "Chapter 4 (P12-02): first check" and the
+  P12-02 list additions (2024-2026 drafts, young stars and nicknames, dunk contest, Japan, Europe, shoe lines, famous
+  fictional cyborgs and robots and their looks). Step 1: `nba_api` 1.12.0 (Oct 21 2026, 6,426 entries, holds the 2026
+  class). All six pass the hard rule and the data test's rules (Python dry run of `name_hit()`: six pass, the 18
+  shipped still pass, 7 new probes fail); numbers pass. **One fail of our own rule, not applied**: Emrys is 2 letters
+  from Earl (Earl "Mayor" Pruitt, `cities.gd`); owner: keep Emrys, or Leander (12.9) or Emrys. `--legendtest` OK
+  (doc only, nothing else changed)
+- **P12-03** Four built chapters in the Legends logic and tests (gameplay-programmer B): `stand_in_test_data("next")`
+  (ids `lg_zz_next_1..6`), `--legends-test-four` (wins over `-three` / `-two`), `Legends.self_test()`
+  `_check_four_chapters()` (gate 72 / 48, max tokens 84, the walk over four eras; `SHIPPED_GATES` holds `next`, and a
+  build with Chapter 4 built passes too, so P12-11 needs no test change). `--legendtest` OK; `--legends-test --stars 24
+  --target 3` and `--legends-test-three` byte for byte as before; `--legends-test-four` Hard 84/84 and Normal `--stars
+  72` 56/84 end "next is the last chapter", LEGENDS END; `--backtest` OK, `--trip-test` (unlock-all, 48 stars) TRIP END,
+  `--titletest` DONE
+
+- **P12-08** Era music listening list (art-audio A): `docs/audio_preview/LIST.md` "Legends: New Generation", five
+  30 s samples `docs/audio_preview/next_a..e_*.ogg` (-20.0/-20.1 LUFS, 241-267 KB each, 1.26 MB together), all
+  OpenGameArt, each license read on its page: Escalate (congusbongus, CC-BY 3.0, ~167 bpm), Hammer (yubatake, CC-BY
+  4.0, 170), Fever Stadium (MintoDog, CC0, 165), Ramming Speed (congusbongus, CC-BY 4.0, ~167), Neon Hyperdrive
+  (adiutorium, CC0, ~140). Art-audio's pick: Ramming Speed; Hammer if the owner wants no 4th congusbongus track.
+  For the owner to pick (P12-20)
 
 ## Done
 - **P12-09** Midrange's skin brown on his sheet and card (before the phase; ANIM OK, LEGENDTEST OK)
@@ -203,14 +224,14 @@ Everything in "Tasks by wave" not marked DONE.
 Format: **id** | title | owner | files it may touch | done when | waits for.
 
 ### Wave 1 (can start now)
-- **P12-02** | Name list for the new generation and the check of the six (12.9)
+- **P12-02** | REVIEW | Name list for the new generation and the check of the six (12.9)
   | gameplay-programmer A | `docs/legends-namecheck.md` only
   | The lists gain the 2024-2026 draft classes, today's young stars and their nicknames, dunk contest names, current
   Japanese and European players, shoe and product lines whose names could be a nickname ("Hyper...", "Zoom", ...),
   and **famous fictional cyborgs and robots** (film, games, comics: names and their signature looks, e.g. a metal arm
   with a star, a red visor, a gold visor band). Then a "Chapter 4 (P12-02): first check" section for 12.9's six
   (Tavian "Overclock" Brightwell, Calder "Long Shadow" Ostrander, Cosimo "Glitch" Draycott, Silvan "Updraft" Ingleby,
-  Ezra "Halfcourt" Tregarth, Kasimir "Firewall" Oyelaran): the `nba_api` step, 1-letter near misses, first names
+  Emrys "Halfcourt" Tregarth, Kasimir "Firewall" Oyelaran): the `nba_api` step, 1-letter near misses, first names
   within 2 letters of a game name, the nicknames against brands and fictional characters, the look combinations in
   words (the five real-player sets **and** the cyborg looks), the numbers 17 / 56 / 25 / 57 / 39 / 51, and a short
   summary for the owner. A name that fails comes with two passing alternatives (12.9 lists backups) | none
@@ -255,7 +276,7 @@ none, static glow). The lead writes the answers into the contract and VISION.
   phone lights. No word, digit or logo; it does not read as MIDNIGHT or BIG STAGE. Era colors from owner check 1.
   Checked in angled and flat shots; `--era` rewrites the older era files byte for byte; not in the COURT list. A name
   proposal (first idea NEON DOME) for owner check 2 | P12-05 merged, owner check 1
-- **P12-08** | Era music listening list
+- **P12-08** | REVIEW | Era music listening list
   | art-audio-integrator A | `docs/audio_preview/LIST.md` ("Legends: New Generation"),
   `docs/audio_preview/next_*.ogg`
   | 3-5 fast chiptune or electro tracks (160-175 bpm, bright synth leads, a futuristic "machine" feel; not New York's
