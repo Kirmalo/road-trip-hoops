@@ -181,3 +181,55 @@ Checked in the Phase 10 build (`83520f8`), each run in its own copy (own `config
   the trip, settings and Legends test files unchanged byte for byte. `-- --legends-test --target 3` on the trip fixture
   (it erases the Legends test file first): LEGENDS END, crew trip, the swap line, 20 games, grand 14/21, fathers 14/21,
   exit 0, the trip unchanged.
+
+# Phase 11 save fixtures (P12-01)
+
+Saves written by the Phase 11 build (commit `d298d22`, the published Phase 11 build), so Phase 12 can test that every
+Phase 11 save loads (`legends.json` version 1 with three chapters, a `trip.json` version 2 with a drafted Present
+legend, `settings.cfg` with 72 stars, LEGEND and the era picks of Quick Game). Same rules as above: the exact bytes
+`save.gd`, `legends_save.gd` and `ConfigFile` wrote, don't edit them by hand. To test one, copy it to
+`user://legends.json` (any test run: `legends_test.json`), `trip.json` (`trip_test.json`) / `settings.cfg`
+(`settings_test.cfg`). They go on with the P11-01 owner's story (story E -> F): his three Phase 10 files are what the
+Phase 11 build first opened. `legends_v1_ch3_mid.json` is the Legends file during `trip_v2_present.json` (the trip calls
+did not touch it, checked byte for byte); the trip was then finished and replayed up to 72 stars, then Chapter 3 was
+finished (`legends_v1_ch3_done.json`; the trip file did not move, byte for byte), then the owner's settings were
+written (`settings_v2_72_present.cfg`). The settings file is named `_present` because `settings_v2_72.cfg` (P9-01, the
+Phase 8 build) is already taken.
+
+| File | State | How it was made |
+|---|---|---|
+| `legends_v1_ch3_mid.json` | Chapters 1-2 closed (42 tokens, `finales ["grand", "fathers"]`, from `legends_v1_ch2_done.json`); the Present intro seen; DEEP END won on Normal (2), TOOLBOX on Hard (3), STRETCH won with the goal broken first (nothing) then on Normal (2), SWITCH lost by the score (nothing): 15 unlocked, 49 tokens (Present 7, on two levels), the Present finale locked; mentors GATE -> Deuce (`block_timing`), ANKLES -> MAYOR (`handle`) and **TOOLBOX -> NICO** (`chi_g1`, bench, `extra_pass`); 22 scenes seen. Era teams open with it: the Grandfathers and the Fathers (not the Present: SKYLIGHT is locked) | scripted story F |
+| `trip_v2_present.json` | Normal. From `trip_v2_father.json`: DEEP END (`lg_deep_end`) drafted from the Present LEGENDS row into slot 4 (via "draft", 95/95/88/88/88 + steal 92 / block 80, signature `step_back`), 0 open slots; starters Deuce (you), DEEP END, MAYOR (one legend + one boss, no repair); MIDRANGE and STEEPLE (two older legends) on the bench; 14 players. New York round 1 won, round 2 lost once then won: on the bracket before the final (`bracket {"round": 2}`, game 3), record 23-4, paid 23; the points screens skipped, so the 3 starters keep 4 own points each (12). The draft's LEGENDS rows: grand 5, fathers 5, present TOOLBOX and STRETCH. CONTINUE -> bracket | scripted story F |
+| `legends_v1_ch3_done.json` | Later (after the trip's final and the replays below): SWITCH, SKYLIGHT and ZIGZAG won on LEGEND, DEEP END replayed on LEGEND and STRETCH on Hard (best 2 -> 3), TOOLBOX replayed on Easy (3 kept), the Present finale's before scene, the finale won on LEGEND ("DEEP END SITS: TREY PLAYS"): all 18 unlocked, 63/63 tokens, `finales ["grand", "fathers", "present"]` (three chapters closed), 27 scenes seen, the same three mentors; all three era teams open | scripted story F, later |
+| `settings_v2_72_present.cfg` | The owner's `settings.cfg` at the end: the New York final won (trip done, 24-4), then every game below 3 stars replayed on Hard from the map (Memphis to New York, 18 replays): 72 stars (every game 3), 4 slots, LEGEND open and picked as the level; LOCKER picks `jersey_3` / `ball_3` / `van_3`; music on, sfx 0.8, music 0.6, full screen, left-handed; Quick Game court `era_present` (BIG STAGE, SPACE THE FLOOR) and teams `present` vs `grandfathers` (era teams); all 8 courts and the 9 crews unlocked | scripted story F |
+
+How they were made (2026-11-27, Godot 4.3 stable):
+- A copy of the Phase 11 build: `git archive d298d22`, with only `config/name` in `project.godot` changed ("RTH P1201
+  Fixtures") and its own fresh `XDG_DATA_HOME`.
+- `make_fixtures_v5.gd.txt` (rename to `.gd`, put it in that copy's root), run
+  `FIXTURE_IN=<repo>/docs/qa/fixtures FIXTURE_OUT=<dir> godot --headless --path <copy> -s res://make_fixtures_v5.gd`.
+  It wipes the copy's files, puts the P11-01 `settings_v2_48.cfg`, `legends_v1_ch2_done.json` and `trip_v2_father.json`
+  in as `user://settings.cfg`, `legends.json`, `trip.json`, loads them as the game does, then makes the calls the
+  screens make, as `make_fixtures_v4` does (the same helpers; `Trip.replay_games()` for the map's replay list). No user
+  arguments, so the build writes the owner's file names, as on the tablet. Scripted for the reason given under P11-01.
+
+Checked in the Phase 11 build (`d298d22`) and in the branch head (`39a20bc`, Phase 12 wave 3), each in its own copy
+(own `config/name`, own fresh `XDG_DATA_HOME`):
+- `check_fixtures_v5.gd.txt` (same way, `FIXTURE_DIR=<dir>`, no user args: the owner's file names): the settings give
+  72 stars, 4 slots, LEGEND open and the level, the 3 picks, 8 courts, MIDNIGHT and GOLD HALL, left-handed, full
+  screen, Chapters 1-3 open; each Legends file loads as saved (`to_dict()` == the file minus version / serial): mid 49
+  (21 / 21 / 7), 15 unlocked, Chapters 1-2 closed, the Present finale locked, era teams grandfathers + fathers; done 63
+  (21 x 3), 18 unlocked, all three closed, the three era teams; all three mentors and their perks; the trip loads as
+  saved, version 2, CONTINUE -> bracket (New York final), drafts `ht_boss` + `lg_steeple` + `lg_midrange` +
+  `lg_deep_end`, starters Deuce + DEEP END + MAYOR legal, MIDRANGE and STEEPLE on the bench, no repair, 0 open slots, 4
+  own points per starter, MAYOR's and NICO's perks on the trip, none on DEEP END (his `step_back` kept), three LEGENDS
+  rows (the Present one TOOLBOX, STRETCH; with the done file the other 5), Skylight's challenge and the Present finale
+  "DEEP END SITS: TREY PLAYS"; the saved Quick Game picks read back (court `era_present`, its twist `era_present`, the
+  teams `present` / `grandfathers` in the team list); loading writes nothing (the three files byte for byte).
+  CHECK OK in both builds.
+- `trip_v2_present.json` as `trip_test.json`, `settings_v2_72_present.cfg` as `settings_test.cfg`,
+  `legends_v1_ch3_mid.json` as `legends_test.json`, then `-- --trip-test --target 3 --trip-resume` (exit 0, no
+  `SCRIPT ERROR`, `ERROR` or `WARNING` lines): resumes on the bracket before the final, TRIP END complete, paid 24/24,
+  every game >= 2 stars, 72 stars, the 4 drafts kept; d298d22 1 game (24-4), the head 2 games (one loss, 24-5). The
+  driver's lineup tap test picks its own three (`la_g1`, `ud_jojo`, Deuce), so DEEP END did not play the final in
+  these runs. The Legends test file byte for byte the same after both runs.

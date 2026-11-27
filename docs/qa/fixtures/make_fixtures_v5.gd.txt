@@ -1,0 +1,300 @@
+extends SceneTree
+# P12-01: makes the Phase 11 fixtures with the Phase 11 build (commit d298d22), through trip.gd's and legends.gd's own
+# API (the calls the screens make, as make_fixtures_v3: match_for, record_result + after_result after each trip game,
+# spend / finish_points, recruit, draft (OPEN SLOT -> DRAFT, the Fathers' LEGENDS row), set_starters, mark_seen,
+# start_replay on the map's replay picker, Cosmetics.pick on the LOCKER; on the Legends tour: the chapter intro's
+# mark_seen, match_for_challenge / match_for_finale on PLAY, record_result + after_result, the finale's "before" scene,
+# the Hall's TRAIN = assign). Every file is the bytes save.gd, legends_save.gd or ConfigFile wrote. Run in a copy of
+# d298d22 whose config/name is changed (its own user:// dir, no test flags = the owner's file names: user://trip.json,
+# user://legends.json, user://settings.cfg, as on the tablet), with the P11-01 fixtures in FIXTURE_IN:
+#   FIXTURE_IN=/abs/docs/qa/fixtures FIXTURE_OUT=/abs/dir godot --headless --path <copy> -s res://make_fixtures_v5.gd
+# One story, the P11-01 owner's going on (story E -> F): his Phase 10 files (trip_v2_father.json, settings_v2_48.cfg,
+# legends_v1_ch2_done.json) are the owner's files when the Phase 11 build first opens them. Chapter 3 half done with a
+# Present mentor (legends_v1_ch3_mid.json); then the trip with a drafted Present legend next to a boss, in the New York
+# bracket (trip_v2_present.json); the trip finished and every game replayed up to 3 stars (72); the rest of Chapter 3
+# (legends_v1_ch3_done.json, 63 tokens); then the owner's settings with LEGEND, the BIG STAGE court and two era teams
+# (settings_v2_72_present.cfg).
+
+const Trip = preload("res://scripts/trip.gd")
+const Save = preload("res://scripts/save.gd")
+const Cities = preload("res://scripts/cities.gd")
+const Ratings = preload("res://scripts/ratings.gd")
+const Difficulty = preload("res://scripts/difficulty.gd")
+const Menu = preload("res://scripts/menu.gd")
+const Audio = preload("res://scripts/audio.gd")
+const Stars = preload("res://scripts/stars.gd")
+const Cosmetics = preload("res://scripts/cosmetics.gd")
+const Legends = preload("res://scripts/legends.gd")
+const LegendsSave = preload("res://scripts/legends_save.gd")
+const LegendsData = preload("res://scripts/legends_data.gd")
+const EraTeams = preload("res://scripts/era_teams.gd")
+
+var out := ""
+var inp := ""
+
+func _initialize() -> void:
+	out = OS.get_environment("FIXTURE_OUT")
+	inp = OS.get_environment("FIXTURE_IN")
+	if out == "" or inp == "":
+		print("FIXTURE ERROR: set FIXTURE_OUT and FIXTURE_IN")
+		quit(1)
+		return
+	DirAccess.make_dir_recursive_absolute(out)
+	print("FIXTURE save file %s, legends %s, settings %s, stars %s, picks %s" % [Save.path(), LegendsSave.path(),
+			Difficulty.SAVE_PATH, Stars.path(), Cosmetics.save_path()])
+	_wipe()
+	_story()
+	print("FIXTURE DONE")
+	quit(0)
+
+func _wipe() -> void:
+	Save.erase()
+	LegendsSave.erase()
+	Legends.load_state(true)
+	if FileAccess.file_exists(Difficulty.SAVE_PATH):
+		DirAccess.remove_absolute(Difficulty.SAVE_PATH)
+	Cosmetics._reset_cache()
+
+# ---- the trip screens' calls (as make_fixtures_v2) ----
+
+func _arrive() -> void:
+	var arrive: String = str(Cities.city(Trip.city).get("story", {}).get("arrive", ""))
+	if arrive != "":
+		Trip.mark_seen(arrive)
+
+func _game(won: bool, keep: int = 0) -> void:
+	Trip.match_for()
+	var o: Dictionary = Trip.record_result({"won": won})
+	var r: Dictionary = Trip.after_result()
+	print("FIXTURE   game %s %d: %s (+%d each, stars %d -> %d) -> %s | phase %s game %d points %d" % [
+			str(o.get("city", "")), int(o.get("game", 0)), "WON" if won else "LOST", int(o.get("points_each", 0)),
+			int(o.get("stars_before", 0)), int(o.get("stars_now", 0)), str(r.get("screen", "")), Trip.phase, Trip.game,
+			Trip.points])
+	if Trip.phase == "win_points":
+		_spend_starters(keep)
+		Trip.finish_points()
+
+func _spend_starters(keep: int) -> void:
+	for id in Trip.starters:
+		_spend_own(str(id), Trip.player_points(str(id)) - keep)
+
+func _spend_own(id: String, n: int) -> void:
+	var guard := 0
+	while n > 0 and Trip.player_points(id) > 0 and guard < 100:
+		guard += 1
+		var best := ""
+		var low := 1000
+		var p: Dictionary = Trip.roster_player(id)
+		for s in Ratings.STATS:
+			var v: int = int((p.get("ratings", {}) as Dictionary).get(s, 0))
+			if v < Trip.STAT_CAP and v < low:
+				low = v
+				best = s
+		if best == "" or not Trip.spend(id, best):
+			return
+		n -= 1
+
+func _city(lose_first: bool = false, keep: int = 0) -> void:
+	_arrive()
+	if lose_first:
+		_game(false)
+	for g in 3:
+		_game(true, keep)
+
+func _after_city(keep: int, recruit_id: String) -> void:
+	_spend_starters(keep)
+	Trip.finish_points()
+	if recruit_id != "":
+		print("FIXTURE   recruit %s: %s" % [recruit_id, Trip.recruit(recruit_id)])
+
+func _draft(id: String) -> void:
+	print("FIXTURE   draft %s: %s (slots %d, open now %d, stars %d)" % [id, Trip.draft(id), Trip.slot_count(),
+			Trip.open_slots(), Stars.real_total()])
+
+func _starters(ids: Array) -> void:
+	print("FIXTURE   starters %s: %s (%s)" % [str(ids), Trip.set_starters(ids, str(ids[0])), Trip.starters_ok(ids)])
+
+func _owner_settings(lv: int, music: bool, sfx: float, mvol: float, full: bool, left: bool, court: String,
+		teams: Array, picks: Dictionary) -> void:
+	Difficulty.level = lv
+	Difficulty.save()
+	Menu.save_setting(Menu.SAVE_MUSIC, music)
+	Menu.save_setting(Menu.SAVE_COURT, court)
+	Menu.save_setting(Menu.SAVE_TEAMS[0], str(teams[0]))
+	Menu.save_setting(Menu.SAVE_TEAMS[1], str(teams[1]))
+	Audio.sfx_volume = sfx
+	Audio.save_sfx_volume()
+	Audio.music_volume = mvol
+	Audio.save_music_volume()
+	Difficulty.save_fullscreen(full)
+	Difficulty.set_left_handed(left)
+	for kind in picks:
+		print("FIXTURE   pick %s %s: %s" % [kind, picks[kind], Cosmetics.pick(str(kind), str(picks[kind]))])
+
+# ---- the Legends tour's calls ----
+
+# PLAY on a plaque or the finale card, the game, then the result: won = the score; goal_met = the challenge's verdict
+func _legends_game(key: String, lv: String, won: bool, goal_met: bool = true, why: String = "") -> void:
+	var m: Dictionary
+	if key.begins_with("fin:"):
+		var ch: String = key.substr(4)
+		var before: String = str((LegendsData.chapter(ch).get("finale_scenes", {}) as Dictionary).get("before", ""))
+		if before != "":
+			print("FIXTURE   finale before scene %s new %s" % [before, Legends.mark_seen(before)])
+		m = Legends.match_for_finale(ch, lv)
+	else:
+		m = Legends.match_for_challenge(key.substr(3), lv)
+	var res := {"won": won}
+	if not key.begins_with("fin:"):
+		res["challenge"] = {"met": goal_met, "why": why}
+	var o: Dictionary = Legends.record_result(res)
+	var r: Dictionary = Legends.after_result()
+	print("FIXTURE   legends %s %s (crew %s, note '%s'): won %s tokens %d -> %d unlocked %s done %s -> %s %s" % [
+			key, str(m.get("level", "")), str(m.get("crew", "")), str(m.get("note", "")), str(o.get("won")),
+			int(o.get("tokens_before", 0)), int(o.get("tokens_now", 0)), str(o.get("unlocked", "")),
+			str(o.get("chapter_done", false)), str(r.get("screen", "")), str(r.get("args", {}))])
+
+func _train(legend_id: String, player_id: String) -> void:
+	print("FIXTURE   mentor %s -> %s: %s" % [legend_id, player_id, Legends.assign(legend_id, player_id)])
+
+# ---- snapshots ----
+
+func _copy_out(src: String, name: String) -> void:
+	var f: FileAccess = FileAccess.open(src, FileAccess.READ)
+	var text: String = f.get_as_text()
+	f.close()
+	var w: FileAccess = FileAccess.open(out.path_join(name), FileAccess.WRITE)
+	w.store_string(text)
+	w.close()
+
+func _snap(name: String) -> void:
+	_copy_out(Save.path(), name)
+	var pts: Array = []
+	for e in Trip.roster_data:
+		pts.append("%s:%d(%s)" % [str(e["id"]), int(e.get("pts", 0)), str(e.get("via", ""))])
+	print("FIXTURE wrote %s | level %s city %s game %d phase %s points %d crew %d | roster %s | starters %s | beaten %s | record %s | paid %d | replay %s | stars %d slots %d open %d" % [
+			name, Trip.level, Trip.city, Trip.game, Trip.phase, Trip.points, Trip.crew_points, str(pts),
+			str(Trip.starters), str(Trip.beaten), str(Trip.record), Trip.paid.size(),
+			str(Trip.replay), Stars.real_total(), Trip.slot_count(), Trip.open_slots()])
+
+func _snap_settings(name: String) -> void:
+	_copy_out(Difficulty.SAVE_PATH, name)
+	print("FIXTURE wrote %s | stars %d | jersey %s ball %s van %s" % [name, Stars.real_total(),
+			Cosmetics.picked("jersey"), Cosmetics.picked("ball"), Cosmetics.picked("van")])
+
+func _snap_legends(name: String) -> void:
+	_copy_out(LegendsSave.path(), name)
+	print("FIXTURE wrote %s | tokens %d %s | unlocked %s | finales %s | mentors %s | seen %s" % [name,
+			Legends.real_tokens_total(), str(Legends.tokens), str(Legends.unlocked), str(Legends.finales),
+			str(Legends.mentors), str(Legends.seen)])
+
+func _bytes(p: String) -> PackedByteArray:
+	if not FileAccess.file_exists(p):
+		return PackedByteArray()
+	var f: FileAccess = FileAccess.open(p, FileAccess.READ)
+	var b: PackedByteArray = f.get_buffer(f.get_length())
+	f.close()
+	return b
+
+func _put(name: String, dst: String) -> bool:
+	var b: PackedByteArray = _bytes(inp.path_join(name))
+	if b.is_empty():
+		print("FIXTURE ERROR: missing %s in FIXTURE_IN" % name)
+		return false
+	var w: FileAccess = FileAccess.open(dst, FileAccess.WRITE)
+	w.store_buffer(b)
+	w.close()
+	return true
+
+# the P11-01 owner's Phase 10 files become this build's files (the owner re-imports the ZIP: user:// stays)
+func _start_from_p11_01() -> bool:
+	if not (_put("settings_v2_48.cfg", Difficulty.SAVE_PATH) and _put("legends_v1_ch2_done.json", LegendsSave.path())
+			and _put("trip_v2_father.json", Save.path())):
+		return false
+	Cosmetics._reset_cache()
+	Difficulty.load_saved()
+	Legends.load_state(true)
+	print("FIXTURE   trip loaded %s | city %s game %d phase %s | stars %d | tokens %d | unlocked %s | Deuce perk %s" % [
+			Trip.continue_trip(), Trip.city, Trip.game, Trip.phase, Stars.real_total(), Legends.real_tokens_total(),
+			str(Legends.unlocked_ids()), str(Trip.roster_player("ud_deuce").get("perk", {}).get("id", ""))])
+	return true
+
+func _replay(city_id: String, n: int, lv: String) -> void:
+	var st: bool = Trip.start_replay(city_id, n, lv)
+	Trip.match_for()
+	var o: Dictionary = Trip.record_result({"won": true})
+	var r: Dictionary = Trip.after_result()
+	print("FIXTURE   replay %s %d on %s: start %s won %s replay %s stars +%d -> %s | marker %s | stars %d slots %d" % [
+			city_id, n, lv, st, str(o.get("won")), str(o.get("replay")), int(o.get("stars_gained", 0)),
+			str(r.get("screen", "")), str(Trip.replay), Stars.real_total(), Trip.slot_count()])
+
+# ---- the story ----
+
+func _perk(id: String) -> String:
+	return str(Trip.roster_player(id).get("perk", {}).get("id", ""))
+
+# F1, the tour (Phase 11 build, Chapter 3 open by 48 stars / 42 tokens): the Present intro, DEEP END won on Normal (2),
+# TOOLBOX on Hard (3), STRETCH won with the goal broken first (nothing) then on Normal (2), SWITCH lost by the score
+# (nothing): 3 Present beaten, 42 + 7 = 49 tokens; TOOLBOX trains NICO (chi_g1, bench, extra_pass).
+#   -> legends_v1_ch3_mid.json
+# F2, the trip: DEEP END drafted from the Present LEGENDS row into slot 4 (0 open); starters Deuce (you), DEEP END,
+# MAYOR (one legend + one boss); MIDRANGE and STEEPLE to the bench. New York round 1 won, round 2 lost once then won:
+# on the bracket before the final. -> trip_v2_present.json
+# F3: the final won (the trip done), then every game under 3 stars replayed on Hard from the map (72 stars, LEGEND).
+# F4, the tour, mostly on LEGEND: SWITCH, SKYLIGHT, ZIGZAG; DEEP END replayed on LEGEND, STRETCH on Hard (best 3);
+# TOOLBOX replayed on Easy (3 kept); the finale's before scene, the finale on LEGEND: 63/63 tokens, three chapters
+# closed. -> legends_v1_ch3_done.json (trip.json unchanged)
+# F5, the owner's settings: LEGEND, the LOCKER's jersey_3 / ball_3 / van_3, court era_present (BIG STAGE, open with the
+# Present era team), Quick Game teams present vs grandfathers, left-handed. -> settings_v2_72_present.cfg
+func _story() -> void:
+	print("FIXTURE story F (the P11-01 owner in the Phase 11 build)")
+	if not _start_from_p11_01():
+		return
+	print("FIXTURE   chapter present open %s" % Legends.chapter_open("present"))
+	print("FIXTURE   intro scene new %s" % Legends.mark_seen("legends_present_intro"))
+	_legends_game("lg:lg_deep_end", "normal", true)
+	_legends_game("lg:lg_toolbox", "hard", true)
+	_legends_game("lg:lg_stretch", "normal", true, false, "STRETCH'S CREW GOT 10 FIRST")
+	_legends_game("lg:lg_stretch", "normal", true)
+	_legends_game("lg:lg_switch", "normal", false)
+	_train("lg_toolbox", "chi_g1")     # the Hall: TOOLBOX trains NICO
+	print("FIXTURE   perks on the trip: Deuce %s, MAYOR %s, NICO %s" % [_perk("ud_deuce"), _perk("ht_boss"),
+			_perk("chi_g1")])
+	_snap_legends("legends_v1_ch3_mid.json")
+	var mid_bytes: PackedByteArray = _bytes(LegendsSave.path())
+	print("FIXTURE trip: a Present legend drafted next to a boss")
+	_draft("lg_deep_end")              # the map's lineup -> OPEN SLOT -> DRAFT, the Present LEGENDS row
+	_starters(["ud_deuce", "lg_deep_end", "ht_boss"])
+	_game(true, 0)                     # New York round 1
+	_game(false, 0)                    # round 2 lost once
+	_game(true, 0)                     # round 2
+	_snap("trip_v2_present.json")
+	print("FIXTURE   legends file unchanged by the trip: %s" % (_bytes(LegendsSave.path()) == mid_bytes))
+	print("FIXTURE trip: the final, then the replays on Hard")
+	_game(true, 0)                     # the final: the trip is done
+	print("FIXTURE   trip phase %s record %s stars %d" % [Trip.phase, str(Trip.record), Stars.real_total()])
+	for g in Trip.replay_games():
+		if int((g as Dictionary).get("stars", 0)) < 3:
+			_replay(str(g["city"]), int(g["game"]), "hard")
+	print("FIXTURE   stars %d legend open %s slots %d phase %s" % [Stars.real_total(), Stars.legend_open(),
+			Trip.slot_count(), Trip.phase])
+	var trip_bytes: PackedByteArray = _bytes(Save.path())
+	print("FIXTURE Legends: the rest of Chapter 3")
+	_legends_game("lg:lg_switch", "legend", true)
+	_legends_game("lg:lg_skylight", "legend", true)
+	_legends_game("lg:lg_zigzag", "legend", true)
+	_legends_game("lg:lg_deep_end", "legend", true)
+	_legends_game("lg:lg_stretch", "hard", true)
+	_legends_game("lg:lg_toolbox", "easy", true)   # a replay lower: best kept
+	print("FIXTURE   finale open %s" % Legends.finale_open("present"))
+	_legends_game("fin:present", "legend", true)
+	_snap_legends("legends_v1_ch3_done.json")
+	print("FIXTURE   chapters done grand %s fathers %s present %s | tokens %d/%d" % [Legends.chapter_done("grand"),
+			Legends.chapter_done("fathers"), Legends.chapter_done("present"), Legends.real_tokens_total(),
+			LegendsData.max_tokens()])
+	print("FIXTURE   trip file unchanged by the tour: %s" % (_bytes(Save.path()) == trip_bytes))
+	print("FIXTURE   era teams open %s" % str(EraTeams.open_ids()))
+	_owner_settings(Difficulty.LEGEND, true, 0.8, 0.6, true, true, "era_present", ["present", "grandfathers"],
+			{"jersey": "jersey_3", "ball": "ball_3", "van": "van_3"})
+	_snap_settings("settings_v2_72_present.cfg")
+	print("FIXTURE   level %s | quick teams %s" % [Difficulty.level_name(), str(Difficulty.quick_teams())])
