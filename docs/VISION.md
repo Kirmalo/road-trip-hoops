@@ -131,6 +131,7 @@ tablet with a joystick and two buttons.
 | Phase 11 teal (after P11-28) | Owner: the Present's `ui_color` goes darker, #0a7385 (P11-B2), so its LEGEND tags and draft band read apart from the Fathers' mint; also darkens its Quick Game team button. The era court's paint keeps its teal |
 | Phase 11 era team balance (after P11-36) | Owner: leave both as measured: the Present is the strongest Quick Game team (~62% vs the crews on Hard), a reward for the last era; the Grandfathers stay weak on their own OLD GYM (~38%, the OLD SCHOOL twist helps their opponents), no Quick Game home edge (docs/qa/phase11-quick-eras.md) |
 | Phase 11 perk sizes (after P11-26) | Owner: all six Present perks resized to about 2 stat points each: `off_dribble` +2.5%, `extra_pass` +1%, `catch_shoot` +1%, `contest` 0.5% (was 3x a perk at 1.5%), `board_work` reach x1.15, `side_step` layup blocks x0.80 (was 1.5% / 1.5% / 1.5% / 1.5% / 1.05 / 0.95; docs/qa/phase11-ramp.md) |
+| Phase 11 check-in | Owner: likes how everything looks. Midrange's skin is brown (the portrait is right; his player sheet and card go brown). Rooftop's cradle dunk gets its own look (P11-10, preview first). The Techno drive loop point: the owner still has to listen. Next: Chapter 4, the New Generation (Phase 12) |
 
 ## Technical constraints
 - Godot 4.3+ (GDScript), GL Compatibility renderer, 1280x720 landscape. See `CLAUDE.md` for code conventions.
