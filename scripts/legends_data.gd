@@ -652,6 +652,8 @@ static var notes: Array = []        # self_test(): things that fall back for now
 # empty = the shipped CHAPTERS / LEGENDS. Every getter below reads the rows through chapter_rows() / legend_rows();
 # the name check and self_test() read the shipped consts only. P11-03: stand_in_test_data(chapter_id) builds any row
 # (two_chapter_test_data() = the Phase 10 one, "fathers"), so three built chapters run before Chapter 3's rows land.
+# P12-03: stand_in_test_data("next") the same way (ids lg_zz_next_1..6), four built chapters before Chapter 4's rows
+# land; with every row built there is no chapter after the last (no unbuilt row is ever needed).
 static var _test_chapters: Array = []
 static var _test_legends: Dictionary = {}
 
