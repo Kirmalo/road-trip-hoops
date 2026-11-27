@@ -26,6 +26,8 @@ extends CanvasLayer
 # never start together; the flash names the one already picked); each tag is in its own chapter's colour.
 # P11-19: three eras, nothing new in the logic: a Grandfather, a Father or a Present legend starts, never two of them,
 # and each one's tag takes his chapter's ui_color from the data (the Present's teal).
+# P12-19: four eras the same way: a New Generation legend's tag is Chapter 4's darker lime (#466e14); one legend of
+# any of the four starts.
 # Drag the list (or its wide scroll bar) to scroll; a drag never counts as a tap. Taps are ignored for ARM_T s when the
 # screen opens and once PLAY is on its way, so nothing leaks into the next screen or the game.
 # Desktop testing: Enter = PLAY, Escape = BACK. Trip test: auto_step() keeps the lineup and taps PLAY;
