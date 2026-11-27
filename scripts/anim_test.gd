@@ -36,6 +36,8 @@ extends Node
 #     an extra, the extra must load (its x pages <pages id>_x<N>.png present and of the right size, else a problem),
 #     and its frames are checked like any animation (pixels, hand and ball points, a ball point on frame 0); a sheet
 #     with x pages that the format lists for nothing is a note. Sheets that list no extra are checked as before.
+#     P11-10: an extra that stands in for a dunk (its ALIASES start with dunk_, e.g. Rooftop's cradle) must carry the
+#     dunk events player.gd's dunk timing reads (DUNK_EXTRA_EVENTS), in order takeoff < hang < release < rim < frames.
 #   Also Sheets.self_test() (SHEETS lines).
 # Images (CPU-made, the frames 2x on a plain court color like the game, the ball drawn in the hand):
 #   <out>/hoops_anim_<sheet>_<anim>.png        every frame (columns) in 8 directions (rows E, SE, S, SW, W, NW, N, NE);
@@ -67,7 +69,8 @@ const BALL_UNTIL := {"shoot": 0.75, "layup": 0.5, "dunk": 0.55, "dunk_one": 0.55
 	"dunk_tomahawk": 0.55, "dunk_windmill": 0.55, "pass": 0.5, "pass_chest": 0.5, "pass_bounce": 0.5, "pass_lob": 0.5}
 # v2: these animations must have a ball point on frame 0 (where the points exist)
 const V2_BALL_ANIMS := ["dribble", "run_dribble", "cross", "hold", "catch", "shoot", "layup", "dunk_one", "dunk_two",
-	"dunk_tomahawk", "dunk_windmill", "pass_chest", "pass_bounce", "pass_lob", "hook"]
+	"dunk_tomahawk", "dunk_windmill", "pass_chest", "pass_bounce", "pass_lob", "hook", "cradle"]
+const DUNK_EXTRA_EVENTS := ["takeoff", "hang", "release", "rim"]   # P11-10: a dunk extra's events, in this order
 const FAKE_EXTRA := "hook"        # --anim-fake-v2: the extra animation of the fake set
 const FAKE_EXTRA_FRAMES := 6
 const FAKE_BROKEN := ["fake_v2_nox", "fake_v2_blank"]   # --anim-fake-v2: listed for the extra, no x page / a blank one
@@ -351,8 +354,27 @@ func _check_extra_section(fmt: Dictionary, what: String) -> void:
 			if not used.has(k):
 				used[k] = []
 			(used[k] as Array).append(a)
+		_check_dunk_extra(str(a), e, n, what)
 		lines.append("%s (extra columns %d..%d, %d sheets)" % [a, st, st + n - 1, (list as Array).size()])
 	print("ANIM %s: extras: %s" % [what, ", ".join(lines) if not lines.is_empty() else "none"])
+
+# P11-10: an extra played as a dunk (its first alias a dunk_ animation) needs player.gd's dunk events, in order
+func _check_dunk_extra(a: String, e: Dictionary, n: int, what: String) -> void:
+	var al: Array = Sheets.ALIASES.get(a, [])
+	if al.is_empty() or not str(al[0]).begins_with("dunk_"):
+		return
+	var last := -1
+	for ev in DUNK_EXTRA_EVENTS:
+		var v = e.get(ev, null)
+		if not (v is int or v is float):
+			_problems.append("%s: the dunk extra %s has no \"%s\" event" % [what, a, ev])
+			return
+		if int(v) <= last or int(v) >= n:
+			_problems.append("%s: the dunk extra %s: \"%s\" %d is out of order (frames %d)" % [what, a, ev, int(v), n])
+			return
+		last = int(v)
+	print("ANIM %s: dunk extra %s: takeoff %d, hang %d, release %d, rim %d" % [what, a, int(e["takeoff"]),
+			int(e["hang"]), int(e["release"]), int(e["rim"])])
 
 # one sheet: every frame has pixels, the hand (and ball) points
 func _check_sheet(sh: Dictionary) -> void:

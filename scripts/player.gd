@@ -93,14 +93,15 @@ const OUTLET_OPEN_FT := 8.0       # CPU outlet passer in his backcourt: a teamma
 const OUTLET_HOOP_FT := 30.0      # ... and this close to the hoop, with at most OUTLET_AHEAD opponents between him
 const OUTLET_AHEAD := 0           # and the hoop, gets the long pass
 # ---- P10-17 the Fathers' signature moves (owner F4 b; legends_data.gd ids). Same model: "" = today's game.
-const SIG_CRADLE := "cradle"              # Rooftop: his dunks slip part of a contest (drawn as CRADLE_STYLE)
+const SIG_CRADLE := "cradle"              # Rooftop: his dunks slip part of a contest (drawn as CRADLE_ANIM)
 const SIG_DOUBLE_CROSS := "double_cross"  # Ankles: his crossovers beat the man more often, more ankle-breaker falls
 const SIG_FADEAWAY := "fadeaway"          # Midrange: jumpers inside the arc lose less to a contest, the fadeaway frames
 const SIG_SHOULDER := "shoulder"          # Freight: his close shots and dunks are harder to block
 const SIG_NO_LOOK := "no_look"            # Eyes Closed: his passes are harder to intercept (ball.gd asks pick_mult)
 const SIG_CHASE_DOWN := "chase_down"      # Lockbox: his block tries from behind work more often (defense.gd)
 const CRADLE_KEEP := 0.5          # a cradle dunk keeps this fraction of main's rim contest penalty (0 = none)
-const CRADLE_STYLE := "dunk_windmill"     # the existing dunk look his dunks are drawn with (the ball rocked in the arm)
+const CRADLE_ANIM := "cradle"             # P11-10: his dunks play the sheet's cradle frames (extra page) when it has them
+const CRADLE_STYLE := "dunk_windmill"     # ... else this dunk look (a sheet without the cradle extra; was always this)
 const CRADLE_CPU_LAYUP := 0.1     # CPU cradle man entering LAYUP_RANGE: chance he pulls up for the layup (he dunks)
 const DOUBLE_CROSS_EXTRA := 0.35  # a crossover of his that did not beat the man gets a second roll at this chance
 const DOUBLE_CROSS_FALL_FT := 3.5 # a beaten man this close falls (ankle-breaker; ANKLE_BREAK_FT for everyone else) ...
@@ -2955,7 +2956,7 @@ const RIM_HANG_TIME := 0.3        # seconds on the rim after a made dunk (Q7 a: 
 const RIM_HANG_MAX_MOVE_FT := 1.5 # ... cut short once he has moved this far from where he came down
 const DUNK_DROP_TIME := 0.18      # seconds of the drawn drop from the rim to the floor
 const LIFT_FOLLOW := 30.0         # 1/s: the drawn lift follows the hands-on-rim height this fast
-const BIG_DUNK_STYLES := ["dunk_windmill", "dunk_tomahawk", "dunk_alley"]
+const BIG_DUNK_STYLES := ["dunk_windmill", "dunk_tomahawk", "dunk_alley", "cradle"]   # P11-10: the cradle as the windmill
 const WINDMILL_FINISH := 70       # a finishing rating this high (or a boss) can windmill without turbo
 const WINDMILL_PCT := 30          # % of the dunks that can windmill (turbo, great finisher or boss) that do ...
 const WINDMILL_BOTH_PCT := 50     # ... and when he is both on turbo and a great finisher / boss
@@ -2976,7 +2977,8 @@ var v_frame := 0                  # v2: its frame index (Sheets.frame_index: row
 var v_next_frame := 0             # ... the next frame, and how far into this one (ball.gd blends the ball point)
 var v_frame_frac := 0.0
 var v_flip := false               # the frame is mirrored (SW, W, NW)
-var v_dunk_style := ""            # this dunk's look (Q6: dunk_one, dunk_two, dunk_tomahawk, dunk_windmill, dunk_alley)
+var v_dunk_style := ""            # this dunk's look (Q6: dunk_one, dunk_two, dunk_tomahawk, dunk_windmill, dunk_alley;
+                                  # P11-10 cradle, Rooftop's sheet only; counted as anim_<style>, so anim_cradle)
 var v_land_t := 0.0               # seconds left of the land frames (> 0 right after a jump came down)
 var v_turbo_dunk := false         # this dunk came off a sprint (TURBO_DUNK_WINDOW): a "big" dunk for the camera punch
 var _v_clock := 0.0               # seconds (x the play rate) into the current clock-driven animation
@@ -3152,8 +3154,8 @@ func _v2_dunk_style() -> String:
 		return "dunk_alley"
 	if long_dunk:
 		return "dunk_two"   # P9-20: the power drop-step ends in a two-hand dunk
-	if signature == SIG_CRADLE:
-		return CRADLE_STYLE   # P10-17: the cradle dunk
+	if signature == SIG_CRADLE:   # P10-17: the cradle dunk; P11-10 its own frames on a sheet that carries them
+		return CRADLE_ANIM if Sheets.has_anim(_v_fmt, CRADLE_ANIM) else CRADLE_STYLE
 	if signature == SIG_SHOULDER:
 		return "dunk_two"   # P10-17: the shoulder-in power dunk, two hands
 	var roll: int = absi(hash([team, index, pid, game.shot_serial, int(game.score[0]), int(game.score[1])])) % 100

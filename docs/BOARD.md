@@ -691,11 +691,19 @@ Everything below (Tasks by wave).
   | `#17a8a1` vs the Fathers `#5cc7a1` is 1.42:1 (lineup tags side by side), yellow LEGEND text on it 2.1:1. Proposed
   `Color(0.04, 0.45, 0.52)` (`#0a7385`, still teal): 2.7:1 vs mint, text 3.9:1; also darkens the Quick Game team button.
   Coordinator's / owner's yes first | P11-28
-- **P11-10** (only if the owner asked for it at the Phase 10 check-in) | Rooftop's cradle dunk with its own look
+- **P11-10** (the owner asked at the Phase 11 check-in) | REVIEW | Rooftop's cradle dunk with its own look
   | art-audio-integrator A | `tools/art/make_players_v2.py`, `assets/players2/lg_rooftop*` and `format.json` (a
   `cradle` extra on his sheet only), `scripts/player.gd` (the `CRADLE_STYLE` line only)
   | a preview gif first for the owner; `--anim-test` ANIM OK; `--challenge rooftop` shows `anim_cradle`; nothing else
   changes | the owner's answer, P11-14 and P11-22 merged
+  Result: `cradle` extra (12 frames, the dunk events of the windmill: takeoff 2, hang 6, release 9, rim 10, land 11;
+  `cradle` [4, 5]) on `lg_rooftop_x0.png` only (`EXTRA_LANE` 0; crews.json `"extra": ["cradle"]`): scooped off the
+  right hip, cradled in the bent arm, rocked back behind the head, thrown down. Preview `docs/art/cradle_v1.gif`
+  (vs the windmill). player.gd: `CRADLE_ANIM` "cradle" when `Sheets.has_anim()`, else `CRADLE_STYLE` windmill as
+  before; counted `anim_cradle`; in `BIG_DUNK_STYLES` (the windmill's camera punch kept). sheets.gd alias `cradle` ->
+  windmill; anim_test checks a dunk extra's events. No sim change. ANIM OK (also `--anim-fake-v2`), LEGENDTEST OK,
+  `--challenge rooftop --autoplay` (Hard): 3 SIGNATURE cradle lines, `anim_cradle` 2. Only Rooftop's files,
+  format.json's `extra.cradle` and hands.json's `lg_rooftop.cradle` changed.
 - **P11-35** (P8 b) | REVIEW | Title test and menu shots for the era teams
   | gameplay-programmer F | `scripts/title.gd` (the `--titletest` driver only)
   | `--titletest` on QUICK GAME: with no legend unlocked (`--legends-unlock-none`) no era team or era court is offered;

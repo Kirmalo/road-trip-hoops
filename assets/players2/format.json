@@ -629,7 +629,7 @@
    ]
   }
  },
- "_help_extra": "extra (P9-04b): animations only some sheets carry (sheets = the base sheets; a recolor or star jersey carries what its pages' sheet carries). Their frames are on extra pages <sheet>_x<N>.png after the normal pages: start = the logical extra column (extra_cols in all, pages of page_cols, the same rows and palettes as the normal pages). Events as above, plus top (the ball over the head). hook: right-hand hook shot, left shoulder to the hoop. fadeaway: turnaround fadeaway jumper off the left hand; post (back to the hoop), turn (the pivot), rise, top; fade [first, last] = the frames over which the game moves him fade_ft feet back (the art stays over his floor point). stepback: step-back jumper off the left hand; plant, hop, then today's jumper; fade [first, last] = the frames over which the game slides him fade_ft feet back. eurostep: Euro-step into today's right-hand layup; steps [first, second]; euro_path = [frame, feet to his left] points the game moves him through, eased.",
+ "_help_extra": "extra (P9-04b): animations only some sheets carry (sheets = the base sheets; a recolor or star jersey carries what its pages' sheet carries). Their frames are on extra pages <sheet>_x<N>.png after the normal pages: start = the logical extra column (extra_cols in all, pages of page_cols, the same rows and palettes as the normal pages). Events as above, plus top (the ball over the head). hook: right-hand hook shot, left shoulder to the hoop. fadeaway: turnaround fadeaway jumper off the left hand; post (back to the hoop), turn (the pivot), rise, top; fade [first, last] = the frames over which the game moves him fade_ft feet back (the art stays over his floor point). stepback: step-back jumper off the left hand; plant, hop, then today's jumper; fade [first, last] = the frames over which the game slides him fade_ft feet back. eurostep: Euro-step into today's right-hand layup; steps [first, second]; euro_path = [frame, feet to his left] points the game moves him through, eased. cradle: cradle dunk, right hand (Rooftop's signature dunk): scooped off the right hip, cradled in the bent arm [cradle], rocked back behind the head (hang), thrown down; the dunk events of dunk_windmill.",
  "extra_cols": 24,
  "extra": {
   "hook": {
@@ -835,6 +835,43 @@
    "hand": "R",
    "sheets": [
     "lg_zigzag"
+   ]
+  },
+  "cradle": {
+   "start": 0,
+   "frames": 12,
+   "fps": 0.0,
+   "loop": false,
+   "ms": [
+    80,
+    90,
+    60,
+    60,
+    70,
+    80,
+    140,
+    90,
+    60,
+    60,
+    200,
+    300
+   ],
+   "takeoff": 2,
+   "cradle": [
+    4,
+    5
+   ],
+   "hang": 6,
+   "release": 9,
+   "rim": 10,
+   "air": [
+    2,
+    10
+   ],
+   "land": 11,
+   "hand": "R",
+   "sheets": [
+    "lg_rooftop"
    ]
   }
  }

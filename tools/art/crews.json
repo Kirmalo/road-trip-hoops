@@ -799,7 +799,7 @@
     },
     {
       "id": "lg_rooftop", "crew": "FA", "phase": 10, "number": 27, "role": "high-flying shooting guard", "name": "Rooftop",
-      "draft": true, "desc": "P10-14 legend (original): tall and lanky wing, brown skin, black cornrows, charcoal left arm sleeve, no headband; seafoam tank, white trim, baggy seafoam shorts with charcoal side panels, white crew socks (the approved look sample)",
+      "draft": true, "extra": ["cradle"], "desc": "P10-14 legend (original): tall and lanky wing, brown skin, black cornrows, charcoal left arm sleeve, no headband; seafoam tank, white trim, baggy seafoam shorts with charcoal side panels, white crew socks (the approved look sample). Carries the cradle dunk extra (P11-10)",
       "body": "lanky_wing", "body_tweak": {"leg": 0.04, "torso": 0.01}, "skin": "brown", "hair": "cornrows",
       "hair_pal": "HAIR_BLACK", "top": "tank", "top_pal": "ERA2_SEAFOAM", "trim_pal": "ERA2_ICE",
       "shorts_pal": "ERA2_SEAFOAM", "shorts_trim": "ERA2_CHARCOAL", "shorts_len": 1.1, "baggy": true, "sleeve": "L",
