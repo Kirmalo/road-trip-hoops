@@ -43,14 +43,15 @@ Usage:  python3 tools/art/make_players_v2.py [--only ID[,ID...] | --all] [--jobs
                                      P11-05b: NAME stepback (docs/art/stepback_v1.gif) or eurostep
                                      (docs/art/eurostep_v1.gif); P11-14: lg_deep_end / lg_zigzag carry them
                                      P12-05b: NAME combo (docs/art/combo_v1.gif, Glitch's combo dribble on
-                                     the look sample's body lg_sample_glitch; no sheet carries it yet);
+                                     the look sample's body lg_sample_glitch; P12-14: lg_glitch carries it);
                                      --extra-strip ... --strip-vs adds the move it stands in for (the crossover)
-        [--legends-strip [fathers|present]]  (P9-09: only docs/art/legends_grand.png, the six lg_ sheets with the hook, from
+        [--legends-strip [fathers|present|next]]  (P9-09: only docs/art/legends_grand.png, the six lg_ sheets with the hook, from
                                      the written files; the sheets themselves: --only <the LEGENDS ids>. P10-14:
                                      fathers = docs/art/legends_fathers.png, Midrange with the fadeaway;
                                      --only <the LEGENDS_FATHERS ids>. P11-14: present =
                                      docs/art/legends_present.png, the step-back and the Euro-step;
-                                     --only <the LEGENDS_PRESENT ids>)
+                                     --only <the LEGENDS_PRESENT ids>. P12-14: next =
+                                     docs/art/legends_next.png, Glitch's combo; --only <the LEGENDS_NEXT ids>)
 Extra animations (P9-04b): EXTRA (the hook shot; P10-04b the turnaround fadeaway) is rendered only for the sheets
 that carry it (EXTRA_CREWS: the hook on crew "GR"; a crews.json "extra": [...] list; --extra-sheets [name:]id,...),
 onto extra pages <id>_x<N>.png with the same palettes, and listed in format.json's "extra" section (only the extras
@@ -1391,13 +1392,14 @@ EXTRA_ANIM = {a[0]: a for a in EXTRA}
 # --extra-sheets id,... makes those sheets carry every extra this run; --extra-sheets name:id,... only that extra.
 # P11-14: Deep End lists "extra": ["stepback"] and Zigzag "extra": ["eurostep"] in crews.json (no crew carries them).
 # P11-10: Rooftop lists "extra": ["cradle"] (his signature dunk's own look; the game drew the windmill before).
+# P12-14: Glitch lists "extra": ["combo"] (P12-05b, approved; nobody else carries it).
 EXTRA_CREWS = {"hook": ("GR",), "fadeaway": (), "stepback": (), "eurostep": (), "cradle": (), "combo": ()}
 # P11-14: an extra may start its own lane in the extra column space (EXTRA_LANE name -> start column) instead of after
 # the ones before it: the Present's two extras start at column 0, on their own sheet's first x page (lg_deep_end_x0,
 # lg_zigzag_x0), since no sheet carries one of them together with another extra (extra_columns() checks). The hook
 # and the fadeaway keep their columns (0..10, 11..23), so their pages and format.json rows stay as they were.
 EXTRA_LANE = {"stepback": 0, "eurostep": 0, "cradle": 0,     # P11-10: the cradle on lg_rooftop_x0, column 0 too
-              "combo": 0}                                    # P12-05b: Glitch's (no sheet carries it yet)
+              "combo": 0}                                    # P12-05b / P12-14: on lg_glitch_x0, column 0 too
 EXTRA_FORCE = set()
 PREVIEW_LIFT["hook"] = [0, 0, 0, 4, 12, 17, 18, 15, 7, 0, 0]
 PREVIEW_LIFT["fadeaway"] = [0, 0, 0, 0, 0, 3, 9, 15, 17, 15, 8, 0, 0]
@@ -2239,6 +2241,11 @@ def write_format():
             fmt["_help_extra"] += (" cradle: cradle dunk, right hand (Rooftop's signature dunk): scooped off the right "
                                    "hip, cradled in the bent arm [cradle], rocked back behind the head (hang), thrown "
                                    "down; the dunk events of dunk_windmill.")
+        if "combo" in extra:       # P12-14: only once a sheet carries it
+            fmt["_help_extra"] += (" combo: combo dribble (Glitch's), between the legs into behind the back, drawn in "
+                                   "the crossover's time (the game drives it by the crossover's progress); legs and "
+                                   "back [first, last], floor = the two bounces, switch = the two hand changes; "
+                                   "hand_end R: it ends in the hand it started in (cross ends in the left).")
         fmt["extra_cols"] = xcols
         fmt["extra"] = extra
     with open(os.path.join(OUT_DIR, "format.json"), "w") as f:
@@ -2449,7 +2456,7 @@ def moves_gif(all_frames, path=MOVES_GIF):
 
 
 PREVIEW4 = os.path.join(ROOT, "docs", "art", "players_preview_v4.png")
-CREW_ORDER = ["U", "HT", "CHI", "MEM", "NOL", "DEN", "SEA", "LA", "NYQ", "NYS", "NYF", "NY", "GR", "FA", "PR"]
+CREW_ORDER = ["U", "HT", "CHI", "MEM", "NOL", "DEN", "SEA", "LA", "NYQ", "NYS", "NYF", "NY", "GR", "FA", "PR", "NG"]
 
 
 def decoded_pages(base, pal_id):
@@ -2611,9 +2618,18 @@ LEGENDS_PRESENT_STRIP = os.path.join(ROOT, "docs", "art", "legends_present.png")
 LEGEND_STEP = [("E", k) for k in (0, 1, 3, 5, 7, 8)] + [("S", 8), ("SE", 8)]
 LEGEND_EURO = [("E", k) for k in (0, 1, 3, 5, 7, 8)] + [("S", 8), ("SE", 8)]
 LEGEND_CRADLE = [("E", k) for k in (2, 4, 5, 7, 8, 9)] + [("S", 7), ("SE", 7)]     # P11-10: Rooftop's cradle dunk
+# P12-14: the New Generation sheets (crews.json crew "NG"): the approved look sample's looks (make_players.py
+# NEXT_LOOKS) as crews.json entries, era kits ERA4_* (lime and violet on near-black), a _crew recolor (crew_recolor
+# "NG", the sample's map) and the _crew_j1..3 jerseys. The cyber parts (Overclock's braces, Glitch's chrome forearm,
+# Firewall's visor) are pixel3d's chrome ramp and flat glow, no kit palette, so every recolor keeps them; the hair
+# palettes (Overclock's lime, Glitch's platinum) are not in the recolor either. Glitch carries the combo (P12-05b,
+# approved). Rebuild: --only <the LEGENDS_NEXT ids> --no-preview, then --legends-strip next (docs/art/legends_next.png).
+LEGENDS_NEXT = ["lg_overclock", "lg_long_shadow", "lg_glitch", "lg_updraft", "lg_halfcourt", "lg_firewall"]
+LEGENDS_NEXT_STRIP = os.path.join(ROOT, "docs", "art", "legends_next.png")
+LEGEND_COMBO = [("E", k) for k in (0, 2, 3, 5, 8, 11)] + [("S", 5), ("SE", 2)]
 LEGEND_EXTRA_CELLS = {"hook": ("HOOK", LEGEND_HOOK), "fadeaway": ("FADEAWAY", LEGEND_FADE),
                       "stepback": ("STEP-BACK", LEGEND_STEP), "eurostep": ("EURO-STEP", LEGEND_EURO),
-                      "cradle": ("CRADLE DUNK", LEGEND_CRADLE)}
+                      "cradle": ("CRADLE DUNK", LEGEND_CRADLE), "combo": ("COMBO", LEGEND_COMBO)}
 LEGEND_STRIPS = {
     "grand": (LEGENDS, LEGENDS_STRIP,
               "Legends Chapter 1, the Grandfathers (P9-09): the six legend sheets as the game draws them "
@@ -2633,6 +2649,12 @@ LEGEND_STRIPS = {
                 "Top: era colors (idle S SE E NE N, run dribble SE, jump shot E, block S | Deep End's STEP-BACK and "
                 "Zigzag's EURO-STEP: E start .. release; release S, SE). Bottom: your colors (_crew, star jerseys "
                 "%s) | the _crew extra. No hook or fadeaway on these sheets."),
+    "next": (LEGENDS_NEXT, LEGENDS_NEXT_STRIP,
+             "Legends Chapter 4, the New Generation (P12-14): the six legend sheets as the game draws them "
+             "(index pages + palettes), 2x. Original characters; cyber parts on Overclock, Glitch, Firewall only.",
+             "Top: era colors (idle S SE E NE N, run dribble SE, jump shot E, block S | Glitch's COMBO: E start, legs, "
+             "switch, behind the back, bounce, end; back S, legs SE). Bottom: your colors (_crew, star jerseys %s) | "
+             "the _crew combo. Chrome, glow and hair keep their colors."),
 }
 
 

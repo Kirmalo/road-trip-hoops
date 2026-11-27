@@ -352,7 +352,7 @@ name (P12-06), the music pick (P12-08).
   `pin_next_done.png`, `ui.json`, `timeline.png`, `docs/art/legends_ui.png`
   | In the chosen era colors (a chrome edge on the frame is fine). The 4th timeline panel shows the court lit. Chapters
   1-3 files byte for byte unchanged; `--legendtest` OK | owner check 2, P12-06 merged
-- **P12-14** | The six New Generation sheets (+ the combo extra)
+- **P12-14** | REVIEW | The six New Generation sheets (+ the combo extra)
   | art-audio-integrator A | `tools/art/make_players_v2.py`, `tools/art/crews.json`, `assets/players2/lg_<six>*`,
   `assets/players2/format.json`, `assets/players2/hands.json` (only if needed), `scripts/sheets.gd` (`ALIASES`)
   | Six sheets with palettes, `_crew`, `_crew_j1..3`, cards; the cyber parts on Overclock, Glitch and Firewall only,
@@ -360,6 +360,14 @@ name (P12-06), the music pick (P12-08).
   `docs/art/legends_next.png`; the `combo` extra on `lg_glitch` only (listed in `"extra"`, own lane); no older sheet
   changes byte for byte; `--anim-test` ANIM OK | owner check 2, P12-11 merged
 - **P12-15** | REVIEW | The New Generation portraits
+  | Result: crews.json crew `NG` (six `draft` entries from the sample's `NEXT_LOOKS`, `crew_recolor` `NG` = the
+  sample's map; hair lime / platinum, wood, cotton, tape out of it), `--legends-strip next`, sheets.gd `combo` -> `cross`.
+  The idle S and run dribble SE frames match the approved sample pixel for pixel (era and your colors). Chrome and
+  glow: 7 palette entries on each cyber sheet, the same in all 5 palettes; 0 on the natural three. `combo` on
+  `lg_glitch_x0` col 0, `hand_end` "R". Only additions in format.json / hands.json / palettes.json, no older file
+  touched. 0 render check problems; ANIM OK (352 sheets), `--anim-fake-v2` OK, `--legendtest` OK (no sheet note).
+  2.04 MB of sheet files (+ 29 KB jerseys)
+- **P12-15** | The New Generation portraits
   | art-audio-integrator B | `tools/art/make_portraits_v2.py`, `tools/art/comic.py` (new opt-in kit parts only),
   `assets/portraits/lg_<six>*`, `docs/art/legends_next_portraits.png`
   | Twelve portraits (neutral, happy) in the era kits; the visor on Firewall, the chrome hand on Glitch (raised, the
