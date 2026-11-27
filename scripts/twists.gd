@@ -19,6 +19,10 @@ extends RefCounted
 #                            kept inside the court; P11-12); 0.0 = today
 #   pullup_mult              x make chance of a jumper started within player.PULLUP_WINDOW s of a crossover (or spin)
 #                            (the pull-up mark, player.pullup_mark; main.shot_probability; P11-12); 1.0 = today
+#   dead_ball_mult           x the dead-ball pauses after a make, an out of bounds and a reaching foul (rules.MADE_WAIT,
+#                            OOB_WAIT, FOUL_WAIT; P12-12); 1.0 = today
+#   break_mult               x make chance of a shot within main.BREAK_WINDOW s of the shooter's team getting the ball
+#                            (a steal, a rebound or an inbound; main.shot_probability; P12-12); 1.0 = today
 #   shot_clock               seconds on the shot clock (main.SHOT_CLOCK_LENGTH, 24 today)
 #   speed_mult               x every player's top speed (player.speed, after the speed rating)
 #   turbo_mult               the turbo speed multiplier itself (player.TURBO_SPEED_MULT, 1.35 today)
@@ -113,6 +117,15 @@ const TWISTS := {
 		"spacing_ft": 2.0,            # off-ball players stand 2 ft wider (further from the hoop)
 		"pullup_mult": 1.10,          # a jumper right after a crossover or spin goes in 10% more often (everyone)
 	},
+	# Legends, Chapter 4 (P12-12, owner Q2 a): the New Generation era, "FAST BREAK". Starting values; QA tunes them (P12-21)
+	"era_next": {
+		"name": "FAST BREAK", "banner": "Fast break: a quicker game, early shots fall",
+		"icon": "era_next",
+		"speed_mult": 1.05,           # everyone 5% faster
+		"stamina_refill_mult": 1.15,  # stamina comes back 15% faster, so the pace lasts
+		"dead_ball_mult": 0.6,        # the pauses after a make, an out of bounds or a reaching foul are 40% shorter
+		"break_mult": 1.10,           # a shot within main.BREAK_WINDOW (5 s) of his team getting the ball: 10% more often
+	},
 }
 
 # Today's value of every hook key (what each hook passes as `default`; listed so the table can be checked)
@@ -122,6 +135,7 @@ const DEFAULTS := {
 	"cut_angle_deg": 60.0, "lob_drift_ft": 0.0, "shot_curve_ft": 0.0, "lob_time_mult": 1.0, "arc_mult": 1.0,
 	"sideline_fence": 0.0, "fence_bounce": 0.6, "crowd_db": 0.0, "inside_mult": 1.0, "foul_mult": 1.0,
 	"cross_beat_mult": 1.0, "dunk_range_mult": 1.0, "spacing_ft": 0.0, "pullup_mult": 1.0,
+	"dead_ball_mult": 1.0, "break_mult": 1.0,
 }
 const TEXT_KEYS := ["name", "banner", "icon", "gust_min", "gust_keys"]
 

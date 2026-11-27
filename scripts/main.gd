@@ -56,6 +56,11 @@ const REB_GRAB_PX := 20.0            # = ball.gd's loose-ball pick-up reach (px)
 const REB_GRAB_Z := 30.0             # = ball.gd's: a loose ball under this height can be picked up (not widened)
 const LEGENDS_DATA_PATH := "res://scripts/legends_data.gd"   # PERKS, for --perk (loaded only with the flag)
 const PERK_FLAG := "--perk"
+# P12-12 FAST BREAK (Legends Chapter 4): Twists "break_mult" x the make chance (shot_probability()) of a field goal
+# released within BREAK_WINDOW s of the shooter's team getting the ball (a steal, a rebound or an inbound: every time
+# the shot clock restarts in on_ball_held()). 1.0 (every other twist) = today. The CPU's shoot decision reads the same
+# odds, so it takes the early shot more often.
+const BREAK_WINDOW := 5.0            # seconds after his team got the ball
 
 const FT := 12.0                     # pixels per foot
 const COURT_W := 94.0 * FT
@@ -320,6 +325,9 @@ var _reb_serial := -1               # ... and its shot_serial
 var _putback_team := -1             # the team of the last offensive rebound and its play_time (putback window)
 var _putback_t := -100.0
 var _putback_serial := -1           # shot_serial of a putback in the air
+var _gain_team := -1                # P12-12: the team that last got the ball (shot clock restarted) ...
+var _gain_t := -100.0               # ... and rules.play_time then (break_mult's window)
+var _break_serial := -1             # shot_serial of the last field goal released inside the window (FAST BREAK stats)
 var key_a_down := false
 var stats := {}
 var _trail_on := false              # fire trail currently shown behind the ball
@@ -892,6 +900,15 @@ func _twist_summary() -> String:
 				g.call("pullups_cross_makes_t0") + g.call("pullups_cross_makes_t1"),
 				g.call("pullups_cross_t0") + g.call("pullups_cross_t1"),
 				g.call("cpu_cross_pullups_t0") + g.call("cpu_cross_pullups_t1")]
+	# P12-12 (keyed on the hooks): FAST BREAK's early shots and shorter dead balls
+	if Twists.base_value("break_mult", 1.0) != 1.0 or Twists.base_value("dead_ball_mult", 1.0) != 1.0:
+		var bs: int = g.call("break_window_shots_t0") + g.call("break_window_shots_t1")
+		var bm: int = g.call("break_window_makes_t0") + g.call("break_window_makes_t1")
+		var ls: int = g.call("late_shots_t0") + g.call("late_shots_t1")
+		var lm: int = g.call("late_makes_t0") + g.call("late_makes_t1")
+		line += " | early shots (within %.0f s) %d/%d, later %d/%d | dead balls %d s (x%.2f) | stamina ran empty %d, turbo %.0f s" % [
+				BREAK_WINDOW, bm, bs, lm, ls, int(rules.dead_time), Twists.base_value("dead_ball_mult", 1.0),
+				g.call("stamina_empty"), turbo_s]
 	return line
 
 # after rules.gd is made: a trip game's target (side switch at (target + 1) / 2, as --target does; a --target flag
@@ -1272,6 +1289,8 @@ func shot_probability(p, quality: float) -> float:
 		base *= Twists.value("inside_mult", 1.0)   # close shots, layups and dunks (era_grand); 1.0 without a twist
 	if not rim and "pullup_mark" in p and p.pullup_mark:
 		base *= Twists.value("pullup_mult", 1.0)   # P11-12: a jumper off a crossover (era_present); 1.0 without a twist
+	if in_break_window(p):
+		base *= Twists.value("break_mult", 1.0)    # P12-12: an early shot after getting the ball (era_next); 1.0 without
 	base = maxf(base, SHOT_MIN)
 	var cont := openness(p)
 	if cont < CONTEST_TIGHT_FT:
@@ -1282,6 +1301,10 @@ func shot_probability(p, quality: float) -> float:
 	var rate: float = 1.0 if rim else Ratings.shot_mult(_shooting(p))
 	return clampf(base * quality * rate + _perk_shot_bonus(p, d, hoop, cont) + float(_perk_mate_bonus(p)[0]),
 			SHOT_MIN, SHOT_CAP)
+
+# P12-12: p's team got the ball (steal, rebound, inbound) at most BREAK_WINDOW s ago
+func in_break_window(p) -> bool:
+	return p.team == _gain_team and rules.play_time - _gain_t <= BREAK_WINDOW
 
 # P9-24: the make chance a shooter's mentor perk adds to this shot (0.0 without one; still capped at SHOT_CAP):
 # close_shot_bonus on layups and on jumpers inside player.PERK_CLOSE_FT (not dunks), three_bonus beyond the arc,
@@ -1350,6 +1373,8 @@ func on_ball_held(p) -> void:
 		_rebound_end("off" if p.team == _reb_team else "def", p.team, p)
 	if p.team != possession or not shot_clock_running:
 		shot_clock = shot_clock_length()
+		_gain_team = p.team
+		_gain_t = rules.play_time
 	shot_clock_running = true
 	possession = p.team
 	rules.on_possession(p.team)
@@ -1390,6 +1415,9 @@ func release_shot(p, quality: float) -> void:
 		_putback_serial = shot_serial
 	_putback_team = -1
 	stat("shot_d%d" % int(p.position.distance_to(hoop) / FT / 5) )
+	if Twists.base_value("break_mult", 1.0) != 1.0:   # P12-12 FAST BREAK (counted only under it: other logs unchanged)
+		_break_serial = shot_serial if in_break_window(p) else -1   # its make is counted in on_shot_made()
+		stat("break_window_shots_t%d" % p.team if _break_serial >= 0 else "late_shots_t%d" % p.team)
 	if Twists.base_value("long_shot_mult", 1.0) != 1.0 and p.rim_kind == "" and is_three(p.position, hoop):
 		stat(Twists.current + "_long_shots")   # a long shot the twist moved (wind_long_shots, thin_air_long_shots)
 	# P7-T1: shot quality bands (kind x openness at the release) with their rolled makes and summed odds (per mille),
@@ -1482,6 +1510,8 @@ func on_shot_made(shooter, pts: int) -> void:
 		if challenge != null:
 			challenge.check()   # a broken goal ends the game now
 		return
+	if Twists.base_value("break_mult", 1.0) != 1.0:   # P12-12: an early shot (released within BREAK_WINDOW) went in
+		stat("break_window_makes_t%d" % shooter.team if shot_serial == _break_serial else "late_makes_t%d" % shooter.team)
 	show_message("%s %s" % [TEAM_NAMES[shooter.team], "FOR TWO!" if pts >= 2 else "SCORES"], SCORE_MSG_TIME,
 			TEAM_COLORS[shooter.team])
 	if ball.shot_kind != "dunk":   # a dunk already shows "SLAM!"
@@ -1501,7 +1531,7 @@ func on_shot_made(shooter, pts: int) -> void:
 	if rules.resolve_pending_foul(shooter, true):
 		return   # fouled on the make: and-one free throw
 	possession = 1 - shooter.team
-	rules.dead_ball(1 - shooter.team, rules.MADE_WAIT)
+	rules.dead_ball(1 - shooter.team, rules.dead_wait(rules.MADE_WAIT))   # P12-12: x dead_ball_mult
 
 func on_shot_missed(shooter) -> void:
 	if rules.ft_shot_live:

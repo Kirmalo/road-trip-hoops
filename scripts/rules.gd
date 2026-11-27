@@ -59,6 +59,8 @@ const OOB_BASELINE_KEY_FT := 9.5     # baseline inbound: at least this far to th
 const OOB_CORNER_FT := 4.0           # ... and this far from the sidelines
 const OOB_MIN_CLOCK := 5.0           # the team that had the ball keeps it: the shot clock runs on, but is at least this
 const OOB_CLEAR_FT := 6.0            # opponents closer than this to the inbounder are moved back to this distance
+# Legends Chapter 4 FAST BREAK (P12-12): Twists "dead_ball_mult" x MADE_WAIT, OOB_WAIT and FOUL_WAIT (dead_wait()); 1.0
+# (every other twist) = today
 const Twists = preload("res://scripts/twists.gd")   # Phase 6: the cage twist has a sideline fence (no sideline out)
 
 var game
@@ -213,6 +215,10 @@ func update(delta: float) -> bool:
 func time_left() -> float:
 	return maxf(GAME_TIME_CAP - live_time, 0.0)
 
+# a dead-ball pause of `base` s (MADE_WAIT, OOB_WAIT, FOUL_WAIT) under the twist's dead_ball_mult (FAST BREAK: 0.6)
+func dead_wait(base: float) -> float:
+	return base * Twists.value("dead_ball_mult", 1.0)
+
 func dead_ball(next_team: int, wait: float, spot := Vector2.INF) -> void:
 	game.ball.make_dead()
 	_clear_inbound = false
@@ -292,14 +298,14 @@ func ball_out(pos: Vector2, last_team: int) -> bool:
 		game.stat("oob_clock_kept")
 	if game.audio:
 		game.audio.play("whistle")
-	game.show_message("OUT OF BOUNDS\n%s BALL" % game.TEAM_NAMES[team], OOB_WAIT, game.TEAM_COLORS[team])
+	game.show_message("OUT OF BOUNDS\n%s BALL" % game.TEAM_NAMES[team], dead_wait(OOB_WAIT), game.TEAM_COLORS[team])
 	if game.autoplay or game.humantest:
 		print("OUT OF BOUNDS %s (%s, after %s) at x %d y %d: %s ball" % ["baseline" if baseline else "sideline",
 				game.TEAM_NAMES[last_team], cause, int(pos.x / game.FT), int(pos.y / game.FT), game.TEAM_NAMES[team]])
 	for p in game.players:
 		p.shooting = false
 	game.possession = team
-	dead_ball(team, OOB_WAIT, spot)
+	dead_ball(team, dead_wait(OOB_WAIT), spot)
 	_clear_inbound = true
 	return true
 
@@ -363,7 +369,8 @@ func call_foul(defender, fouled, kind: String) -> bool:
 	game.audio.play("whistle")
 	game.fx.popup("FOUL!", defender.position + Vector2(0, -5.0 * game.FT), game.TEAM_COLORS[defender.team], 40)
 	var what: String = "ON THE SHOT" if kind == "shooting" else "REACHING"
-	game.show_message("FOUL ON %s\n%s" % [game.TEAM_NAMES[defender.team], what], 1.2, game.TEAM_COLORS[defender.team])
+	var msg_t: float = 1.2 if kind == "shooting" else dead_wait(FOUL_WAIT)   # the reaching foul's line lasts its pause
+	game.show_message("FOUL ON %s\n%s" % [game.TEAM_NAMES[defender.team], what], msg_t, game.TEAM_COLORS[defender.team])
 	if game.autoplay or game.humantest:
 		print("FOUL %s by %s at BLUE %d - RED %d" % [kind, game.TEAM_NAMES[defender.team], game.score[0], game.score[1]])
 	if kind == "shooting":
@@ -385,7 +392,7 @@ func call_foul(defender, fouled, kind: String) -> bool:
 	_clock_after_inbound = maxf(game.shot_clock, FOUL_MIN_CLOCK)
 	fouled.shooting = false
 	game.possession = fouled.team
-	dead_ball(fouled.team, FOUL_WAIT, spot)
+	dead_ball(fouled.team, dead_wait(FOUL_WAIT), spot)
 	return true
 
 # the fouled shooter's shot is in the air, or he is still in his shot (windup, rim move, pump fake)
@@ -570,14 +577,14 @@ func ft_result(made: bool) -> void:
 	_end_ft()
 	if made:
 		game.possession = 1 - team
-		dead_ball(1 - team, MADE_WAIT)   # like a made basket: the other team from its baseline
+		dead_ball(1 - team, dead_wait(MADE_WAIT))   # like a made basket: the other team from its baseline
 	else:
 		game.stat("ft_last_misses")      # live rebound: ball.gd already bounced it off the rim
 		if pending_switch and SWITCH_SKIPS_FT_REBOUND:
 			# the switch would wait a possession or more: the defense gets the ball now, after "SWITCH SIDES"
 			game.stat("switch_after_ft_miss")
 			game.possession = 1 - team
-			dead_ball(1 - team, MADE_WAIT)
+			dead_ball(1 - team, dead_wait(MADE_WAIT))
 
 func _end_ft() -> void:
 	ft_active = false
