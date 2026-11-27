@@ -941,7 +941,7 @@
     {
       "id": "lg_glitch", "crew": "NG", "phase": 12, "number": 25, "role": "trick handler", "name": "Glitch",
       "draft": true, "desc": "P12-14 legend (original; the approved look sample): trick handler, cyber: slim, tan skin, two-tone hair (black sides, a platinum top: ERA4_PLATINUM, kept in every recolor), right forearm and hand chrome from the elbow down with violet seams (kept in every recolor); near-black tank, lime trim, near-black shorts with violet stripes, low white socks, low-cut shoes. Carries the combo extra (P12-05b, approved)",
-      "extra": ["combo"], "top": "tank", "sleeve": null, "tight": null, "modern_shorts": true, "socks": "low", "low_cut": true,
+      "extra": ["combo", "combo_l"], "top": "tank", "sleeve": null, "tight": null, "modern_shorts": true, "socks": "low", "low_cut": true,
       "sock_pal": "ERA4_LIGHT", "shoe_pal": "ERA4_LIGHT", "shorts_len": 0.7, "sock_len": 0.1, "body": "lanky_guard", "body_tweak": {"leg": -0.04, "torso": -0.02},
       "skin": "tan", "hair": "two_tone", "hair_pal": "HAIR_BLACK", "hair2_pal": "ERA4_PLATINUM", "chrome_arm": "R", "top_pal": "ERA4_NIGHT",
       "trim_pal": "ERA4_LIME", "shorts_pal": "ERA4_NIGHT", "shorts_trim": "ERA4_VIOLET", "shoe_acc": "ERA4_VIOLET", "sole_pal": "ERA4_NIGHT",

@@ -1383,6 +1383,13 @@ EXTRA = [
     # hand switches, so it ends in the hand it started in (hand_end, unlike the crossover's: see k_combo)
     ("combo", keyed(k_combo, 12), 0.0, [30, 25, 25, 25, 25, 30, 25, 25, 25, 25, 30, 30],
      {"legs": [1, 3], "back": [4, 9], "floor": [2, 8], "switch": [3, 9], "hand_end": "R"}),
+    # P12-17 follow-up: the combo started and ended in the left hand (the game picks it when his ball is in the left
+    # drawn hand, as cross / cross_l). The pose mirrored in the body like cross_l, so the chrome forearm stays his
+    # right arm: the left (flesh) hand starts it between the legs, the chrome hand takes it behind the back, and
+    # the left hand catches it again. Same frames, timing and events; hand_end L
+    ("combo_l", {"kind": "mirror", "of": "combo", "n": 12, "loop": False}, 0.0,
+     [30, 25, 25, 25, 25, 30, 25, 25, 25, 25, 30, 30],
+     {"legs": [1, 3], "back": [4, 9], "floor": [2, 8], "switch": [3, 9], "hand_end": "L"}),
 ]
 EXTRA_ANIM = {a[0]: a for a in EXTRA}
 # Who carries an extra is data (P10-04b): EXTRA_CREWS names the crews.json crews whose sheets carry it (Chapter 1's
@@ -1393,13 +1400,15 @@ EXTRA_ANIM = {a[0]: a for a in EXTRA}
 # P11-14: Deep End lists "extra": ["stepback"] and Zigzag "extra": ["eurostep"] in crews.json (no crew carries them).
 # P11-10: Rooftop lists "extra": ["cradle"] (his signature dunk's own look; the game drew the windmill before).
 # P12-14: Glitch lists "extra": ["combo"] (P12-05b, approved; nobody else carries it).
-EXTRA_CREWS = {"hook": ("GR",), "fadeaway": (), "stepback": (), "eurostep": (), "cradle": (), "combo": ()}
+EXTRA_CREWS = {"hook": ("GR",), "fadeaway": (), "stepback": (), "eurostep": (), "cradle": (), "combo": (),
+               "combo_l": ()}
 # P11-14: an extra may start its own lane in the extra column space (EXTRA_LANE name -> start column) instead of after
 # the ones before it: the Present's two extras start at column 0, on their own sheet's first x page (lg_deep_end_x0,
 # lg_zigzag_x0), since no sheet carries one of them together with another extra (extra_columns() checks). The hook
 # and the fadeaway keep their columns (0..10, 11..23), so their pages and format.json rows stay as they were.
 EXTRA_LANE = {"stepback": 0, "eurostep": 0, "cradle": 0,     # P11-10: the cradle on lg_rooftop_x0, column 0 too
-              "combo": 0}                                    # P12-05b / P12-14: on lg_glitch_x0, column 0 too
+              "combo": 0,                                    # P12-05b / P12-14: on lg_glitch_x0, column 0 too
+              "combo_l": 12}                                 # P12-17 follow-up: next to it on lg_glitch_x0 (12..23)
 EXTRA_FORCE = set()
 PREVIEW_LIFT["hook"] = [0, 0, 0, 4, 12, 17, 18, 15, 7, 0, 0]
 PREVIEW_LIFT["fadeaway"] = [0, 0, 0, 0, 0, 3, 9, 15, 17, 15, 8, 0, 0]
@@ -1407,6 +1416,7 @@ PREVIEW_LIFT["stepback"] = [0, 0, 0, 0, 0, 0, 6, 12, 14, 12, 5, 0]        # the 
 PREVIEW_LIFT["eurostep"] = [0, 0, 0, 0, 0, 4, 12, 18, 20, 18, 10, 0, 0]   # the layup's lift
 PREVIEW_LIFT["cradle"] = [0, 0, 4, 12, 17, 20, 22, 23, 22, 21, 19, 0]     # the windmill's lift (same air time)
 PREVIEW_LIFT["combo"] = [0] * 12                                          # on the floor
+PREVIEW_LIFT["combo_l"] = [0] * 12
 HOOK_GIF = os.path.join(ROOT, "docs", "art", "hook_shot_v1.gif")
 HOOK_BODY = "ht_a1"      # the preview body: a wiry center (as the hook-shot legend), a drafted player in his colors
 
@@ -2246,6 +2256,9 @@ def write_format():
                                    "the crossover's time (the game drives it by the crossover's progress); legs and "
                                    "back [first, last], floor = the two bounces, switch = the two hand changes; "
                                    "hand_end R: it ends in the hand it started in (cross ends in the left).")
+        if "combo_l" in extra:     # P12-17 follow-up: only once a sheet carries it
+            fmt["_help_extra"] += (" combo_l: the combo started and ended in the left hand (mirrored in the body, "
+                                   "as cross_l), the same events; hand_end L.")
         fmt["extra_cols"] = xcols
         fmt["extra"] = extra
     with open(os.path.join(OUT_DIR, "format.json"), "w") as f:
