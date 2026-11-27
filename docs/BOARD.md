@@ -368,11 +368,14 @@ none, static glow). The lead writes the answers into the contract and VISION.
   | `era_next` as in the contract; `--twisttest` TWISTTEST OK; twist `none` and every older twist give byte-identical
   seeded `--autoplay` logs; 8+ `--autoplay --twist era_next` games all end; the banner and icon shown in a
   `--twistshots` shot | P12-03 merged
-- **P12-01** | Phase 11 save fixtures
+- **P12-01** | REVIEW | Phase 11 save fixtures
   | qa-balance-tester | `docs/qa/fixtures/` (new files only) and its README
   | `legends_v1_ch3_mid.json` (Chapters 1-2 closed, 3 Present beaten, a Present mentor), `legends_v1_ch3_done.json`
   (three chapters closed, 63 tokens), `trip_v2_present.json` (a drafted Present legend starting next to a boss),
   `settings_v2_72.cfg`. A check script like the Phase 11 one. P12-27 loads them into the Phase 12 build | none
+  | Result: written by d298d22 (`make_fixtures_v5.gd.txt`, story F); the settings file is `settings_v2_72_present.cfg`
+  (`settings_v2_72.cfg` is P9-01's). `check_fixtures_v5.gd.txt` CHECK OK in d298d22 and in the head (39a20bc);
+  `--trip-test --trip-resume` on the trip: TRIP END complete in both, no errors
 
 **Owner check 2 after wave 3**: the combo dribble preview (P12-05b), the cradle gif (P12-10a, done), the court and its
 name (P12-06), the music pick (P12-08).
