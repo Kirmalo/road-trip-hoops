@@ -17,7 +17,7 @@ extends RefCounted
 #
 # CHAPTERS rows (ordered, the era timeline):
 #   id, name             "grand" | "fathers" | "present" | "next"; the name on the timeline
-#   built                false = a locked pin only ("COMING LATER"): no legends, art or games (Phase 11: Chapter 4)
+#   built                false = a locked pin only ("COMING LATER"): no legends, art or games (Phase 12: every row is built)
 #   rules                the era rules' name (the twist's banner name; "" when not built)
 #   feel                 one short line for the timeline
 #   twist, look, music   twists.gd id, court_looks.gd id, res://assets/music/<music>.ogg ("" when not built)
@@ -166,11 +166,24 @@ const CHAPTERS := [
 		"challenge_avg": 72, "mate_drop": 14, "finale_stage_avg": 63,
 	},
 	{
-		"id": "next", "name": "THE NEW GENERATION", "built": false,
-		"rules": "", "feel": "Bold, neon and the fastest pace",
-		"twist": "", "look": "", "music": "", "fallback_music": "",
-		"gate": {"stars": 72, "tokens": 48},
-		"crew": {}, "legends": [], "finale": {}, "intro_scene": "", "finale_scenes": {},
+		# P12-11 (owner Q1 a, Q2 a, Q3 a, Q5 a, Q6 a; VISION "Phase 12 roster (after the cyber redo)" and "Phase 12
+		# Halfcourt's first name"): three cyber legends (Overclock, Glitch, Firewall), three natural (Long Shadow,
+		# Updraft, Halfcourt). Art, story, twist, court and music land in their own tasks (P12-05..P12-20); a missing
+		# file still plays the fallbacks (Sheets' chain, the silhouette, twist none, the gym, fallback_music)
+		"id": "next", "name": "THE NEW GENERATION", "built": true,
+		"rules": "FAST BREAK", "feel": "Chrome, neon and the fastest pace",
+		"twist": "era_next", "look": "era_next", "music": "legends_next", "fallback_music": "newyork",
+		"gate": {"stars": 72, "tokens": 48},   # Q6 a: 72 trip stars or 48 legend tokens, no Chapter 3 finale needed
+		"crew": {"name": "THE NEW GENERATION", "style": "balanced", "colors": ["ERA4_NIGHT", "ERA4_LIME"],
+			"ui_color": Color(0.43, 0.64, 0.13)},   # lime + violet on near-black (P12-05); the UI tone a darker lime
+		"legends": ["lg_overclock", "lg_long_shadow", "lg_glitch", "lg_updraft", "lg_halfcourt", "lg_firewall"],
+		"finale": {"target": 21, "legends": ["lg_overclock", "lg_updraft", "lg_halfcourt"],
+			"label": "NEW GENERATION FINALE"},   # owner R2: also the 4th era team in Quick Game
+		"intro_scene": "legends_next_intro",
+		"finale_scenes": {"before": "legends_next_finale_before", "after": "legends_next_finale_after"},
+		# Q3 a: a step harder than Chapter 3 (72 / 14 / 63). First guesses; P12-23 tunes them (Normal about 45%, Hard
+		# about 30-35%, the finale a bit harder than Chapter 3's)
+		"challenge_avg": 75, "mate_drop": 14, "finale_stage_avg": 66,
 	},
 ]
 
@@ -459,6 +472,108 @@ const LEGENDS := {
 		"bio": "Never takes the straight road to the rim when a crooked one is open. Leaves defenders guarding the spot where he used to be.",
 		"unlock_scene": "lg_zigzag_unlock",
 	},
+	# Chapter 4, the New Generation (Q1 a, docs/legends-plan.md 12.9; VISION "Phase 12 roster (after the cyber redo)",
+	# Halfcourt's first name Emrys; challenges Q3 a, perks Q5 a). Name check: docs/legends-namecheck.md "Chapter 4"
+	# (final table). THE CYBER RULE: Overclock (leg braces), Glitch (chrome forearm) and Firewall (visor) wear visible
+	# parts; a part is look only (in "look" and the story, no data key, no stat): the edge is the signature move, the
+	# same size as any legend's. Long Shadow, Updraft and Halfcourt are all natural: no chrome, no glow, no dyed hair.
+	# The look spread (the board's five real-player sets and the cyborg looks, kept apart in the namecheck doc): no
+	# very thin seven-footer (Long Shadow broad, locs), no tall flashy guard with neck tattoos and a low number
+	# (Overclock small, Glitch medium height, no tattoos), no leaper guard in a headband in 12 (Updraft a forward with a
+	# mohawk; the headband on Halfcourt, 39), no bulldozer forward (Firewall medium build, finishing 0), no twins; one
+	# hair part each (lime crop, locs, two-tone, mohawk, sandy curls + headband, buzz cut). Kits: ERA4_* (P12-05's look
+	# sample: near-black with lime or violet; never navy, never a silver trim). The look texts follow 12.9 and the
+	# sample; the owner's look check (P12-05) may still adjust them
+	"lg_overclock": {
+		"name": "OVERCLOCK", "full": "Tavian \"Overclock\" Brightwell", "first": "Tavian", "last": "Brightwell",
+		"chapter": "next", "archetype": "speedster point guard", "role": "speedster point guard", "tier": "legend",
+		"sheet": "lg_overclock", "portrait": "lg_overclock", "number": 17,
+		"shape": {"speed": 25, "shooting": 0, "finishing": 0, "defense": -10, "stamina": -15},
+		"spec": ["speed"], "steal_bias": 10, "block_bias": -10,
+		"signature": {"id": "top_gear", "text": "Top gear: his sprint is the fastest on the floor"},
+		"challenge": {"type": "race", "target": 11, "their_target": 10, "mates": ["lg_halfcourt", "lg_firewall"],
+			"line": "REACH 11 BEFORE OVERCLOCK'S CREW GETS 10"},
+		"perk": "fresh_legs",
+		"colors": ["ERA4_NIGHT", "ERA4_LIME"],
+		"look": "small speedster guard, dark brown skin, short lime-dyed crop, no tattoos; cyber: chrome struts down the outside of both shins from knee to ankle with a lime light line on each, his own legs showing between them (no metal feet, no mask or goggles); near-black tank with lime trim, modern mid-thigh near-black shorts with lime stripes, low socks, low-cut shoes",
+		"bio": "Hurt his knee as a kid and built himself a better brace, then a better one, then one for each leg. Now he is at the other end before the ball comes down.",
+		"unlock_scene": "lg_overclock_unlock",
+	},
+	"lg_long_shadow": {
+		"name": "LONG SHADOW", "full": "Calder \"Long Shadow\" Ostrander", "first": "Calder", "last": "Ostrander",
+		"chapter": "next", "archetype": "seven-foot rim runner", "role": "seven-foot rim runner", "tier": "legend",
+		"sheet": "lg_long_shadow", "portrait": "lg_long_shadow", "number": 56,
+		"shape": {"speed": 5, "shooting": -10, "finishing": 15, "defense": 10, "stamina": -20},
+		"spec": ["finishing"], "steal_bias": -6, "block_bias": 14,
+		"signature": {"id": "rim_run", "text": "Run the floor: a burst of speed right after his team gets the ball"},
+		"challenge": {"type": "comeback", "target": 15, "start_score": [0, 2], "mates": ["lg_overclock", "lg_firewall"],
+			"line": "START DOWN 0-2: COME BACK AND WIN (TO 15)"},
+		"perk": "head_start",
+		"colors": ["ERA4_NIGHT", "ERA4_LIME"],
+		"look": "very tall and broad center (not wiry), deep brown skin, locs tied up with a wooden bead tie, bare arms, plain cotton knee pads; natural: no chrome, no glow; near-black tank with lime trim, modern mid-thigh near-black shorts with lime stripes, low socks, low-cut shoes",
+		"bio": "Ran mountain trails before he ran the floor. By the time the defense turns around, he is already standing under the rim.",
+		"unlock_scene": "lg_long_shadow_unlock",
+	},
+	"lg_glitch": {
+		"name": "GLITCH", "full": "Cosimo \"Glitch\" Draycott", "first": "Cosimo", "last": "Draycott",
+		"chapter": "next", "archetype": "trick handler", "role": "trick handler", "tier": "legend",
+		"sheet": "lg_glitch", "portrait": "lg_glitch", "number": 25,
+		"shape": {"speed": 15, "shooting": 5, "finishing": -5, "defense": -5, "stamina": -10},
+		"spec": ["speed"], "steal_bias": 10, "block_bias": -8,
+		"signature": {"id": "hesitation", "text": "Hesitation: after his crossover his man stands still for a moment"},
+		"challenge": {"type": "stop", "target": 15, "count": 2, "mates": ["lg_long_shadow", "lg_updraft"],
+			"line": "BLOCK OR STEAL ON GLITCH 2 TIMES AND WIN (TO 15)"},
+		"perk": "pump_fake",
+		"colors": ["ERA4_NIGHT", "ERA4_LIME"],
+		"look": "slim trick handler of medium height, light olive skin, no tattoos, two-tone hair (black sides, a platinum top); cyber: his right forearm and hand chrome from the elbow down (forearm only, a hand of normal size, no star or emblem, no sunglasses), violet light seams at the wrist and knuckles; near-black tank with lime trim, near-black shorts with violet stripes, low socks, low-cut shoes",
+		"bio": "Built his own hand in the school workshop, one finger at a time. Now the ball seems to skip a frame every time he crosses over.",
+		"unlock_scene": "lg_glitch_unlock",
+	},
+	"lg_updraft": {
+		"name": "UPDRAFT", "full": "Silvan \"Updraft\" Ingleby", "first": "Silvan", "last": "Ingleby",
+		"chapter": "next", "archetype": "highest leaper", "role": "highest leaper", "tier": "legend",
+		"sheet": "lg_updraft", "portrait": "lg_updraft", "number": 57,
+		"shape": {"speed": 5, "shooting": -15, "finishing": 20, "defense": 5, "stamina": -15},
+		"spec": ["finishing"], "steal_bias": 0, "block_bias": 12,
+		"signature": {"id": "putback", "text": "Putback: a miss he reaches in the air near the rim goes straight back up"},
+		"challenge": {"type": "hold", "target": 11, "limit": 6, "mates": ["lg_glitch", "lg_halfcourt"],
+			"line": "HOLD UPDRAFT UNDER 6 POINTS AND WIN (TO 11)"},
+		"perk": "second_chance",
+		"colors": ["ERA4_NIGHT", "ERA4_VIOLET"],
+		"look": "wiry forward, tan skin, a natural black mohawk, no headband, taped fingers, bare knees; natural: no chrome, no glow; near-black tank with violet trim, modern mid-thigh near-black shorts with lime stripes, plain low socks, low-cut shoes",
+		"bio": "Learned to jump off the sand dunes by the sea, where every landing is soft. A miss near the rim is just a second try on the way up.",
+		"unlock_scene": "lg_updraft_unlock",
+	},
+	"lg_halfcourt": {
+		"name": "HALFCOURT", "full": "Emrys \"Halfcourt\" Tregarth", "first": "Emrys", "last": "Tregarth",
+		"chapter": "next", "archetype": "range shooter", "role": "range shooter", "tier": "legend",
+		"sheet": "lg_halfcourt", "portrait": "lg_halfcourt", "number": 39,
+		"shape": {"speed": 0, "shooting": 25, "finishing": -10, "defense": -5, "stamina": -10},
+		"spec": ["shooting"], "steal_bias": 2, "block_bias": -8,
+		"signature": {"id": "hot_hand", "text": "Hot hand: he catches fire after 2 makes in a row"},
+		"challenge": {"type": "fire", "target": 15, "cool_misses": 2, "mates": ["lg_long_shadow", "lg_updraft"],
+			"line": "HALFCOURT STARTS ON FIRE: WIN THE GAME TO 15"},
+		"perk": "early_shot",
+		"colors": ["ERA4_NIGHT", "ERA4_LIME"],
+		"look": "lean shooter, pale skin with freckles, sandy curls under a plain white cotton headband, clean-shaven, no ponytail, one cotton wristband; natural: no chrome, no glow; near-black tank with lime trim, modern mid-thigh near-black shorts with lime stripes, low socks, low-cut shoes",
+		"bio": "Grew up on old film of the Grandfathers and shoots from wherever he happens to be standing. Let him hit two in a row and nobody can cool him down.",
+		"unlock_scene": "lg_halfcourt_unlock",
+	},
+	"lg_firewall": {
+		"name": "FIREWALL", "full": "Kasimir \"Firewall\" Oyelaran", "first": "Kasimir", "last": "Oyelaran",
+		"chapter": "next", "archetype": "switching shot blocker", "role": "switching shot blocker", "tier": "legend",
+		"sheet": "lg_firewall", "portrait": "lg_firewall", "number": 51,
+		"shape": {"speed": 5, "shooting": -10, "finishing": 0, "defense": 20, "stamina": -15},
+		"spec": ["defense"], "steal_bias": 10, "block_bias": 16,
+		"signature": {"id": "swat", "text": "Swat: his blocks on jump shots work more often and reach further"},
+		"challenge": {"type": "score", "target": 11, "min": 5, "mates": ["lg_overclock", "lg_glitch"],
+			"line": "SCORE 5 POINTS YOURSELF ON FIREWALL AND WIN (TO 11)"},
+		"perk": "closeout",
+		"colors": ["ERA4_NIGHT", "ERA4_LIME"],
+		"look": "strong forward of medium build (not a bulldozer), brown skin, buzz cut (not bald); cyber: a thin flat lime visor across the eyes in a chrome frame that ends at the temples (front only, no slats, nothing round the back of the head); near-black tank with lime trim, near-black shorts with violet stripes, low socks, low-cut shoes",
+		"bio": "Wore a training visor that showed the ball's flight and simply never took it off. Reads the release before the shooter knows he is shooting.",
+		"unlock_scene": "lg_firewall_unlock",
+	},
 }
 
 # ---------------------------------------------------------------------------------------------------- perks
@@ -491,6 +606,15 @@ const PERKS := {
 	"contest": {"key": "guard_contest_bonus", "value": 0.005, "text": "The man he guards shoots 0.5% worse"},
 	"board_work": {"key": "rebound_reach_mult", "value": 1.15, "text": "Reaches rebounds 15% further"},
 	"side_step": {"key": "layup_block_mult", "value": 0.80, "text": "Layups 20% harder to block"},
+	# Chapter 4 (Q5 a, the board's contract; data only here, P12-22 hooks them, P12-26 measures them). Every key is
+	# new: none of the 18 earlier perks' and no twist key (break_speed_mult is not FAST BREAK's break_mult). Defaults
+	# 1.0 for _mult, 0.0 for _bonus; sprint_drain_mult is under 1.0 (his sprint tires him less)
+	"fresh_legs": {"key": "sprint_drain_mult", "value": 0.90, "text": "Sprinting tires him 10% less"},
+	"head_start": {"key": "break_speed_mult", "value": 1.04, "text": "4% faster right after his team gets the ball"},
+	"pump_fake": {"key": "fake_bite_mult", "value": 1.15, "text": "His pump fakes get the defender up 15% more often"},
+	"second_chance": {"key": "putback_bonus", "value": 0.025, "text": "Putbacks after an offensive rebound +2.5%"},
+	"early_shot": {"key": "early_shot_bonus", "value": 0.010, "text": "Shots soon after getting the ball +1%"},
+	"closeout": {"key": "jumper_block_mult", "value": 1.10, "text": "His blocks on jump shots work 10% more often"},
 }
 
 # ---------------------------------------------------------------------------------------------------- name check
@@ -500,7 +624,8 @@ const PERKS := {
 #     whole words of his nickname, first and last name too, so "Air Oakhurst" or "Magic" would fail)
 #   - "first last" equals a real full name, his last name equals a listed real surname, or is one letter away from
 #     one (5 letters or more)
-#   - his bio, look, signature or challenge text holds a real full name or a nickname of 2 words or more
+#   - his bio, look, signature or challenge text holds a real full name or a nickname of 2 words or more, or
+#     (P12-11) one of the CYBER_WORDS
 const REAL_NICKNAMES := [
 	"air", "air jordan", "his airness", "magic", "bird", "larry legend", "hick from french lick", "dr j", "doctor j",
 	"doctor", "big o", "iceman", "ice", "pistol", "pistol pete", "wilt the stilt", "stilt", "big dipper", "dipper",
@@ -542,7 +667,31 @@ const REAL_NICKNAMES := [
 	"night night", "ice in my veins", "too small", "let him cook", "trust the process", "board man gets paid",
 	"rock the baby", "light the beam", "fear the deer", "we the north", "strength in numbers", "grit and grind",
 	"heat culture", "thunder up", "dub nation", "bucks in six",
+	# P12-02 / P12-11: the young stars of 2024-2026 and the dunk contest
+	"j dub", "jdub", "hali", "podz", "bub", "hachi", "wonder boy", "maple jordan", "hillbilly kobe", "airplane mode",
+	"splash mountain", "thompson twins", "bronny", "honey dip", "eastbay", "eastbay funk dunk",
+	# P12-11: the finger-wag block line (docs/legends-namecheck.md "Cautions": never in Firewall's texts)
+	"not in my house",
+	# P12-02 / P12-11: shoe and product lines whose names could be a nickname ("all star" and "why not" are 2 words, so
+	# no text may hold them either)
+	"hyper", "hyperdunk", "hyperdrive", "hyperfuse", "hyperrev", "zoom", "zoom freak", "freak", "air max",
+	"foamposite", "uptempo", "air force", "air force one", "kyrie", "why not", "gt cut", "curry flow", "hovr",
+	"way of wade", "shaqnosis", "kamikaze", "the pump", "chuck taylor", "all star", "boost", "crazy explosive",
+	# P12-02 / P12-11: famous fictional cyborgs and robots (film, TV, games, comics); the six cyber words are also
+	# checked one by one in every text (CYBER_WORDS)
+	"winter soldier", "bucky", "silverhand", "johnny silverhand", "edward elric", "elric", "fullmetal",
+	"full metal alchemist", "jax briggs", "cyclops", "geordi", "la forge", "lobot", "robocop", "robo cop", "robo",
+	"terminator", "t 800", "t 1000", "cyborg", "bionic", "bionic man", "bionic woman", "six million dollar man",
+	"android", "iron", "iron man", "ironman", "war machine", "ultron", "inspector gadget", "gadget", "motoko",
+	"kusanagi", "ghost in the shell", "adam jensen", "deus ex", "genji", "raiden", "sektor", "cyrax", "deathlok",
+	"cable", "nebula", "seven of nine", "borg", "baymax", "wall e", "astro boy", "mega man", "megaman", "alita",
+	"octane", "doomfist", "junkrat", "kay o", "master chief", "tron", "daft punk", "vanellope", "optimus prime",
+	"megatron", "starscream",
 ]
+# P12-11 (the namecheck doc's proposal, the board's cyber rule): these words never appear in a legend's name or in any
+# of his texts (bio, look, signature, challenge line, archetype), checked one word at a time (REAL_NICKNAMES checks
+# 1-word entries only against the names)
+const CYBER_WORDS := ["cyborg", "bionic", "robo", "terminator", "android", "iron"]
 const REAL_NAMES := [
 	"michael jordan", "magic johnson", "earvin johnson", "larry bird", "kareem abdul jabbar", "wilt chamberlain",
 	"bill russell", "oscar robertson", "jerry west", "elgin baylor", "julius erving", "george mikan", "bob cousy",
@@ -620,6 +769,42 @@ const REAL_NAMES := [
 	"kamilla cardoso", "courtney vandersloot", "allie quigley", "dewanna bonner", "satou sabally", "natasha cloud",
 	"dearica hamby", "seimone augustus", "lisa leslie", "sheryl swoopes", "cynthia cooper", "tamika catchings",
 	"lauren jackson", "becky hammon", "juju watkins",
+	# P12-02 / P12-11: the 2024 draft class
+	"reed sheppard", "ron holland", "donovan clingan", "rob dillingham", "zach edey", "cody williams", "matas buzelis",
+	"nikola topic", "devin carter", "carlton carrington", "kelel ware", "jared mccain", "dalton knecht",
+	"tristan da silva", "jakobe walter", "yves missi", "kyshawn george", "bronny james", "jaylen wells",
+	"ajay mitchell", "isaiah collier", "tidjane salaun", "kyle filipowski",
+	# 2025
+	"vj edgecombe", "kon knueppel", "ace bailey", "tre johnson", "jeremiah fears", "egor demin",
+	"collin murray boyles", "khaman maluach", "cedric coward", "noa essengue", "derik queen", "carter bryant",
+	"thomas sorber", "yang hansen", "joan beringer", "walter clayton", "nolan traore", "kasparas jakucionis",
+	"will riley", "drake powell", "asa newell", "jase richardson", "ben saraf", "danny wolf", "hugo gonzalez",
+	"liam mcneeley", "rasheer fleming", "noah penda",
+	# 2026, and the WNBA's
+	"aj dybantsa", "darryn peterson", "cameron boozer", "caleb wilson", "nate ament", "mikel brown",
+	"kingston flemings", "jayden quaintance", "koa peat", "darius acuff", "chris cenac", "brayden burries",
+	"keaton wagler", "hannes steinbach", "karim lopez", "henri veesaar", "aday mara", "zuby ejiofor", "azzi fudd",
+	"lauren betts", "olivia miles", "flaujae johnson", "kiki rice",
+	# today's young stars and role players
+	"payton pritchard", "dyson daniels", "jaden ivey", "bennedict mathurin", "keegan murray", "walker kessler",
+	"jaime jaquez", "trey murphy", "deni avdija", "keyonte george", "brandin podziemski", "trayce jackson davis",
+	"gradey dick", "bilal coulibaly", "cason wallace", "jarace walker", "anthony black", "cam whitmore",
+	"shaedon sharpe", "jeremy sochan", "kevin huerter", "duncan robinson", "sam hauser", "grayson allen",
+	"nic claxton", "mitchell robinson", "daniel gafford", "jordan clarkson", "bones hyland", "andrew wiggins",
+	"kate martin", "rickea jackson", "dominique malonga", "sonia citron", "kiki iriafen", "aneesah morrow",
+	"hailey van lith",
+	# the dunk contest
+	"mac mcclung", "derrick jones", "obi toppin", "hamidou diallo", "jaxson hayes", "jericho sims", "gerald green",
+	"jeremy evans", "spud webb", "cedric ceballos", "isaiah rider",
+	# Japan
+	"rui hachimura", "yuta watanabe", "yuki kawamura", "yudai baba", "yuta tabuse", "rui machida", "yuki togashi",
+	# Europe
+	"moritz wagner", "isaiah hartenstein", "daniel theis", "goga bitadze", "sasha vezenkov", "vasilije micic",
+	"dario saric", "sergio llull", "facundo campazzo", "edy tavares", "mike james", "nikola mirotic",
+	"kostas sloukas", "mathias lessort", "shane larkin", "will clyburn", "kevin punter", "tornike shengelia",
+	"nigel hayes davis", "nadir hifi", "sylvain francisco", "mario hezonja", "jan vesely", "nick calathes",
+	# the close matches of the Chapter 4 names
+	"leandro barbosa", "joe ingles", "tom ingelsby", "joe strawder",
 ]
 
 # The test's own check that the name check works: these must fail it.
@@ -642,6 +827,16 @@ const NAMECHECK_PROBES := [
 	{"first": "Theo", "last": "Lindqvist", "name": "SWISS KNIFE"},
 	{"first": "Sigurd", "last": "Halvorsen", "name": "STIFLE TOWER"},
 	{"first": "Calloway", "last": "Whitlock", "name": "DEEP END", "bio": "Hits the shot, then puts the crowd to bed: night night."},
+	# P12-02 / P12-11: a shoe line, a young star's nickname, a real surname, a fictional cyborg, a cyborg's look, a TV
+	# cyborg and a block line in a text, and one cyber word alone in a text (CYBER_WORDS)
+	{"first": "Tavian", "last": "Brightwell", "name": "HYPERDRIVE"},
+	{"first": "Silvan", "last": "Ingleby", "name": "AIRPLANE MODE"},
+	{"first": "Silvan", "last": "Ingles", "name": "UPDRAFT"},
+	{"first": "Kasimir", "last": "Oyelaran", "name": "CYCLOPS"},
+	{"first": "Cosimo", "last": "Draycott", "name": "GLITCH", "look": "a whole silver arm like the winter soldier"},
+	{"first": "Calder", "last": "Ostrander", "name": "LONG SHADOW", "bio": "Runs like the six million dollar man."},
+	{"first": "Emrys", "last": "Tregarth", "name": "HALFCOURT", "bio": "Swats it away and wags a finger: not in my house."},
+	{"first": "Kasimir", "last": "Oyelaran", "name": "FIREWALL", "bio": "Reads every shot through his bionic visor."},
 ]
 
 static var notes: Array = []        # self_test(): things that fall back for now (art or story not merged yet)
@@ -980,6 +1175,9 @@ static func name_hit(p: Dictionary) -> String:
 			var n2: String = normalize(str(rn))
 			if n2.contains(" ") and _has_phrase(tn, n2):
 				return "a text holds the real nickname '%s'" % n2
+		for w in CYBER_WORDS:
+			if _has_phrase(tn, str(w)):
+				return "a text holds the word '%s' (the cyber rule)" % w
 	return ""
 
 # "" when every legend passes the name check (and the probes fail it, so the check works), else why not

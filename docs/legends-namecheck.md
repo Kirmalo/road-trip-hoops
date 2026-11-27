@@ -1,4 +1,4 @@
-# Legends name check (P9-07; Chapter 2: P10-11; Chapter 3: P11-02, final in P11-11; Chapter 4: P12-02)
+# Legends name check (P9-07; Chapter 2: P10-11; Chapter 3: P11-02, final in P11-11; Chapter 4: P12-02, final in P12-11)
 
 The hard rule (`docs/legends-plan.md` part 1): every legend is our own character. No legend's full name, nickname
 or "first last" may match a real NBA or ABA player or a famous real basketball nickname, closely or exactly. This
@@ -210,6 +210,46 @@ With the board's proposals plus three more changes this check asks for, the six 
 Achterberg, Bodie "Skylight" **Valcourt**, **Lucien** "Zigzag" Moreau. The owner may keep Castellano, Ozren or the thin
 mustache: each is a judgment call, not a name match (the reasons are in the table above).
 
+## Chapter 4, the New Generation (P12-11): final, passes
+
+The six as the owner approved them (VISION "Phase 12 roster (after the cyber redo)" and "Phase 12 Halfcourt's first
+name": **Emrys**, not Ezra), in `scripts/legends_data.gd` and checked by `--legendtest` with the lists below (P12-11
+copied every P12-02 addition into `REAL_NICKNAMES` / `REAL_NAMES`, added "not in my house" to the slogans and the
+one-word cyber check `CYBER_WORDS`). Checked 2026-11-27 by gameplay-programmer A: LEGENDTEST OK, all 24 legends pass,
+every probe fails (24 probes, 8 new).
+
+| Legend (id) | Full name | # | Cyber / natural | Exact match | Close matches looked at | Verdict |
+|---|---|---|---|---|---|---|
+| `lg_overclock` | Tavian "Overclock" Brightwell | 17 | cyber: leg braces | none | Damian, Davion, Javin 2 letters away (first names only); no surname within 2 of Brightwell | **pass** |
+| `lg_long_shadow` | Calder "Long Shadow" Ostrander | 56 | natural | none | Joe Strawder 2 letters from Ostrander (passes the 1-letter rule, listed); "Long" a real surname as one word of a plain phrase; never "THE LONG SHADOW" or "SHADOW" alone | **pass** |
+| `lg_glitch` | Cosimo "Glitch" Draycott | 25 | cyber: chrome forearm | none | nothing within 2 letters of Cosimo or Draycott | **pass** |
+| `lg_updraft` | Silvan "Updraft" Ingleby | 57 | natural | none | Silvan 1 letter from the surname Silva (a first name against a surname: a caution, not the rule); Joe Ingles and Tom Ingelsby 2 from Ingleby (listed; a probe "Ingles" fails) | **pass** |
+| `lg_halfcourt` | **Emrys** "Halfcourt" Tregarth (was Ezra) | 39 | natural | none | Emrys: nothing within 2 letters of any real or game first name (Ezra was 2 from Earl, the Hometown boss); no surname within 2 of Tregarth; always one word | **pass** |
+| `lg_firewall` | Kasimir "Firewall" Oyelaran | 51 | cyber: visor | none | nothing within 2 letters of Kasimir or Oyelaran; "Firewall" a film title, not a character (a caution) | **pass** |
+
+The looks in the data (12.9 and P12-05's look sample; the owner's look check may still change them) keep the board's
+five real-player sets and the famous cyborg looks apart, as the first check below says: Overclock small, no tattoos,
+a lime crop, chrome struts on his own shins (no metal feet, no mask or goggles); Long Shadow very tall and **broad**,
+locs with a wooden bead tie, cotton knee pads; Glitch **medium height**, no tattoos, two-tone hair (black sides, a
+platinum top), the right forearm and hand only (a hand of normal size, no star or emblem, no sunglasses), violet
+seams; Updraft a **forward**, a natural black mohawk, **no headband**, taped fingers; Halfcourt freckles, sandy curls
+under a white cotton headband, **clean-shaven**, no ponytail; Firewall a **medium-build** forward (finishing 0), a buzz
+cut (not bald), a thin flat lime visor in a chrome frame, front only, no slats. The natural three: no chrome, no glow,
+no dyed hair. Kits: `ERA4_*` near-black with lime or violet trim (never navy, never a silver trim). Numbers 17 / 56 /
+25 / 57 / 39 / 51: none in `NUMBER_AVOID`, none worn by another legend; nothing new goes into `NUMBER_AVOID`. Move
+names: top gear, run the floor, hesitation, putback, hot hand, swat. Bios, looks, signature texts, challenge lines
+and archetypes hold no listed name, nickname, celebration, slogan, shoe line or fictional cyborg, and none of the six
+cyber words (the data test).
+
+**The data test, P12-11 additions.** `CYBER_WORDS` (cyborg, bionic, robo, terminator, android, iron): `name_hit()`
+now refuses each of them as a whole word in every text of a legend (bio, look, signature, challenge line, archetype);
+in a name they were already refused through `REAL_NICKNAMES`. Probes added (each must fail, and does): Tavian
+Brightwell "HYPERDRIVE" (a shoe line), Silvan Ingleby "AIRPLANE MODE" (a real nickname), Silvan Ingles "UPDRAFT" (a
+real surname), Kasimir Oyelaran "CYCLOPS" (a fictional cyborg), Cosimo Draycott "GLITCH" with a look holding "winter
+soldier", Calder Ostrander "LONG SHADOW" with a bio holding "six million dollar man", Emrys Tregarth "HALFCOURT" with
+a bio holding "not in my house", and Kasimir Oyelaran "FIREWALL" with a bio holding "bionic" (only the new one-word
+check catches it).
+
 ## Chapter 4, the New Generation (P12-02): first check
 
 Checked 2026-11-27 by gameplay-programmer A: the six of `docs/legends-plan.md` 12.9 as the owner approved them (VISION
@@ -386,8 +426,9 @@ owner keeps **Ezra** or picks **Leander** (12.9's backup) or **Emrys** (cleanest
    spaces only, and a leading "the" dropped. A legend fails when his nickname is a listed nickname, his "first
    nickname last" holds a listed nickname as whole words, his "first last" is a listed name, his last name is a
    listed surname or 1 letter from one (5 letters or more), or a text of his (bio, look, signature, challenge line,
-   archetype) holds a listed full name or a nickname of 2 words or more. Probes that must fail (e.g. "AIR", "Bob
-   Pettit", "Malon", "THE SKY HOOK", "MAGIC TOUCH") prove the check still bites.
+   archetype) holds a listed full name or a nickname of 2 words or more, or (P12-11) one of the six cyber words
+   (`CYBER_WORDS`). Probes that must fail (e.g. "AIR", "Bob Pettit", "Malon", "THE SKY HOOK", "MAGIC TOUCH") prove
+   the check still bites.
 
 ## The list (copied into `scripts/legends_data.gd`)
 
@@ -444,12 +485,12 @@ silver arm with aviators; a metal right arm with a blond braid; two metal arms; 
 wide gold slatted VISOR clipped at the temples; a chrome band round the back of a bald head; a gold helmet visor; full
 metal lower legs with a mask and goggles; a chrome-plated police suit; a red glowing eye on a metal skull; glowing
 circuit lines on a dark suit. Words that never appear in a Chapter 4 name or text: cyborg, bionic, robo, terminator,
-android, iron.
+android, iron (P12-11: the data test checks them one word at a time in every text, `CYBER_WORDS`).
 
 ### Celebrations and slogans (P11-02; words that must never appear, copied into `REAL_NICKNAMES` too)
 night night, ice in my veins, too small, let him cook, trust the process, board man gets paid, rock the baby, light
 the beam, fear the deer, we the north, strength in numbers, grit and grind, heat culture, thunder up, dub nation,
-bucks in six
+bucks in six; P12-11: not in my house (a famous finger-wag block line)
 
 They are all two words or more on purpose: the data test looks for nicknames of 2 words or more inside every bio,
 look, signature, challenge line and archetype, so a listed slogan in a text fails `--legendtest`. One-word ones

@@ -211,6 +211,15 @@ Everything in "Tasks by wave" not marked DONE.
   4.0, 170), Fever Stadium (MintoDog, CC0, 165), Ramming Speed (congusbongus, CC-BY 4.0, ~167), Neon Hyperdrive
   (adiutorium, CC0, ~140). Art-audio's pick: Ramming Speed; Hammer if the owner wants no 4th congusbongus track.
   For the owner to pick (P12-20)
+- **P12-11** Chapter 4 data and the name check in the data (gameplay-programmer A): the `next` row built (FAST BREAK,
+  `era_next` twist / look, music `legends_next`, fallback `newyork`, gate 72 / 48, crew THE NEW GENERATION `balanced`
+  `ERA4_NIGHT` / `ERA4_LIME`, finale Overclock, Updraft, Halfcourt, 75 / 14 / 66); the six legends (Emrys Halfcourt),
+  the six perks as data, P12-02's list additions in `REAL_NICKNAMES` / `REAL_NAMES`, "not in my house", the one-word
+  `CYBER_WORDS` check in `name_hit()`, 8 new probes; the namecheck doc's Chapter 4 table final. **Needs two test-only
+  fixes outside the row** (in the report, verified in a scratch copy): `legends.gd` `_check_stand_in_chapters()` and
+  `era_teams.gd` `self_test()` still assumed Chapter 4 unbuilt; with them `--legendtest` OK (24 legends, 84 tokens),
+  without them 2 fails. `--legends-test --stars 24 --target 3 --difficulty hard` LEGENDS END 84/84; `--titletest` DONE;
+  `--backtest` OK (`--titletest --legends-unlock-all --stars 72` fails until P12-06's `era_next` court row lands)
 
 ## Done
 - **P12-09** Midrange's skin brown on his sheet and card (before the phase; ANIM OK, LEGENDTEST OK)
@@ -284,7 +293,7 @@ none, static glow). The lead writes the answers into the contract and VISION.
   -20 LUFS. The owner picks one | none
 
 ### Wave 3
-- **P12-11** | Chapter 4 data and the name check in the data
+- **P12-11** | REVIEW | Chapter 4 data and the name check in the data
   | gameplay-programmer A | `scripts/legends_data.gd`, `docs/legends-namecheck.md`
   | The `next` row built as in the contract (music `legends_next`, fallback `newyork` until P12-20), the six legends as
   owner check 1 left them (ids, names, numbers, shapes, challenges, signatures, looks with the cyber parts, bios), the
