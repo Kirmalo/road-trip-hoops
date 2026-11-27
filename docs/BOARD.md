@@ -271,13 +271,17 @@ the era colors (P12-05's sample), the numbers, and 12.9's picks R1-R4 (the final
 none, static glow). The lead writes the answers into the contract and VISION.
 
 ### Wave 2 (after owner check 1)
-- **P12-05b** | Glitch's combo dribble: the preview
+- **P12-05b** | REVIEW | Glitch's combo dribble: the preview
   | art-audio-integrator B | `tools/art/make_players_v2.py` (a `combo` EXTRA row, carried by no sheet yet),
   `docs/art/combo_v1.gif`
   | Between the legs into behind the back next to today's crossover, 5 directions, on a stand-in body **with the chrome
   forearm** (P12-05's part), the violet seams visible through the move; the crossover's timing so the sim is
   unchanged; 0 hand/ball check problems; `format.json` and every sheet unchanged. For owner check 2 | P12-05 merged,
   owner check 1
+  | Result: `combo` EXTRA row (12 frames, 320 ms like `cross`, lane 0, no sheet carries it), gif on the look
+  sample's Glitch (5 directions + W mirrored, crossover row under it, a 4x band SE / E / W); 0 check problems;
+  format.json unchanged. Note for P12-14 / P12-17: two hand switches, so it ends in the hand it started in
+  (`hand_end` "R"), unlike `cross` ("L"): the game must keep the ball hand on his combo, or say otherwise
 - **P12-06** | The New Generation court: a made-up arena of the future
   | art-audio-integrator C | `tools/art/make_courts.py` (`--era next`), `assets/courts/era_next_*`,
   `scripts/court_looks.gd` (the `era_next` row)

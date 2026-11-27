@@ -42,6 +42,9 @@ Usage:  python3 tools/art/make_players_v2.py [--only ID[,ID...] | --all] [--jobs
         [--extra-strip NAME ID DIR]  (a still strip of that extra in 5 directions to DIR)
                                      P11-05b: NAME stepback (docs/art/stepback_v1.gif) or eurostep
                                      (docs/art/eurostep_v1.gif); P11-14: lg_deep_end / lg_zigzag carry them
+                                     P12-05b: NAME combo (docs/art/combo_v1.gif, Glitch's combo dribble on
+                                     the look sample's body lg_sample_glitch; no sheet carries it yet);
+                                     --extra-strip ... --strip-vs adds the move it stands in for (the crossover)
         [--legends-strip [fathers|present]]  (P9-09: only docs/art/legends_grand.png, the six lg_ sheets with the hook, from
                                      the written files; the sheets themselves: --only <the LEGENDS ids>. P10-14:
                                      fathers = docs/art/legends_fathers.png, Midrange with the fadeaway;
@@ -1307,6 +1310,57 @@ def k_cradle(D):
     return keys
 
 
+def k_combo(D):
+    """Combo dribble (P12-05b, Q4 a: Glitch's hesitation, drawn on his crossovers): between the legs into behind the
+    back, right hand to left and back to the right, in today's crossover's time (the game drives it by the crossover's
+    progress, CROSS_TIME). 0 the right-hand dribble up top (today's crossover start), the left foot stepping out;
+    1 the lunge (left foot forward, right foot back, low hips), the right hand pushes the ball down between the
+    feet; 2 the bounce under the hips, between the legs (floor); 3 the left hand takes it behind the front leg
+    (switch); 4 the left hand pulls it back to the left hip, the hips turning (left shoulder back); 5 the wrap: the
+    ball in the left palm behind the back; 6 flung across behind the back; 7 coming round the right hip; 8 the bounce
+    out on the right side (floor); 9 the right hand takes it again (switch); 10 the hips square up, the dribble high;
+    11 back in today's crossover's start pose, so the next dribble follows on. The chrome forearm (the right) starts
+    and ends the move."""
+    hw, sw, L = D["hw"], D["sw"], D["L"]
+    xr = -(sw + 4.2)
+    xl = sw + 3.6
+    under_r = ("hR", 0.0, -(BR + 1.5), 0.6)
+    under_l = ("hL", 0.0, -(BR + 1.5), 0.6)
+    lunge = {"fL": F(hw + 1.4, 0.40 * L, turn=0.25), "fR": F(-hw - 1.6, -0.34 * L, turn=0.35)}
+    guardL = ("chest", 5.5, -1.0, 7.0)
+    return [
+        (0.0, K(fL=F(hw + 2.0, 1.6 + 0.10 * L, ANK + 1.2, -0.5, 0.3), fR=F(-hw - 3.0, -2.4, turn=0.35), h=0.80,
+                   lean=24, twist=-14, head_up=22, head_yaw=10, root=(-1.0, 0.2), hR=("w", xr, 18.6, 5.0),
+                   hL=guardL, ball=under_r, pR=(-1, -0.4, -0.6), pL=(1, -0.7, -0.3))),
+        (1.0, K(lunge, h=0.66, lean=26, twist=-12, head_up=26, head_yaw=8, root=(-0.6, 0.4),
+                   hR=("w", -(sw + 2.6), 12.6, 3.0), ball=("w", -3.6, 8.6, 2.0), hL=("w", xl + 1.0, 15.0, 4.0))),
+        (2.0, K(h=0.62, lean=28, twist=-6, head_up=28, head_yaw=4, root=(0.0, 0.4),
+                   hR=("w", -(sw + 2.0), 11.6, 0.4), ball=("w", 0.0, BR + 0.4, 0.6), hL=("w", xl + 0.6, 11.4, 1.6),
+                   pL=(1, -0.6, -0.3))),
+        (3.0, K(h=0.62, lean=28, twist=2, head_up=28, head_yaw=-2, root=(0.6, 0.2),
+                   hL=("w", xl + 0.4, 12.6, 0.6), ball=under_l, hR=("chest", -6.0, -1.0, 6.0))),
+        (4.0, K(h=0.64, lean=26, twist=10, head_up=26, head_yaw=-10, root=(0.8, -0.2),
+                   hL=("w", sw + 2.6, 13.6, -2.6), ball=("hL", -0.6, -(BR + 1.0), -0.6), pL=(1, -0.2, -0.8))),
+        (5.0, K(h=0.66, lean=24, twist=16, head_up=24, head_yaw=-16, root=(0.6, -0.4),
+                   hL=("w", sw - 0.4, 13.6, -6.2), ball=("hL", -(BR + 0.4), -0.6, -0.6), pL=(1, 0.2, -0.9))),
+        (6.0, K(h=0.68, lean=22, twist=16, head_up=24, head_yaw=-16, root=(0.2, -0.4),
+                   hL=("w", -0.6, 13.8, -7.0), ball=("w", -4.6, 12.2, -6.4), hR=("w", -(sw + 3.0), 15.0, 2.0),
+                   pR=(-1, -0.6, -0.3))),
+        (7.0, K(h=0.70, lean=22, twist=8, head_up=24, head_yaw=-8, root=(-0.4, -0.2),
+                   hL=("w", -0.4, 14.2, -5.6), ball=("w", -(sw + 4.4), 9.0, -2.6), hR=("w", -(sw + 4.6), 13.0, 3.2))),
+        (8.0, K(h=0.72, lean=22, twist=-2, head_up=24, head_yaw=2, root=(-0.8, 0.0),
+                   ball=("w", -(sw + 4.8), BR + 0.4, 2.2), hR=("w", -(sw + 4.4), 13.4, 4.2), hL=("chest", 5.5, -2.0, 5.0),
+                   pL=(1, -0.7, -0.3))),
+        (9.0, K(fL=F(hw + 2.0, 0.30 * L, turn=0.3), fR=F(-hw - 2.6, -0.24 * L, turn=0.35), h=0.74, lean=24,
+                   twist=-8, head_up=22, head_yaw=6, root=(-1.0, 0.1), hR=("w", xr, 14.4, 4.8), ball=under_r,
+                   pR=(-1, -0.4, -0.6))),
+        (10.0, K(fL=F(hw + 2.4, 2.0 + 0.14 * L, turn=0.3), fR=F(-hw - 3.0, -1.6 - 0.10 * L, turn=0.35), h=0.78,
+                    twist=-12, head_yaw=10, root=(-1.2, 0.2), hR=("w", xr, 17.4, 5.0), hL=guardL)),
+        (11.0, K(fL=F(hw + 3.0, 4.0, turn=0.35), fR=F(-hw - 3.4, -3.4, turn=0.35), h=0.80, lean=24, twist=-14,
+                    head_up=22, head_yaw=10, root=(-1.2, 0.2), hR=("w", xr, 18.6, 5.0), ball=under_r)),
+    ]
+
+
 # name -> definition, fps, ms, events (as ANIMS). Each extra keeps its start in the extra column space (EXTRA order)
 # on every sheet, so a new one goes at the end: the sheets carrying the earlier ones keep their columns.
 EXTRA = [
@@ -1324,6 +1378,10 @@ EXTRA = [
       "euro_path": [[0, 0.0], [2, -EURO_FT], [4, round(EURO_FT * 0.6, 2)]], "hand": "R"}),
     ("cradle", keyed(k_cradle, 12), 0.0, [80, 90, 60, 60, 70, 80, 140, 90, 60, 60, 200, 300],
      {"takeoff": 2, "cradle": [4, 5], "hang": 6, "release": 9, "rim": 10, "air": [2, 10], "land": 11, "hand": "R"}),
+    # P12-05b: drawn in today's crossover's 320 ms (the game drives it by the crossover's progress, as "cross"); two
+    # hand switches, so it ends in the hand it started in (hand_end, unlike the crossover's: see k_combo)
+    ("combo", keyed(k_combo, 12), 0.0, [30, 25, 25, 25, 25, 30, 25, 25, 25, 25, 30, 30],
+     {"legs": [1, 3], "back": [4, 9], "floor": [2, 8], "switch": [3, 9], "hand_end": "R"}),
 ]
 EXTRA_ANIM = {a[0]: a for a in EXTRA}
 # Who carries an extra is data (P10-04b): EXTRA_CREWS names the crews.json crews whose sheets carry it (Chapter 1's
@@ -1333,18 +1391,20 @@ EXTRA_ANIM = {a[0]: a for a in EXTRA}
 # --extra-sheets id,... makes those sheets carry every extra this run; --extra-sheets name:id,... only that extra.
 # P11-14: Deep End lists "extra": ["stepback"] and Zigzag "extra": ["eurostep"] in crews.json (no crew carries them).
 # P11-10: Rooftop lists "extra": ["cradle"] (his signature dunk's own look; the game drew the windmill before).
-EXTRA_CREWS = {"hook": ("GR",), "fadeaway": (), "stepback": (), "eurostep": (), "cradle": ()}
+EXTRA_CREWS = {"hook": ("GR",), "fadeaway": (), "stepback": (), "eurostep": (), "cradle": (), "combo": ()}
 # P11-14: an extra may start its own lane in the extra column space (EXTRA_LANE name -> start column) instead of after
 # the ones before it: the Present's two extras start at column 0, on their own sheet's first x page (lg_deep_end_x0,
 # lg_zigzag_x0), since no sheet carries one of them together with another extra (extra_columns() checks). The hook
 # and the fadeaway keep their columns (0..10, 11..23), so their pages and format.json rows stay as they were.
-EXTRA_LANE = {"stepback": 0, "eurostep": 0, "cradle": 0}     # P11-10: the cradle on lg_rooftop_x0, column 0 too
+EXTRA_LANE = {"stepback": 0, "eurostep": 0, "cradle": 0,     # P11-10: the cradle on lg_rooftop_x0, column 0 too
+              "combo": 0}                                    # P12-05b: Glitch's (no sheet carries it yet)
 EXTRA_FORCE = set()
 PREVIEW_LIFT["hook"] = [0, 0, 0, 4, 12, 17, 18, 15, 7, 0, 0]
 PREVIEW_LIFT["fadeaway"] = [0, 0, 0, 0, 0, 3, 9, 15, 17, 15, 8, 0, 0]
 PREVIEW_LIFT["stepback"] = [0, 0, 0, 0, 0, 0, 6, 12, 14, 12, 5, 0]        # the jumper's lift (the hop is in the art)
 PREVIEW_LIFT["eurostep"] = [0, 0, 0, 0, 0, 4, 12, 18, 20, 18, 10, 0, 0]   # the layup's lift
 PREVIEW_LIFT["cradle"] = [0, 0, 4, 12, 17, 20, 22, 23, 22, 21, 19, 0]     # the windmill's lift (same air time)
+PREVIEW_LIFT["combo"] = [0] * 12                                          # on the floor
 HOOK_GIF = os.path.join(ROOT, "docs", "art", "hook_shot_v1.gif")
 HOOK_BODY = "ht_a1"      # the preview body: a wiry center (as the hook-shot legend), a drafted player in his colors
 
@@ -1456,7 +1516,39 @@ PREVIEWS = {             # --extra-preview NAME: the extra, the move it stands i
     # P11-10: on Rooftop's own sheet; the bottom row is the windmill his dunks were drawn with before
     "cradle": {"vs": "dunk_windmill", "path": os.path.join(ROOT, "docs", "art", "cradle_v1.gif"), "body": "lg_rooftop",
                "tag": "P11-10 cradle dunk preview", "title": "CRADLE DUNK (new, Rooftop only)"},
+    # P12-05b: Glitch has no sheet yet (P12-14), so the body is the owner-approved look sample's Glitch
+    # (make_players.py NEXT_LOOKS, "lg_sample_glitch": the chrome right forearm, violet seams, two-tone hair), drawn
+    # from the sample's parts as the sample drew him; "_crew" for your colors. "mirror": a W column (the E frame
+    # mirrored, as the game draws SW / W / NW: the chrome arm swaps sides there, accepted like Deep End's tights).
+    "combo": {"vs": "cross", "path": os.path.join(ROOT, "docs", "art", "combo_v1.gif"), "body": "lg_sample_glitch",
+              "tag": "P12-05b combo dribble preview", "title": "COMBO DRIBBLE (new, Glitch only)",
+              "note": "legs, then back; crossover's time", "mirror": True,
+              "zoom": ["SE", "E", "W"]},
 }
+
+
+def preview_body(sid):
+    """A preview's player: a crews.json sheet, else a New Generation look sample body (make_players.NEXT_LOOKS ids
+    lg_sample_*, with "_crew" their recolor; nothing is written for them)."""
+    for q in players_v2():
+        if q["id"] == sid:
+            return q
+    if sid.startswith("lg_sample_"):
+        ps = M._next_players()
+        if sid in ps:
+            return ps[sid]
+    raise KeyError("no player or sample body %r" % sid)
+
+
+def flip_cell(img, rec):
+    """Previews only: a frame mirrored as the game draws the W side (x' = width - 1 - x, the ball point too)."""
+    r = dict(rec)
+    if rec.get("ball") is not None:
+        bx, by, fr = rec["ball"]
+        r["ball"] = [FW - 1 - bx, by, fr]
+        fx, fy = rec["ball_floor"]
+        r["ball_floor"] = [FW - 1 - fx, fy]
+    return img.transpose(Image.FLIP_LEFT_RIGHT), r
 
 
 def preview_drift(name, k, yaw):
@@ -1499,7 +1591,7 @@ def extra_preview(name, sid=None, path=None):
     pv = PREVIEWS[name]
     sid = sid or pv["body"]
     path = path or pv["path"]
-    p = [q for q in players_v2() if q["id"] == sid][0]
+    p = preview_body(sid)
     D = dims_of(p)
     rows = []
     for nm in (name, pv["vs"]):
@@ -1513,6 +1605,8 @@ def extra_preview(name, sid=None, path=None):
                 probs += check(img, rec, "%s %s %s %d" % (sid, nm, dname, k))
                 seq.append((img, rec))
             row[dname] = seq
+        if pv.get("mirror"):       # P12-05b: the W side, as the game mirrors E
+            row["W"] = [flip_cell(img, rec) for img, rec in row["E"]]
         rows.append((nm, row, probs))
     room = max(drift_room(nm) for nm, _, _ in rows)
     Z = 2
@@ -1521,9 +1615,13 @@ def extra_preview(name, sid=None, path=None):
     head = 22
     lab = 18
     cw, ch = FW * Z, (FH + top) * Z
-    W = 120 + len(DIRS) * (cw + pad)
-    H = head + 2 * (ch + lab + pad)
-    titles = {name: pv["title"], pv["vs"]: "jump shot (today)" if pv["vs"] == "shoot" else pv["vs"] + " (today)"}
+    cols = list(DIRS) + ([("W", -DIRS[2][1])] if pv.get("mirror") else [])
+    W = 120 + len(cols) * (cw + pad)
+    zoom = pv.get("zoom", [])          # P12-05b: the extra again at 4x in these directions (the arm's seams)
+    zh = (lab + FH * 4 + pad) if zoom else 0
+    H = head + 2 * (ch + lab + pad) + zh
+    titles = {name: pv["title"], pv["vs"]: "jump shot (today)" if pv["vs"] == "shoot" else
+              "crossover (today)" if pv["vs"] == "cross" else pv["vs"] + " (today)"}
 
     def ms_of(nm):
         return (EXTRA_ANIM.get(nm) or ANIM[nm])[3]
@@ -1542,8 +1640,9 @@ def extra_preview(name, sid=None, path=None):
             bg = S.floor_bg(W, H)
             dr = ImageDraw.Draw(bg)
             dr.rectangle([0, 0, W, head - 4], fill=(28, 26, 38, 255))
-            S.label(dr, (6, 3), "%s: %s, %s (S SE E NE N; W side = mirrors)%s" % (
-                pv["tag"], sid, tag, ("; " + pv["note"]) if pv.get("note") else ""), 13)
+            S.label(dr, (6, 3), "%s: %s, %s (S SE E NE N%s)%s" % (
+                pv["tag"], sid, tag, ", W = E mirrored" if pv.get("mirror") else "; W side = mirrors",
+                ("; " + pv["note"]) if pv.get("note") else ""), 13)
             for r, (nm, row, _) in enumerate(rows):
                 ms = ms_of(nm)
                 k, acc = 0, 0
@@ -1552,8 +1651,8 @@ def extra_preview(name, sid=None, path=None):
                     k += 1
                 y0 = head + r * (ch + lab + pad)
                 S.label(dr, (6, y0 + 2), "%s  %d/%d" % (titles[nm], k + 1, len(ms)), 12)
-                lift = PREVIEW_LIFT[nm][k]
-                for c, (dname, yaw) in enumerate(DIRS):
+                lift = PREVIEW_LIFT[nm][k] if nm in PREVIEW_LIFT else 0      # P12-05b: the crossover has none
+                for c, (dname, yaw) in enumerate(cols):
                     img, rec = row[dname][k]
                     cell = S.compose_frame(img, rec, lift=lift, ball_spin=k, top=top)
                     x0 = 120 + c * (cw + pad)
@@ -1561,6 +1660,20 @@ def extra_preview(name, sid=None, path=None):
                     xc = x0 + (pad - 6) // 2
                     bg.alpha_composite(cell.resize((cw, ch), Image.NEAREST), (xc + dx * Z, y0 + lab + dy * Z))
                     S.label(dr, (x0 + 4, y0 + lab + 4), dname, 12, (200, 196, 214))
+            if zoom:
+                nm, row, _ = rows[0]
+                ms = ms_of(nm)
+                k, acc = 0, 0
+                while k < len(ms) - 1 and acc + ms[k] * speed <= t0:
+                    acc += ms[k] * speed
+                    k += 1
+                y0 = head + 2 * (ch + lab + pad)
+                S.label(dr, (6, y0 + 2), "%s at 4x (%s)  %d/%d" % (pv["title"], " ".join(zoom), k + 1, len(ms)), 12)
+                for c, dname in enumerate(zoom):
+                    img, rec = row[dname][k]
+                    cell = S.compose_frame(img, rec, ball_spin=k, top=0)
+                    bg.alpha_composite(cell.resize((FW * 4, FH * 4), Image.NEAREST),
+                                       (120 + c * (FW * 4 + pad), y0 + lab))
             frames.append(bg)
             durs.append(max(20, int(round((t1 - t0) / 10.0)) * 10))
     S.gif_save(frames, durs, path)
@@ -1572,20 +1685,24 @@ def hook_preview(sid=HOOK_BODY, path=HOOK_GIF):
     return extra_preview("hook", sid, path)
 
 
-def extra_strip(name, sid, path, Z=3):
-    """A still contact strip of an extra (5 rows, frames in order) for checking poses; scratch use only."""
-    p = [q for q in players_v2() if q["id"] == sid][0]
+def extra_strip(name, sid, path, Z=3, with_vs=False):
+    """A still contact strip of an extra (5 rows, frames in order) for checking poses; scratch use only. with_vs
+    (P12-05b): the move it stands in for (PREVIEWS "vs") in 5 more rows under it."""
+    p = preview_body(sid)
     D = dims_of(p)
-    poses = anim_poses(name, D)
-    n = len(poses)
-    W, H = n * FW * Z, len(DIRS) * (FH + S.TOP) * Z
+    names = [name] + ([PREVIEWS[name]["vs"]] if with_vs and name in PREVIEWS else [])
+    seqs = [(nm, anim_poses(nm, D)) for nm in names]
+    n = max(len(ps) for _, ps in seqs)
+    W, H = n * FW * Z, len(seqs) * len(DIRS) * (FH + S.TOP) * Z
     bg = S.floor_bg(W, H)
-    for r, (dname, yaw) in enumerate(DIRS):
-        for k, (pose, ball) in enumerate(poses):
-            img, rec = render_frame(p, pose, ball, yaw, "focus")
-            cell = S.compose_frame(img, rec, lift=PREVIEW_LIFT[name][k], ball_spin=k)
-            bg.alpha_composite(cell.resize((FW * Z, (FH + S.TOP) * Z), Image.NEAREST),
-                               (k * FW * Z, r * (FH + S.TOP) * Z))
+    for g, (nm, poses) in enumerate(seqs):
+        lift = PREVIEW_LIFT.get(nm)
+        for r, (dname, yaw) in enumerate(DIRS):
+            for k, (pose, ball) in enumerate(poses):
+                img, rec = render_frame(p, pose, ball, yaw, "focus")
+                cell = S.compose_frame(img, rec, lift=lift[k] if lift else 0, ball_spin=k)
+                bg.alpha_composite(cell.resize((FW * Z, (FH + S.TOP) * Z), Image.NEAREST),
+                                   (k * FW * Z, (g * len(DIRS) + r) * (FH + S.TOP) * Z))
     bg.convert("RGB").save(path)
     return path
 
@@ -2633,7 +2750,9 @@ def _extra_args(argv):
     if "--extra-strip" in argv:
         i = argv.index("--extra-strip")
         nm, sid, d = argv[i + 1], argv[i + 2], argv[i + 3]
-        print("wrote", extra_strip(nm, sid, os.path.join(d, "%s_%s.png" % (nm, sid))))
+        vs = "--strip-vs" in argv      # P12-05b: the move it stands in for under it
+        print("wrote", extra_strip(nm, sid, os.path.join(d, "%s_%s%s.png" % (nm, sid, "_vs" if vs else "")),
+                                   with_vs=vs))
         return True
     return False
 
