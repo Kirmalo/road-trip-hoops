@@ -220,5 +220,10 @@ level), replays of beaten city games from the map, the ramp retuned, 1.0.0 saves
   questions" P1-P8: the six Present legends after the name and look check, the SPACE THE FLOOR era rules, the challenge
   per legend and the finale, signature moves and a new animation, the Present perks, how hard Chapter 3 is, what opens
   it, and anything beyond Chapter 3. Each names the board tasks it blocks.
+- Phase 12 (Legends, Chapter 4, the New Generation), before the build past wave 1: `docs/legends-plan.md` "Phase 12
+  open questions" Q1-Q8: the six New Generation legends after the name check (the first draft's seven-foot guard,
+  three surnames and a nickname need fixes), the era rules for "the fastest pace", the challenges and how hard
+  Chapter 4 is, new animations, the perks, the gate (72 stars = every star, so is 48 tokens the real path?), the 4th
+  era team and court in Quick Game, and an ending for the mode. Each names the board tasks it blocks.
 - From the Phase 10 check-in, still open: Rooftop's cradle dunk is drawn as a windmill; keep it, or give it its own look
   (board P11-10)?

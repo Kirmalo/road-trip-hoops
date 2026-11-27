@@ -112,6 +112,9 @@ The finale: Deep End, Toolbox and Skylight to 21, no goal. The era's rules: SPAC
 BIG STAGE; the music: "Techno drive" by Centurion_of_war (CC-BY 4.0).
 
 ### Chapter 4: New Generation
+The first draft below (2026-11-18). Phase 12 reworks it for the hard rule and the overlaps with Chapters 1-3: see
+"Phase 12 plan" at the end of this file.
+
 | Legend | Archetype | Look notes | Signature move | Shape |
 |---|---|---|---|---|
 | Kai "Hyperdrive" Starling | Speedster point guard | Small, neon dyed hair | Turbo burst past the defender | +25 / 0 / 0 / -10 / -15 |
@@ -137,7 +140,7 @@ today's game, like every hook. Starting values, QA tunes them.
 | `era_grand` "OLD SCHOOL" | `speed_mult` 0.94, `long_shot_mult` 0.88 | `foul_mult` 0.6 (fewer fouls called: rougher defense), `inside_mult` 1.08 (layups, dunks and close shots go in more) |
 | `era_fathers` "ISO BALL" | `arc_mult` 1.05 | `cross_beat_mult` 1.2 (crossovers beat the defender more), `dunk_range_mult` 1.1 (dunks from a little further out) |
 | `era_present` "SPACE THE FLOOR" (as shipped, P11-12; P11-21 and the owner kept the numbers) | `long_shot_mult` 1.08 | `spacing_ft` 2.0 (off-ball players stand 2 ft further from the hoop), `pullup_mult` 1.10 (a jump shot within 1.0 s of a crossover or spin, everyone) |
-| `era_next` "HYPERSPEED" | `speed_mult` 1.08, `turbo_mult` 1.45, `stamina_refill_mult` 1.2, `shot_clock` 18 | none |
+| `era_next` "HYPERSPEED" (first draft; Phase 12 proposes "FAST BREAK" with two new keys, see "Phase 12 plan") | `speed_mult` 1.08, `turbo_mult` 1.45, `stamina_refill_mult` 1.2, `shot_clock` 18 | none |
 
 Every new key is one `Twists.value(key, default)` in the sim. None of them reads a team, so the era rules are fair.
 An open idea (part 9 is the place to ask, not this list): an old-school "every basket counts 1" rule.
@@ -527,3 +530,250 @@ challenges replayed on Hard) or the stars. (blocks P11-18, P11-09's gate check)
   unlocked (their 3 best, stats averaged to 50), with the era court and its rules on COURT
 - c) Add the token ladder with Legends cosmetics (an era jersey and an era ball in the LOCKER)
 - d) Start Chapter 4, the New Generation, in the same phase (about twice the art and test time)
+
+## Phase 12 plan: Chapter 4, the New Generation (lead-producer, 2026-11-27; a proposal, nothing decided)
+
+The owner said "Chapter 4" at the Phase 11 check-in (VISION "Phase 11 check-in"). Phase 12 builds Chapter 4 end to end
+on the Phase 9-11 machinery (a chapter is data in `legends_data.gd`, plus art, story and one era twist). It also
+closes the mode, because Chapter 4 is the last row of the timeline. Everything below is the team's proposal. The
+questions Q1-Q8 at the end decide it. The board's draft is in `docs/BOARD.md` (Phase 12, DRAFT).
+
+### 12.1 Where the first draft breaks the rules
+
+The New Generation is the era of today's youngest stars, so the risk is the highest yet. These are the players every
+kid knows by sight right now, plus the 2024-2026 draft classes (P12-02 adds them to the lists). What the first draft
+gets wrong:
+
+| Draft | Problem | Proposed fix |
+|---|---|---|
+| Atlas "Long Shadow" **Varga**, **seven-foot guard**, step-back over a smaller defender | A seven-foot guard who shoots step-backs **is** today's most famous young center, by type alone (and it is close to a second very thin seven-footer). The step-back is Deep End's move (Chapter 3). Varga is 1 letter from two real surnames (Verga, Varda). This was flagged in Phase 9, and Briggs was swapped for the same reason | A **broad** seven-foot rim-runner big (not wiry) with locs tied up. **No** guard handle, no threes, no step-back. His move is running the floor (12.3). New surname (first idea **Ostrander**, P12-02 checks it) |
+| Juno "Glitch" **Takeda**, **small, slim** trick handler | A small, flashy guard with a Japanese surname points at one current small guard | Medium height and slim, two-tone hair kept, and a new surname (first idea **Marchetti**, P12-02 checks it) |
+| Orion "Halfcourt" **Mbeki**, shots from far past the arc | Mbeki is a famous statesman's surname (a famous person's name, like "Idris" in Phase 11). "Shots from far past the arc" repeats Set Shot's `deep_set` (Chapter 1). "Logo" anything, and "heat check" as a celebration, are on the banned list | New surname (first idea **Ballantyne**). A new edge, the **hot hand**: he catches fire after 2 makes in a row instead of 3. Plain words only, never "logo three" |
+| Kai "**Hyperdrive**" Starling, speedster point guard | "Hyper..." is a common word, but it is also a shoe-line prefix. The plan's era name "HYPERSPEED" would sit next to it | Keep the nickname if P12-02 finds no shoe or product line with that name (fallback "**Overdrive**"). The era rules get another name (12.4) |
+| Rocco "Pogo" Delacroix, highest leaper, mohawk | Passes a first look (Delacroix is a painter, not a player, and there is no real "Pogo") | Keep; P12-02 checks |
+| Dex "Firewall" Adeyemi, guards everyone | Passes a first look (Adeyemi is 3 letters from Adebayo, a real center's surname, so not a near miss under our 1-letter rule) | Keep. Neon sleeves on him only (no sleeve + headband + number set) |
+
+The look spread (the board's rule since Phase 10): no legend carries a whole famous set of look, build, number and
+move. Sets to keep apart in this era:
+- the very thin seven-footer with short hair
+- the tall flashy point guard with neck tattoos and a low number
+- the explosive leaper guard with a headband and number 12
+- the big, quick bulldozer forward
+- the athletic twin wings
+
+Neon dyed hair, a mohawk, two-tone hair, locs tied up, a buzz cut and neon sleeves go one to each legend.
+
+### 12.2 Overlap with Chapters 1-3
+
+There are 18 signature moves and 18 perks today. The six proposed below are new mechanics, none of them a copy:
+- Moves today: `hook`, `keep_block`, `deep_set`, `long_dunk`, `finger_roll`, `outlet`, `cradle`, `double_cross`,
+  `fadeaway`, `shoulder`, `no_look`, `chase_down`, `step_back`, `coast`, `pop`, `steal_break`, `lob_magnet`,
+  `euro_step`.
+- The closest calls:
+  - Hyperdrive's `top_gear` (always on, in his turbo) vs Switch's `steal_break` (only for 2 s after his own steal).
+  - Long Shadow's `rim_run` (3 s after his team gets the ball, a big) vs both of those.
+  - Firewall's `swat` (jump shots) vs Gate's `keep_block` (where the block goes) and Lockbox's `chase_down` (blocks
+    from behind).
+  - Glitch's `hesitation` (his man stands still for a moment) vs Ankles' `double_cross` (a second roll, more falls).
+- Perks today: `close_touch`, `block_timing`, `deep_range`, `long_dunk`, `soft_layup`, `quick_pass`, `rise_up`,
+  `handle`, `pull_up`, `strong_hold`, `blind_pass`, `quick_hands`, `off_dribble`, `extra_pass`, `catch_shoot`,
+  `contest`, `board_work`, `side_step`. The six below use new keys, and none of them equals a twist key.
+
+### 12.3 The proposed roster (Q1, Q3, Q5)
+
+Numbers to avoid:
+- `NUMBER_AVOID`
+- the 18 numbers in use (9, 12, 14, 16, 18, 19, 26, 27, 28, 29, 36, 38, 46, 48, 49, 52, 54, 58)
+- the numbers today's young stars made famous (1, 2, 5, 7 and 12 are already taken or avoided)
+- 47, a famous long-armed defender's number, so not for Long Shadow
+- 43, a current forward's number
+
+P12-02 checks the numbers again, and the owner sees them at the look check.
+
+| Legend | # | Archetype | Look notes | Signature move (id) | Challenge | Mentor perk (key) | Shape (spd/sht/fin/def/sta) |
+|---|---|---|---|---|---|---|---|
+| Kai "Hyperdrive" Starling | 17 | Speedster point guard | Small, neon dyed hair, no tattoos | **Top gear** (`top_gear`): his turbo is 10% faster (1.35 -> about 1.45 for him) | Race: 11 before his crew gets 10 | **Fresh legs** (`sprint_drain_mult` 0.90): turbo drains 10% slower | +25 / 0 / 0 / -10 / -15 |
+| Atlas "Long Shadow" Ostrander (surname to check) | 56 | Rim-running seven-footer | Very tall and **broad**, locs tied up | **Run the floor** (`rim_run`): for 3 s after his team gets the ball he runs 12% faster, and the CPU sprints him to the rim | Comeback from 0-2 (to 15) | **Head start** (`break_speed_mult` 1.04): 4% faster for 3 s after his team gets the ball | +5 / -10 / +15 / +10 / -20 |
+| Juno "Glitch" Marchetti (surname to check) | 25 | Trick handler | Slim, medium height, two-tone hair | **Hesitation** (`hesitation`): after his crossover his man stands still for 0.3 s (his combo dribble; Q4 may draw it) | Stop the move: 2 blocks or steals on him and win (to 15) | **Pump fake** (`fake_bite_mult` 1.15): defenders bite on his pump fakes 15% more often | +15 / +5 / -5 / -5 / -10 |
+| Rocco "Pogo" Delacroix | 57 | Highest leaper | Wiry, mohawk | **Putback** (`putback`): when he reaches a miss near the rim while in the air, he tips or dunks it back at once | Hold him under 6 (to 11) | **Second chance** (`putback_bonus` 0.025): +2.5% on his shots within 1.5 s of his own offensive rebound | +5 / -15 / +20 / +5 / -15 |
+| Orion "Halfcourt" Ballantyne (surname to check) | 39 | Range shooter | Lean, plain headband, beard | **Hot hand** (`hot_hand`): he catches fire after 2 makes in a row (everyone else needs 3) | He starts on fire and cools after 2 misses in a row (to 15) | **Early shot** (`early_shot_bonus` 0.010): +1% on his jumpers within 6 s of his team getting the ball | 0 / +25 / -10 / -5 / -10 |
+| Dex "Firewall" Adeyemi | 51 | Switches onto everyone | Muscular, buzz cut, neon sleeves | **Swat** (`swat`): block chance on jump shots x1.5 and 1 ft more reach on them (layups and dunks as today) | Score 5 yourself on him and win (to 11): the hardest, like Lockbox and Switch | **Closeout** (`jumper_block_mult` 1.10): his blocks on jump shots 10% more likely | +5 / -10 / 0 / +20 / -15 |
+
+The finale is **Hyperdrive, Pogo and Halfcourt** to 21, with no goal: a guard, a leaper and a shooter. The same three
+are the era team in Quick Game (12.6). Challenge numbers start from Chapter 3's tuned ones, and QA tunes them as in
+P9-26, P10-23 and P11-23. The perk sizes are first guesses at about 2 stat points each (the owner's size since
+P10-26); QA measures them (P12-26).
+
+### 12.4 The era rules: "FAST BREAK" (Q2)
+
+The era's feel is "the fastest pace". The plan's first draft (speed 1.08, turbo 1.45, stamina refill 1.2, shot clock
+18) is Memphis' FULL HOUSE plus Los Angeles' sand turbo, so it would feel like two city twists, not an era. The
+proposal is two existing keys plus two new ones. Each new key has a default that is exactly today's game:
+
+| Key | Value | What it does | Where |
+|---|---|---|---|
+| `speed_mult` (exists) | 1.05 | everyone 5% faster | player.gd, as today |
+| `stamina_refill_mult` (exists) | 1.15 | stamina comes back 15% faster, so the pace lasts | player.gd, as today |
+| `dead_ball_mult` (new, default 1.0) | 0.6 | the dead-ball pauses after a make, an out of bounds and a reaching foul are 40% shorter (`MADE_WAIT`, `OOB_WAIT`, `FOUL_WAIT`), so the ball is back in play at once | rules.gd |
+| `break_mult` (new, default 1.0) | 1.10 | a shot within `BREAK_WINDOW` 5 s of his team getting the ball (a steal, a rebound or an inbound) goes in 10% more often: fast-break shots, for everyone | main.gd `shot_probability()`, with the window as a constant at the top of main.gd |
+
+The shot clock does not change (Memphis keeps its 18 s as its own). The banner says "Fast break: a quicker game,
+early shots fall". The twist is not called "HYPERSPEED", because that would sit next to Hyperdrive's nickname. What
+QA should expect (P12-21): games a little shorter in time, more shots in the first seconds of a possession, and stats
+otherwise in the normal bands.
+
+### 12.5 Court, colors, music, gate, rating keys
+
+- **Court** `era_next` (P12-06, `make_courts.py --era next`): a made-up arena of the future. It has a dark glass floor
+  with glowing lines, a light edge around the court, light rings hanging above, and a dark crowd with phone-light
+  dots. No word, digit, logo, sponsor, real arena or league. It must not read as MIDNIGHT (the star reward night
+  court) or BIG STAGE. The name comes at the look check (first idea **NEON DOME**).
+- **Era colors**: first idea **electric lime + violet** on near-black. That is no current NBA or WNBA color pair, and
+  it is neither the Fathers' mint nor the Present's teal and coral. The owner picks at the look check, as he did with
+  teal + coral.
+- **Music** `legends_next` (P12-08 makes the listening list, P12-20 wires the pick in): fast chiptune or electro at
+  160-175 bpm (a drum and bass or "hyper" chiptune feel), with bright neon synth leads. Not New York's track, Bebop,
+  Headspin or Techno drive. CC0 or CC-BY only (no share-alike, no non-commercial), with each license checked on its
+  page. `fallback_music` `newyork` covers a missing file. The owner picks.
+- **Gate** (Q6): the data says 72 stars or 48 tokens. 72 stars means every trip game won on Hard, so tokens are the
+  real way in. Chapters 1-3 give at most 63 tokens:
+  - all three chapters on Normal give 42 tokens, 6 short
+  - Chapters 1-2 on Normal plus Chapter 3 on Hard give 49 tokens, enough to open it
+- **Rating keys** (Q3): a step harder than the Present's 72 / 14 / 63. First guess: `challenge_avg` 75, `mate_drop`
+  14, `finale_stage_avg` 66, every stat at most `RATING_CAP` 95. The goal numbers set most of the win share (Phase 9
+  learned this), and P12-23 tunes both. Chapter 3 measured Normal 50% / Hard 40% (finale 53% / 33%) with the
+  end-of-trip crew.
+- **Tokens**: 84 in all (4 chapters x 7 games x 3). `max_tokens()` reads this from the data.
+
+### 12.6 The last chapter: an end to Legends, and a 4th era team (Q7, Q8)
+
+- **What "finished" means today**: a chapter closes when its finale is won. Nothing happens when the last one closes;
+  the timeline just shows four FINALE WON panels. Q8 asks two things:
+  - whether the mode gets an ending: a closing scene with all four eras (the "kid" theme of part 3), LEGENDS COMPLETE
+    on the timeline and a full Hall banner
+  - whether anything new to play comes with it: an ALL-TIME game, or the token ladder with Legends cosmetics (both
+    put off since Phase 9)
+- **The 4th era team** comes from the data, with no new logic (`era_teams.gd`, P11-32). Crew "THE NEW GENERATION",
+  id `new_generation`, the finale three (Hyperdrive, Pogo, Halfcourt) at average 50, signature moves on, no perks.
+  It opens once those three are unlocked in Legends. Its court joins the Quick Game COURT list after BIG STAGE
+  (timeline order), with FAST BREAK. "GRANDFATHERS vs NEW GENERATION" is the plan's headline matchup; P12-36 measures
+  it.
+- **The chapter id stays `next`** in the data and the art keys (`fin:next`, `frame_next.png`, `pin_next*.png`); no
+  save holds it yet. The player never sees the id.
+
+### 12.7 Checked: four panels is enough
+
+- The timeline draws the 4 `panels` in `ui.json` (`legends_tour.gd` `DEF_PANELS` has 4 too). `ui.json` already has a
+  `next` pin row, and `pin_next_locked.png` exists. Chapter 4 needs `pin_next.png`, `pin_next_done.png`,
+  `frame_next.png` and its timeline panel lit (P12-07, as P11-07 did for Chapter 3). **No 5th panel and no layout
+  change.**
+- Once all four rows are built, nothing is "COMING LATER". These never show again: the tour's "later" state, the Hall's
+  locked last row ("Six more legends wait in this era...") and the timeline hint for an unbuilt chapter. P12-04 checks
+  the screens with four built rows (a stand-in first), and checks that nothing assumes a not-built row exists.
+- The tests assume a next chapter in a few places: `--legends-test`'s next-chapter gate check after the last chapter,
+  `legends.gd` `SHIPPED_CHAPTERS` 3 and its gates, `--legends-test-three` (a 4th stand-in is needed: P12-03), the trip
+  test's `LEGEND_DRAFT_CHAPTERS` order, and `BACKTEST_CHAPTER3`. Each one has a planned task.
+- Hard rule for the code: no `"next"` in game logic outside `legends_data.gd`, the art lookups and the tests.
+
+### 12.8 Carry-overs from the Phase 11 check-in (the owner asked; not Chapter 4)
+- Midrange's skin goes brown on his player sheet and card (the portrait is already right) (P12-09).
+- Rooftop's cradle dunk gets its own look, with a preview first (P12-10a makes the preview, P12-10b puts it on his
+  sheet).
+- The Techno drive loop point: the owner still has to listen. Fix it only if he asks.
+
+## Phase 12 open questions (lead-producer, 2026-11-27; answer with the letter, (a) is the recommendation)
+
+Phase 12 builds Chapter 4, the New Generation (`docs/BOARD.md`, DRAFT). Wave 1 of the board starts without these
+answers; each question names the tasks it blocks.
+
+**Q1. The six New Generation legends.** Today's youngest stars are the players everyone knows by sight right now, so
+the first draft sits too close to some of them (12.1). (blocks P12-05 look sample, P12-11 data, P12-14 sheets, P12-15
+portraits, P12-16 story)
+- a) The six types with these fixes (P12-02 checks every new name first):
+  - Kai "Hyperdrive" Starling, speedster point guard. The nickname stays if no shoe line uses it, else "Overdrive".
+  - Atlas "Long Shadow" **Ostrander**. No longer a seven-foot guard who shoots step-backs (that is one famous young
+    center, and the step-back is Deep End's); now a broad seven-foot big who runs the floor.
+  - Juno "Glitch" **Marchetti**, trick handler, medium height instead of small (a small flashy guard with the old
+    surname points at one current guard).
+  - Rocco "Pogo" Delacroix, the leaper, kept.
+  - Orion "Halfcourt" **Ballantyne**, range shooter (Mbeki is a famous statesman's name).
+  - Dex "Firewall" Adeyemi, the defender who switches onto everyone, kept.
+
+  Numbers 17 / 56 / 25 / 57 / 39 / 51 and the kits are shown to you at the look check **(recommended)**
+- b) The same six types, but the team brings two full new name sets to pick from
+- c) You change some of them (say which names, types or looks)
+
+**Q2. The era rules for "the fastest pace".** One rule set for both teams, like the other eras. (blocks P12-12, P12-21)
+- a) "FAST BREAK": everyone 5% faster, stamina back 15% faster, the pauses after a basket, an out of bounds or a foul
+  40% shorter, and a shot in the first 5 seconds after getting the ball goes in 10% more often (everyone)
+  **(recommended)**
+- b) The plan's first draft, "HYPERSPEED": everyone 8% faster, turbo stronger, stamina back 20% faster, an 18-second
+  shot clock (no new rule to build, but it is Memphis' and Los Angeles' twists put together)
+- c) As a), plus a 20-second shot clock
+- d) No era rules (the era is its court, music and legends only)
+
+**Q3. The challenges, and how hard Chapter 4 is.** Chapter 3 measured Normal 50% and Hard 40% (finale 53% / 33%) with
+the end-of-trip crew. Each challenge fits the legend's move (12.3):
+- Hyperdrive: race (11 before his crew gets 10)
+- Long Shadow: comeback from 0-2 (to 15)
+- Glitch: 2 blocks or steals on him and win (to 15)
+- Pogo: hold him under 6 (to 11)
+- Halfcourt: he starts on fire (to 15)
+- Firewall: score 5 yourself and win (to 11), the hardest on purpose
+- the finale: Hyperdrive, Pogo and Halfcourt to 21
+
+(blocks P12-11, P12-16, P12-23)
+- a) These challenges, a step harder than Chapter 3: Normal about 45%, Hard about 30-35%, the finale a bit harder than
+  Chapter 3's **(recommended)**
+- b) These challenges, as hard as Chapter 3
+- c) These challenges, clearly harder: Normal about 40%, Hard about 25% (the last chapter as a real wall)
+- d) Change some challenges (say which)
+
+**Q4. New animations: how many, and which?** Every legend gets his play edge on today's moves (12.3), with no new
+button. Phase 11 drew two (the step-back and the Euro-step). Rooftop's own cradle dunk gets drawn this phase anyway
+(you asked at the check-in). (blocks P12-05b, P12-14, P12-17)
+- a) One: Glitch's combo dribble (between the legs into behind the back) on his sheet. It plays on his crossovers,
+  which happen many times a game. A preview for your look check comes first **(recommended)**
+- b) One: Pogo's putback, a tip-dunk caught in the air at the rim (rarer in play, very loud when it happens)
+- c) Both (more art and test time)
+- d) None: the edges only
+
+**Q5. The New Generation mentor perks.** One per legend, each worth about 2 stat points (your size since Phase 10), one
+per player, Road Trip games only. (blocks P12-11 PERKS, P12-22, P12-26)
+- a) Six new perks, none the same as an earlier one **(recommended)**:
+  - Hyperdrive: turbo drains 10% slower
+  - Long Shadow: 4% faster for 3 s after his team gets the ball
+  - Glitch: defenders bite on his pump fakes 15% more often
+  - Pogo: +2.5% on shots right after his own offensive rebound
+  - Halfcourt: +1% on jumpers in the first 6 s after getting the ball
+  - Firewall: his blocks on jump shots 10% more likely
+
+  QA resizes any that measure weak, with your yes.
+- b) Reuse earlier perks where they fit (Halfcourt "shots beyond the arc +1.5%" like Set Shot, Firewall "block timing
+  window wider" like Gate), new ones for the other four
+- c) No perks for the New Generation
+
+**Q6. What opens Chapter 4?** The data says 72 trip stars or 48 legend tokens. 72 stars means every trip game won on
+Hard, so for most players tokens are the way in. Chapters 1-3 on Normal give 42 tokens (6 short); Chapters 1-2 on
+Normal plus Chapter 3 on Hard give 49. (blocks P12-18, P12-03's gate check)
+- a) Keep 72 stars or 48 tokens; Chapter 3's finale is not needed **(recommended)**
+- b) 72 stars or 42 tokens, so all three chapters on Normal open it
+- c) 48 tokens only, and Chapter 3's finale won (no stars path)
+- d) 72 stars or 48 tokens, and Chapter 3's finale won
+
+**Q7. The 4th era team and the era court in Quick Game.** (blocks P12-33, P12-36)
+- a) The same as the other eras: NEW GENERATION on YOUR TEAM / OPPONENT once its finale three (Hyperdrive, Pogo,
+  Halfcourt) are unlocked, stats evened to 50, signature moves on, no perks. Its court joins COURT after BIG STAGE,
+  with the FAST BREAK rules and its music **(recommended)**
+- b) As a), but the court plays without the era rules in Quick Game
+- c) No 4th era team (Chapter 4 stays in Legends only)
+
+**Q8. Anything at the end of the mode?** Chapter 4 is the last row of the timeline. Today, winning the last finale
+just shows four FINALE WON panels. (adds tasks; a) adds one story scene and a small timeline change)
+- a) An ending: after the Chapter 4 finale, a closing scene with a legend from each era (the grandfathers, fathers and
+  sons theme), then LEGENDS COMPLETE on the timeline and a full Hall banner. Nothing new to play **(recommended)**
+- b) As a), plus an ALL-TIME game to replay: your crew against three legends from three eras, to 21, no goal and no
+  tokens
+- c) As a), plus the token ladder with Legends cosmetics (an era jersey and an era ball in the LOCKER, put off since
+  Phase 9)
+- d) Nothing: the timeline shows four FINALE WON panels
