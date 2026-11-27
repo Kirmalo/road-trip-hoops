@@ -435,7 +435,7 @@ const LOOKS := {
 	# court, a made-up arena of the future (dark glass floor, lime lines, violet key, violet light rings, chrome rail,
 	# lime edge light). No twist key (the legends match, or the chapter row in Quick Game, brings the era twist), no
 	# reward, not a city: in quick_courts() once the New Generation era team is open. Music: the era's own track,
-	# Escalate (owner, look check 1; until the file lands music() plays the chapter's fallback_music). Name NEON DOME
+	# Escalate (owner, look check 1; assets/music/legends_next.ogg since P12-20). Name NEON DOME
 	# (first idea, for owner check 2) ----
 	"era_next": {
 		"name": "NEON DOME",

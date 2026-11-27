@@ -231,6 +231,12 @@ Everything in "Tasks by wave" not marked DONE.
   `deep_end`. 24 seeded `--autoplay --twist era_next` games vs 24 without (same seeds): game 8.9 vs 9.0 min, dead balls
   22 vs 34 s, shots 56.8 vs 56.0, FG 57.9% vs 56.0%, all ended, no errors; early shots 30% of shots. `--humantest
   --twist era_next` 21-19, the `--twistshots` banner checked
+- **P12-20** Era music in the game (art-audio C): `assets/music/legends_next.ogg` = Escalate (congusbongus, CC-BY
+  3.0, license re-read on its page), the page's loop file whole (130.55 s, 17 phrases of 7.68 s), de-clipped like
+  Bebop (the master's 0.13% clipped samples rebuilt with adeclip), 5 ms wrap blend (wrap step 0.002), mono, -20.8 LUFS
+  (peak-limited, true peak -1.1 dBFS, no limiter), q3, 1.20 MB; recipe in `tools/make_music.sh`; CREDITS.md row and
+  `CREDITS_LIST` entry; music keys were already `legends_next` (court_looks.gd comment updated). `--titletest` DONE
+  (7 CC-BY rows, 7 shown), `--legendtest` OK (no music note), `--challenge lg_overclock --autoplay` music `legends_next`
 
 ## Done
 - **P12-09** Midrange's skin brown on his sheet and card (before the phase; ANIM OK, LEGENDTEST OK)
@@ -370,7 +376,7 @@ name (P12-06), the music pick (P12-08).
   `anim_combo`); `--signature` takes the new ids; no new input. Seeded A/B: `--autoplay`, every older era twist,
   `--humantest` and one `--challenge` per older chapter give byte-identical logs. Each move is seen in the Chapter 4
   `--challenge` runs and as the human | P12-12, P12-14 merged
-- **P12-20** | Era music in the game
+- **P12-20** | REVIEW | Era music in the game
   | art-audio-integrator C | `assets/music/legends_next.ogg`, `tools/make_music.sh`, `CREDITS.md`, `scripts/title.gd`
   (`CREDITS_LIST` only), `scripts/court_looks.gd` and `scripts/legends_data.gd` (the music key only)
   | The owner's pick, looped, about -20 LUFS, mono; a credits row (title, author, license link, source, changes);
