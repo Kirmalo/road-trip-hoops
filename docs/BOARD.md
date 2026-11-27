@@ -288,6 +288,15 @@ Everything in "Tasks by wave" not marked DONE.
   (peak-limited, true peak -1.1 dBFS, no limiter), q3, 1.20 MB; recipe in `tools/make_music.sh`; CREDITS.md row and
   `CREDITS_LIST` entry; music keys were already `legends_next` (court_looks.gd comment updated). `--titletest` DONE
   (7 CC-BY rows, 7 shown), `--legendtest` OK (no music note), `--challenge lg_overclock --autoplay` music `legends_next`
+- **P12-17 follow-up** Glitch's `combo_l` (art-audio A): the combo started and ended in the left hand, the pose mirrored
+  in the body like `cross_l` (the chrome forearm stays his right arm: the left hand starts it, the chrome hand takes
+  it behind the back, the left hand catches it). Same 12 frames, ms and events as `combo`, `hand_end` "L"; lane extra
+  columns 12..23 on `lg_glitch_x0` (now 1536 x 480, 34 KB); listed in format.json `"extra"`, points in hands.json
+  (only additions); lg_glitch's p pages, palettes, jerseys and every other sheet unchanged byte for byte. sheets.gd
+  `combo_l` -> `cross_l`, `cross`, `dribble`. anim_test: a `<name>_l` extra must match `<name>` (frames, events,
+  sheets), end in the other hand and alias to `<alias>_l`. 0 render check problems; ANIM OK (352 sheets),
+  `--anim-fake-v2` ANIM OK. player.gd not touched (P12-22): the lead applies the pick of `combo_l` when his ball is
+  in the left drawn hand after P12-22 merges
 
 ## Done
 - **P12-09** Midrange's skin brown on his sheet and card (before the phase; ANIM OK, LEGENDTEST OK)

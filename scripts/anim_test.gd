@@ -38,6 +38,8 @@ extends Node
 #     with x pages that the format lists for nothing is a note. Sheets that list no extra are checked as before.
 #     P11-10: an extra that stands in for a dunk (its ALIASES start with dunk_, e.g. Rooftop's cradle) must carry the
 #     dunk events player.gd's dunk timing reads (DUNK_EXTRA_EVENTS), in order takeoff < hang < release < rim < frames.
+#     P12-17 follow-up: a left-hand extra <name>_l (Glitch's combo_l) must match <name> (frames, events, sheets), end
+#     in the other hand (hand_end) and alias to the left-hand version of <name>'s alias (combo_l -> cross_l).
 #   Also Sheets.self_test() (SHEETS lines).
 # Images (CPU-made, the frames 2x on a plain court color like the game, the ball drawn in the hand):
 #   <out>/hoops_anim_<sheet>_<anim>.png        every frame (columns) in 8 directions (rows E, SE, S, SW, W, NW, N, NE);
@@ -355,8 +357,39 @@ func _check_extra_section(fmt: Dictionary, what: String) -> void:
 				used[k] = []
 			(used[k] as Array).append(a)
 		_check_dunk_extra(str(a), e, n, what)
+		_check_left_extra(str(a), e, ex, what)
 		lines.append("%s (extra columns %d..%d, %d sheets)" % [a, st, st + n - 1, (list as Array).size()])
 	print("ANIM %s: extras: %s" % [what, ", ".join(lines) if not lines.is_empty() else "none"])
+
+# P12-17 follow-up: a left-hand extra (<name>_l, e.g. combo_l) goes with its right-hand one: the same frames, events
+# and sheets, the other hand_end, and its alias the left-hand version of the right-hand one's (combo -> cross,
+# combo_l -> cross_l)
+func _check_left_extra(a: String, e: Dictionary, ex: Dictionary, what: String) -> void:
+	if not a.ends_with("_l"):
+		return
+	var base := a.substr(0, a.length() - 2)
+	if not ex.has(base):
+		_problems.append("%s: the left-hand extra %s has no extra %s" % [what, a, base])
+		return
+	var b: Dictionary = ex[base]
+	for k in b:
+		if k in ["start", "hand_end", "hand"]:
+			continue
+		if not e.has(k) or str(e[k]) != str(b[k]):
+			_problems.append("%s: the left-hand extra %s: \"%s\" differs from %s's" % [what, a, k, base])
+	for k in e:
+		if not b.has(k) and not (k in ["start", "hand_end", "hand"]):
+			_problems.append("%s: the left-hand extra %s: \"%s\" is not in %s" % [what, a, k, base])
+	var hb := str(b.get("hand_end", ""))
+	var hl := str(e.get("hand_end", ""))
+	if hb != "" and not ((hb == "R" and hl == "L") or (hb == "L" and hl == "R")):
+		_problems.append("%s: the left-hand extra %s ends in hand %s, %s in %s" % [what, a, hl, base, hb])
+	var ab: Array = Sheets.ALIASES.get(base, [])
+	var al: Array = Sheets.ALIASES.get(a, [])
+	if not ab.is_empty() and (al.is_empty() or str(al[0]) != str(ab[0]) + "_l"):
+		_problems.append("%s: the left-hand extra %s: its first alias should be %s_l" % [what, a, ab[0]])
+	print("ANIM %s: left-hand extra %s pairs with %s (hand_end %s / %s, alias %s)" % [what, a, base, hb, hl,
+			str(al[0]) if not al.is_empty() else "none"])
 
 # P11-10: an extra played as a dunk (its first alias a dunk_ animation) needs player.gd's dunk events, in order
 func _check_dunk_extra(a: String, e: Dictionary, n: int, what: String) -> void:
