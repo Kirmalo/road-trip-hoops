@@ -531,7 +531,12 @@ challenges replayed on Hard) or the stars. (blocks P11-18, P11-09's gate check)
 - c) Add the token ladder with Legends cosmetics (an era jersey and an era ball in the LOCKER)
 - d) Start Chapter 4, the New Generation, in the same phase (about twice the art and test time)
 
-## Phase 12 plan: Chapter 4, the New Generation (lead-producer, 2026-11-27; a proposal, nothing decided)
+## Phase 12 plan: Chapter 4, the New Generation (lead-producer, 2026-11-27; the owner answered Q1-Q8 the same day)
+
+**Answered** (VISION "Phase 12 answers Q1-Q8"): Q2 a, Q3 a, Q4 a, Q5 a, Q6 a, Q7 a, Q8 a. **Q1 was not (a)**: the
+owner wants the chapter more futuristic, 3 of the 6 legends with visible cybernetic parts (each tied to his signature
+move, a small play edge like any legend's, never a bigger one) and 3 all natural. So the names and looks in 12.1-12.6
+are the first proposal only; **12.9 is the roster now** (a draft for the owner's first check, P12-02 + P12-05).
 
 The owner said "Chapter 4" at the Phase 11 check-in (VISION "Phase 11 check-in"). Phase 12 builds Chapter 4 end to end
 on the Phase 9-11 machinery (a chapter is data in `legends_data.gd`, plus art, story and one era twist). It also
@@ -579,7 +584,7 @@ There are 18 signature moves and 18 perks today. The six proposed below are new 
   `handle`, `pull_up`, `strong_hold`, `blind_pass`, `quick_hands`, `off_dribble`, `extra_pass`, `catch_shoot`,
   `contest`, `board_work`, `side_step`. The six below use new keys, and none of them equals a twist key.
 
-### 12.3 The proposed roster (Q1, Q3, Q5)
+### 12.3 The proposed roster (Q1, Q3, Q5) (first proposal; replaced by 12.9 after Q1)
 
 Numbers to avoid:
 - `NUMBER_AVOID`
@@ -681,7 +686,149 @@ otherwise in the normal bands.
   sheet).
 - The Techno drive loop point: the owner still has to listen. Fix it only if he asks.
 
-## Phase 12 open questions (lead-producer, 2026-11-27; answer with the letter, (a) is the recommendation)
+### 12.9 The roster after Q1: three cyber, three natural (lead-producer, 2026-11-27; a draft for the owner's first check)
+
+The owner (Q1): "Let's make this chapter more futuristic. Let's add some players with cybernetic. Not every player,
+some need to be all natural." Follow-ups: 3 of the 6 have cybernetic parts and 3 are all natural; the parts are
+visible (a chrome arm, glowing leg braces, a visor, ...), each tied to that legend's signature move; the move keeps a
+small play edge like every legend's, **not a bigger one**.
+
+What stays from 12.1-12.6: the six types (spread over guards, bigs and wings as before), the six moves (`top_gear`,
+`rim_run`, `hesitation`, `putback`, `hot_hand`, `swat`), the challenges (Q3 a), the six perks (Q5 a), the numbers 17 /
+56 / 25 / 57 / 39 / 51 and the fixes of 12.1 (no seven-foot guard, no step-back, no Mbeki, plain move words). What
+changes: every name gets a second look, two nicknames go, and the looks are redone around the parts.
+
+**The cyber rule (the board's, P12-05 / P12-11 / P12-17):** a part is look only. The play edge is the signature move,
+the same size as any legend's move in Chapters 1-3; a cyber legend gets no stat, speed or rating bonus for his part,
+and a natural legend's move is as strong as a cyber one's. The shapes below sum to 0 like every legend's.
+
+#### The six (names checked once, 2026-11-27, see "Name check" below; P12-02 checks them again)
+
+| Legend (id) | # | Archetype | Cyber / natural | Look (64 x 96 sheet) | Move (id) | Challenge | Perk (key) | Shape spd/sht/fin/def/sta |
+|---|---|---|---|---|---|---|---|---|
+| Tavian "**Overclock**" Brightwell (`lg_overclock`) | 17 | speedster point guard | **cyber**: glowing leg braces | small, dark brown skin, short lime-dyed crop, no tattoos; chrome struts down the outside of both shins, knee to ankle, a lime light line on each | **Top gear** (`top_gear`): his turbo is 10% faster | race: 11 before his crew gets 10 | fresh legs (`sprint_drain_mult` 0.90) | +25 / 0 / 0 / -10 / -15 |
+| Calder "**Long Shadow**" Ostrander (`lg_long_shadow`) | 56 | rim-running seven-footer | **natural** | very tall and **broad** (not wiry), deep brown skin, locs tied up with a wooden bead tie, bare arms, plain cotton knee pads | **Run the floor** (`rim_run`): 12% faster for 3 s after his team gets the ball, the CPU sprints him to the rim | comeback from 0-2 (to 15) | head start (`break_speed_mult` 1.04) | +5 / -10 / +15 / +10 / -20 |
+| Cosimo "**Glitch**" Draycott (`lg_glitch`) | 25 | trick handler | **cyber**: chrome forearm | slim, medium height, light olive skin, two-tone hair (black with a platinum top); his dribble arm chrome from the elbow down (forearm and hand only), violet light seams at the wrist and knuckles | **Hesitation** (`hesitation`): after his crossover his man stands still 0.3 s; drawn as the **combo dribble** (Q4 a, between the legs into behind the back) | stop: 2 blocks or steals on him and win (to 15) | pump fake (`fake_bite_mult` 1.15) | +15 / +5 / -5 / -5 / -10 |
+| Silvan "**Updraft**" Ingleby (`lg_updraft`) | 57 | highest leaper | **natural** | wiry forward, tan skin, a natural black mohawk, taped fingers, bare knees, plain low socks | **Putback** (`putback`): a miss he reaches near the rim while in the air goes back up at once (tip or dunk) | hold him under 6 (to 11) | second chance (`putback_bonus` 0.025) | +5 / -15 / +20 / +5 / -15 |
+| Ezra "**Halfcourt**" Tregarth (`lg_halfcourt`) | 39 | range shooter | **natural** | lean, pale skin with freckles, sandy curls under a plain white cotton headband, **clean-shaven** (no beard: "beard" is a listed nickname), one cotton wristband | **Hot hand** (`hot_hand`): on fire after 2 makes in a row (everyone else 3) | he starts on fire and cools after 2 misses (to 15) | early shot (`early_shot_bonus` 0.010) | 0 / +25 / -10 / -5 / -10 |
+| Kasimir "**Firewall**" Oyelaran (`lg_firewall`) | 51 | switches onto everyone | **cyber**: a visor | strong medium build (a forward, not a bulldozer), brown skin, buzz cut (not bald); a thin lime-lit visor across the eyes in a chrome frame that ends at the temples | **Swat** (`swat`): block chance on jump shots x1.5, 1 ft more reach on them | score 5 yourself on him and win (to 11), the hardest | closeout (`jumper_block_mult` 1.10) | +5 / -10 / 0 / +20 / -15 |
+
+The ids follow the nicknames (the board's rule), so two change from the first proposal: `lg_hyperdrive` ->
+`lg_overclock`, `lg_pogo` -> `lg_updraft`. No art, save or code holds the old ids yet.
+
+#### Why each part fits its move (and its story hook for P12-16)
+- **Overclock, leg braces -> top gear.** The braces are what make his turbo the fastest on the floor. Story hook: they
+  started as a knee brace after an injury and he kept improving them (a part that helps, not a cheat).
+- **Glitch, chrome forearm -> hesitation / the combo dribble.** The arm the ball lives on; the violet seams show the
+  combo dribble's path on every crossover, so the new animation and the part read together. Story hook: he built the
+  hand in a school workshop and the ball "skips a frame" when he crosses.
+- **Firewall, visor -> swat.** The visor reads the shooter's release, so he times blocks on jump shots. Story hook: it
+  was a training visor that shows the ball's flight; he never took it off.
+
+#### Why the natural three read as natural (and stay as interesting)
+No chrome, no glow and no dyed hair on them; skin, cloth and tape only, warm natural hair colors. Each has his own
+bold trait instead: Long Shadow's size and locs, Updraft's mohawk and the highest jump in the game, Halfcourt's
+freckles, headband and the hottest hand. Story hooks: they learned on the old courts from the earlier eras (Halfcourt
+grew up on old film of the Grandfathers' set shots; Long Shadow ran mountain trails; Updraft learned to jump off the
+dunes by the sea). The point of the chapter: a chrome hand or a bare one, it is the same game.
+
+#### How the parts read as a pixel sprite (64 x 96 frames drawn 2x, the approved style)
+- **The pipeline can do it in palettes.** `pixel3d.py` already has `FLAT` materials (unshaded, no contour line: eyes,
+  teeth, sweat). P12-05 adds two FLAT glow tones, **lime** and **violet** (own RGB values, not the kit's tones, so the
+  jersey recolor map never touches them) and a shaded **chrome** ramp (cool steel, a white glint). Every recolor
+  (`_crew`, `_crew_j1..3`) keeps the parts as they are: only kit ramps change.
+- **Static glow only.** A palette is fixed per sheet, so the glow does not pulse or brighten in turbo. A pulse would be
+  a drawing change (a shader or a modulate in `view.gd` / `player.gd`), not in this plan; the owner can ask later.
+  The glow stays inside the outline (no halo past the silhouette, so the hand and ball points and the frame checks do
+  not move).
+- **Overclock**: on each shin a 2-pixel chrome strut and a 1-pixel lime line, both legs, so it reads the same in all 8
+  directions. At game size: two bright lime streaks at his feet when he runs.
+- **Glitch**: the forearm and hand in the chrome ramp, a 1-pixel violet line at the wrist and over the knuckles. One
+  arm only: like Deep End's one-leg tights it swaps sides in the mirrored directions (SW, W, NW), accepted before.
+- **Firewall**: a 1-2 pixel lime band across the eyes, 1 chrome pixel at each temple, in front only (no band round the
+  back of the head). The face under it keeps the normal shading.
+- **Portraits** (busts, `comic.py`): Firewall's visor and Glitch's hand (raised, the ball on his chrome fingers) show
+  naturally; Overclock's braces are below the bust, so P12-15 frames his portrait lower or shows the lime under-glow
+  of the braces, the owner sees it at the look check.
+
+#### The hard rule for this roster
+- **Real players**: each first, last and full name checked against the `nba_api` 1.12.0 list (6,426 NBA and WNBA
+  entries, read as text) and the in-game lists (`REAL_NAMES`, `REAL_NICKNAMES`): no exact match, no surname within 1
+  letter, and no first name within 2 letters of a first name in `cities.gd` or `legends_data.gd` (the Bastien rule).
+  Results under "Name check".
+- **Famous fictional cyborgs (film, games, comics) kept apart, look by look:**
+  - Glitch: forearm only (never the whole arm or the shoulder), no star or emblem, no sunglasses, short two-tone hair,
+    violet seams. Not the comic soldier with the silver left arm and the red star, not the game rocker with the silver
+    arm and aviators, not the anime alchemist with the metal right arm and the blond braid, not the fighting-game
+    fighter with two metal arms.
+  - Firewall: a thin lime lens with hair above it. Not the red ruby visor of the comic team leader, not the curved
+    gold band of the TV starship engineer, not the bald man with the chrome band round the back of his head from the
+    space films.
+  - Overclock: shin struts on a small guard in a basketball kit. No full leg replacement, no armor plates, no helmet.
+  - No word "cyborg", "bionic", "robo", "terminator", "android" or "iron" in any name, nickname or text.
+- **Brands**: "Hyperdrive" goes (a shoe-line prefix and a famous space-film word); "Pogo" goes (a famous comic-strip
+  character and a game-site brand). "Overclock", "Glitch", "Firewall", "Updraft", "Long Shadow" and "Halfcourt" are
+  plain words; P12-02 checks each against shoe and product lines and fictional names (Firewall is also a film title,
+  not a character: a caution, not a fail).
+- **Famous people** (the Mbeki rule): Delacroix (a famous painter), Ballantyne (1 letter from a whisky brand and a
+  book publisher), Marchetti (a famous American football player), Adeyemi (a best-selling author), Atlas (also a famous
+  robot), Kai and Dex (players in our own `cities.gd`), Juno and Orion (2 letters from Bruno / Jojo and Dorian in the
+  game) are all swapped.
+- **The look spread** (the board's five sets): no very thin seven-footer (Long Shadow is broad with locs); no tall
+  flashy point guard with neck tattoos and a low number (Overclock is small, no tattoos, 17); no explosive leaper guard
+  with a headband and 12 (Updraft is a forward with a mohawk and no headband, 57; the headband is on the shooter, 39);
+  no big quick bulldozer forward (Firewall is a medium-build defender, finishing 0); no twins. Hair parts one each:
+  lime crop, locs, two-tone, mohawk, sandy curls + headband, buzz cut.
+- **Numbers**: 17 / 56 / 25 / 57 / 39 / 51 stay (none in `NUMBER_AVOID`, none of the 18 in use, not 43 or 47); the
+  owner sees them with the names.
+
+#### Name check (first pass, lead, 2026-11-27; P12-02 makes it final with the extended lists)
+Every one of the twelve name parts: no exact NBA / WNBA first or last name, no surname within 2 letters except
+Ostrander (2 from Strawder, a 1990s role player; passes the 1-letter rule) and Ingleby (2 from Ingelsby and Ingles;
+passes), no first name within 2 letters of a game first name, no listed nickname, and the in-game test rules
+(`name_hit()`, dry run) pass. Backups if one fails: Overclock -> "Turbine", Updraft -> "Liftoff", Brightwell ->
+Penhallow, Draycott -> Quennell, Tregarth -> Kittredge, Oyelaran -> Akande, Cosimo -> Severin, Ezra -> Leander.
+
+#### The finale and the era team
+- Suggested finale three (to 21, no goal), the same three as the 4th era team in Quick Game (Q7 a): **Overclock
+  (cyber), Updraft (natural), Halfcourt (natural)**: a guard, a leaper and a shooter, the trio Q7 a named under its old
+  names.
+- Owner pick: Glitch (cyber) in for Overclock puts the one new animation (the combo dribble) in the finale and in
+  Quick Game; still 1 cyber + 2 natural, a handler instead of the speedster.
+
+#### Challenges, perks, rules: no change from the answers
+- Challenges (Q3 a, a step harder than Chapter 3): as in the table; only the names in the lines change ("HOLD UPDRAFT
+  UNDER 6", "SCORE 5 ON FIREWALL"). Firewall's score goal stays the hardest. No new goal type.
+- Perks (Q5 a): the six answered perks, kept with their archetypes; all six ids and keys are new (none of the 18
+  earlier perks, no twist key: `break_speed_mult` is not FAST BREAK's `break_mult`). Note for P12-22 / P12-26:
+  `early_shot` shares its trigger (a shot soon after getting the ball) with FAST BREAK's `break_mult`, but they never
+  meet: perks work in Road Trip games only, and the era twist is never on in a Road Trip game.
+- Rules: FAST BREAK (Q2 a) as in 12.4.
+
+#### Era colors, court and music (first guesses, the owner picks at the look checks)
+- **Colors**: electric **lime + violet** on near-black stays (it already reads as the future), with **chrome** as the
+  third tone, only on the cyber parts (never a kit color). The glow tones are the era's lime and violet.
+- **Court** `era_next`: as in 12.5 (dark glass floor, glowing lines, a light edge, hanging light rings, a dark crowd
+  with phone lights), plus chrome rails round the court and the rings in violet, the lines in lime, so it matches the
+  parts. No word, digit, logo or real arena. First name idea still **NEON DOME** (not SKYDOME: a real stadium's old
+  name).
+- **Music**: as in 12.5 (fast chiptune or electro, 160-175 bpm, bright synth leads), leaning a little more synthetic
+  and "machine" for the futuristic feel. CC0 or CC-BY only.
+
+#### The ending scene (Q8 a)
+After the Chapter 4 finale's after scene, once: `legends_complete`. A legend of each era on one court, the
+grandfathers, fathers and sons theme: Steeple, Rooftop and Deep End, and from the New Generation one cyber and one
+natural legend side by side (suggested Glitch and Halfcourt). The old laced ball goes hand to hand down the eras, last
+to the chrome hand and the bare one together: the game is the same game. Then LEGENDS COMPLETE on the timeline and the
+full Hall banner. Nothing new to play.
+
+#### Owner picks at the first check (with the names and the look sample)
+- R1 the six names (two nicknames new: Overclock, Updraft) and which three are cyber (as above)
+- R2 the finale and era team three: Overclock, Updraft, Halfcourt (suggested) or Glitch in for Overclock
+- R3 a CYBER / NATURAL tag on the Hall and draft cards, or none (suggested none: the look and the bio say it)
+- R4 static glow (suggested; palettes only) or a pulse later (a drawing change)
+
+## Phase 12 open questions (lead-producer, 2026-11-27; ANSWERED 2026-11-27, VISION "Phase 12 answers Q1-Q8"; Q1 led to 12.9)
 
 Phase 12 builds Chapter 4, the New Generation (`docs/BOARD.md`, DRAFT). Wave 1 of the board starts without these
 answers; each question names the tasks it blocks.

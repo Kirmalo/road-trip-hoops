@@ -6,31 +6,36 @@ Current phase: **Phase 12: Legends, Chapter 4 (the New Generation)** (planned 20
 `docs/board-phase7.md`, Phase 6: `docs/board-phase6.md`, Phase 5: `docs/board-phase5.md`, Phase 4: `docs/board-phase4.md`,
 Phase 3: `docs/board-phase3.md`, Phase 2: `docs/board-phase2.md`, Phase 1: `docs/board-phase1.md`).
 
-**STATUS: DRAFT, PENDING THE OWNER'S ANSWERS to Q1-Q8 (`docs/legends-plan.md` "Phase 12 open questions").** Wave 1
-needs no answer and can start. Every later task names the questions it waits for. Once the answers are in, the lead
-updates this board: the contract below, the task rows, and any task an answer adds or drops (Q4, Q8).
+**STATUS: PLANNED.** The owner answered Q1-Q8 (VISION "Phase 12 answers Q1-Q8"): Q2 a FAST BREAK, Q3 a a step harder,
+Q4 a Glitch's combo dribble (preview first), Q5 a six new perks, Q6 a 72 stars or 48 tokens, Q7 a the 4th era team
+and court, Q8 a an ending. **Q1: a futuristic chapter**: 3 of the 6 legends have visible cybernetic parts, each tied to
+his signature move (a small play edge like every legend's, never a bigger one), 3 are all natural. The roster built on
+that is `docs/legends-plan.md` 12.9 (a draft until the owner's first check, after wave 1: the names and the look
+sample).
 
-Scope (the proposal in `docs/legends-plan.md` "Phase 12 plan"; each point waits for its question):
-1. **Six original New Generation legends** (Q1): data, the name check extended to the 2024-2026 draft classes and
-   today's young stars, sheets in the approved style with new era parts, portraits, unlock stories, joining lines,
-   and jersey numbers the owner approves.
-2. **Their six challenges and the finale** (Q3) on the six goal types we have (no new goal type): one of each type,
-   with `score` the hardest; the finale to 21.
-3. **The era rules** (Q2): one twist, `era_next` (proposed "FAST BREAK": two existing keys plus `dead_ball_mult` and
-   `break_mult`). **The era court** `era_next`, a made-up arena of the future. **The era music**: a listening list,
-   and the owner picks.
-4. **The gate** (Q6): 72 stars or 48 tokens today (data). The timeline, chapter view, Hall and draft show four
-   playable chapters. Nothing is "COMING LATER" any more (checked: no 5th panel is needed, plan 12.7).
-5. **Mentors** (Q5): six new perks, about 2 stat points each. **Draft**: unlocked New Generation legends join the
+Scope (`docs/legends-plan.md` "Phase 12 plan", 12.9 for the roster):
+1. **Six original New Generation legends** (12.9): Overclock, Long Shadow, Glitch, Updraft, Halfcourt, Firewall;
+   **cyber**: Overclock (leg braces), Glitch (chrome forearm), Firewall (visor); **natural**: Long Shadow, Updraft,
+   Halfcourt. Data, the name check extended to the 2024-2026 draft classes, today's young stars and famous fictional
+   cyborgs, sheets with the new era and cyber parts, portraits, unlock stories, joining lines, numbers 17 / 56 / 25 /
+   57 / 39 / 51 (the owner sees them at the first check).
+2. **Their six challenges and the finale** (Q3 a, a step harder than Chapter 3) on the six goal types we have: one of
+   each type, with `score` the hardest; the finale to 21.
+3. **The era rules** (Q2 a): twist `era_next` "FAST BREAK" (two existing keys plus `dead_ball_mult` and `break_mult`).
+   **The era court** `era_next`, a made-up arena of the future (first name idea NEON DOME). **The era music**: a
+   listening list, and the owner picks.
+4. **The gate** (Q6 a): 72 stars or 48 tokens, no Chapter 3 finale needed. The timeline, chapter view, Hall and draft
+   show four playable chapters; nothing is "COMING LATER" any more (no 5th panel, plan 12.7).
+5. **Mentors** (Q5 a): six new perks, about 2 stat points each. **Draft**: unlocked New Generation legends join the
    Road Trip draft; the one-legend rule stays (one legend of any era + one boss).
-6. **Signature moves** (Q4): a small play edge each, plus the new animation(s) the owner picks, with previews first.
-7. **The 4th era team** (Q7): NEW GENERATION in Quick Game (data only, `era_teams.gd`), and its court on COURT.
-8. **The end of the mode** (Q8): proposed, a closing scene and LEGENDS COMPLETE.
-9. **Carry-overs from the Phase 11 check-in** (the owner asked): Midrange's skin brown on his sheet and card (P12-09);
-   Rooftop's cradle dunk with its own look, preview first (P12-10a, P12-10b). The Techno drive loop point only if
-   the owner asks.
-10. **Not in Phase 12** unless Q8 adds them: single legends in Quick Game, one-on-one, Legends cosmetics and the token
-    ladder, an ALL-TIME game.
+6. **Signature moves**: a small play edge each; one new animation (Q4 a): Glitch's combo dribble, preview first.
+7. **The 4th era team** (Q7 a): NEW GENERATION in Quick Game (data only, `era_teams.gd`), and its court on COURT.
+8. **The end of the mode** (Q8 a): a closing scene with a legend of each era, LEGENDS COMPLETE on the timeline, a full
+   Hall banner. Nothing new to play.
+9. **Carry-overs from the Phase 11 check-in**: DONE before the phase (P12-09 Midrange brown, P12-10a/b the cradle).
+   The Techno drive loop point only if the owner asks.
+10. **Not in Phase 12**: single legends in Quick Game, one-on-one, Legends cosmetics and the token ladder, an ALL-TIME
+    game (Q8 b/c not picked), a pulsing glow (12.9: static glow only).
 
 ## Rules for every task in this phase
 - **The hard rule (`docs/legends-plan.md` part 1): every legend is our own character.** No real player's name or
@@ -39,12 +44,18 @@ Scope (the proposal in `docs/legends-plan.md` "Phase 12 plan"; each point waits 
   youngest stars, whom every player knows by look right now. So **no legend may carry a combination of look, build,
   number and move that points at one real player**. Examples: the very thin seven-footer who shoots step-backs; the
   tall flashy point guard with neck tattoos and a low number; the explosive leaper guard in a headband wearing 12; the
-  big, quick bulldozer forward; the athletic twin wings. Spread the era parts (neon hair, mohawk, two-tone hair, locs,
-  buzz cut, neon sleeves) one per legend. Move names are plain basketball words ("top gear", "putback", "hesitation",
-  "hot hand", "swat"); never "logo three", never "heat check" as a celebration, and no slogan in any text (the list in
+  big, quick bulldozer forward; the athletic twin wings. Spread the hair parts (lime crop, mohawk, two-tone hair, locs,
+  buzz cut, sandy curls with a headband) one per legend. Move names are plain basketball words ("top gear", "putback",
+  "hesitation", "hot hand", "swat"); never "logo three", never "heat check" as a celebration, and no slogan in any text (the list in
   `docs/legends-namecheck.md`). Kits never copy a current NBA or WNBA team's color pair. The owner's reference picture
   is never an asset or an input to a script. Review rejects any change that breaks this rule, the same way it rejects
   an asset without a license.
+- **The cyber rule (Q1, `docs/legends-plan.md` 12.9).** Three legends (Overclock, Glitch, Firewall) wear visible
+  cybernetic parts, three (Long Shadow, Updraft, Halfcourt) are all natural. A part is look only, tied to its legend's
+  move; the move is the same small edge as any legend's (no stat, speed or rating bonus for a part). No part copies a
+  famous fictional cyborg's look (a metal arm with a star or emblem, a red visor, a gold visor band, a chrome band round
+  a bald head, two metal arms) and no name or text uses "cyborg", "bionic", "robo", "terminator", "android" or "iron".
+  The natural three carry no chrome, glow or dyed hair.
 - **Chapters 1-3 and the rest of the game play exactly as in Phase 11.** No sim change outside P12-12 (the era rules),
   P12-17 (signature moves) and P12-22 (perks). Every new hook is a default that is exactly today's game: with twist
   `none` or an older era twist, no New Generation legend on the court and no new perk, seeded `--autoplay` and the
@@ -77,54 +88,65 @@ Scope (the proposal in `docs/legends-plan.md` "Phase 12 plan"; each point waits 
 - Owner previews (look sample, animation previews, court, numbers, names, music) go to the coordinator as soon as they
   are in review, so the owner can answer while the next wave runs.
 
-## Shared contract (proposed; fixed once the answers are in)
+
+## Shared contract (from the answers; the roster names and looks are final after the owner's first check)
 
 ### Chapter 4 data (`scripts/legends_data.gd`)
 - The `next` row becomes `"built": true` (P12-11) with these keys:
-  - `"rules"` (Q2, proposed `"FAST BREAK"`), `"twist": "era_next"`, `"look": "era_next"`, `"music": "legends_next"`,
-    `"fallback_music": "newyork"`, `"gate"` (Q6; today `{"stars": 72, "tokens": 48}`)
-  - `"crew"`: `"THE NEW GENERATION"`, a `ratings.gd` style (`inside`, `outside` or `balanced`; proposed `balanced`, since no "fast" style exists and a new
-    style would be a sim change), the
-    era palettes `ERA4_*` from P12-05, and `ui_color`
+  - `"rules": "FAST BREAK"`, `"twist": "era_next"`, `"look": "era_next"`, `"music": "legends_next"`,
+    `"fallback_music": "newyork"`, `"gate": {"stars": 72, "tokens": 48}` (Q6 a)
+  - `"crew"`: `"THE NEW GENERATION"`, style `balanced` (no "fast" style exists; a new style would be a sim change),
+    the era palettes `ERA4_*` from P12-05, and `ui_color`
   - `"legends"` (6 ids), `"finale"` (target 21, 3 ids, `"NEW GENERATION FINALE"`)
   - `"intro_scene": "legends_next_intro"`, `"finale_scenes": {"before": "legends_next_finale_before", "after":
     "legends_next_finale_after"}`
-  - the per-chapter rating keys (Q3; first guess `challenge_avg` 75, `mate_drop` 14, `finale_stage_avg` 66; P12-23
-    tunes them)
-- Legend ids (proposed, Q1 a): `lg_hyperdrive`, `lg_long_shadow`, `lg_glitch`, `lg_pogo`, `lg_halfcourt`,
-  `lg_firewall`. The ids come from the nicknames, so a surname swap does not change them. If Q1 renames a nickname,
-  the id follows the new nickname before any art is made. Each row has every Chapter 1-3 key; `archetype` is short
-  enough for the draft card.
-- Challenges (Q3 a): `lg_hyperdrive` `race` 11 before 10, `lg_long_shadow` `comeback` from 0-2 (to 15), `lg_glitch`
-  `stop` 2 (to 15), `lg_pogo` `hold` under 6 (to 11), `lg_halfcourt` `fire` (to 15), `lg_firewall` `score` `min` 5
-  (to 11). Finale: `lg_hyperdrive`, `lg_pogo`, `lg_halfcourt`.
+  - the per-chapter rating keys (Q3 a; first guess `challenge_avg` 75, `mate_drop` 14, `finale_stage_avg` 66; P12-23
+    tunes them to Normal about 45%, Hard about 30-35%, the finale a bit harder than Chapter 3's)
+- Legend ids (12.9; the ids follow the nicknames): `lg_overclock`, `lg_long_shadow`, `lg_glitch`, `lg_updraft`,
+  `lg_halfcourt`, `lg_firewall`. A nickname the owner changes at the first check changes its id before any art is
+  made. Each row has every Chapter 1-3 key; `archetype` is short enough for the draft card. The cyber part is in the
+  `look` text only; no game logic reads it (no new data key unless the owner picks a CYBER / NATURAL tag, 12.9 R3).
+- **The cyber rule**: a cyber part is look only. The play edge is the signature move, the same size as any legend's;
+  no stat, speed or rating bonus for a part. Shapes sum to 0 as always.
+- Challenges (Q3 a): `lg_overclock` `race` 11 before 10, `lg_long_shadow` `comeback` from 0-2 (to 15), `lg_glitch`
+  `stop` 2 (to 15), `lg_updraft` `hold` under 6 (to 11), `lg_halfcourt` `fire` (to 15), `lg_firewall` `score` `min` 5
+  (to 11). Finale (suggested, 12.9 R2): `lg_overclock`, `lg_updraft`, `lg_halfcourt`.
 - Perks (Q5 a; keys distinct from all earlier perks and twist keys; defaults 1.0 for `_mult`, 0.0 for `_bonus`):
-  - `"fresh_legs"` (`sprint_drain_mult` 0.90)
-  - `"head_start"` (`break_speed_mult` 1.04)
-  - `"pump_fake"` (`fake_bite_mult` 1.15)
-  - `"second_chance"` (`putback_bonus` 0.025)
-  - `"early_shot"` (`early_shot_bonus` 0.010)
-  - `"closeout"` (`jumper_block_mult` 1.10)
-- Signature ids (Q4): `top_gear`, `rim_run`, `hesitation`, `putback`, `hot_hand`, `swat`. One per legend. The `text`
-  is plain words, at most 2 lines in the Hall.
-- New extras (Q4 a): `combo` (between the legs into behind the back, on `lg_glitch` only, alias `cross`). Q4 b: a
-  `tipdunk` on `lg_pogo` only (alias `dunk_one`). Carry-over: `cradle` on `lg_rooftop` only (alias
-  `dunk_windmill`). Every extra is listed in `format.json`'s `"extra"` with its `"sheets"`, as since P9-04c.
+  - Overclock `"fresh_legs"` (`sprint_drain_mult` 0.90)
+  - Long Shadow `"head_start"` (`break_speed_mult` 1.04)
+  - Glitch `"pump_fake"` (`fake_bite_mult` 1.15)
+  - Updraft `"second_chance"` (`putback_bonus` 0.025)
+  - Halfcourt `"early_shot"` (`early_shot_bonus` 0.010)
+  - Firewall `"closeout"` (`jumper_block_mult` 1.10)
+- Signature ids: `top_gear` (Overclock), `rim_run` (Long Shadow), `hesitation` (Glitch), `putback` (Updraft),
+  `hot_hand` (Halfcourt), `swat` (Firewall). The `text` is plain words, at most 2 lines in the Hall.
+- New extra (Q4 a): `combo` (between the legs into behind the back) on `lg_glitch` only, alias `cross`, listed in
+  `format.json`'s `"extra"` with its `"sheets"`, its own lane. The cradle extra is already in (P12-10b).
 
-### The era rules (`scripts/twists.gd`, Q2)
-- Twist `era_next`: `"name"` (proposed `"FAST BREAK"`), a banner line, `"icon": "era_next"`. Keys (Q2 a, starting
-  points; P12-21 tunes them): `speed_mult` 1.05, `stamina_refill_mult` 1.15, `dead_ball_mult` 0.6 (new: x
-  `rules.gd` `MADE_WAIT`, `OOB_WAIT`, `FOUL_WAIT`), `break_mult` 1.10 (new: x the make chance of a shot within
-  `main.gd` `BREAK_WINDOW` 5.0 s of the shooter's team getting the ball, everyone). The new keys go in `DEFAULTS` at
-  1.0, are read through `Twists.value(key, default)`, and never read a team. No shot clock change.
+### The era rules (`scripts/twists.gd`, Q2 a)
+- Twist `era_next`: `"name": "FAST BREAK"`, a banner line ("Fast break: a quicker game, early shots fall"), `"icon":
+  "era_next"`. Keys (starting points; P12-21 tunes them): `speed_mult` 1.05, `stamina_refill_mult` 1.15,
+  `dead_ball_mult` 0.6 (new: x `rules.gd` `MADE_WAIT`, `OOB_WAIT`, `FOUL_WAIT`), `break_mult` 1.10 (new: x the make
+  chance of a shot within `main.gd` `BREAK_WINDOW` 5.0 s of the shooter's team getting the ball, everyone). The new
+  keys go in `DEFAULTS` at 1.0, are read through `Twists.value(key, default)`, and never read a team. No shot clock
+  change.
 
 ### Art and audio files
+- **Cyber parts in the sheets (12.9)**: two FLAT glow tones in `tools/art/pixel3d.py` (`FLAT`: unshaded, no contour),
+  **lime** and **violet**, own RGB values (never a kit tone, so the jersey map never touches them), and a shaded
+  **chrome** ramp. Opt-in parts in `make_players.py` "Phase 12 era parts": leg braces (both shins: a 2 px chrome strut,
+  a 1 px lime line), a chrome forearm and hand (violet seams at the wrist and knuckles, one arm, swaps in the mirrored
+  directions like Deep End's tights), a visor (a 1-2 px lime band across the eyes, chrome at the temples, front only).
+  **Static glow only** (palettes are fixed; no pulse, no halo past the outline). Every recolor (`_crew`, `_crew_j1..3`)
+  keeps the parts. Older sheets byte for byte the same.
+- The natural three: no chrome, no glow, no dyed hair (skin, cloth, tape; warm hair colors).
 - Sheets `assets/players2/lg_<id>_p<N>.png`, palettes `lg_<id>`, `_crew`, `_crew_j1..3`, cards; strip
-  `docs/art/legends_next.png` (`make_players_v2.py --legends-strip next`). Era palettes `ERA4_*` in
-  `tools/art/crews.json` (P12-05). Era parts in `make_players.py` "Phase 12 era parts". Look sample
-  `docs/art/legends_next_sample_v1.*` (`--legends-sample next`).
+  `docs/art/legends_next.png` (`make_players_v2.py --legends-strip next`). Era palettes `ERA4_*` (first guess lime +
+  violet on near-black, chrome on the parts only) in `tools/art/crews.json`. Look sample
+  `docs/art/legends_next_sample_v1.*` (`make_players.py --legends-sample next`).
 - Portraits `assets/portraits/lg_<id>.png` and `_happy`; contact sheet `docs/art/legends_next_portraits.png`
-  (`make_portraits_v2.py --legends next`).
+  (`make_portraits_v2.py --legends next`). The cyber parts show in the cyber portraits (Overclock's braces need a lower
+  framing or their glow; P12-15 proposes).
 - Court `assets/courts/era_next_floor.png`, `era_next_backdrop.png` (`make_courts.py --era next`), and a
   `court_looks.gd` row `"era_next"` (no twist key, no reward; it joins the Quick Game COURT list through
   `era_teams.gd` only).
@@ -134,11 +156,13 @@ Scope (the proposal in `docs/legends-plan.md` "Phase 12 plan"; each point waits 
 
 ### Story (`scripts/story_text.gd`)
 - Scenes `legends_next_intro`, `lg_<id>_unlock` x 6, `legends_next_finale_before`, `legends_next_finale_after`, and
-  (Q8 a) `legends_complete`, the closing scene with a legend of each era. Plus `RECRUIT_LINES` for the six.
+  (Q8 a) `legends_complete`: a legend of each era (suggested Steeple, Rooftop, Deep End, and Glitch + Halfcourt, one
+  cyber and one natural), the old laced ball handed down the eras; the grandfathers, fathers and sons theme. Plus
+  `RECRUIT_LINES` for the six. A cyber part is a tool the legend earned or built (12.9's hooks), never a cheat.
 
-### Era team (Q7; `scripts/era_teams.gd`, no logic change expected)
+### Era team (Q7 a; `scripts/era_teams.gd`, no logic change expected)
 - `new_generation` (from the crew name): the finale three at average 50, the era kit, signatures kept, no perks; open
-  once those three are unlocked. Its court goes after BIG STAGE in the COURT list.
+  once those three are unlocked. Its court goes after BIG STAGE in the COURT list, with FAST BREAK and its music.
 
 ## Owner answers already in (VISION)
 These apply to Chapter 4 unchanged:
@@ -151,29 +175,40 @@ These apply to Chapter 4 unchanged:
   is on COURT once the team is open.
 - The technical choices of Phases 9-11: the level is picked on the chapter view; a drafted legend sits when he is an
   opponent; one LEGENDS row per chapter in the draft (timeline order); extras only on the sheets that list them.
-- From the "Phase 11 check-in": Chapter 4 next; Midrange's skin brown; Rooftop's cradle gets its own look.
+- "Phase 11 check-in": Chapter 4 next; Midrange's skin brown (done, P12-09); Rooftop's cradle its own look (done,
+  P12-10a/b).
+- "Phase 12 answers Q1-Q8" (above).
 
 ## Todo
-Everything below (Tasks by wave). Nothing past wave 1 starts before its questions are answered.
+Everything in "Tasks by wave" not marked DONE.
 
 ## Doing
 
 ## Review
 
 ## Done
+- **P12-09** Midrange's skin brown on his sheet and card (before the phase; ANIM OK, LEGENDTEST OK)
+- **P12-10a** Rooftop's cradle dunk preview `docs/art/cradle_v1.gif` (before the phase)
+- **P12-10b** The cradle on Rooftop's sheet (before the phase: a `cradle` extra, 12 frames, on `lg_rooftop_x0.png`
+  only, `EXTRA_LANE` 0; player.gd `CRADLE_ANIM` when `Sheets.has_anim()`, else the windmill; counted `anim_cradle`;
+  sheets.gd alias `cradle` -> windmill; no sim change; ANIM OK, `--anim-fake-v2` OK, LEGENDTEST OK, `--challenge
+  rooftop` 3 SIGNATURE cradle lines, `anim_cradle` 2). The owner sees the gif at the second look check.
 
-## Tasks by wave (DRAFT)
+## Tasks by wave
 Format: **id** | title | owner | files it may touch | done when | waits for.
 
-### Wave 1 (no owner answer needed)
-- **P12-02** | Name list for the new generation and a first check of the six
+### Wave 1 (can start now)
+- **P12-02** | Name list for the new generation and the check of the six (12.9)
   | gameplay-programmer A | `docs/legends-namecheck.md` only
   | The lists gain the 2024-2026 draft classes, today's young stars and their nicknames, dunk contest names, current
-  Japanese and European players, and shoe and product lines whose names could be a nickname ("Hyper...", "Zoom",
-  ...). Then a "Chapter 4 (P12-02): first check" section covering the draft names and Q1 a's proposals (Ostrander,
-  Marchetti, Ballantyne, Hyperdrive / Overdrive, Delacroix, Adeyemi, Starling): each one's result, 1-letter near
-  misses, the look combinations in words (plan 12.1), the numbers 17 / 56 / 25 / 57 / 39 / 51, and a short summary
-  for the owner. A name that fails comes with two passing alternatives | none
+  Japanese and European players, shoe and product lines whose names could be a nickname ("Hyper...", "Zoom", ...),
+  and **famous fictional cyborgs and robots** (film, games, comics: names and their signature looks, e.g. a metal arm
+  with a star, a red visor, a gold visor band). Then a "Chapter 4 (P12-02): first check" section for 12.9's six
+  (Tavian "Overclock" Brightwell, Calder "Long Shadow" Ostrander, Cosimo "Glitch" Draycott, Silvan "Updraft" Ingleby,
+  Ezra "Halfcourt" Tregarth, Kasimir "Firewall" Oyelaran): the `nba_api` step, 1-letter near misses, first names
+  within 2 letters of a game name, the nicknames against brands and fictional characters, the look combinations in
+  words (the five real-player sets **and** the cyborg looks), the numbers 17 / 56 / 25 / 57 / 39 / 51, and a short
+  summary for the owner. A name that fails comes with two passing alternatives (12.9 lists backups) | none
 - **P12-03** | Four built chapters in the Legends logic and tests
   | gameplay-programmer B | `scripts/legends_data.gd` (test helpers only), `scripts/legends.gd` (`self_test()` only),
   `scripts/legends_test.gd`
@@ -183,115 +218,116 @@ Format: **id** | title | owner | files it may touch | done when | waits for.
   cleanly after the **last** chapter (no next-gate check when there is none). Shipped output is byte for byte the same
   as before: `--legendtest` OK, `--legends-test --stars 24 --target 3` LEGENDS END, and the three-chapter run
   unchanged | none
-- **P12-10a** | DONE (before Phase 12: `docs/art/cradle_v1.gif`, see P12-10b) | Rooftop's cradle dunk: its own look, a preview (carry-over, the owner asked)
-  | art-audio-integrator A | `tools/art/make_players_v2.py` (a `cradle` EXTRA row, carried by no sheet yet),
-  `docs/art/cradle_v1.gif`
-  | A dunk where he swings the ball from his hip in one arm and lays it in high, next to today's windmill, in 5
-  directions; 0 hand/ball check problems; `format.json` and every sheet unchanged. For the owner's look check | none
+- **P12-05** | New Generation era parts, the cyber parts and a look sample
+  | art-audio-integrator A | `tools/art/make_players.py` ("Phase 12 era parts"), `tools/art/pixel3d.py` (new `FLAT`
+  glow tones and the chrome ramp only, opt-in), `tools/art/crews.json` (`ERA4_*` palettes only),
+  `docs/art/legends_next_sample_v1.png` / `.gif`
+  | Era parts: lime-dyed crop, two-tone hair, mohawk (or the existing one), locs tied up with a bead tie, sandy curls +
+  cotton headband, buzz cut, modern low-cut shoes, taped fingers. Cyber parts as in the contract (leg braces, chrome
+  forearm and hand, visor; lime and violet static glow, chrome ramp), opt-in. Palettes: lime + violet on near-black.
+  The sample shows **Glitch** (cyber) and **Halfcourt** (natural) in their kit and in your colors next to today's
+  ud_deuce, plus a parts row with the other four (Overclock's braces and Firewall's visor at game size and 2x, so the
+  owner judges how they read), idle and run. Each part's tie to its move in one caption line. Renderer checks 0
+  problems, `--anim-test` ANIM OK, nothing in `assets/` changed, every older sheet byte for byte the same if
+  regenerated. For the owner's first check | none
 
-### Wave 2 (Q1 for P12-05; the others need no answer)
-- **P12-05** | New Generation era parts and a look sample
-  | art-audio-integrator A | `tools/art/make_players.py` ("Phase 12 era parts"), `tools/art/crews.json` (`ERA4_*`
-  palettes only), `docs/art/legends_next_sample_v1.png` / `.gif`
-  | Parts: neon dyed hair, two-tone hair, mohawk (or the existing one), locs tied up, neon sleeves, modern low-cut
-  shoes. Palettes: first guess lime + violet on near-black. The sample shows two legends in their kit and in your
-  colors next to today's ud_deuce, plus a parts row for the other four. Renderer checks 0 problems, `--anim-test`
-  ANIM OK, nothing in `assets/` changed. For the owner's look check | Q1, P12-02, P12-10a merged
+**Owner check 1 after wave 1**: the six names and nicknames (P12-02), which three are cyber and how the parts look,
+the era colors (P12-05's sample), the numbers, and 12.9's picks R1-R4 (the finale three, a CYBER / NATURAL tag or
+none, static glow). The lead writes the answers into the contract and VISION.
+
+### Wave 2 (after owner check 1)
+- **P12-05b** | Glitch's combo dribble: the preview
+  | art-audio-integrator B | `tools/art/make_players_v2.py` (a `combo` EXTRA row, carried by no sheet yet),
+  `docs/art/combo_v1.gif`
+  | Between the legs into behind the back next to today's crossover, 5 directions, on a stand-in body **with the chrome
+  forearm** (P12-05's part), the violet seams visible through the move; the crossover's timing so the sim is
+  unchanged; 0 hand/ball check problems; `format.json` and every sheet unchanged. For owner check 2 | P12-05 merged,
+  owner check 1
+- **P12-06** | The New Generation court: a made-up arena of the future
+  | art-audio-integrator C | `tools/art/make_courts.py` (`--era next`), `assets/courts/era_next_*`,
+  `scripts/court_looks.gd` (the `era_next` row)
+  | Dark glass floor, lime glowing lines, an edge light, chrome rails, hanging violet light rings, a dark crowd with
+  phone lights. No word, digit or logo; it does not read as MIDNIGHT or BIG STAGE. Era colors from owner check 1.
+  Checked in angled and flat shots; `--era` rewrites the older era files byte for byte; not in the COURT list. A name
+  proposal (first idea NEON DOME) for owner check 2 | P12-05 merged, owner check 1
 - **P12-08** | Era music listening list
-  | art-audio-integrator B | `docs/audio_preview/LIST.md` ("Legends: New Generation"), `docs/audio_preview/next_*.ogg`
-  | 3-5 fast chiptune or electro tracks (160-175 bpm, neon synth leads; not New York's track, Bebop, Headspin or
-  Techno drive), CC0 or CC-BY only, each license link checked on its page, 30 s samples at -20 LUFS. The owner picks
-  one | none
+  | art-audio-integrator A | `docs/audio_preview/LIST.md` ("Legends: New Generation"),
+  `docs/audio_preview/next_*.ogg`
+  | 3-5 fast chiptune or electro tracks (160-175 bpm, bright synth leads, a futuristic "machine" feel; not New York's
+  track, Bebop, Headspin or Techno drive), CC0 or CC-BY only, each license link checked on its page, 30 s samples at
+  -20 LUFS. The owner picks one | none
+
+### Wave 3
+- **P12-11** | Chapter 4 data and the name check in the data
+  | gameplay-programmer A | `scripts/legends_data.gd`, `docs/legends-namecheck.md`
+  | The `next` row built as in the contract (music `legends_next`, fallback `newyork` until P12-20), the six legends as
+  owner check 1 left them (ids, names, numbers, shapes, challenges, signatures, looks with the cyber parts, bios), the
+  six perks as data, and the new names, probes (a cyborg name or two among them) and numbers in the lists. The
+  namecheck doc's Chapter 4 table is final. `--legendtest` LEGENDTEST OK (notes for art not there yet). 24 legends,
+  max tokens 84 | owner check 1, P12-02, P12-03 merged
+- **P12-12** | The era rules
+  | gameplay-programmer B | `scripts/twists.gd`, `scripts/rules.gd` (the `dead_ball_mult` hook), `scripts/main.gd`
+  (the `break_mult` hook, `BREAK_WINDOW`), `scripts/twist_fx.gd` (the banner icon)
+  | `era_next` as in the contract; `--twisttest` TWISTTEST OK; twist `none` and every older twist give byte-identical
+  seeded `--autoplay` logs; 8+ `--autoplay --twist era_next` games all end; the banner and icon shown in a
+  `--twistshots` shot | P12-03 merged
 - **P12-01** | Phase 11 save fixtures
   | qa-balance-tester | `docs/qa/fixtures/` (new files only) and its README
   | `legends_v1_ch3_mid.json` (Chapters 1-2 closed, 3 Present beaten, a Present mentor), `legends_v1_ch3_done.json`
   (three chapters closed, 63 tokens), `trip_v2_present.json` (a drafted Present legend starting next to a boss),
   `settings_v2_72.cfg`. A check script like the Phase 11 one. P12-27 loads them into the Phase 12 build | none
 
-### Wave 3 (Q4 for P12-05b)
-- **P12-05b** | The new animation(s) and their previews
-  | art-audio-integrator B | `tools/art/make_players_v2.py` (EXTRA rows, carried by no sheet yet), `docs/art/combo_v1.gif`
-  (Q4 a) and/or `docs/art/tipdunk_v1.gif` (Q4 b)
-  | Each extra next to the move it replaces, 5 directions, events in the row (Q4 a `combo`: the crossover's timing so
-  the sim is unchanged; Q4 b `tipdunk`: takeoff, catch and release frames); stand-in bodies until the legends' sheets
-  exist; 0 hand/ball check problems. For the owner's look check | Q4, P12-05 merged (Q4 d: dropped)
-- **P12-09** | DONE (before Phase 12: crews.json skin "brown", his sheet, palettes, cards and `docs/art/legends_fathers.png` regenerated; ANIM OK, LEGENDTEST OK) | Midrange's skin goes brown on his sheet and card (carry-over)
-  | art-audio-integrator A | `tools/art/crews.json` (the `lg_midrange` entry only), `assets/players2/lg_midrange*`,
-  `assets/players2/cards/lg_midrange*`
-  | Regenerated with `--only lg_midrange` (his fadeaway extra kept). His skin matches his portrait's; no other sheet
-  changes byte for byte; `--anim-test --anim-sheet lg_midrange` ANIM OK; a shot of him in a `--challenge
-  lg_midrange` game | P12-05 merged (crews.json)
-- **P12-06** | The New Generation court: a made-up arena of the future
-  | art-audio-integrator C | `tools/art/make_courts.py` (`--era next`), `assets/courts/era_next_*`,
-  `scripts/court_looks.gd` (the `era_next` row)
-  | Dark glass floor, glowing lines, an edge light, hanging light rings, a dark crowd with phone lights. No word, digit
-  or logo; it does not read as MIDNIGHT or BIG STAGE. Era colors from P12-05's palettes. Checked in angled and flat
-  shots; `--era` rewrites the older era files byte for byte; not in the COURT list. A name proposal for the look
-  check | P12-05 merged
+**Owner check 2 after wave 3**: the combo dribble preview (P12-05b), the cradle gif (P12-10a, done), the court and its
+name (P12-06), the music pick (P12-08).
 
-**Owner look check after wave 3**: names (P12-02), the look sample and colors (P12-05), the animation preview(s)
-(P12-05b), the cradle (P12-10a), the court and its name (P12-06), the numbers, and the music pick (P12-08). The lead
-writes the answers into the contract.
-
-### Wave 4 (Q1, Q3, Q5, Q6 answered; the look check done)
-- **P12-11** | Chapter 4 data and the name check in the data
-  | gameplay-programmer A | `scripts/legends_data.gd`, `docs/legends-namecheck.md`
-  | The `next` row built as in the contract (music `legends_next`, fallback `newyork` until P12-20), the six legends
-  (ids, names, numbers, shapes, challenges, signatures, looks, bios), the six perks as data, and the new names, probes
-  and numbers in the lists. The namecheck doc's Chapter 4 table is final. `--legendtest` LEGENDTEST OK (notes for art
-  not there yet). 24 legends, max tokens 84 | Q1, Q3, Q5, Q6, P12-02, P12-03 merged
-- **P12-12** | The era rules
-  | gameplay-programmer B | `scripts/twists.gd`, `scripts/rules.gd` (the `dead_ball_mult` hook), `scripts/main.gd`
-  (the `break_mult` hook, `BREAK_WINDOW`), `scripts/twist_fx.gd` (the banner icon)
-  | `era_next` as in the contract; `--twisttest` TWISTTEST OK; twist `none` and every older twist give byte-identical
-  seeded `--autoplay` logs; 8+ `--autoplay --twist era_next` games all end; the banner and icon shown in a
-  `--twistshots` shot | Q2 (Q2 d: dropped; Q2 b: twists.gd only), P12-03 merged
+### Wave 4 (after owner check 2)
 - **P12-07** | Legends UI art for Chapter 4
   | art-audio-integrator C | `tools/art/make_legends_ui.py`, `assets/legends/frame_next.png`, `pin_next.png`,
   `pin_next_done.png`, `ui.json`, `timeline.png`, `docs/art/legends_ui.png`
-  | In the chosen era colors. The 4th timeline panel shows the court lit. Chapters 1-3 files byte for byte unchanged;
-  `--legendtest` OK | the look check, P12-06 merged
-
-### Wave 5
-- **P12-14** | The six New Generation sheets (+ the extras)
+  | In the chosen era colors (a chrome edge on the frame is fine). The 4th timeline panel shows the court lit. Chapters
+  1-3 files byte for byte unchanged; `--legendtest` OK | owner check 2, P12-06 merged
+- **P12-14** | The six New Generation sheets (+ the combo extra)
   | art-audio-integrator A | `tools/art/make_players_v2.py`, `tools/art/crews.json`, `assets/players2/lg_<six>*`,
   `assets/players2/format.json`, `assets/players2/hands.json` (only if needed), `scripts/sheets.gd` (`ALIASES`)
-  | Six sheets with palettes, `_crew`, `_crew_j1..3`, cards; the strip `docs/art/legends_next.png`; Q4's extra on its
-  legend's sheet only (listed in `"extra"`, own lane); no older sheet changes byte for byte; `--anim-test` ANIM OK
-  | Q1, Q4, the look check, P12-11 merged
+  | Six sheets with palettes, `_crew`, `_crew_j1..3`, cards; the cyber parts on Overclock, Glitch and Firewall only,
+  their glow the same in every recolor; the natural three with no chrome or glow pixel; the strip
+  `docs/art/legends_next.png`; the `combo` extra on `lg_glitch` only (listed in `"extra"`, own lane); no older sheet
+  changes byte for byte; `--anim-test` ANIM OK | owner check 2, P12-11 merged
 - **P12-15** | The New Generation portraits
-  | art-audio-integrator B | `tools/art/make_portraits_v2.py`, `assets/portraits/lg_<six>*`,
-  `docs/art/legends_next_portraits.png`
-  | Twelve portraits (neutral, happy) in the era kits; new kit parts are opt-in, so older portraits stay byte for
-  byte the same | the look check, P12-11 merged
+  | art-audio-integrator B | `tools/art/make_portraits_v2.py`, `tools/art/comic.py` (new opt-in kit parts only),
+  `assets/portraits/lg_<six>*`, `docs/art/legends_next_portraits.png`
+  | Twelve portraits (neutral, happy) in the era kits; the visor on Firewall, the chrome hand on Glitch (raised, the
+  ball on his fingers), Overclock's braces shown by a lower framing or their glow; the natural three clearly natural.
+  New kit parts are opt-in, so older portraits stay byte for byte the same | P12-11 merged, owner check 1
+
+### Wave 5
 - **P12-16** | Chapter 4 story and the end of the mode
   | gameplay-programmer C | `scripts/story_text.gd`, `scripts/story.gd` (only if a scene needs it)
-  | The intro, six unlock scenes, the finale before/after, `RECRUIT_LINES` for the six, and (Q8 a/b/c)
-  `legends_complete` with a legend of each era (the grandfathers, fathers and sons theme; "kid" allowed). No slogan
-  or banned word (`--legendtest` checks the text). Lines that name a goal number use the data's numbers | Q1, Q3, Q8,
-  P12-11 merged
-
-### Wave 6
+  | The intro, six unlock scenes, the finale before/after, `RECRUIT_LINES` for the six, and `legends_complete` with a
+  legend of each era (the contract's Story row). Each cyber part gets its origin in a line, as a tool he earned or
+  built; the naturals' lines tie them to the old courts. No slogan or banned word (`--legendtest` checks the text).
+  Lines that name a goal number use the data's numbers | P12-11 merged
 - **P12-17** | Signature moves
   | gameplay-programmer A | `scripts/player.gd`, `scripts/defense.gd`, `scripts/ball.gd`
-  | The six moves, constants at the top (block "P12-17"), each only for its signature; the extra frames when
-  `Sheets.has_anim()` (counts `anim_<extra>`); `--signature` takes the new ids; no new input. Seeded A/B: `--autoplay`,
-  every older era twist, `--humantest` and one `--challenge` per older chapter give byte-identical logs. Each move is
-  seen in the Chapter 4 `--challenge` runs and as the human | Q4, P12-12, P12-14 merged
-- **P12-18** | Chapter flow, the gate and the ending
-  | gameplay-programmer B | `scripts/legends.gd`, `scripts/legends_tour.gd`, `scripts/hall.gd`
-  | `self_test()` holds the four shipped chapters (`SHIPPED_CHAPTERS` 4, gates from Q6). The chapter walk covers
-  Chapter 4 (shut at the Present's gate, open at its own). Q8 a: after the Chapter 4 finale's after scene comes
-  `legends_complete` once, then LEGENDS COMPLETE on the timeline (the header or a banner, no new panel) and a full-Hall
-  banner; replays never play it again. No "next" string in the logic. `--legendtest` OK; `--legends-test --difficulty
-  hard` LEGENDS END (84/84) | Q6, Q8, P12-11, P12-16 merged
+  | The six moves, constants at the top (block "P12-17"), each only for its signature and at the size in the contract
+  (no extra edge for a cyber part); the `combo` frames on Glitch's crossovers when `Sheets.has_anim()` (counts
+  `anim_combo`); `--signature` takes the new ids; no new input. Seeded A/B: `--autoplay`, every older era twist,
+  `--humantest` and one `--challenge` per older chapter give byte-identical logs. Each move is seen in the Chapter 4
+  `--challenge` runs and as the human | P12-12, P12-14 merged
 - **P12-20** | Era music in the game
   | art-audio-integrator C | `assets/music/legends_next.ogg`, `tools/make_music.sh`, `CREDITS.md`, `scripts/title.gd`
   (`CREDITS_LIST` only), `scripts/court_looks.gd` and `scripts/legends_data.gd` (the music key only)
   | The owner's pick, looped, about -20 LUFS, mono; a credits row (title, author, license link, source, changes);
-  `--titletest` credits count right; `--challenge lg_hyperdrive` plays it | the music pick, P12-11 merged
+  `--titletest` credits count right; `--challenge lg_overclock` plays it | the music pick, P12-11 merged
 
-### Wave 7
+### Wave 6
+- **P12-18** | Chapter flow, the gate and the ending
+  | gameplay-programmer B | `scripts/legends.gd`, `scripts/legends_tour.gd`, `scripts/hall.gd`
+  | `self_test()` holds the four shipped chapters (`SHIPPED_CHAPTERS` 4, gate 72 stars / 48 tokens). The chapter walk
+  covers Chapter 4 (shut at the Present's gate, open at its own). After the Chapter 4 finale's after scene comes
+  `legends_complete` once, then LEGENDS COMPLETE on the timeline (the header or a banner, no new panel) and a full-Hall
+  banner; replays never play it again. A CYBER / NATURAL tag only if owner check 1 asked for one. No "next" string in
+  the logic. `--legendtest` OK; `--legends-test --difficulty hard` LEGENDS END (84/84) | P12-11, P12-16 merged
 - **P12-19** | Draft and lineup with four eras
   | gameplay-programmer C | `scripts/trip.gd`, `scripts/draft.gd`, `scripts/lineup.gd`
   | A 4th LEGENDS row ("UNLOCKED IN LEGENDS - THE NEW GENERATION", timeline order, era frame and color); the one-legend
@@ -302,30 +338,26 @@ writes the answers into the contract.
   | 200+ `--autoplay --twist era_next` games against Phase 11's bands: game length, shots, early-possession shots,
   make rate, fouls, rebounds; the numbers tuned if the era doesn't feel faster or the stats leave the bands (with the
   owner's yes) | P12-12, P12-17 merged
-- **P12-10b** | DONE (before Phase 12: a `cradle` extra, 12 frames, on `lg_rooftop_x0.png` only, `EXTRA_LANE` 0: scooped off the right hip, cradled in the bent arm, rocked back behind the head, thrown down; player.gd `CRADLE_ANIM` when `Sheets.has_anim()`, else the windmill; counted `anim_cradle`; sheets.gd alias `cradle` -> windmill; no sim change; ANIM OK, `--anim-fake-v2` OK, LEGENDTEST OK, `--challenge rooftop` 3 SIGNATURE cradle lines, `anim_cradle` 2. The owner sees the gif at the look check) | The cradle on Rooftop's sheet
-  | art-audio-integrator A | `tools/art/make_players_v2.py`, `assets/players2/lg_rooftop*`, `assets/players2/format.json`,
-  `scripts/player.gd` (the `CRADLE_STYLE` line only)
-  | `cradle` extra on `lg_rooftop` only, as approved; `--anim-test` ANIM OK; `--challenge lg_rooftop` shows
-  `anim_cradle`; nothing else changes | the look check, P12-14 and P12-17 merged
 
-### Wave 8
+### Wave 7
 - **P12-22** | Mentor perks for the New Generation
   | gameplay-programmer A | `scripts/player.gd`, `scripts/main.gd`, `scripts/defense.gd`, `scripts/ball.gd` (only if a
   hook lives there)
   | The six hooks, each a default that is today's game; `--perk` takes the new ids, with a `PERK` line the first time
-  each changes a play; seeded A/B without a new perk byte-identical | Q5, P12-17 and P12-10b merged
+  each changes a play; seeded A/B without a new perk byte-identical | P12-17 merged
 - **P12-23** | QA: Chapter 4 challenges and finale
   | qa-balance-tester | `docs/qa/phase12-challenges.md`, `scripts/legends_data.gd` (challenge numbers and rating
   keys only)
   | Per challenge and the finale, Easy / Normal / Hard with the end-of-trip crew (`--expected-roster`,
-  `--best-roster`), cells big enough to see Q3's bands; Firewall the hardest; any story line made stale listed for
-  P12-29 | Q3, P12-17, P12-18 merged
+  `--best-roster`), cells big enough to see Q3 a's bands (Normal about 45%, Hard about 30-35%, the finale a bit harder
+  than Chapter 3's 53% / 33%); Firewall the hardest; the cyber legends no harder than the natural ones beyond their
+  goal; any story line made stale listed for P12-29 | P12-17, P12-18 merged
 - **P12-24** | Trip test: a drafted New Generation legend
   | gameplay-programmer C | `scripts/trip_test.gd`
   | `LEGEND_DRAFT_CHAPTERS` next -> present -> fathers -> grand (the first legend draft signs a New Generation legend
   from his row); refusals across eras; legend + boss starts; TRIP END checks every built chapter's row | P12-19 merged
 
-### Wave 9
+### Wave 8
 - **P12-25** | Back test and title test for Chapter 4
   | gameplay-programmer C | `scripts/main.gd` (the backtest steps only), `scripts/title.gd` (the titletest driver only)
   | `BACKTEST_CHAPTER4` "next" (its view, the Hall and back, the mentor picker, a challenge's pause, resume and QUIT;
@@ -339,20 +371,21 @@ writes the answers into the contract.
   | gameplay-programmer B | `scripts/era_teams.gd` (self test expectations; logic only if the data needs it),
   `scripts/menu.gd` (only if the COURT order needs it)
   | `new_generation` opens with its finale three; `--quick-teams new_generation,grandfathers` works; the court follows
-  BIG STAGE on COURT with its twist and music; `--legendtest` "era teams" OK | Q7, P12-11, P12-20 merged
+  BIG STAGE on COURT with FAST BREAK and its music; `--legendtest` "era teams" OK | P12-11, P12-20 merged
 
-### Wave 10
+### Wave 9
 - **P12-27** | QA: saves | qa-balance-tester | `docs/qa/phase12-saves.md` | P12-01's fixtures load in the Phase 12 build;
   Phase 12 files open in a Phase 11 build without a crash (unknown ids dropped); a NEW TRIP never touches
   `legends.json` | P12-19, P12-18 merged
 - **P12-28** | QA: screens | qa-balance-tester | `docs/qa/phase12-screens.md` and shots | Every Legends screen at
   1280x720 and wider with four chapters (timeline, Chapter 4 view, Hall with four rows, draft rows, LEGENDS COMPLETE),
-  the six moves and the extras, the court and banner; bugs filed as P12-B<n> | P12-25 merged
+  the six moves and the combo dribble, the cyber parts readable at game size in angled and flat view (and in your
+  colors), the court and banner; bugs filed as P12-B<n> | P12-25 merged
 - **P12-36** | QA: era team balance | qa-balance-tester | `docs/qa/phase12-quick-eras.md` | NEW GENERATION vs the crews on
   Hard and vs each era team (Grandfathers vs New Generation on both era courts), 200+ games a cell; a report for the
   owner, no change without his yes | P12-33 merged
 
-### Wave 11
+### Wave 10
 - **P12-29** | Docs | gameplay-programmer C | `CLAUDE.md`, `README.txt`, `CREDITS.md`, `docs/legends-plan.md` (as
   shipped), `docs/release/itch_page.md`, `scripts/title.gd` (`CREDITS_LIST` only), `scripts/story_text.gd` (stale
   numbers only) | Every fact read from the merged code; `--legendtest`, `--titletest` OK | all build tasks merged
@@ -365,37 +398,33 @@ writes the answers into the contract.
   `tools/build_web.sh --zip --publish` after a Playwright touch check of the web build, `tools/build_android.sh` (the
   debug APK; the signed one needs the owner's key) | P12-31, the merge onto the named branch
 
-### Added only if the owner picks them
-- Q8 b: **P12-37** ALL-TIME game (`legends_data.gd` a row, `legends.gd` the match, `legends_tour.gd` a button, a QA
-  cell). Q8 c: **P12-38** the token ladder and Legends cosmetics (`legends.gd`, `cosmetics.gd`, `locker.gd`, art;
-  several tasks, planned when chosen).
-
 ## Parallel plan (never two tasks on the same file in one wave; at most 3 agent tasks a wave)
 | Wave | Tasks (agent) | Files | Notes |
 |---|---|---|---|
-| 1 | P12-02 (gameplay A), P12-03 (gameplay B), P12-10a (art A) | namecheck doc / legends_data.gd helpers, legends.gd self_test, legends_test.gd / make_players_v2.py, cradle gif | can start now |
-| 2 | P12-05 (art A), P12-08 (art B), P12-01 (qa) | make_players.py, crews.json, sample / audio_preview / fixtures | P12-05 after Q1 |
-| 3 | P12-05b (art B), P12-09 (art A), P12-06 (art C) | make_players_v2.py, gifs / crews.json lg_midrange, lg_midrange files / make_courts.py, courts, court_looks.gd | then the owner's look check |
-| 4 | P12-11 (A), P12-12 (B), P12-07 (art C) | legends_data.gd, namecheck doc / twists.gd, rules.gd, main.gd, twist_fx.gd / make_legends_ui.py, assets/legends | |
-| 5 | P12-14 (art A), P12-15 (art B), P12-16 (C) | make_players_v2.py, crews.json, players2, format.json, sheets.gd / make_portraits_v2.py, portraits / story_text.gd, story.gd | |
-| 6 | P12-17 (A), P12-18 (B), P12-20 (art C) | player.gd, defense.gd, ball.gd / legends.gd, legends_tour.gd, hall.gd / music, make_music.sh, CREDITS.md, title.gd CREDITS_LIST, court_looks.gd + legends_data.gd music key | |
-| 7 | P12-19 (C), P12-21 (qa), P12-10b (art A) | trip.gd, draft.gd, lineup.gd / docs + twists.gd numbers / make_players_v2.py, lg_rooftop, format.json, player.gd one line | |
-| 8 | P12-22 (A), P12-23 (qa), P12-24 (C) | player.gd, main.gd, defense.gd, ball.gd / docs + legends_data.gd numbers / trip_test.gd | |
-| 9 | P12-25 (C), P12-26 (qa), P12-33 (B) | main.gd backtest, title.gd titletest / docs + legends_data.gd perk numbers / era_teams.gd, menu.gd | P12-26 after P12-23 merged (legends_data.gd numbers) |
-| 10 | P12-27, P12-28, P12-36 (qa x3) | docs only | |
-| 11 | P12-29 (C), then P12-30 (qa), then P12-31 (lead), P12-32 (coordinator) | docs / docs / docs / build output | |
+| 1 | P12-02 (gameplay A), P12-03 (gameplay B), P12-05 (art A) | namecheck doc / legends_data.gd helpers, legends.gd self_test, legends_test.gd / make_players.py, pixel3d.py, crews.json ERA4, sample | then **owner check 1**: names + look sample |
+| 2 | P12-05b (art B), P12-06 (art C), P12-08 (art A) | make_players_v2.py, combo gif / make_courts.py, courts, court_looks.gd / audio_preview | P12-05b and P12-06 after check 1 |
+| 3 | P12-11 (gameplay A), P12-12 (gameplay B), P12-01 (qa) | legends_data.gd, namecheck doc / twists.gd, rules.gd, main.gd, twist_fx.gd / fixtures | then **owner check 2**: combo, court, music |
+| 4 | P12-07 (art C), P12-14 (art A), P12-15 (art B) | make_legends_ui.py, assets/legends / make_players_v2.py, crews.json, players2, format.json, sheets.gd / make_portraits_v2.py, comic.py, portraits | |
+| 5 | P12-16 (C), P12-17 (A), P12-20 (art C) | story_text.gd, story.gd / player.gd, defense.gd, ball.gd / music, make_music.sh, CREDITS.md, title.gd CREDITS_LIST, court_looks.gd + legends_data.gd music key | |
+| 6 | P12-18 (B), P12-19 (C), P12-21 (qa) | legends.gd, legends_tour.gd, hall.gd / trip.gd, draft.gd, lineup.gd / docs + twists.gd numbers | |
+| 7 | P12-22 (A), P12-23 (qa), P12-24 (C) | player.gd, main.gd, defense.gd, ball.gd / docs + legends_data.gd numbers / trip_test.gd | |
+| 8 | P12-25 (C), P12-26 (qa), P12-33 (B) | main.gd backtest, title.gd titletest / docs + legends_data.gd perk numbers / era_teams.gd, menu.gd | P12-26 after P12-23 merged |
+| 9 | P12-27, P12-28, P12-36 (qa x3) | docs only | |
+| 10 | P12-29 (C), then P12-30 (qa), then P12-31 (lead), P12-32 (coordinator) | docs / docs / docs / build output | |
 
 Chains to watch:
 - `legends_data.gd`: P12-03 (helpers), P12-11 (rows), P12-20 (music key), then numbers only in P12-23 and P12-26.
-- `make_players_v2.py`: P12-10a, P12-05b, P12-14, P12-10b. `crews.json`: P12-05, P12-09, P12-14.
-- `format.json`: P12-14, then P12-10b.
-- `player.gd`: P12-17, P12-10b (one line), P12-22.
-- `main.gd`: P12-12, P12-22, P12-25.
+- `make_players.py` / `pixel3d.py`: P12-05 (parts), then read by P12-05b and P12-14.
+- `make_players_v2.py`: P12-05b, then P12-14. `crews.json`: P12-05 (ERA4 palettes), then P12-14.
+- `player.gd`: P12-17, then P12-22. `main.gd`: P12-12, P12-22, P12-25.
 - `court_looks.gd`: P12-06, then the music key in P12-20.
 - `title.gd`: P12-20 (`CREDITS_LIST`), P12-25 (titletest), P12-29.
 - `legends.gd`: P12-03 (self_test), P12-18.
 - Each task is merged before the next one on its chain starts.
 
 ## Open questions for the owner
-Q1-Q8 in `docs/legends-plan.md` "Phase 12 open questions" (each one with its options; (a) is the recommendation).
-Also still open from Phase 11: the Techno drive loop point (the owner listens).
+- At owner check 1 (`docs/legends-plan.md` 12.9): R1 the six names and which three are cyber; R2 the finale and era
+  team three (Overclock, Updraft, Halfcourt, or Glitch in for Overclock); R3 a CYBER / NATURAL tag on the Hall and
+  draft cards or none; R4 static glow or a pulse later. Also the era colors and the numbers.
+- At owner check 2: the combo dribble, the court and its name, the music.
+- Still open from Phase 11: the Techno drive loop point (the owner listens).

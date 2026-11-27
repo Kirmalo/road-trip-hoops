@@ -221,10 +221,21 @@ level), replays of beaten city games from the map, the ramp retuned, 1.0.0 saves
   questions" P1-P8: the six Present legends after the name and look check, the SPACE THE FLOOR era rules, the challenge
   per legend and the finale, signature moves and a new animation, the Present perks, how hard Chapter 3 is, what opens
   it, and anything beyond Chapter 3. Each names the board tasks it blocks.
-- Phase 12 (Legends, Chapter 4, the New Generation), before the build past wave 1: `docs/legends-plan.md` "Phase 12
+- (Answered 2026-11-27, see "Phase 12 answers Q1-Q8") Phase 12 (Legends, Chapter 4, the New Generation), before the build past wave 1: `docs/legends-plan.md` "Phase 12
   open questions" Q1-Q8: the six New Generation legends after the name check (the first draft's seven-foot guard,
   three surnames and a nickname need fixes), the era rules for "the fastest pace", the challenges and how hard
   Chapter 4 is, new animations, the perks, the gate (72 stars = every star, so is 48 tokens the real path?), the 4th
   era team and court in Quick Game, and an ending for the mode. Each names the board tasks it blocks.
+- Phase 12 roster (draft for the owner; the lead's proposal after Q1, NOT an owner answer; `docs/legends-plan.md`
+  12.9, shown at owner check 1 with the look sample): cyber Tavian "Overclock" Brightwell (17, speedster point guard,
+  glowing leg braces -> top gear), Cosimo "Glitch" Draycott (25, trick handler, chrome forearm -> hesitation and the
+  combo dribble), Kasimir "Firewall" Oyelaran (51, switches onto everyone, a visor -> swat); natural Calder "Long
+  Shadow" Ostrander (56, rim-running seven-footer), Silvan "Updraft" Ingleby (57, highest leaper; "Pogo" dropped: a
+  comic-strip character and a game-site brand), Ezra "Halfcourt" Tregarth (39, range shooter). "Hyperdrive" dropped
+  (a shoe-line prefix). A part is look only, no bigger edge; static glow (lime, violet) and a chrome ramp in the
+  palettes. Challenges and perks as Q3 a / Q5 a. For the owner to pick: R1 the names and the cyber three, R2 the
+  finale and era team three (suggested Overclock, Updraft, Halfcourt; or Glitch in for Overclock), R3 a CYBER /
+  NATURAL card tag or none (suggested none), R4 static glow (suggested) or a pulse later. Era colors lime + violet
+  with chrome on the parts, court NEON DOME, fast electro: first guesses kept.
 - From the Phase 10 check-in, still open: Rooftop's cradle dunk is drawn as a windmill; keep it, or give it its own look
   (board P11-10)?
