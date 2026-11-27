@@ -281,7 +281,7 @@ none, static glow). The lead writes the answers into the contract and VISION.
   | Result: `combo` EXTRA row (12 frames, 320 ms like `cross`, lane 0, no sheet carries it), gif on the look
   sample's Glitch (5 directions + W mirrored, crossover row under it, a 4x band SE / E / W); 0 check problems;
   format.json unchanged. Note for P12-14 / P12-17: two hand switches, so it ends in the hand it started in
-  (`hand_end` "R"), unlike `cross` ("L"): the game must keep the ball hand on his combo, or say otherwise
+  (`hand_end` "R"), unlike `cross` ("L"): the game must keep the ball hand on his combo, or say otherwise. Lead: (a) the game keeps the ball in his starting hand after a combo (P12-17; the hand side only, the crossover's beat and timing unchanged)
 - **P12-06** | The New Generation court: a made-up arena of the future
   | art-audio-integrator C | `tools/art/make_courts.py` (`--era next`), `assets/courts/era_next_*`,
   `scripts/court_looks.gd` (the `era_next` row)
