@@ -185,6 +185,18 @@ Everything in "Tasks by wave" not marked DONE.
 ## Doing
 
 ## Review
+- **P12-18** Chapter flow, the gate and the ending (gameplay B): `legends.gd`, `legends_tour.gd`, `hall.gd`, and the
+  `--legends-test` driver's checks (`legends_test.gd`, as the coordinator asked). `SHIPPED_CHAPTERS` 4 (gate 72 stars
+  or 48 tokens checked; the chapter walk runs on four eras). `Legends.legends_complete()` (every timeline row built,
+  each finale won; from the data, no chapter id), `last_chapter()`, `complete_scene()`, `COMPLETE_SCENE`
+  "legends_complete": the finale win that completes the mode plays its "after" scene, then the ending (marked seen,
+  once), then the chapter view; replays and later games never again. Timeline: the sub line becomes a gold banner
+  "LEGENDS COMPLETE - TOKENS 84/84" and the hint "Every era beaten, every finale won. The Hall is full." Hall: the title
+  and hint sit on a gold banner ("THE HALL IS FULL: LEGENDS COMPLETE. TAP HERE FOR THE ENDING."), the count box gets a
+  gold border; a tap on the banner (776 x 114) replays the ending, back to the Hall (the plaque's REPLAY STORY stays
+  his unlock scene). No CYBER / NATURAL tag (owner R3). `--legendtest` OK; `--legends-test --stars 24 --target 3
+  --difficulty hard` LEGENDS END 84/84 (ending 1x after the last finale, 1x from the Hall); `--difficulty normal
+  --stars 48` LEGENDS END, Chapter 4 locked at 42 tokens, no ending, no banner; `--backtest` OK; `--titletest` DONE
 - **P12-16** Chapter 4 story and the end of the mode (gameplay C): `story_text.gd` only (story.gd unchanged).
   `legends_next_intro` (NEON DOME, FAST BREAK, Overclock and Emrys Tregarth introduce the six), the six
   `lg_<id>_unlock` scenes (goal numbers from the data: 11 before 10, down 0-2 to 15, 2 stops to 15, under 6 to 11, hot
@@ -422,7 +434,7 @@ name (P12-06), the music pick (P12-08).
   `--titletest` credits count right; `--challenge lg_overclock` plays it | the music pick, P12-11 merged
 
 ### Wave 6
-- **P12-18** | Chapter flow, the gate and the ending
+- **P12-18** | REVIEW | Chapter flow, the gate and the ending
   | gameplay-programmer B | `scripts/legends.gd`, `scripts/legends_tour.gd`, `scripts/hall.gd`
   | `self_test()` holds the four shipped chapters (`SHIPPED_CHAPTERS` 4, gate 72 stars / 48 tokens). The chapter walk
   covers Chapter 4 (shut at the Present's gate, open at its own). After the Chapter 4 finale's after scene comes

@@ -10,6 +10,8 @@ extends CanvasLayer
 #   scene in story.gd, back here on the same plaque). Locked: the silhouette, his challenge line and how to get it.
 #   A locked row: its chapter, COMING LATER, the feel line and the gate.
 #   Header: BACK (top-left, to args.back), HALL OF LEGENDS, a hint line, the legends unlocked and the tokens.
+#   P12-18: once every era's finale is won (Legends.legends_complete()) the title and hint sit on the full Hall banner
+#   (gold), and a tap on it replays the ending scene (Legends.complete_scene()), then back here.
 # The layout is a 1280 x 720 box centred on wider or taller screens (like lineup.gd). Nothing mirrors for the
 # left-handed layout (a menu screen has no joystick). Taps are ignored for ARM_T s after the screen opens.
 # Art: assets/legends/ui.json and its frames / silhouette (P9-11); the cards are Sheets.card_info() of the legend's
@@ -176,6 +178,16 @@ const CH_PICK := "ch:"                   # a pick of a locked row: "ch:<chapter 
 const HINT_TEXT := "Tap a plaque. Beat a legend on the LEGENDS tour to hang him here."
 const STORY_SCREEN := "story"
 const SELF_SCREEN := "hall"
+# P12-18 (Q8 a): the full Hall banner. Once Legends.legends_complete() (every era's finale won, so every plaque is up)
+# the header (HALL OF LEGENDS and the hint line) sits on a gold banner; the hint says the Hall is full, and a tap on the
+# banner (a tap target the size of the title and hint, >= UI.MIN_BUTTON) replays the ending, Legends.complete_scene(),
+# then back here on the same plaque. Drawn in code (ui_kit look), no art file.
+const BANNER_RECT := Rect2(224, 4, 776, 114)    # behind TITLE_RECT and HINT_RECT
+const BANNER_FILL := Color(0.3, 0.2, 0.04, 0.94)
+const BANNER_BORDER := 5                        # px, UI.LIT_COLOR
+const BANNER_PRESSED_FILL := Color(0.42, 0.3, 0.07, 0.96)
+const FULL_HINT := "THE HALL IS FULL: LEGENDS COMPLETE. TAP HERE FOR THE ENDING."
+const FULL_HINT_COLOR := Color(1.0, 0.93, 0.7)
 
 var main                     # main.gd (set by Flow.build_screen)
 var audio                    # this screen's audio.gd
@@ -190,6 +202,7 @@ var _art: DetailArt
 var _hint: Label
 var _hint_t := 0.0
 var _replay: Button = null
+var _banner: Button = null   # P12-18: the full Hall banner (null until the mode is complete)
 var _back := "legends"
 var _back_args := {}
 var _arm_t := ARM_T
@@ -242,10 +255,11 @@ func _ready() -> void:
 	_show_pick()
 	_scroll_frames = 2
 	_stat("hall_screen")
-	print("HALL screen | unlocked %d/%d %s | tokens %d/%d | pick %s | back %s%s" % [
+	print("HALL screen | unlocked %d/%d %s | tokens %d/%d | pick %s | back %s%s%s" % [
 			Legends.unlocked_ids().size(), LegendsData.legend_ids().size(), str(Legends.unlocked_ids()),
 			Legends.tokens_total(), LegendsData.max_tokens(), _pick, _back,
-			(" " + JSON.stringify(_back_args)) if not _back_args.is_empty() else ""])
+			(" " + JSON.stringify(_back_args)) if not _back_args.is_empty() else "",
+			" | FULL HALL banner" if banner_shown() else ""])
 	print("HALL mentors | %s %d players %s | pairs %s" % ["trip" if _has_trip else "no trip (underdogs)",
 			_players.size(), str(player_ids()), JSON.stringify(Legends.mentors)])
 
@@ -264,7 +278,7 @@ func _process(delta: float) -> void:
 	if _hint_t > 0.0:
 		_hint_t -= delta
 		if _hint_t <= 0.0:
-			_set_hint(HINT_TEXT, HINT_COLOR)
+			_set_hint(_hint_default(), _hint_default_color())
 	if _scroll_frames > 0:
 		_scroll_frames -= 1
 		if _scroll_frames == 0:
@@ -418,10 +432,20 @@ func _scroll_to_pick() -> void:
 func _build_head() -> void:
 	var back: Button = UI.button(_frame, "BACK", _on_back, UI.KIND_OPT, UI.SMALL_SIZE)
 	back.position = BACK_POS
+	if hall_full():
+		# P12-18: the full Hall banner, under the title and the hint (labels ignore the mouse: the tap reaches it)
+		_banner = UI.button(_frame, "", replay_ending, UI.KIND_LIT, BANNER_RECT.size)
+		_banner.name = "HallFullBanner"
+		var sb: StyleBoxFlat = UI.style_box(BANNER_FILL, UI.LIT_COLOR, BANNER_BORDER)
+		for k in ["normal", "hover", "disabled"]:
+			_banner.add_theme_stylebox_override(k, sb)
+		_banner.add_theme_stylebox_override("pressed", UI.style_box(BANNER_PRESSED_FILL, UI.LIT_BORDER, BANNER_BORDER))
+		_banner.position = BANNER_RECT.position
+		_banner.size = BANNER_RECT.size
 	var head: Label = UI.title(_frame, "HALL OF LEGENDS", GOLD)
 	head.position = TITLE_RECT.position
 	head.size = TITLE_RECT.size
-	_hint = UI.label(_frame, HINT_TEXT, HINT_FONT, HINT_COLOR)
+	_hint = UI.label(_frame, _hint_default(), HINT_FONT, _hint_default_color())
 	_hint.position = HINT_RECT.position
 	_hint.size = HINT_RECT.size
 	_hint.clip_text = true
@@ -1048,6 +1072,34 @@ func _on_list_tap(at: Vector2) -> void:
 	elif plaque_state(what) == "locked":
 		_flash("Locked: win his challenge on the LEGENDS tour.")
 
+# P12-18: the Hall is full (the Legends mode is complete): the banner shows
+static func hall_full() -> bool:
+	return Legends.legends_complete()
+
+func banner_shown() -> bool:
+	return _banner != null
+
+func _hint_default() -> String:
+	return FULL_HINT if hall_full() else HINT_TEXT
+
+func _hint_default_color() -> Color:
+	return FULL_HINT_COLOR if hall_full() else HINT_COLOR
+
+# the banner's tap: the ending (Legends.complete_scene()), then back here on the same plaque. False when the Hall is
+# not full or the scene is missing
+func replay_ending() -> bool:
+	if _busy or _arm_t > 0.0 or _picker != null or not hall_full():
+		return false
+	var sc: String = Legends.complete_scene()
+	if sc == "":
+		return false
+	_stat("hall_replay_ending")
+	_sfx("bounce", -4.0)
+	print("HALL replay ending %s" % sc)
+	_go(STORY_SCREEN, {"scene": sc, "then": SELF_SCREEN,
+			"then_args": {"back": _back, "back_args": _back_args.duplicate(true), "pick": _pick}})
+	return true
+
 # REPLAY STORY: the picked legend's unlock scene, then back here on the same plaque
 func _on_replay() -> void:
 	if _busy or _arm_t > 0.0:
@@ -1464,7 +1516,9 @@ class CountBox extends Control:
 
 	func _draw() -> void:
 		var s = screen
-		draw_style_box(s.UI.style_box(s.UI.PANEL_COLOR, s.UI.PANEL_BORDER, s.UI.BORDER), Rect2(Vector2.ZERO, size))
+		var full: bool = s.hall_full()   # P12-18: a gold border once the Hall is full
+		draw_style_box(s.UI.style_box(s.UI.PANEL_COLOR, s.UI.LIT_COLOR if full else s.UI.PANEL_BORDER,
+				s.BANNER_BORDER if full else s.UI.BORDER), Rect2(Vector2.ZERO, size))
 		var n: int = s.Legends.unlocked_ids().size()
 		var all: int = s.LegendsData.legend_ids().size()
 		s.draw_text(self, Vector2(0, 44), "%d/%d" % [n, all], s.COUNT_FONT, s.GOLD, HORIZONTAL_ALIGNMENT_CENTER,

@@ -86,11 +86,16 @@ const PERK_KEY := "perk"              # = Trip.PERK_KEY: a player dict's mentor 
 # self_test() only (test expectations, never game logic): every chapter row's gate as the owner set it, in timeline
 # order (L4 a: 24 stars; F7 a: 36 stars or 12 tokens; P7 a: 48 stars or 30 tokens; P12 Q6 a: 72 stars or 48 tokens;
 # never an earlier finale needed). SHIPPED_CHAPTERS: the fewest built rows the shipped data may have (the first rows of
-# SHIPPED_GATES; P12-03: a build with Chapter 4's row built too passes, P12-11)
-const SHIPPED_CHAPTERS := 3
+# SHIPPED_GATES; P12-03: a build with Chapter 4's row built too passes, P12-11; P12-18: the four shipped chapters)
+const SHIPPED_CHAPTERS := 4
 const SHIPPED_GATES := {"grand": {"stars": 24, "tokens": 0}, "fathers": {"stars": 36, "tokens": 12},
 	"present": {"stars": 48, "tokens": 30}, "next": {"stars": 72, "tokens": 48}}
 const TOUR_PATH := "res://scripts/legends_tour.gd"   # self_test(): its static _intro_scene() / _finale_before()
+# P12-18 (Q8 a): the end of the mode. Once every chapter row of the timeline is built and its finale won
+# (legends_complete(), from the data: no chapter named), this scene plays once, right after the finale's "after"
+# scene (story_text.gd; marked seen like the others, so a replay never plays it again), then the chapter view; the
+# timeline says LEGENDS COMPLETE and the Hall shows its full banner (where a tap replays it)
+const COMPLETE_SCENE := "legends_complete"
 
 # ---------------------------------------------------------------------------------------------------- state
 static var tokens := {}               # {"lg:<id>" | "fin:<ch>": 1..3}, best kept
@@ -330,6 +335,26 @@ static func finale_open(ch: String) -> bool:
 static func chapter_done(ch: String) -> bool:
 	load_state()
 	return finales.has(ch)
+
+# P12-18: the Legends mode is complete: every chapter row of the timeline is built, has a finale and that finale was
+# won (finales as saved; --legends-unlock-all closes nothing). False while any row is still COMING LATER
+static func legends_complete() -> bool:
+	var ids: Array = LegendsData.chapter_ids()
+	if ids.is_empty():
+		return false
+	for ch in ids:
+		if not LegendsData.is_built(str(ch)) or not LegendsData.has_finale(str(ch)) or not chapter_done(str(ch)):
+			return false
+	return true
+
+# the last chapter of the timeline (the row the mode ends on), "" without rows
+static func last_chapter() -> String:
+	var ids: Array = LegendsData.chapter_ids()
+	return str(ids[ids.size() - 1]) if not ids.is_empty() else ""
+
+# the ending scene ("" when story_text.gd doesn't have it): the Hall's banner replays it any time once complete
+static func complete_scene() -> String:
+	return COMPLETE_SCENE if StoryText.has_scene(COMPLETE_SCENE) else ""
 
 # a challenge can be played now (its chapter is open)
 static func challenge_open(id: String) -> bool:
@@ -630,7 +655,8 @@ static func record_result(result: Dictionary) -> Dictionary:
 
 # Where flow.gd goes after a legends game: {"screen", "args"}. A new unlock: his unlock scene (once), then the chapter
 # view; a won finale: its "after" scene (once), then the chapter view; else the chapter view (the timeline without a
-# chapter). A scene story_text.gd doesn't have is skipped.
+# chapter). A scene story_text.gd doesn't have is skipped. P12-18: the finale win that makes legends_complete() true
+# plays COMPLETE_SCENE (once) after its "after" scene: story -> story -> the chapter view.
 static func after_result() -> Dictionary:
 	var o: Dictionary = last_outcome
 	var ch: String = str(o.get("chapter", ""))
@@ -640,9 +666,15 @@ static func after_result() -> Dictionary:
 		scene = str(LegendsData.legend(str(o["unlocked"])).get("unlock_scene", ""))
 	elif bool(o.get("won", false)) and bool(o.get("finale", false)):
 		scene = str((LegendsData.chapter(ch).get("finale_scenes", {}) as Dictionary).get("after", ""))
+	var to: Dictionary = {"screen": SCREEN, "args": back}
+	# P12-18: the won finale that completes the mode: the ending (once) after its "after" scene, then the chapter view
+	if bool(o.get("won", false)) and bool(o.get("finale", false)) and legends_complete() and complete_scene() != "" \
+			and mark_seen(COMPLETE_SCENE):
+		print("LEGENDS COMPLETE | every finale won: %s plays once" % COMPLETE_SCENE)
+		to = {"screen": "story", "args": {"scene": COMPLETE_SCENE, "then": SCREEN, "then_args": back}}
 	if scene != "" and StoryText.has_scene(scene) and mark_seen(scene):
-		return {"screen": "story", "args": {"scene": scene, "then": SCREEN, "then_args": back}}
-	return {"screen": SCREEN, "args": back}
+		return {"screen": "story", "args": {"scene": scene, "then": str(to["screen"]), "then_args": to["args"]}}
+	return to
 
 # ---------------------------------------------------------------------------------------------------- test flags
 
@@ -1373,15 +1405,22 @@ static func _check_chapter_walk(errs: Array, trip_path: String, tag: String, wan
 		_check(errs, str(o["chapter"]) == c1 and str(o["unlocked"]) == str(ids1[i])
 				and nx.get("args", {}).get("then_args", nx.get("args", {})).get("chapter", "") == c1,
 				"%s: %s back to %s" % [tag, ids1[i], str(nx)])
+	# P12-18: the mode is not complete until the last finale (here Chapter 1's) is won
+	var all_rows: bool = chs.size() == LegendsData.chapter_ids().size()
+	_check(errs, not legends_complete() and not has_seen(COMPLETE_SCENE) and last_chapter() == str(LegendsData.chapter_ids()[
+			LegendsData.chapter_ids().size() - 1]), "%s: complete before the last finale" % tag)
 	match_for_finale(c1, "normal")
 	o = record_result({"won": true})
 	nx = after_result()
+	var c1_tokens: int = chapter_tokens(c1)
+	_check_complete(errs, tag, nx, c1, all_rows)
+	_check(errs, chapter_tokens(c1) == c1_tokens, "%s: the finale replay changed the best tokens" % tag)
 	var others_ok: bool = true
 	for k in range(1, n):
 		if not chapter_done(str(chs[k])) or chapter_tokens(str(chs[k])) != 10:
 			others_ok = false
 	_check(errs, chapter_done(c1) and others_ok and finales == done + [c1]
-			and nx.get("args", {}).get("then_args", nx.get("args", {})).get("chapter", "") == c1
+			and str(_final_stop(nx).get("args", {}).get("chapter", "")) == c1
 			and chapter_tokens(c1) == 18 + 2 and real_tokens_total() == 20 + 10 * (n - 1)
 			and unlocked_ids() == all_ids, "%s: every chapter done (tokens %d / %d, unlocked %s)"
 			% [tag, chapter_tokens(c1), real_tokens_total(), str(unlocked_ids())])
@@ -1488,6 +1527,50 @@ static func _check_chapter_walk(errs: Array, trip_path: String, tag: String, wan
 	_loaded = true
 	force_tokens = -1
 	Stars.force_total = 24
+
+# where an after_result() answer ends after its story scenes (story -> story -> ...): {"screen", "args"}
+static func _final_stop(nx: Dictionary) -> Dictionary:
+	var at: Dictionary = nx
+	for i in 4:
+		if str(at.get("screen", "")) != "story":
+			break
+		var a: Dictionary = at.get("args", {})
+		at = {"screen": str(a.get("then", "")), "args": a.get("then_args", {})}
+	return at
+
+# P12-18: the finale win that closed the last open chapter (nx its after_result()). With every timeline row built:
+# legends_complete(), the finale's "after" scene (when story_text.gd has it), then COMPLETE_SCENE once, then the
+# chapter view; the next after_result() and a replayed finale win go straight to the view (seen, never again). With a
+# row still unbuilt: not complete, no ending.
+static func _check_complete(errs: Array, tag: String, nx: Dictionary, ch: String, all_rows: bool) -> void:
+	var chain: Array = []
+	var at: Dictionary = nx
+	for i in 4:
+		if str(at.get("screen", "")) != "story":
+			break
+		var a: Dictionary = at.get("args", {})
+		chain.append(str(a.get("scene", "")))
+		at = {"screen": str(a.get("then", "")), "args": a.get("then_args", {})}
+	var after_sc: String = str((LegendsData.chapter(ch).get("finale_scenes", {}) as Dictionary).get("after", ""))
+	var want: Array = []
+	if after_sc != "" and StoryText.has_scene(after_sc):
+		want.append(after_sc)
+	if all_rows and complete_scene() != "":
+		want.append(COMPLETE_SCENE)
+	var end_ok: bool = str(at.get("screen", "")) == SCREEN and str((at.get("args", {}) as Dictionary).get("chapter", "")) == ch
+	_check(errs, legends_complete() == all_rows and chain == want and end_ok and has_seen(COMPLETE_SCENE) == (all_rows
+			and complete_scene() != ""), "%s: the ending after the %s finale: complete %s, scenes %s (want %s), then %s"
+			% [tag, ch, str(legends_complete()), str(chain), str(want), str(at)])
+	var again: Dictionary = after_result()
+	_check(errs, str(again.get("screen", "")) == SCREEN and str((again.get("args", {}) as Dictionary).get("chapter", "")) == ch,
+			"%s: the ending twice %s" % [tag, str(again)])
+	# a replay of the finale (another level): no scene, no ending again
+	match_for_finale(ch, "easy")
+	var o: Dictionary = record_result({"won": true})
+	var rep: Dictionary = after_result()
+	_check(errs, bool(o.get("won", false)) and legends_complete() == all_rows and str(rep.get("screen", "")) == SCREEN
+			and str((rep.get("args", {}) as Dictionary).get("chapter", "")) == ch, "%s: a finale replay after the ending %s"
+			% [tag, str(rep)])
 
 # after_result() for a scene that plays once: the story, then this chapter's view; a scene story_text.gd doesn't have
 # (a stand-in's; strict = the shipped rows, which must have it) goes straight to the view

@@ -53,6 +53,10 @@ extends Node
 # closing on the finale (its "after" scene), where the game led, and the test trip save byte for byte unchanged.
 # At the end: all 6 unlocked, the chapter done, every token as won, the file agrees, the intro and the 6 unlock
 # scenes seen, the Hall visited, every forced loss and goal test retried and won.
+# P12-18, the end of the mode: the finale that wins the last open chapter with every timeline row built plays the
+# finale's "after" scene, then Legends.COMPLETE_SCENE once, then the chapter view; the timeline then shows LEGENDS
+# COMPLETE and the Hall its full banner (the driver taps it once: the ending replays, back to the Hall). A run that
+# leaves a chapter locked (e.g. Normal, 42 tokens: Chapter 4 shut) must show neither and never play the ending.
 # Prints LEGENDS lines and ends with "LEGENDS END" (exit 0) or "LEGENDS ERROR: <why>" (exit 1). Test files only:
 # user://legends_test.json (erased at the start), user://trip_test.json (only read, or erased by --legends-no-trip).
 
@@ -129,6 +133,11 @@ static var _g_unlock_scene_new := false   # his unlock scene exists and was not 
 static var _g_after_scene_new := false    # the finale's "after" scene exists and was not seen before
 static var _results := 0
 static var _finale_games := 0     # finale games started in the chapter phase
+static var _g_complete_new := false      # P12-18: winning this finale completes the mode (the ending is due)
+static var _ending_game := 0      # P12-18: the ending scene after a game (must be 1 once complete, else 0)
+static var _ending_hall := 0      # ... replayed from the Hall's full banner
+static var _ending_tap := false   # the Hall's banner was tapped: the next screen is the ending, then the Hall again
+static var _complete_seen := false   # the timeline showed LEGENDS COMPLETE (checked on the "back" step)
 static var _g_others := {}        # {chapter: [tokens, done]} of every other built chapter when the game started
 
 var main                          # main.gd (Flow sets it)
@@ -306,7 +315,19 @@ func _step() -> bool:
 			return _chapter_step(node)
 		"story", "hall":
 			if _screen == "hall" and _phase == "hall_back":
-				print("LEGENDS hall: BACK (auto_step)")
+				# P12-18: the full Hall banner once the mode is complete (and only then); tapped once, it replays the ending
+				var full: bool = Legends.legends_complete()
+				var shown: bool = node != null and node.has_method("banner_shown") and bool(node.call("banner_shown"))
+				if shown != full:
+					print("LEGENDS hall banner: %s, want %s | WRONG" % [str(shown), str(full)])
+					_fail("the Hall's full banner is %s with legends_complete() %s" % [str(shown), str(full)])
+					return false
+				if full and _ending_hall == 0 and not _ending_tap:
+					node.set("_arm_t", 0.0)
+					_ending_tap = true
+					print("LEGENDS hall banner: shown | tap it (the ending again)")
+					return bool(node.call("replay_ending"))
+				print("LEGENDS hall: BACK (auto_step)%s" % (" | banner shown" if shown else ""))
 			return Flow.auto_step()
 	_fail("an unexpected screen %s" % _screen)
 	return false
@@ -334,6 +355,18 @@ func _timeline_step(node: Node) -> bool:
 		if st != "done":
 			_fail("the timeline does not show the finished chapter as done")
 			return false
+		# P12-18: LEGENDS COMPLETE on the timeline exactly when every chapter's finale is won
+		var shown: bool = bool(node.call("complete_shown"))
+		var sub = node.find_child("TimelineSub", true, false)
+		var sub_text: String = str((sub as Label).text) if sub is Label else ""
+		var full: bool = Legends.legends_complete()
+		var ok_c: bool = shown == full and sub_text.begins_with("LEGENDS COMPLETE") == full
+		print("LEGENDS timeline complete: %s | '%s' | %s" % [str(shown), sub_text, "ok" if ok_c else
+				"WRONG (want %s)" % str(full)])
+		if not ok_c:
+			_fail("the timeline's LEGENDS COMPLETE does not match legends_complete() %s" % str(full))
+			return false
+		_complete_seen = _complete_seen or shown
 		var nxt: String = _gate_check(node)
 		if _finished:
 			return false
@@ -501,6 +534,13 @@ func _start_game() -> void:
 	else:
 		var asc: String = str((LegendsData.chapter(_chapter).get("finale_scenes", {}) as Dictionary).get("after", ""))
 		_g_after_scene_new = asc != "" and StoryText.has_scene(asc) and not Legends.has_seen(asc)
+	# P12-18: this finale is the last one missing (every row built, every other chapter done) and the ending is unseen
+	_g_complete_new = false
+	if _g_lid == "" and Legends.complete_scene() != "" and not Legends.has_seen(Legends.COMPLETE_SCENE):
+		_g_complete_new = true
+		for ch in LegendsData.chapter_ids():
+			if not LegendsData.is_built(str(ch)) or (str(ch) != _chapter and not Legends.chapter_done(str(ch))):
+				_g_complete_new = false
 	# the plan
 	if _play:
 		_g_plan = "play"
@@ -674,6 +714,22 @@ func _on_arrive() -> void:
 		_check_then()
 		if _finished:
 			return
+	if _ending_tap and _prev_screen == "hall":
+		var ok_t: bool = _screen == "story" and str(Flow.args.get("scene", "")) == Legends.COMPLETE_SCENE \
+				and str(Flow.args.get("then", "")) == "hall"
+		print("LEGENDS hall banner tap: %s" % ("ok, the ending" if ok_t else "WRONG (on %s %s)" % [_screen,
+				JSON.stringify(Flow.args)]))
+		if not ok_t:
+			_fail("the Hall's banner did not replay the ending")
+			return
+		_ending_hall += 1
+		return
+	if _ending_tap and _prev_screen == "story":
+		_ending_tap = false
+		print("LEGENDS hall banner: the ending -> %s %s" % [_screen, "ok" if _screen == "hall" else "WRONG"])
+		if _screen != "hall":
+			_fail("the ending from the Hall did not come back to the Hall")
+			return
 	if _phase == "hall_back" and _screen == "hall":
 		print("LEGENDS hall: open | back %s" % JSON.stringify(Flow.args))
 	elif _phase == "hall_back" and _prev_screen == "hall":
@@ -769,11 +825,26 @@ func _check_outcome() -> void:
 	elif closes and _g_after_scene_new:
 		_expect = {"screen": "story", "scene": str((LegendsData.chapter(_chapter).get("finale_scenes", {})
 				as Dictionary).get("after", "")), "then": "legends"}
+		if _g_complete_new:
+			_expect["chain"] = Legends.COMPLETE_SCENE   # P12-18: the ending after the "after" scene
+	elif closes and _g_complete_new:
+		_expect = {"screen": "story", "scene": Legends.COMPLETE_SCENE, "then": "legends"}
+	if closes and Legends.legends_complete() != _g_complete_new and not Legends.has_seen(Legends.COMPLETE_SCENE):
+		errs.append("legends_complete() %s after this finale, want %s" % [str(Legends.legends_complete()),
+				str(_g_complete_new)])
 	if not _expect.is_empty():
 		if _screen != "story" or str(Flow.args.get("scene", "")) != str(_expect["scene"]):
 			errs.append("led to %s %s, want the story %s" % [_screen, JSON.stringify(Flow.args), str(_expect["scene"])])
+		var ta: Dictionary = Flow.args.get("then_args", {})
+		if str(_expect.get("chain", "")) != "" and (str(Flow.args.get("then", "")) != "story"
+				or str(ta.get("scene", "")) != str(_expect["chain"]) or str(ta.get("then", "")) != "legends"
+				or str((ta.get("then_args", {}) as Dictionary).get("chapter", "")) != _chapter):
+			errs.append("the ending does not follow the after scene: %s" % JSON.stringify(Flow.args))
 	elif _screen != "legends" or Flow.args != ch_args:
 		errs.append("led to %s %s, want the chapter view" % [_screen, JSON.stringify(Flow.args)])
+	if not closes and (str(Flow.args.get("scene", "")) == Legends.COMPLETE_SCENE
+			or str((Flow.args.get("then_args", {}) as Dictionary).get("scene", "")) == Legends.COMPLETE_SCENE):
+		errs.append("the ending after %s (not a finale win)" % _g_key)
 	print("LEGENDS tokens %s %s %s | level %s (%d a win) | best %d -> %d | unlocked %s (%d/%d) | chapter done %s | trip save %s | %s" % [
 			_g_key, _g_plan, "won" if want_won else "lost" if not game_won else "won, goal not met", _g_level, per,
 			_g_before, Legends.token_best(_g_key), str(o.get("unlocked", "")) if str(o.get("unlocked", "")) != "" else "-",
@@ -796,6 +867,17 @@ func _check_outcome() -> void:
 # a story scene after a game has ended: it must lead back to the chapter view
 func _check_then() -> void:
 	var ok: bool = _screen == "legends" and str(Flow.args.get("chapter", "")) == _chapter
+	var chain: String = str(_expect.get("chain", ""))
+	var sc: String = str(_expect.get("scene", ""))
+	if sc == Legends.COMPLETE_SCENE or chain != "":
+		# P12-18: the ending played right before this view (after the "after" scene when there is one)
+		var tail: Array = _scenes.slice(maxi(0, _scenes.size() - (2 if chain != "" else 1)))
+		var want: Array = [sc, chain] if chain != "" else [sc]
+		_ending_game += 1
+		print("LEGENDS ending: %s | %s" % [str(tail), "ok" if tail == want and Legends.has_seen(Legends.COMPLETE_SCENE)
+				else "WRONG (want %s)" % str(want)])
+		if tail != want or not Legends.has_seen(Legends.COMPLETE_SCENE):
+			ok = false
 	print("LEGENDS after %s: %s" % [str(_expect.get("scene", "")), "ok, back on the chapter view" if ok else
 			"WRONG (on %s %s)" % [_screen, JSON.stringify(Flow.args)]])
 	_expect = {}
@@ -953,6 +1035,27 @@ func _end() -> void:
 				"ok" if errs2.is_empty() else "WRONG: " + "; ".join(PackedStringArray(errs2))])
 		if not errs2.is_empty():
 			bad = true
+	# P12-18: the ending: once after the last finale when every row is built and won (and once more from the Hall's
+	# banner), never otherwise
+	var want_full: bool = not LegendsData.chapter_ids().is_empty()
+	for ch in LegendsData.chapter_ids():
+		want_full = want_full and LegendsData.is_built(str(ch)) and Legends.chapter_done(str(ch))
+	var want_scene: bool = want_full and Legends.complete_scene() != ""
+	var errs3: Array = []
+	if Legends.legends_complete() != want_full:
+		errs3.append("legends_complete() %s, want %s" % [str(Legends.legends_complete()), str(want_full)])
+	if _ending_game != (1 if want_scene else 0) or _scenes.count(Legends.COMPLETE_SCENE) != (1 + _ending_hall if want_scene else 0) \
+			or _ending_hall != (1 if want_scene and HALL_TEST else 0):
+		errs3.append("the ending after a game %d, from the Hall %d, shown %d" % [_ending_game, _ending_hall,
+				_scenes.count(Legends.COMPLETE_SCENE)])
+	if Legends.has_seen(Legends.COMPLETE_SCENE) != want_scene or _complete_seen != want_full:
+		errs3.append("ending seen %s, timeline complete %s" % [str(Legends.has_seen(Legends.COMPLETE_SCENE)),
+				str(_complete_seen)])
+	print("LEGENDS complete | %s | ending after the last finale %d, from the Hall %d | timeline %s | %s" % [
+			str(want_full), _ending_game, _ending_hall, str(_complete_seen), "ok" if errs3.is_empty() else
+			"WRONG: " + "; ".join(PackedStringArray(errs3))])
+	if not errs3.is_empty():
+		bad = true
 	if bad:
 		_fail("the finished chapter%s not check out" % ("s do" if many else " does"))
 		return

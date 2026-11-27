@@ -4,7 +4,8 @@ extends CanvasLayer
 #   Timeline: the backdrop (timeline.png at 2x) with the 4 chapter panels left to right. Each panel: its pin (open /
 #   done / locked), CHAPTER n, the name, the status (PLAY, LOCKED, COMING LATER, FINALE WON), the gate or its tokens.
 #   An open chapter has a gold PLAY button (and the whole panel is a tap target); a locked one says why on the hint
-#   line. Header: LEGENDS, THE ERA TOUR - TOKENS n/max, HALL and BACK (to the title).
+#   line. Header: LEGENDS, THE ERA TOUR - TOKENS n/max, HALL and BACK (to the title). P12-18: once every era's
+#   finale is won (Legends.legends_complete()) the sub line is a gold banner, LEGENDS COMPLETE - TOKENS n/max.
 #   Chapter view: the 6 legend plaques (locked = the silhouette and "?", beaten = his card and his best tokens), the
 #   era finale card (locked until all 6 are beaten), YOUR CREW (Legends.crew_for_challenge() / crew_for_finale(): the
 #   trip's starters, "NO TRIP: THE KINGS PLAY", or the swap of a drafted legend), on the right the picked game (name,
@@ -140,6 +141,13 @@ const SELF_SCREEN := "legends"
 const STORY_SCREEN := "story"
 const HALL_SCREEN := "hall"
 const TL_HINT := "Tap an era. Beat its legends to hang them in the Hall."
+# P12-18 (Q8 a): once Legends.legends_complete() (every era's finale won) the header's sub line is a gold banner,
+# LEGENDS COMPLETE with the tokens, and the hint line says so (no new panel; drawn in code, the ui_kit look)
+const TL_COMPLETE_TEXT := "LEGENDS COMPLETE  -  TOKENS %d/%d"
+const TL_COMPLETE_HINT := "Every era beaten, every finale won. The Hall is full."
+const TL_COMPLETE_FILL := Color(0.3, 0.2, 0.04, 0.94)   # the banner behind LEGENDS COMPLETE
+const TL_COMPLETE_BORDER := 4                           # its gold border (UI.LIT_COLOR)
+const TL_COMPLETE_INSET := Vector2(8, 10)               # px the banner sits inside TL_SUB_RECT (top / bottom)
 const CV_HINT := "Tap a legend, pick a level, PLAY."
 
 var main                     # main.gd (set by Flow.build_screen)
@@ -212,7 +220,8 @@ func _ready() -> void:
 			call_deferred("_play_intro", _chapter)
 	_stat("legends_screen")
 	print("LEGENDS TOUR %s | tokens %d/%d | stars %d | open %s | unlocked %d/%d%s" % [
-			("chapter " + _chapter) if _chapter != "" else "timeline", Legends.tokens_total(),
+			("chapter " + _chapter) if _chapter != "" else ("timeline" + (" LEGENDS COMPLETE" if complete_shown()
+			else "")), Legends.tokens_total(),
 			LegendsData.max_tokens(), Stars.total(), str(_open_chapters()), Legends.unlocked_ids().size(),
 			LegendsData.legend_ids().size(), (" | pick %s level %s crew %s" % [_pick, _level,
 			str(_crew(_pick).get("crew", ""))]) if _chapter != "" else ""])
@@ -397,10 +406,23 @@ func _build_timeline() -> void:
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	head.position = TL_TITLE_RECT.position
 	head.size = TL_TITLE_RECT.size
-	var sub: Label = UI.label(_frame, "THE ERA TOUR  -  TOKENS %d/%d" % [Legends.tokens_total(),
-			LegendsData.max_tokens()], TL_SUB_FONT, UI.TEXT_COLOR)
+	var done_all: bool = complete_shown()
+	if done_all:
+		# the banner: a gold-bordered strip in the header band (under the label)
+		var band := Panel.new()
+		band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		band.add_theme_stylebox_override("panel", UI.style_box(TL_COMPLETE_FILL, UI.LIT_COLOR, TL_COMPLETE_BORDER))
+		_frame.add_child(band)
+		band.position = TL_SUB_RECT.position + TL_COMPLETE_INSET
+		band.size = TL_SUB_RECT.size - 2.0 * TL_COMPLETE_INSET
+	var sub_text: String = (TL_COMPLETE_TEXT if done_all else "THE ERA TOUR  -  TOKENS %d/%d") % [Legends.tokens_total(),
+			LegendsData.max_tokens()]
+	var sub: Label = UI.label(_frame, sub_text, TL_SUB_FONT, GOLD if done_all else UI.TEXT_COLOR)
+	sub.name = "TimelineSub"
 	sub.position = TL_SUB_RECT.position
 	sub.size = TL_SUB_RECT.size
+	if done_all:
+		_fit_font(sub, TL_SUB_RECT.size.x - 2.0 * TL_COMPLETE_INSET.x - 8.0, 18)
 	var ids: Array = LegendsData.chapter_ids()
 	var rects: Array = _ui.get("panels", DEF_PANELS)
 	if not (rects is Array) or (rects as Array).size() < ids.size():
@@ -431,6 +453,8 @@ func _build_timeline() -> void:
 	var back: Button = UI.button(_frame, "BACK", _on_back, UI.KIND_OPT, UI.SMALL_SIZE)
 	back.position = TL_BACK_POS
 	_hint_text = TL_HINT if not open.is_empty() else _locked_line(_first_locked(ids))
+	if done_all:
+		_hint_text = TL_COMPLETE_HINT
 	_hint = _hint_label(TL_HINT_RECT, TL_HINT_FONT)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = TL_HINT_BG
@@ -444,6 +468,10 @@ func _hint_label(r: Rect2, fs: int) -> Label:
 	l.size = r.size
 	l.clip_text = true
 	return l
+
+# P12-18: the timeline shows LEGENDS COMPLETE (every chapter row built and its finale won, Legends.legends_complete())
+static func complete_shown() -> bool:
+	return Legends.legends_complete()
 
 # the first built chapter whose gate is not met (the one the hint names), else the first chapter
 static func _first_locked(ids: Array) -> String:
