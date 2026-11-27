@@ -185,6 +185,18 @@ Everything in "Tasks by wave" not marked DONE.
 ## Doing
 
 ## Review
+- **P12-16** Chapter 4 story and the end of the mode (gameplay C): `story_text.gd` only (story.gd unchanged).
+  `legends_next_intro` (NEON DOME, FAST BREAK, Overclock and Emrys Tregarth introduce the six), the six
+  `lg_<id>_unlock` scenes (goal numbers from the data: 11 before 10, down 0-2 to 15, 2 stops to 15, under 6 to 11, hot
+  start cooled by 2 misses to 15, 5 points on him to 11; each teaches his perk), `legends_next_finale_before` /
+  `_after` (CHAPTER 4: DONE, a hint to the wood gym), `RECRUIT_LINES` for the six, and `legends_complete` (12 lines,
+  the old wood gym: Steeple's laced ball to Rooftop, Deep End, then Glitch (left) and Halfcourt (right) together;
+  ends "LEGENDS COMPLETE"). Cyber origins: Overclock's knee brace after an injury at twelve, Glitch's hand built in the
+  school workshop, Firewall's training visor. Naturals: Long Shadow's dirt trailhead court, Updraft's sand court by the
+  pier, Halfcourt's old film of the Grandfathers. Every new line through the name check lists (all nicknames, 1-word
+  too, names, `CYBER_WORDS`): 0 hits. `--legendtest` OK (the Chapter 4 story note is gone); `--legends-test --stars 24
+  --target 3 --difficulty hard` LEGENDS END 84/84, every Chapter 4 scene played. P12-18: play `legends_complete` once
+  after `legends_next_finale_after` (in `Legends.after_result()`), before the chapter view / LEGENDS COMPLETE
 - **P12-15** New Generation portraits (art B): `make_portraits_v2.py --legends next` (LG4, `next_kit()` follows the
   crews.json sheets once P12-14 adds them; until then the sample's parts), twelve `assets/portraits/lg_<six>[_happy].png`
   (about 196 KB), `docs/art/legends_next_portraits.png`. Firewall's thin flat lime visor with chrome temple ends; Glitch's
@@ -381,7 +393,7 @@ name (P12-06), the music pick (P12-08).
   New kit parts are opt-in, so older portraits stay byte for byte the same | P12-11 merged, owner check 1
 
 ### Wave 5
-- **P12-16** | Chapter 4 story and the end of the mode
+- **P12-16** | REVIEW | Chapter 4 story and the end of the mode
   | gameplay-programmer C | `scripts/story_text.gd`, `scripts/story.gd` (only if a scene needs it)
   | The intro, six unlock scenes, the finale before/after, `RECRUIT_LINES` for the six, and `legends_complete` with a
   legend of each era (the contract's Story row). Each cyber part gets its origin in a line, as a tool he earned or

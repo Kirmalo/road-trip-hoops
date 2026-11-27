@@ -40,6 +40,17 @@ extends RefCounted
 # plain move names (step-back, side step, pick-and-pop, extra pass, alley-oop, steal and run); no celebration or
 # slogan ("night night", "too small", "let him cook", ...), no "logo", "splash", "shimmy", "heat check", "money",
 # "buckets", "the kid"; Skylight is never "Sky", Deep End never "Deep" alone.
+# Legends, Chapter 4 (P12-16): the New Generation, the youngest, who grew up watching the Present on the giant screen,
+# in NEON DOME (a glass floor, lime lines, violet rings, a chrome rail); FAST BREAK. Three built their own tools
+# (Overclock's braces began as a knee brace after an injury, Glitch built his hand in the school workshop, Firewall's
+# visor was a training visor he never took off): each part gets its origin in a line, a tool he earned or built, never
+# a cheat. The natural three tie to the old courts (Long Shadow's dirt trailhead court, Updraft's sand court by the
+# pier, Halfcourt's old film of the Grandfathers). Running jokes: Deuce's knee meets Overclock's braces, Jojo's napkin
+# (he runs out of arm), Tank's grandpa (chrome, glass floors). Then "legends_complete" (Q8 a), the end of the mode.
+# Cautions (docs/legends-namecheck.md "Chapter 4"): Halfcourt is Emrys, one word; Long Shadow always both words (never
+# "the Long Shadow" as a title, never "Shadow" alone); plain move names (top gear, run the floor, hesitation, putback,
+# hot hand, swat); never "he's on fire", "not in my house", "all-star"; no cyber words (cyborg, bionic, robo,
+# terminator, android, iron) and no famous fictional cyborg.
 
 const SCENES := {
 	# the title's NEW TRIP, before the map
@@ -659,6 +670,176 @@ const SCENES := {
 		{"who": "narrator", "side": "left",
 			"text": "And so the Present put the {crew} up on the giant screen, and left a light ribbon on. CHAPTER 3: DONE."},
 	],
+
+	# ---------------- Legends, Chapter 4: the New Generation (P12-16) ----------------
+	# the first time the chapter opens: NEON DOME, the six (three built their own tools, three learned on the old
+	# courts), the deal, a hint of the FAST BREAK rules
+	"legends_next_intro": [
+		{"who": "narrator", "side": "left",
+			"text": "Out past the edge of town, a black dome glows violet: NEON DOME. A glass floor, lime lines, a chrome rail."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math says this floor is see-through. I can see my own sneakers. From underneath."},
+		{"who": "lg_overclock", "side": "right",
+			"text": "Tavian Brightwell. Overclock. We grew up watching the Present on the giant screen. Now we're the next ones."},
+		{"who": "lg_halfcourt", "side": "right",
+			"text": "Emrys Tregarth. Halfcourt. Three of us built our own tools. Three of us learned on the old courts. Same game."},
+		{"who": "ud_tank", "side": "left",
+			"text": "Grandpa's in the front row, staring at all the chrome. He says in his day the only metal out here was the rim."},
+		{"who": "lg_overclock", "side": "right", "mood": "happy",
+			"text": "Here it's FAST BREAK: quicker legs, breath back sooner, short stops, and quick shots after you get the ball fall."},
+		{"who": "lg_halfcourt", "side": "right", "mood": "happy",
+			"text": "And the old deal: beat each of us at his own game and we teach you. Then our best three take you on."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "Faster everything, on a glass floor, against kids who build their own knee braces. My knee just filed a complaint."},
+	],
+
+	# Overclock's challenge won (reach 11 before his crew gets 10)
+	"lg_overclock_unlock": [
+		{"who": "lg_overclock", "side": "right",
+			"text": "Eleven before ten. I was at the other end before the ball came down, and you still got there first."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "Those braces on your legs. Where do you even buy a pair like that?"},
+		{"who": "lg_overclock", "side": "right",
+			"text": "You don't. Hurt my knee at twelve and got a plain brace. Then I made it better. And better. Then one for each leg."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "Thanks, but my knee and I have an understanding. It hurts, I complain. It works for us."},
+		{"who": "lg_overclock", "side": "right", "mood": "happy",
+			"text": "Fair. Find me in the Hall and I'll teach your crew to sprint longer before the legs go."},
+	],
+
+	# Long Shadow's challenge won (start down 0-2, come back, to 15)
+	"lg_long_shadow_unlock": [
+		{"who": "lg_long_shadow", "side": "right",
+			"text": "Down two before the tip, and you came back to fifteen. I ran the floor all night and you were still waiting."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Mr. Ostrander, no chrome on you at all? Not even a little light somewhere?"},
+		{"who": "lg_long_shadow", "side": "right",
+			"text": "Just legs. My first court was dirt at a mountain trailhead, a hoop nailed to a pine. The old men's kind of court."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "Grandpa learned on a hoop nailed to a barn. He says pine is for show-offs."},
+		{"who": "lg_long_shadow", "side": "right", "mood": "happy",
+			"text": "Ha! Find me in the Hall. I'll teach your crew to take off the moment the ball turns over."},
+	],
+
+	# Glitch's challenge won (2 blocks or steals on him, and win, to 15)
+	"lg_glitch_unlock": [
+		{"who": "lg_glitch", "side": "right",
+			"text": "Two stops on me. Twice you found the ball when it was supposed to skip a frame. Nobody finds it."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math question: is that hand a real hand? Did it come in a box?"},
+		{"who": "lg_glitch", "side": "right",
+			"text": "I built it in the school workshop, one finger a week, after hours. The shop teacher gave me a B. A B!"},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "I just kept my hands down low and waited. Grandpa says the ball always comes home to the floor."},
+		{"who": "lg_glitch", "side": "right", "mood": "happy",
+			"text": "Your grandpa is annoying and right. Find me in the Hall: I'll teach your crew a shot fake that lifts them off the floor."},
+	],
+
+	# Updraft's challenge won (hold him under 6, to 11)
+	"lg_updraft_unlock": [
+		{"who": "lg_updraft", "side": "right",
+			"text": "Under six. Every miss I went up for, somebody had already put a body on me. Rude. Smart, but rude."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "We boxed you out, Mr. Ingleby. Three of us. Tank counts as two."},
+		{"who": "lg_updraft", "side": "right",
+			"text": "I learned to jump off the sand dunes by the sea, and to play on the old sand court by the pier. Soft landings."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "So no springs in those shoes? Napkin math says nobody goes that high on just tape and a mohawk."},
+		{"who": "lg_updraft", "side": "right", "mood": "happy",
+			"text": "Just tape and a mohawk. Find me in the Hall, and your bigs will put more misses back in."},
+	],
+
+	# Halfcourt's challenge won (he starts hot, cools after 2 misses in a row; win to 15)
+	"lg_halfcourt_unlock": [
+		{"who": "lg_halfcourt", "side": "right",
+			"text": "I started hot and you beat me to fifteen anyway. Two misses in a row, and the flame just went out."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "You shot one from the parking lot. I heard a car alarm go off. Then it went in."},
+		{"who": "lg_halfcourt", "side": "right",
+			"text": "I grew up on old film of the Grandfathers in the wood gym. Two hands, feet set. I just stood a bit further back."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "Grandpa says that film is his good side. He's in the crowd behind Set Shot, waving."},
+		{"who": "lg_halfcourt", "side": "right", "mood": "happy",
+			"text": "Find me in the Hall. I'll teach your shooters to let it go early, right after they get the ball."},
+	],
+
+	# Firewall's challenge won (score 5 points yourself on him, and win, to 11)
+	"lg_firewall_unlock": [
+		{"who": "lg_firewall", "side": "right",
+			"text": "Five points on me, and the win. The visor saw every one of them coming. It just couldn't stop them."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "That visor. You wear it in the van too? To the store? To bed?"},
+		{"who": "lg_firewall", "side": "right",
+			"text": "It was a training visor that shows the ball's flight. I wore it to one practice and never took it off."},
+		{"who": "ud_jojo", "side": "left", "mood": "happy",
+			"text": "Napkin math: if it shows the ball's flight, it should have shown you mine going in. Five times."},
+		{"who": "lg_firewall", "side": "right", "mood": "happy",
+			"text": "Ha. Find me in the Hall: I'll teach your crew to time a block on a jump shot."},
+	],
+
+	# before the New Generation finale (the Kings against Overclock, Updraft and Halfcourt, to 21)
+	"legends_next_finale_before": [
+		{"who": "narrator", "side": "left",
+			"text": "NEON DOME is full. The violet rings come down low, the lime lines light up, the glass floor hums."},
+		{"who": "lg_overclock", "side": "right",
+			"text": "We picked our three: me, Updraft and Halfcourt. FAST BREAK, to twenty-one."},
+		{"who": "lg_updraft", "side": "right", "mood": "happy",
+			"text": "Miss one near the rim tonight and I'll put it back before it knows it missed."},
+		{"who": "lg_halfcourt", "side": "right",
+			"text": "And don't bother guarding me at the arc. I'm already shooting from the half court line."},
+		{"who": "ud_tank", "side": "left",
+			"text": "Grandpa brought a seat cushion, his \"sensible\" shorts and a flashlight, in case the glass floor goes dark."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math: wood gym, park lights, big stage, glass dome. I ran out of arm. I'm writing on Tank."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "Four eras, one knee, still underdogs. {crew}, ball up."},
+	],
+
+	# the finale won: the end of Chapter 4
+	"legends_next_finale_after": [
+		{"who": "lg_overclock", "side": "right", "mood": "happy",
+			"text": "That's the game. I ran all night and you never once let me run away. Nobody does that."},
+		{"who": "lg_updraft", "side": "right", "mood": "happy",
+			"text": "You boxed me out so hard I landed on the right side of the dome for once. Respect."},
+		{"who": "lg_halfcourt", "side": "right", "mood": "happy",
+			"text": "Four generations, and you beat every one of them. Somebody back at the old wood gym wants to see you."},
+		{"who": "ud_deuce", "side": "left", "mood": "happy",
+			"text": "Four chapters. The knee made it. I didn't think the knee would make it."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "Grandpa says right kids, right game, wrong floor. He doesn't trust glass. He's crying anyway."},
+		{"who": "narrator", "side": "left",
+			"text": "And so the New Generation lit the dome lime and violet for the {crew}. CHAPTER 4: DONE."},
+	],
+
+	# Q8 a, the end of the Legends mode (once, after legends_next_finale_after; P12-18 plays it). Back in the first
+	# chapter's wood gym: the old laced ball goes down the eras, Steeple to Rooftop to Deep End, and last to Glitch
+	# (left, the chrome hand) and Halfcourt (right, the bare one) together. The two stand side by side at the end
+	"legends_complete": [
+		{"who": "narrator", "side": "left",
+			"text": "One more night at the old wood gym behind the feed store. The floor still creaks. Every legend came back."},
+		{"who": "ud_jojo", "side": "left",
+			"text": "Napkin math says we've played in every gym in this story. So why are we back at the first one?"},
+		{"who": "lg_steeple", "side": "right",
+			"text": "Because of this. The ball we played with in here, laces and all. It sat in my closet long enough."},
+		{"who": "ud_tank", "side": "left", "mood": "happy",
+			"text": "Grandpa says he lost that exact ball to you in a bet. He wants it noted that the bet was rigged."},
+		{"who": "lg_rooftop", "side": "right",
+			"text": "We snuck in here as kids to watch you throw that thing, big fella. We took it out under the park lights."},
+		{"who": "lg_deep_end", "side": "right",
+			"text": "Then it came to us, up on the giant screen. I took it one step back, like always. This time it goes forward."},
+		{"who": "ud_deuce", "side": "left",
+			"text": "Forward to who? There's two of them reaching for it."},
+		{"who": "lg_steeple", "side": "right", "mood": "happy",
+			"text": "Both, then. A chrome hand and a bare one. That ball never could tell the difference. Neither could the rim."},
+		{"who": "lg_glitch", "side": "left",
+			"text": "Real laces. It doesn't skip a frame. It just sits in the hand, like it already knows the way to the hoop."},
+		{"who": "lg_halfcourt", "side": "right",
+			"text": "I watched this ball on old film a thousand times. Two hands on it now. His and mine."},
+		{"who": "lg_glitch", "side": "left", "mood": "happy",
+			"text": "Same ball. Same game. We'll keep it warm for whoever comes knocking next."},
+		{"who": "narrator", "side": "left",
+			"text": "Grandfathers, fathers, sons and the ones after: one old ball, hand to hand. The lights stay on. LEGENDS COMPLETE."},
+	],
 }
 
 # The recruit's joining line (owner Q4: "the recruit joins with a funny line"): recruit.gd shows it with his portrait
@@ -715,6 +896,13 @@ const RECRUIT_LINES := {
 	"lg_switch": "Guard anybody. Ride anywhere. Mine.",
 	"lg_skylight": "Throw it high and I'll go get it. Does the van have a sunroof? Good. The hair needs the room.",
 	"lg_zigzag": "I never take the straight road. So maybe somebody else should read the map.",
+	# Legends, the New Generation (P12-16; plain move names only, see the Chapter 4 cautions at the top)
+	"lg_overclock": "Don't wait for me at the gas stops. I'll already be at the next one. I packed spare parts for the braces.",
+	"lg_long_shadow": "I'll fold up in the back. When we stop, I'll run the last mile to the gym. Old trail habit.",
+	"lg_glitch": "I built my own hand, so I can fix the van's radio. No promises about what it plays after.",
+	"lg_updraft": "Window down, please. I like to feel the wind before I jump. Also, I eat a lot. A real lot.",
+	"lg_halfcourt": "I brought the old film of the Grandfathers for the long drives. Every long drive. You'll learn to love it.",
+	"lg_firewall": "The visor reads jump shots, not road signs. So somebody else drives. I'll block the sun.",
 }
 
 # a recruit's joining line ("" for a player without one)
