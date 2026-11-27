@@ -185,6 +185,7 @@ Everything in "Tasks by wave" not marked DONE.
 ## Doing
 
 ## Review
+- **P12-25** Back test and title test for Chapter 4 (gameplay C): `main.gd` BackTest only: `BACKTEST_CHAPTER4` "next" (its view to the timeline and the title, the Hall on `lg_overclock` back to the chapter view and to CREW, the mentor picker, the `lg_overclock` challenge's pause, resume and QUIT to the New Generation view; 72 stars forced unless `--stars 72` / `--tokens 48`), then the LEGENDS COMPLETE Hall banner (every finale counted as won this run only, never saved): its tap opens `legends_complete`, back lands on the Hall with the banner, back to CREW, finales put back. `title.gd` titletest only: the era courts must follow the open era teams in timeline order (`look_of()`), printed as `TITLE TEST era order`. `--backtest` OK 79/79 plain and `--stars 72`; `--titletest` DONE plain (0 eras), `--legends-unlock-all --stars 72` (4 teams, COURT gym > blacktop > era_grand > era_fathers > era_present > era_next > midnight > gold_hall), `--legends-unlock-none` (none); `--legendtest` OK.
 - **P12-33** The 4th era team in Quick Game (gameplay B): no logic change needed, the data opens it. `era_teams.gd` self test only: `SHIPPED_IDS` (the four teams), timeline order, `STAND_IN_CHECKS` (stand-in Present and stand-in New Generation rows), team and info color = the crew's `ui_color`. `menu.gd` untouched. LEGENDTEST era teams [grandfathers, fathers, present, new_generation] OK; `--titletest` DONE plain / `--legends-unlock-all --stars 72` (COURT gym > blacktop > era_grand > era_fathers > era_present > era_next > midnight > gold_hall, NEON DOME twist era_next music legends_next) / `--legends-unlock-none` (none open); 4 autoplays NEW GENERATION vs Kings on NEON DOME 21-18, 19-21, 16-21, 18-21 (8:17-9:46, music_legends_next).
 - **P12-18** Chapter flow, the gate and the ending (gameplay B): `legends.gd`, `legends_tour.gd`, `hall.gd`, and the
   `--legends-test` driver's checks (`legends_test.gd`, as the coordinator asked). `SHIPPED_CHAPTERS` 4 (gate 72 stars
@@ -509,7 +510,7 @@ name (P12-06), the music pick (P12-08).
   (next), legend + boss ok. Plain: the Phase 8 driver (drafted ht_boss, no legend checks)
 
 ### Wave 8
-- **P12-25** | Back test and title test for Chapter 4
+- **P12-25** | REVIEW | Back test and title test for Chapter 4
   | gameplay-programmer C | `scripts/main.gd` (the backtest steps only), `scripts/title.gd` (the titletest driver only)
   | `BACKTEST_CHAPTER4` "next" (its view, the Hall and back, the mentor picker, a challenge's pause, resume and QUIT;
   its gate forced for the run unless `--stars 72` or `--tokens 48`); `--titletest` era checks with four era teams and

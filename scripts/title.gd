@@ -1452,6 +1452,16 @@ static func _test_quick_eras(tree: SceneTree, then: Callable) -> void:
 		for r in rewards:
 			_check(courts.find(l) < courts.find(r), "era court %s is after the reward court %s" % [l, r])
 		_check(MenuScript.city_of_look(l) == "", "era court %s is a city court" % l)
+	# P12-25: the era courts follow the open era teams in timeline order (four with every era open: OLD GYM, NIGHT
+	# PARK, BIG STAGE, then Chapter 4's), and so do the teams
+	var want_looks: Array = []
+	for t in open:
+		want_looks.append(str(et.call("look_of", str(t))))
+	print("TITLE TEST era order: %d era teams %s, courts %s (want %s)" % [open.size(), str(listed), str(era_looks),
+			str(want_looks)])
+	_check(era_looks == want_looks, "the era courts %s are not in the era teams' timeline order %s" % [str(era_looks),
+			str(want_looks)])
+	_check(listed == open, "the era teams %s are not in timeline order %s" % [str(listed), str(open)])
 	if args.has("--legends-unlock-none") and not args.has("--unlock-all"):
 		_check(open.is_empty() and era_looks.is_empty(), "--legends-unlock-none still offers an era team or court")
 	if args.has("--legends-unlock-all") and not args.has("--unlock-none"):

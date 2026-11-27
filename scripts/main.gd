@@ -216,6 +216,7 @@ const BACKTEST_LEGEND_STARS := 24   # the star total from the Legends steps on (
 const BACKTEST_CHAPTER := "grand"    # the chapter the Legends steps open (its first legend is the challenge)
 const BACKTEST_CHAPTER2 := "fathers" # P10-25: the Chapter 2 steps (its gate's stars are forced if it isn't open)
 const BACKTEST_CHAPTER3 := "present" # P11-25: the Chapter 3 steps, the same way (48 stars unless --stars / --tokens)
+const BACKTEST_CHAPTER4 := "next"    # P12-25: the Chapter 4 steps, the same way (72 stars unless --stars / --tokens)
 static var _backtest_node: Node = null   # the --backtest driver (on the root, survives the reloads)
 # rebound stats: every missed field goal ends as an offensive rebound (the shooting team holds it
 # first), a defensive rebound or out of bounds; a putback is a shot by the rebounding team within PUTBACK_SECS
@@ -2702,7 +2703,8 @@ func _update_hud() -> void:
 # P9-28: the Legends screens too (tour, Hall, the mentor picker, a challenge game and its QUIT); they never write the
 # Legends file (saving off, unlocks and stars for this run only). P10-25: the same for Chapter 2 (BACKTEST_CHAPTER2;
 # the run gets that chapter's gate stars if neither --stars nor --tokens opens it). P11-25: and for Chapter 3
-# (BACKTEST_CHAPTER3, the same way).
+# (BACKTEST_CHAPTER3, the same way). P12-25: and for Chapter 4 (BACKTEST_CHAPTER4), then the LEGENDS COMPLETE Hall
+# banner (every finale counted as won for this run only): its tap plays the ending, back to the Hall, back to CREW.
 #   godot --headless --path . --fixed-fps 60 --quit-after 20000 -- --backtest
 class BackTest extends Node:
 	const FlowS = preload("res://scripts/flow.gd")
@@ -2801,6 +2803,34 @@ class BackTest extends Node:
 		{"go": "", "action": "quit", "expect": "legends", "did": "", "chapter": BACKTEST_CHAPTER3, "paused": false},
 		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
 		{"go": "", "expect": "title", "did": "escape"},
+		# P12-25: Chapter 4, the same steps
+		{"go": "legends", "legends": true, "ch": BACKTEST_CHAPTER4, "args": {"chapter": BACKTEST_CHAPTER4},
+				"at_chapter": BACKTEST_CHAPTER4, "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "", "expect": "title", "did": "escape"},
+		{"go": "hall", "legends": true, "ch": BACKTEST_CHAPTER4, "pick_first": true,
+				"args": {"back": "legends", "back_args": {"chapter": BACKTEST_CHAPTER4}},
+				"expect": "legends", "did": "escape", "chapter": BACKTEST_CHAPTER4},
+		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "hall", "legends": true, "ch": BACKTEST_CHAPTER4, "pick_first": true, "args": {"back": "crew"},
+				"expect": "crew", "did": "escape"},
+		{"go": "hall", "legends": true, "ch": BACKTEST_CHAPTER4, "pick_first": true, "args": {"back": "legends"},
+				"prep": "mentor_picker", "expect": "hall", "did": "escape", "closed": "_picker"},
+		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "", "expect": "title", "did": "escape"},
+		{"go": "game", "legends": true, "challenge": true, "ch": BACKTEST_CHAPTER4, "expect": "game", "did": "pause",
+				"paused": true},
+		{"go": "", "expect": "game", "did": "resume", "paused": false},
+		{"go": "", "expect": "game", "did": "pause", "paused": true},
+		{"go": "", "action": "quit", "expect": "legends", "did": "", "chapter": BACKTEST_CHAPTER4, "paused": false},
+		{"go": "", "expect": "legends", "did": "escape", "chapter": ""},
+		{"go": "", "expect": "title", "did": "escape"},
+		# P12-25: the LEGENDS COMPLETE Hall banner. "complete": every built chapter's finale counts as won (this run,
+		# never saved); "action" "banner": the banner's tap instead of the request (the ending scene opens); "banner":
+		# the Hall shows the banner when checked; "restore": the finales go back to what the run had
+		{"go": "hall", "legends": true, "ch": BACKTEST_CHAPTER4, "complete": true, "pick_first": true,
+				"args": {"back": "crew"}, "action": "banner", "expect": "story", "did": ""},
+		{"go": "", "expect": "hall", "did": "escape", "banner": true},
+		{"go": "", "expect": "crew", "did": "escape", "restore": true},
 		# "countdown": the request goes out during the 3-2-1 (P8-31), and the pause holds the count
 		{"go": "game", "trip": true, "expect": "game", "did": "pause", "paused": true, "countdown": true},
 		{"go": "", "expect": "game", "did": "resume", "paused": false},
@@ -2814,6 +2844,8 @@ class BackTest extends Node:
 	var _prep_ok := true     # the step's "prep" opened what it should
 	var _count_t := -1.0     # the countdown's time when the request went out (-1 = not counting)
 	var _at := ""            # P10-25: the tour's chapter() / the Hall's pick when the request went out (_at_now())
+	var _finales_before: Array = []   # P12-25: the finales before a "complete" step (put back by "restore")
+	var _completed := false           # P12-25: a "complete" step forced the finales
 
 	func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
@@ -2847,6 +2879,8 @@ class BackTest extends Node:
 					_did = ""
 					if str(st.get("action", "")) == "quit":
 						_quit_game()
+					elif str(st.get("action", "")) == "banner":
+						_tap_banner()
 					else:
 						get_tree().root.propagate_notification(NOTIFICATION_WM_GO_BACK_REQUEST)
 					_t = 0
@@ -2869,6 +2903,8 @@ class BackTest extends Node:
 			_beat_hometown()
 		if bool(st.get("legends", false)):
 			_open_legends(_ch(st))
+		if bool(st.get("complete", false)):
+			_complete_legends()
 		var args: Dictionary = (st.get("args", {}) as Dictionary).duplicate(true)
 		if bool(st.get("pick_first", false)):   # P10-25: the Hall opens on the chapter's first plaque
 			args["pick"] = _first_legend(_ch(st))
@@ -2940,6 +2976,26 @@ class BackTest extends Node:
 		if bool(st.get("pick_first", false)):
 			return str(node.get("_pick")) if node != null else "?"
 		return ""
+
+	# P12-25: every built chapter's finale counts as won (the Legends file is not written: saving is off), so the
+	# Hall is full and shows its LEGENDS COMPLETE banner
+	func _complete_legends() -> void:
+		if not _completed:
+			_finales_before = LegendsS.finales.duplicate()
+			_completed = true
+		for ch in LegendsDataS.chapter_ids():
+			if LegendsDataS.is_built(str(ch)) and not LegendsS.finales.has(str(ch)):
+				LegendsS.finales.append(str(ch))
+		print("BACKTEST legends: finales %s, complete %s" % [str(LegendsS.finales), str(LegendsS.legends_complete())])
+
+	# P12-25: the Hall's LEGENDS COMPLETE banner, tapped (its pressed signal, as a touch would)
+	func _tap_banner() -> void:
+		var node: Node = FlowS.current_screen()
+		var b = node.get("_banner") if node != null else null
+		if b == null or not (b is Button):
+			_fail("step %d: no LEGENDS COMPLETE banner to tap" % (_i + 1))
+			return
+		(b as Button).pressed.emit()
 
 	# the pause panel's QUIT, both taps (the first arms QUIT?)
 	func _quit_game() -> void:
@@ -3030,6 +3086,15 @@ class BackTest extends Node:
 			ok = ok and want != "" and _at == want
 		if st.has("action"):
 			what += " | %s tapped" % str(st["action"]).to_upper()
+		if st.has("banner"):   # P12-25: the Hall shows the LEGENDS COMPLETE banner (again, after the ending)
+			var node: Node = FlowS.current_screen()
+			var shown: bool = node != null and node.has_method("banner_shown") and bool(node.call("banner_shown"))
+			what += " | banner %s" % ("shown" if shown else "missing")
+			ok = ok and shown == bool(st["banner"])
+		if bool(st.get("restore", false)) and _completed:
+			LegendsS.finales = _finales_before.duplicate()
+			_completed = false
+			what += " | finales back to %s" % str(LegendsS.finales)
 		if st.has("chapter"):   # P9-28: the tour's chapter view ("" = the timeline)
 			var node: Node = FlowS.current_screen()
 			var ch: String = str(node.call("chapter")) if node != null and node.has_method("chapter") else "?"
