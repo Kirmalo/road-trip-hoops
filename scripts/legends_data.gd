@@ -175,7 +175,7 @@ const CHAPTERS := [
 		"twist": "era_next", "look": "era_next", "music": "legends_next", "fallback_music": "newyork",
 		"gate": {"stars": 72, "tokens": 48},   # Q6 a: 72 trip stars or 48 legend tokens, no Chapter 3 finale needed
 		"crew": {"name": "THE NEW GENERATION", "style": "balanced", "colors": ["ERA4_NIGHT", "ERA4_LIME"],
-			"ui_color": Color(0.43, 0.64, 0.13)},   # lime + violet on near-black (P12-05); the UI tone a darker lime
+			"ui_color": Color(0.27, 0.43, 0.08)},   # lime + violet on near-black (P12-05); owner after P12-07: darker lime #466e14 for the tags
 		"legends": ["lg_overclock", "lg_long_shadow", "lg_glitch", "lg_updraft", "lg_halfcourt", "lg_firewall"],
 		"finale": {"target": 21, "legends": ["lg_overclock", "lg_updraft", "lg_halfcourt"],
 			"label": "NEW GENERATION FINALE"},   # owner R2: also the 4th era team in Quick Game

@@ -139,6 +139,7 @@ tablet with a joystick and two buttons.
 | Phase 12 combo dribble (after P12-05b) | Owner: approves Glitch's combo `docs/art/combo_v1.gif` as is (between the legs, behind the back, back to the chrome hand; the crossover's timing). It ends in his starting hand, so the game keeps his ball hand after it |
 | Phase 12 court (after P12-06) | Owner: approves the court `era_next` as is and its name NEON DOME (dark glass floor, lime lines, violet key, black dome with violet light rings, chrome rail; `docs/art/era_next_preview.png`) |
 | Phase 12 portraits (after P12-15) | Owner: approves the twelve portraits `docs/art/legends_next_portraits.png` as is; Overclock's braces shown by their lime glow up the tank (no lower framing) |
+| Phase 12 UI art (after P12-07) | Owner: approves the Chapter 4 timeline panel, pins and card frame as shown; Chapter 4's `ui_color` goes darker, #466e14 (tags, draft row, Quick Game team button readable), the court and kits keep their bright lime |
 
 ## Technical constraints
 - Godot 4.3+ (GDScript), GL Compatibility renderer, 1280x720 landscape. See `CLAUDE.md` for code conventions.
