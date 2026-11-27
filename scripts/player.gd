@@ -184,6 +184,7 @@ const RIM_RUN_MIN_FT := 8.0       # CPU off the ball in that window: sprints to 
 const HESITATION_TIME := 0.3      # seconds the man in front of his crossover stands still (when it did not beat him)
 const HESITATION_CPU_CROSS := 0.12  # CPU hesitation man: CPU_CROSS_CHANCE per decision becomes this (he sets it up)
 const HESITATION_CPU_DRIVE := 0.6 # CPU: seconds he then drives to the rim past the frozen man (cpu_drive_t)
+const COMBO_L_ANIM := "combo_l"   # the combo from his left drawn hand (hand_end L), picked like cross / cross_l
 const COMBO_ANIM := "combo"       # format.json extra (P12-14, lg_glitch only; "hand_end" R: back in his starting hand, so
                                   # his crossover keeps the ball hand, lead call on P12-17; the beat and timing as ever)
 const PUTBACK_RIM_FT := 7.0       # his team's miss (off the rim) he takes this close to the rim goes straight back up ...
@@ -3613,14 +3614,20 @@ func _update_sheet_frame_v2(delta: float) -> void:
 			# P12-17: the hesitation man's crossover keeps his ball hand. On a sheet with the combo extra (P12-14,
 			# Glitch's) its frames over the burst; elsewhere the crossover there and back
 			var pg: float = clampf(1.0 - cross_t / CROSS_TIME, 0.0, 0.999)
-			if Sheets.has_anim(fmt, COMBO_ANIM):
-				anim = COMBO_ANIM
-				x = pg * float(Sheets.anim_frames(fmt, COMBO_ANIM))
+			# the ball in the right drawn hand: combo (starts right); in the left: combo_l (starts left), as cross / cross_l
+			var combo: String = COMBO_ANIM if (dribble_side > 0.0) != flip else COMBO_L_ANIM
+			if not Sheets.has_anim(fmt, combo):
+				combo = COMBO_ANIM   # a sheet with only the right-hand combo
+			if Sheets.has_anim(fmt, combo):
+				anim = combo
+				x = pg * float(Sheets.anim_frames(fmt, combo))
 				if not _v_combo_seen:
 					_v_combo_seen = true
 					game.stat("anim_combo")
-					if (dribble_side > 0.0) == flip:
-						game.stat("anim_combo_off_hand")   # drawn from the other hand than the dribble's (no mirror pages)
+					if combo == COMBO_L_ANIM:
+						game.stat("anim_combo_l")
+					elif (dribble_side > 0.0) == flip:
+						game.stat("anim_combo_off_hand")   # only a sheet without combo_l now
 			else:
 				anim = "cross" if (dribble_side > 0.0) != flip else "cross_l"
 				x = (1.0 - absf(2.0 * pg - 1.0)) * float(Sheets.anim_frames(fmt, Sheets.resolve(fmt, anim))) * 0.999
