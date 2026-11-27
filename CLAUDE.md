@@ -61,7 +61,8 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
   `keep_block` (Gate), `deep_set` (Set Shot: long falloff starts 4 ft further out), `long_dunk` (Boxcar: dunks from
   9 ft), `finger_roll` (Velvet: keeps 25% of the rim contest), `outlet` (Quarterback: passes of 34 ft+ fly faster
   and safer, `ball.outlet`). The Fathers (P10-17): `cradle` (Rooftop: his dunks keep `CRADLE_KEEP` 0.5 of the rim
-  contest, drawn as `CRADLE_STYLE` windmill), `double_cross` (Ankles: a missed beat gets a second roll at
+  contest, drawn with the sheet's `cradle` frames (`CRADLE_ANIM`, P11-10, the owner's own look) when `Sheets.has_anim()`, else
+  `CRADLE_STYLE` windmill), `double_cross` (Ankles: a missed beat gets a second roll at
   `DOUBLE_CROSS_EXTRA` 0.35, more falls), `fadeaway` (Midrange: a jumper inside the arc within `FADE_MAX_FT` 20 keeps
   `FADE_KEEP` 0.5 of the contest, drawn with the sheet's `fadeaway` frames, sliding back `FADE_FT` 1.5), `shoulder`
   (Freight: block chance x `SHOULDER_BLOCK_MULT` 0.5 on his layups, dunks and jumpers inside 14 ft), `no_look` (Eyes
@@ -140,10 +141,10 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
   Extra animations (P9-04c): `format.json`'s `"extra"` section (`hook`, its `"sheets"` the six Grandfathers;
   `fadeaway` (P10-04b, 13 frames, `"fade"` / `"fade_ft"` 1.5 the slide back), only `lg_midrange`; P11-05b / P11-14:
   `stepback` (12 frames, `"fade"` [1, 4] / `"fade_ft"` 2.0), only `lg_deep_end`, and `eurostep` (13 frames, `"steps"`
-  [1, 3], `"euro_path"` in feet to his left, the game moves him, `"takeoff"` 5), only `lg_zigzag`) is carried only by
+  [1, 3], `"euro_path"` in feet to his left, the game moves him, `"takeoff"` 5), only `lg_zigzag`; P11-10 `cradle` (12 frames, a dunk extra), only `lg_rooftop`) is carried only by
   the sheets it lists, on extra pages `<id>_x<N>.png` after the normal pages (same palettes, so every recolor works);
   `has_anim(sheet, anim)` says which; anywhere else an extra resolves to the normal move (ALIASES `hook` -> `shoot`,
-  `fadeaway` -> `shoot`, `stepback` -> `shoot`, `eurostep` -> `layup`). A `format.json` without `"extra"` reads as
+  `fadeaway` -> `shoot`, `stepback` -> `shoot`, `eurostep` -> `layup`, `cradle` -> the windmill). A `format.json` without `"extra"` reads as
   before.
 - `scripts/anim_test.gd`: the `--anim-test` driver (checks every sheet, writes contact sheets). It checks the
   `"extra"` section and, on each sheet it lists, the extra pages (present, right size, pixels, hand and ball points);
@@ -353,7 +354,7 @@ re-importing it. There is no Git on the tablet, so keep the project self-contain
   `portraits/` story portraits, `map/` trip map (`van_1..3` the van paints), `icon/` app icons, `howto/` the How to Play
   pictures; `sfx/` (with the twist sounds and the reward and countdown sounds) and `music/` (see `CREDITS.md`). Legends:
   `players2/lg_*` (the eighteen legend sheets, `_crew` and `_crew_j1..3` palettes, cards; the six Grandfathers carry
-  the hook, Midrange the fadeaway, Deep End the stepback and Zigzag the eurostep on extra pages `lg_<id>_x0.png`, listed
+  the hook, Midrange the fadeaway, Deep End the stepback, Zigzag the eurostep and Rooftop the cradle on extra pages `lg_<id>_x0.png`, listed
   in `format.json`'s `"extra"`; the Present in crew "PR", `ERA3_*` kits), `portraits/lg_*` (plus `_happy`), `legends/`
   (the tour timeline, chapter pins `pin_<chapter>[_done|_locked]`, the era card frames `frame_grand` / `frame_fathers` /
   `frame_present`, the locked plaque frame, the silhouette, `ui.json`), `courts/era_grand_*` (OLD GYM),
