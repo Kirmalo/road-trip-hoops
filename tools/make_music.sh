@@ -87,3 +87,22 @@ $M "$D/headspin_0.mp3"                  assets/music/legends_fathers.ogg --start
 #   wrap (no gap, the same hit pattern before both downbeats); wrap step 0.019 (the track's steps: p99 0.091).
 #   -20.1 LUFS, true peak -4.2 dBFS, 383 KB.
 $M "$D/racing tecno_v2.5.ogg"           assets/music/legends_present.ogg --start 47.86 --end 87.86 --xfade 0.03 --lufs -20 --q 3
+# Phase 12 (P12-20), the Legends Chapter 4 (New Generation era) track, the owner's pick A from docs/audio_preview/LIST.md:
+#   legends_next  Escalate (escalate_loop.ogg, the page's loop file: stereo 48 kHz Ogg, 130.56 s; the page says play
+#   escalate_intro.ogg first, then loop the loop file; the game uses only the loop file, whole). OPL3 FM chiptune.
+#   -13.7 LUFS integrated, true peak +0.8 dBFS, and hard-clipped in the master: a pile-up at full scale (the
+#   0.98-1.02 band holds twice the 0.96 one), 0.13% of the left and 0.06% of the right channel's samples >= 1.0.
+#   So, as for Bebop: the ripple on the flat tops is flattened (hard clip at 0.98, scaled to 0.5 for headroom) and
+#   adeclip rebuilds the clipped runs (afterwards a smooth falling tail, no pile-up; it changed 0.16% of samples,
+#   all of them at 0.97 of full scale or more; elsewhere the file is the same to 3e-8).
+#   The loop: the opening's 10 ms envelope recurs every 7.68 s and the file is exactly 17 of those phrases, so the
+#   file end is the author's phrase boundary (the last 0.3 s is the section's quieter break into the downbeat that
+#   opens the file). Wrap step in the source 0.039 (the track's steps: p99 0.105); the encoded wrap step 0.002 after
+#   the 5 ms blend. L/R correlation 0.61; the mono sum loses 1.8 dB under 150 Hz and 0.3-0.7 dB above (no
+#   cancellation). The rebuilt peaks cap it at -20.8 LUFS (peak -1.1 dBFS; 6 ppm of samples would pass -1 dBFS at
+#   -20.0, left unlimited). 1.20 MB (q2 would save only 11%).
+T=$(mktemp --suffix=.wav)
+ffmpeg -v error -y -i "$D/escalate_loop.ogg" \
+    -af "aeval=exprs='0.5*clip(val(0)/0.98\,-1\,1)|0.5*clip(val(1)/0.98\,-1\,1)',adeclip=t=10:m=s" -c:a pcm_f32le "$T"
+$M "$T"                                 assets/music/legends_next.ogg $W
+rm -f "$T"

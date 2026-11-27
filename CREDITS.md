@@ -53,13 +53,14 @@
 | `assets/music/legends_grand.ogg` | Bebop (Chiptune) | Pro Sensory (Alex McCulloch; the page asks for his name, not mandatory) | https://opengameart.org/content/bebop-chiptune | CC0 | The `Bebop (Chiptune)` file (not the page's other `Bebop`); de-clipped (the master's clipped peaks rebuilt with ffmpeg adeclip), loop 28.25-78.25 s, 60 ms loop crossfade, mono, -20 LUFS (from -5.4), Ogg Vorbis q3 |
 | `assets/music/legends_fathers.ogg` | Headspin | congusbongus | https://opengameart.org/content/headspin | CC0 (https://creativecommons.org/publicdomain/zero/1.0/) | The page's MP3 (`headspin.mp3`); loop 76.34-173.75 s (32 bars), 40 ms loop crossfade, mono, -20 LUFS (from -10.7), Ogg Vorbis q3 |
 | `assets/music/legends_present.ogg` | Techno drive (the page's "Techno DRIVE!!!", v2.5, the chiptune variant; credit title as the author asks) | Centurion_of_war | https://opengameart.org/content/techno-drive | CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/) | The page's `racing tecno_v2.5.ogg`; loop 47.86-87.86 s (20 bars), 30 ms loop crossfade, mono, -20 LUFS (from -13.2), Ogg Vorbis q3 |
+| `assets/music/legends_next.ogg` | Escalate | congusbongus | https://opengameart.org/content/escalate | CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/; also offered as OGA-BY 3.0) | The page's loop file (`escalate_loop.ogg`, not its intro or full version), whole (130.6 s), 5 ms wrap blend; de-clipped (the master's clipped peaks rebuilt with ffmpeg adeclip), mono, -20.8 LUFS (from -13.7, peak-limited), Ogg Vorbis q3 |
 
 Sound effects were processed with `tools/make_sfx.py` (commands in `tools/make_sfx.sh`). Music was cut into loops with
 `tools/make_music.py` (commands and loop points in `tools/make_music.sh`).
 
 Every file under `assets/` has a row above. Only CC0 and CC-BY assets are used (no share-alike, no non-commercial),
 plus the Godot Engine under MIT. The CC-BY crowd sounds (crowd, crowd_loud), the New York, Memphis and Seattle
-music and the Present era music (Techno drive) need the credit above (title, author, license with its link, source and changes) to stay with the game: the
+music, the Present era music (Techno drive) and the New Generation era music (Escalate) need the credit above (title, author, license with its link, source and changes) to stay with the game: the
 in-game CREW & CREDITS screen shows the same items (`CREDITS_LIST` in `scripts/title.gd`, the license links from its
 `LICENSE_URLS`), followed by the Godot license text. Keep the two in step when an asset changes.
 
