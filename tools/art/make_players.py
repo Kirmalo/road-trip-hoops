@@ -40,6 +40,10 @@ Phase 11 (P11-05): the Present era parts ("Phase 11 era parts": mid-thigh shorts
 or one, a knee sleeve, low socks, hair crop / waves / hightop_fade / manbun, a boxed beard and a thin mustache).
 --legends-sample present writes only the owner's look sample docs/art/legends_present_sample_v1.png and .gif (two
 era looks, Deep End and Toolbox as the Phase 11 board proposes them; nothing in assets/).
+Phase 12 (P12-05): the New Generation era parts ("Phase 12 era parts": the cyber parts leg braces, a chrome forearm
+and a visor in pixel3d's chrome ramp and flat lime / violet glow, opt-in; hair two_tone and locs_up, a cotton
+headband, low-cut shoes, taped fingers, one wristband, freckles). --legends-sample next writes only the owner's look
+sample docs/art/legends_next_sample_v1.png and .gif (Glitch and Halfcourt in full, the other four in a parts row).
 Needs:  Pillow, numpy
 """
 import json
@@ -999,6 +1003,225 @@ def build_era3(p, pose, expr="focus", portrait=False):
 P.build = build_era3
 
 
+# ----------------------------------------------------------------------------- Phase 12 era parts (P12-05)
+# The New Generation era (Legends Chapter 4, the near future): parts drawn once for the whole era, wrapped around the
+# Phase 11 build in the same way, so a player without these keys goes straight through (every older sheet stays
+# pixel-identical). Original parts only: no real player's look, number or accessory is copied, and the hair parts are
+# spread one per legend (docs/legends-plan.md 12.9: lime crop, locs, two-tone, mohawk, sandy curls + headband, buzz).
+# The cyber parts (three legends only) are look only, each tied to its legend's move; they use the chrome ramp
+# (pixel3d.CHROME) and the two flat glow tones (pixel3d.FLAT glow_lime / glow_violet), never a kit palette, so every
+# recolor (_crew, _crew_j1..3) keeps them as they are. Static glow (a fixed palette, no pulse). The braces, the arm and
+# the shoes are materials on the body's own shapes, the visor a thin shell on the face, so the outline, the hand and
+# the ball points do not move (no halo past the silhouette). Never a famous fictional cyborg's look: the chrome stops
+# at the elbow (no whole arm, no shoulder, no star or emblem), the visor is a thin lime band (never red, never a gold
+# band, never round the back of a bald head), the braces are shin struts (no full leg, no armor plates).
+#   leg_braces: true      (cyber) both shins, knee to ankle: a chrome strut down the outside with a 1 px lime light
+#                         line on it, a thin chrome cuff under the knee and over the ankle
+#   chrome_arm: "L" | "R" (cyber) that forearm and hand in chrome (elbow down only), a violet light seam round the
+#                         wrist and over the knuckles. One arm: it swaps sides in the mirrored directions (SW, W, NW),
+#                         like Deep End's one-leg tights
+#   visor: true           (cyber) a thin lime lens across the eyes, a chrome end at each temple, front only (the hair
+#                         and the back of the head stay as they are); the eyes under it are not drawn
+#   hair "two_tone"       a dark line-up crop on the sides and back (hair_pal) with a lighter top (hair2_pal)
+#   hair "locs_up"        locs tied up at the back of the crown (hair_pal), a wooden bead tie (bead_pal) round the
+#                         gather and a few locs falling to the nape
+#   cotton_band: true     a plain, thin cotton headband (band_pal) round the outside of any hair, curls too (not the
+#                         thick ribbed terry band of the Grandfathers)
+#   low_cut: true         modern low-cut shoes: the ankle collar drops, the sock (or the skin) shows over it
+#   tape_fingers: true    tape round the fingers (tape_pal), the back of the hand bare
+#   wristband: "L" | "R"  one cotton wristband (wrist_pal) on that wrist
+#   freckles: true        a few darker skin dots over the nose and cheeks (front views)
+# Reused as they are: hair crop (P11; lime-dyed with hair_pal ERA4_HAIR_LIME), mohawk (P5), buzz, curls (P11),
+# kneepads (P6, pad_pal), modern_shorts and socks "low" (P11).
+# Era palettes are the ERA4_* rows of crews.json (lime and violet on near-black; the hair, wood and cotton tones are
+# rows of their own, so a crew recolor that swaps the kit never dyes the hair). tools/art/make_players.py
+# --legends-sample next draws the owner's look sample (docs/art/legends_next_sample_v1.png and .gif); nothing in
+# assets/ is written by it.
+
+ERA4_BRACE = (0.05, 0.84)       # calf fraction: the brace from under the knee to over the ankle
+ERA4_BRACE_CUFF = 0.07          # the cuff at each end (calf fraction)
+ERA4_BRACE_ARC = (-25.0, 75.0)  # the strut round the shin, degrees from straight out (0) toward the front (90)
+ERA4_BRACE_LINE = (22.0, 52.0)  # the lime line on the strut (the front-outer edge, so it reads from the front too)
+ERA4_ARM_FROM = 0.06            # fore fraction where the chrome starts (just under the elbow)
+ERA4_WRIST_SEAM = (0.8, 0.9)    # fore fraction of the violet wrist seam
+ERA4_KNUCKLE = (0.3, 0.62)      # hand: the knuckle seam band, along the hand's direction (fraction of its radius)
+ERA4_VISOR_Y = 0.2              # head-local height of the visor band (the eyes are at 0.05)
+ERA4_VISOR_R = 0.5              # bead radius of the band (about 1-2 px tall in the frame)
+ERA4_VISOR_ARC = 78.0           # degrees each side of the nose the band runs (front only)
+ERA4_VISOR_LENS = 52.0          # inside this the band is the lime lens, outside it the chrome temple ends
+ERA4_VISOR_BEADS = 23
+ERA4_VISOR_INSET = 0.3        # beads sunk this far into the face: under a pixel proud, a flat band (no bumps)
+ERA4_TOP_Y = 2.3               # two-tone: head-local height where the lighter top starts
+ERA4_BAND_Y = 1.3               # cotton band: head-local height of its centre
+ERA4_BAND_R = 0.52
+ERA4_BAND_BEADS = 28
+ERA4_FRECKLES = ((1.5, -0.75, 3.0), (-1.5, -0.75, 3.0), (2.35, -0.4, 2.35), (-2.35, -0.4, 2.35))
+ERA4_FRECKLE_R = 0.6
+ERA4_HAIR = ("two_tone", "locs_up")
+ERA4_KEYS = ("leg_braces", "chrome_arm", "visor", "cotton_band", "low_cut", "tape_fingers", "wristband", "freckles")
+
+_P11_BUILD = P.build
+
+
+def is_era4(p):
+    return p.get("hair") in ERA4_HAIR or any(p.get(k) for k in ERA4_KEYS)
+
+
+def _shell_ring(prims, H, shells, y, r_bead, n, arc_deg, mat_of, part, inset=0.25):
+    """Beads on the outermost surface of the given shells at head-local height y, from -arc to +arc degrees round
+    the front (0 = the nose). mat_of(angle in degrees) gives each bead's material."""
+    for b in range(n):
+        a = -arc_deg + 2.0 * arc_deg * b / max(1, n - 1)
+        th = math.radians(a)
+        sx, sz = math.sin(th), math.cos(th)
+        rs = 0.0
+        for i in range(90, 0, -1):
+            r = i * 0.1
+            if any(_inside(pr, H(r * sx, y, r * sz)) for pr in shells):
+                rs = r
+                break
+        if rs <= 0.0:
+            continue
+        prims.append(P.Sphere(H((rs - inset) * sx, y, (rs - inset) * sz), r_bead * HK, mat_of(a), part))
+
+
+def build_era4(p, pose, expr="focus", portrait=False):
+    if not is_era4(p):
+        return _P11_BUILD(p, pose, expr, portrait)
+    style = p.get("hair")
+    q = dict(p)
+    if style == "two_tone":
+        q["hair"] = "crop"          # the dark line-up crop (Phase 11) under the lighter top
+    if style == "locs_up":
+        q["hair"] = "twists"        # the locs' texture over the head
+    prims, info, pp = _P11_BUILD(q, pose, expr, portrait)
+    if p.get("leg_braces") or p.get("chrome_arm") or p.get("visor"):
+        pp["chrome"] = P.pal(P.CHROME)
+    for k in ("hair2", "bead", "tape"):
+        if p.get(k + "_pal"):
+            pp[k] = P.pal(p[k + "_pal"])
+    head_c, Rh = info["head_c"], info["Rh"]
+    HX, HY, HZ = info["HX"], info["HY"], info["HZ"]
+
+    def H(x, y, z):
+        return head_c + Rh @ P.vec(x, y, z)
+
+    def head_local(h):
+        return Rh.T @ (h - head_c) / (HK * HK)
+
+    # --- arms and hands: arm spheres come L delt, upper, fore, hand, then R (pixel3d.build order)
+    arm = p.get("chrome_arm")
+    band = p.get("wristband")
+    side, fore_end = "L", {}
+    for pr in prims:
+        if pr.part == "fore":
+            fore_end[side] = pr.c
+        if pr.part not in ("fore", "hand"):
+            continue
+        here_arm, here_band = arm == side, band == side
+        if pr.part == "fore" and (here_arm or here_band):
+            def fore_mat(h, prim, orig=pr.mat, ca=here_arm, wb=here_band):
+                t = prim.t
+                if ca and t >= ERA4_ARM_FROM:
+                    a, b = ERA4_WRIST_SEAM
+                    return "glow_violet" if a <= t < b else "chrome"
+                if wb and 0.64 < t < 0.9:
+                    return "wrist"
+                return orig(h, prim) if callable(orig) else orig
+            pr.mat = fore_mat
+        if pr.part == "hand":
+            d = pr.c - fore_end.get(side, pr.c)
+            nd = float(np.linalg.norm(d))
+            d = d / nd if nd > 1e-6 else P.vec(0, -1, 0)
+            if here_arm:
+                def hand_mat(h, prim, d=d):
+                    a, b = ERA4_KNUCKLE
+                    along = float((h - prim.c) @ d) / prim.r
+                    return "glow_violet" if a <= along < b else "chrome"
+                pr.mat = hand_mat
+            elif p.get("tape_fingers") and p.get("tape_pal"):
+                def tape_mat(h, prim, orig=pr.mat, d=d):
+                    if float((h - prim.c) @ d) / prim.r > 0.05:
+                        return "tape"
+                    return orig(h, prim) if callable(orig) else orig
+                pr.mat = tape_mat
+            side = "R"
+
+    # --- legs: the braces (both shins) and the low-cut shoes. Leg spheres come L thigh, L calf, L shoe, then R.
+    lside, seen_shoe = 1.0, False
+    a0, a1 = ERA4_BRACE
+    for pr in prims:
+        if pr.part == "shoe":
+            seen_shoe = True
+            if p.get("low_cut") and isinstance(pr, P.Sphere) and callable(pr.mat):
+                # the ankle sphere is the shoe's collar: its upper part shows the sock (or the skin) instead
+                def collar_mat(h, prim, orig=pr.mat):
+                    if (h - prim.c)[1] > -0.15 * prim.r:
+                        return "sock" if q.get("sock_len", 0.0) > 0.0 else "skin"
+                    return orig(h, prim)
+                pr.mat = collar_mat
+            continue
+        if pr.part == "thigh" and seen_shoe:
+            lside, seen_shoe = -1.0, False
+        if not p.get("leg_braces") or pr.part != "calf" or not callable(pr.mat):
+            continue
+        if not a0 <= pr.t <= a1:
+            continue
+
+        def brace_mat(h, prim, orig=pr.mat, sx=lside):
+            m = orig(h, prim)
+            if m not in ("skin", "sock", "tight"):
+                return m
+            rel = h - prim.c
+            t = prim.t
+            if t < a0 + ERA4_BRACE_CUFF or t > a1 - ERA4_BRACE_CUFF:
+                return "chrome+1"                       # the cuffs, a step darker than the strut
+            phi = math.degrees(math.atan2(rel[2], rel[0] * sx))
+            if ERA4_BRACE_ARC[0] <= phi <= ERA4_BRACE_ARC[1]:
+                return "glow_lime" if ERA4_BRACE_LINE[0] <= phi <= ERA4_BRACE_LINE[1] else "chrome"
+            return m
+        pr.mat = brace_mat
+
+    # --- head: freckles, the two-tone top, the locs tied up, the cotton band, the visor
+    if p.get("freckles"):
+        dots = [np.array(f) for f in ERA4_FRECKLES]
+        for pr in prims:
+            if pr.part == "head" and callable(pr.mat):
+                def freck_mat(h, prim, orig=pr.mat):
+                    m = orig(h, prim)
+                    if m != "skin":
+                        return m
+                    l = head_local(h)
+                    if any(float(np.linalg.norm(l - f)) < ERA4_FRECKLE_R for f in dots):
+                        return "skin+2"
+                    return m
+                pr.mat = freck_mat
+    if style == "two_tone":
+        def top_mat(h, prim):      # combed-back texture: darker lines front to back, so it reads as hair
+            x = head_local(h)[0]
+            return "hair2+1" if (x * 0.9 + 10.0) % 1.0 < 0.3 else "hair2"
+        prims.append(P.ell(H(0, 0.9, -0.1), Rh, HX - 0.55, HY + 0.1, HZ - 0.15, top_mat, "hair",
+                           clip=(H(0, ERA4_TOP_Y, 0), Rh @ P.unit(0, 1.0, -0.18))))
+    if style == "locs_up":
+        prims.append(P.ell(H(0, 4.3, -3.0), Rh, 1.8, 1.6, 1.7, "hair_tw", "hair"))
+        prims.append(P.ell(H(0, 3.15, -3.9), Rh @ P.rot_x(-0.9), 1.6, 0.75, 1.45, "bead", "hair"))
+        for lx in (-1.1, 0.0, 1.1):
+            P.limb(prims, H(lx * 0.7, 4.0, -3.2), H(lx * 1.3, 0.2, -4.7), 0.7, 0.55, "hair_tw", "hair")
+    if p.get("cotton_band"):
+        shells = [pr for pr in prims if pr.part in ("head", "hair")]
+        _shell_ring(prims, H, shells, ERA4_BAND_Y, ERA4_BAND_R, ERA4_BAND_BEADS, 180.0, lambda a: "band", "band",
+                    inset=0.2)
+    if p.get("visor"):
+        shells = [pr for pr in prims if pr.part == "head"]
+        _shell_ring(prims, H, shells, ERA4_VISOR_Y, ERA4_VISOR_R, ERA4_VISOR_BEADS, ERA4_VISOR_ARC,
+                    lambda a: "glow_lime" if abs(a) <= ERA4_VISOR_LENS else "chrome", "visor",
+                    inset=ERA4_VISOR_INSET)     # nearly flush with the face: a flat band, no bumps
+    return prims, info, pp
+
+
+P.build = build_era4
+
+
 # ----------------------------------------------------------------------------- render + checks
 
 def render_frame(p, anim, k, yaw, hands=None):
@@ -1948,6 +2171,262 @@ def legends_sample_present(argv):
     return len(probs)
 
 
+# ----------------------------------------------------------------------------- Phase 12 legend look sample (P12-05)
+# --legends-sample next: the New Generation looks of docs/legends-plan.md 12.9 (the owner approved the roster: three
+# cyber, three natural), in the v2 sheet style, for the owner's first look check before P12-14 makes the six sheets.
+# Glitch (cyber: the chrome forearm) and Halfcourt (natural) in full, in era colors and in your colors, next to
+# today's player; the other four in a parts row (Overclock's braces and Firewall's visor at game size and at 2x game
+# size). Writes only docs/art/legends_next_sample_v1.png and .gif. The looks are data here, not in crews.json (no
+# sheet is made from them); the numbers are the approved ones. No CYBER / NATURAL tag on any card (owner, R3).
+
+NEXT_SAMPLE_PNG = os.path.join(ROOT, "docs", "art", "legends_next_sample_v1.png")
+NEXT_SAMPLE_GIF = os.path.join(ROOT, "docs", "art", "legends_next_sample_v1.gif")
+NEXT_FLOOR = os.path.join(ROOT, "assets", "courts", "gym_floor.png")    # read only (the era court is P12-06's)
+_ERA4_KIT = {"top": "tank", "sleeve": None, "tight": None, "modern_shorts": True, "socks": "low", "low_cut": True,
+             "sock_pal": "ERA4_LIGHT", "shoe_pal": "ERA4_LIGHT", "shorts_len": ERA3_SHORTS_LEN,
+             "sock_len": ERA3_LOW_LEN}
+NEXT_LOOKS = {
+    "glitch": ("GLITCH #25", "trick handler, cyber: slim, light olive-tan skin, two-tone hair (black sides, platinum "
+                             "top), right forearm and hand chrome from the elbow down, violet seams",
+               dict(_ERA4_KIT, id="lg_sample_glitch", crew="B", number=25, role="trick handler", name="Glitch",
+                    body="lanky_guard", body_tweak={"leg": -0.04, "torso": -0.02}, skin="tan", hair="two_tone",
+                    hair_pal="HAIR_BLACK", hair2_pal="ERA4_PLATINUM", chrome_arm="R",
+                    top_pal="ERA4_NIGHT", trim_pal="ERA4_LIME", shorts_pal="ERA4_NIGHT", shorts_trim="ERA4_VIOLET",
+                    shoe_acc="ERA4_VIOLET", sole_pal="ERA4_NIGHT")),
+    "halfcourt": ("HALFCOURT #39", "range shooter, natural: lean, pale skin with freckles, sandy curls under a plain "
+                                   "white cotton headband, clean-shaven, one cotton wristband",
+                  dict(_ERA4_KIT, id="lg_sample_halfcourt", crew="B", number=39, role="range shooter",
+                       name="Halfcourt", body="lanky_wing", body_tweak={"leg": -0.03, "mass": -0.04}, skin="light",
+                       hair="curls", hair_pal="HAIR_SANDY", cotton_band=True, band_pal="ERA4_COTTON", freckles=True,
+                       wristband="R", wrist_pal="ERA4_COTTON",
+                       top_pal="ERA4_NIGHT", trim_pal="ERA4_LIME", shorts_pal="ERA4_NIGHT", shorts_trim="ERA4_LIME",
+                       shoe_acc="ERA4_LIME", sole_pal="ERA4_NIGHT")),
+    "overclock": ("OVERCLOCK #17", "speedster guard, cyber: small, dark brown skin, lime-dyed crop, no tattoos, chrome "
+                                   "shin braces with a lime light line",
+                  dict(_ERA4_KIT, id="lg_sample_overclock", crew="B", number=17, role="speedster point guard",
+                       name="Overclock", body="slim_guard", body_tweak={"leg": -0.08, "torso": -0.04},
+                       skin="umber", hair="crop", hair_pal="ERA4_HAIR_LIME", leg_braces=True,
+                       top_pal="ERA4_NIGHT", trim_pal="ERA4_LIME", shorts_pal="ERA4_NIGHT", shorts_trim="ERA4_LIME",
+                       shoe_acc="ERA4_LIME", sole_pal="ERA4_NIGHT")),
+    "long_shadow": ("LONG SHADOW #56", "rim-running seven-footer, natural: very tall and broad, deep brown skin, locs "
+                                       "tied up with a wooden bead tie, plain cotton knee pads",
+                    dict(_ERA4_KIT, id="lg_sample_long_shadow", crew="B", number=56, role="rim runner",
+                         name="Long Shadow", body="power_forward", body_tweak={"leg": 0.09, "torso": 0.05,
+                                                                              "width": 0.06},
+                         skin="deep", hair="locs_up", hair_pal="HAIR_BLACK", bead_pal="ERA4_WOOD",
+                         kneepads="both", pad_pal="ERA4_COTTON",
+                         top_pal="ERA4_NIGHT", trim_pal="ERA4_LIME", shorts_pal="ERA4_NIGHT", shorts_trim="ERA4_LIME",
+                         shoe_acc="ERA4_LIME", sole_pal="ERA4_VIOLET")),
+    "updraft": ("UPDRAFT #57", "highest leaper, natural: wiry forward, tan skin, a natural black mohawk, taped fingers, "
+                               "bare knees",
+                dict(_ERA4_KIT, id="lg_sample_updraft", crew="B", number=57, role="highest leaper", name="Updraft",
+                     body="lanky_wing", body_tweak={"mass": -0.05}, skin="tan", hair="mohawk",
+                     hair_pal="HAIR_BLACK", tape_fingers=True, tape_pal="TAPE",
+                     top_pal="ERA4_NIGHT", trim_pal="ERA4_VIOLET", shorts_pal="ERA4_NIGHT", shorts_trim="ERA4_LIME",
+                     shoe_acc="ERA4_LIME", sole_pal="ERA4_VIOLET")),
+    "firewall": ("FIREWALL #51", "switch defender, cyber: strong medium build, brown skin, buzz cut, a thin lime "
+                                 "visor with chrome ends at the temples",
+                 dict(_ERA4_KIT, id="lg_sample_firewall", crew="B", number=51, role="switch defender",
+                      name="Firewall", body="power_forward", body_tweak={"mass": -0.04}, skin="brown", hair="buzz",
+                      hair_pal="HAIR_BLACK", visor=True,
+                      top_pal="ERA4_NIGHT", trim_pal="ERA4_LIME", shorts_pal="ERA4_NIGHT",
+                      shorts_trim="ERA4_VIOLET", shoe_acc="ERA4_LIME", sole_pal="ERA4_VIOLET")),
+}
+NEXT_TIES = [  # each part's tie to its move, one line each (the cyber rule: look only, the move is the edge)
+    "Glitch's chrome forearm -> HESITATION: the arm the ball lives on; the violet seams show the combo dribble's path.",
+    "Overclock's leg braces -> TOP GEAR: they started as a knee brace and power the fastest turbo on the floor.",
+    "Firewall's visor -> SWAT: a training visor that reads the shooter's release, so he times blocks on jump shots.",
+    "The natural three (Long Shadow, Updraft, Halfcourt): no chrome, no glow, no dyed hair; size and locs, the mohawk "
+    "and taped fingers, freckles and the headband.",
+]
+# your colors (a drafted legend wears them, like a _crew recolor): the kit palettes swapped; the hair, wood, cotton,
+# chrome and glow tones stay
+NEXT_SAMPLE_CREW = {"ERA4_VIOLET": "BLUE", "ERA4_DEEP_VIOLET": "BLUE", "ERA4_NIGHT": "NAVY", "ERA4_LIME": "GOLD",
+                    "ERA4_LIGHT": "WHITE"}
+NEXT_FULL = ("glitch", "halfcourt")
+NEXT_PARTS = ("overclock", "long_shadow", "updraft", "firewall")
+NEXT_ANIMS = ["idle", "run", "run_dribble", "shoot"]
+
+
+def _next_players():
+    entries = []
+    for key in NEXT_FULL + NEXT_PARTS:
+        e = NEXT_LOOKS[key][2]
+        entries.append(dict(e))
+        c = {k: (NEXT_SAMPLE_CREW.get(v, v) if isinstance(v, str) else v) for k, v in e.items()}
+        c.update({"id": e["id"] + "_crew", "crew": "U"})
+        entries.append(c)
+    return _load_entries(entries)
+
+
+def legends_sample_next(argv):
+    if __name__ == "__main__":
+        sys.modules["make_players"] = sys.modules["__main__"]    # make_players_v2 imports this module: no re-patch
+    import make_players_v2 as V
+    import make_anim_sample as AS
+    ps = _next_players()
+    ref = [q for q in V.players_v2() if q["id"] == SAMPLE_REF][0]
+    alld = ("S", "SE", "E", "NE", "N")
+    fr, probs = {}, []
+    for key in NEXT_FULL + NEXT_PARTS:
+        sid = NEXT_LOOKS[key][2]["id"]
+        for pid in (sid, sid + "_crew"):
+            fr[pid], pr = _render_anims(V, ps[pid], NEXT_ANIMS, alld)
+            probs += pr
+    fr[SAMPLE_REF], pr = _render_anims(V, ref, NEXT_ANIMS, alld)
+    probs += pr
+
+    def bg_of(w, h):
+        return _floor_bg(NEXT_FLOOR, w, h)
+
+    def sid_of(key):
+        return NEXT_LOOKS[key][2]["id"]
+
+    # --- the PNG
+    Z, pad, lab_h = 2, 6, 18
+    cw, chh = V.FW * Z, V.FH * Z
+    cells_per_row = 10
+    lx = 170
+    W = lx + cells_per_row * (cw + pad)
+
+    def C(f, name, dn, k=0, flip=False):
+        img, rec = f[(name, dn)][k]
+        if flip:
+            return V.compose(img.transpose(Image.FLIP_LEFT_RIGHT), dict(rec, ball=None))
+        return V.compose(img, rec)
+
+    def strip(f):
+        r = [C(f, "idle", dn) for dn in alld] + [C(f, "idle", "E", flip=True)]
+        r += [C(f, "run", "E", 3), C(f, "run_dribble", "SE", 2), C(f, "shoot", "E", 2), C(f, "shoot", "SE", 6)]
+        return r
+
+    heads = ("idle S SE E NE N W (mirrored) | run E | running dribble SE | jumper E (gather) | jumper SE (release; "
+             "the game adds the jump height)")
+    rows = []
+    for key in NEXT_FULL:
+        title, desc, e = NEXT_LOOKS[key]
+        rows += [(title + ", era colors", desc, strip(fr[e["id"]])), ("  in your colors", "",
+                                                                       strip(fr[e["id"] + "_crew"]))]
+    rows.append(("today: " + SAMPLE_REF, "", strip(fr[SAMPLE_REF])))
+    # parts row: the other four, idle S + run SE + run E each, era colors (game size)
+    prow = []
+    for key in NEXT_PARTS:
+        f = fr[sid_of(key)]
+        prow += [C(f, "idle", "S"), C(f, "run", "SE", 2)]
+    prow2 = []
+    for key in NEXT_PARTS:
+        f = fr[sid_of(key) + "_crew"]
+        prow2 += [C(f, "idle", "S"), C(f, "run", "E", 3)]
+    bar = 30
+    card_z = 3
+    close = [(sid_of("overclock"), "idle", "S", 0), (sid_of("overclock"), "run", "E", 3),
+             (sid_of("overclock"), "run", "SE", 2), (sid_of("firewall"), "idle", "S", 0),
+             (sid_of("firewall"), "idle", "SE", 0), (sid_of("firewall"), "idle", "E", 0)]
+    close2 = [(sid_of("glitch"), "run_dribble", "SE", 2), (sid_of("glitch"), "idle", "E", 0),
+              (sid_of("halfcourt"), "idle", "S", 0), (sid_of("long_shadow"), "idle", "N", 0),
+              (sid_of("updraft"), "idle", "SE", 0)]
+    H = (64 + len(rows) * (chh + lab_h + pad) + 5 * bar + 2 * (chh + lab_h + pad) + V.FH * card_z + lab_h + pad
+         + 2 * (4 * V.FH + lab_h + pad) + len(NEXT_TIES) * 18 + 3 * pad)
+    base = bg_of(W, H)
+    dr = ImageDraw.Draw(base)
+    dr.rectangle([0, 0, W, 56], fill=(20, 19, 28, 255))
+    AS.label(dr, (8, 6), "Legends look sample v1 (P12-05): the New Generation, 3 cyber and 3 natural (original "
+                         "characters, the approved names and numbers). Era colors: lime and violet on near-black, "
+                         "chrome only on the cyber parts. Shown 2x as in the game.", 14)
+    AS.label(dr, (8, 30), heads, 12, (210, 204, 224))
+    y = 64
+    for name, desc, r in rows:
+        dr.rectangle([0, y, W, y + lab_h - 2], fill=(20, 19, 28, 200))
+        AS.label(dr, (8, y + 1), name + (": " + desc if desc else ""), 12)
+        for c, cell in enumerate(r):
+            base.alpha_composite(cell.resize((cw, chh), Image.NEAREST), (lx + c * (cw + pad), y + lab_h))
+        y += chh + lab_h + pad
+    dr.rectangle([0, y, W, y + 24], fill=(20, 19, 28, 255))
+    AS.label(dr, (8, y + 4), "The other four at game size (idle S, run SE), era colors; then in your colors (idle S, "
+                             "run E). The cyber parts keep their chrome and glow in every recolor.", 13)
+    y += bar
+    for i, key in enumerate(NEXT_PARTS):
+        dr.rectangle([lx + 2 * i * (cw + pad), y, lx + 2 * i * (cw + pad) + 2 * cw + pad, y + lab_h - 2],
+                     fill=(20, 19, 28, 200))
+        AS.label(dr, (lx + 2 * i * (cw + pad) + 2, y + 2), NEXT_LOOKS[key][0], 12)
+    for c, cell in enumerate(prow):
+        base.alpha_composite(cell.resize((cw, chh), Image.NEAREST), (lx + c * (cw + pad), y + lab_h))
+    y += chh + lab_h + pad
+    for c, cell in enumerate(prow2):
+        base.alpha_composite(cell.resize((cw, chh), Image.NEAREST), (lx + c * (cw + pad), y + lab_h))
+    y += chh + lab_h + pad
+    dr.rectangle([0, y, W, y + 24], fill=(20, 19, 28, 255))
+    AS.label(dr, (8, y + 4), "Cards 3x (idle S, frame 0: the Hall / draft card): era colors and your colors. No CYBER "
+                             "or NATURAL tag (owner).", 13)
+    y += bar
+    x = lx
+    for key in NEXT_FULL:
+        sid = sid_of(key)
+        for pid, sub in ((sid, NEXT_LOOKS[key][0]), (sid + "_crew", "your colors")):
+            img, _ = fr[pid][("idle", "S")][0]
+            box = Image.new("RGBA", (V.FW * card_z, V.FH * card_z), (36, 34, 48, 255))
+            box.alpha_composite(img.resize((V.FW * card_z, V.FH * card_z), Image.NEAREST))
+            base.alpha_composite(box, (x, y))
+            dr.rectangle([x, y + V.FH * card_z, x + V.FW * card_z, y + V.FH * card_z + lab_h], fill=(20, 19, 28, 255))
+            AS.label(dr, (x + 4, y + V.FH * card_z + 2), sub, 12)
+            x += V.FW * card_z + 3 * pad
+    y += V.FH * card_z + lab_h + pad
+    for caption, cells in (("2x game size (4x): Overclock's braces (idle S, run E, run SE) | Firewall's visor "
+                            "(idle S, SE, E)", close),
+                           ("2x game size (4x): Glitch's chrome forearm (running dribble SE, idle E) | Halfcourt's "
+                            "freckles, curls and headband (S) | Long Shadow's locs and bead tie (N) | Updraft's "
+                            "mohawk and taped fingers (SE)", close2)):
+        dr.rectangle([0, y, W, y + 24], fill=(20, 19, 28, 255))
+        AS.label(dr, (8, y + 4), caption, 13)
+        y += bar
+        x = lx
+        for pid, name, dn, k in cells:
+            img, rec = fr[pid][(name, dn)][k]
+            base.alpha_composite(V.compose(img, rec).resize((V.FW * 4, V.FH * 4), Image.NEAREST), (x, y))
+            x += V.FW * 4 + pad
+        y += 4 * V.FH + pad
+    dr.rectangle([0, y, W, y + len(NEXT_TIES) * 18 + 8], fill=(20, 19, 28, 255))
+    for i, t in enumerate(NEXT_TIES):
+        AS.label(dr, (8, y + 4 + 18 * i), t, 13)
+    base.convert("RGB").save(NEXT_SAMPLE_PNG, optimize=True)
+    print("wrote %s %s %d bytes" % (NEXT_SAMPLE_PNG, base.size, os.path.getsize(NEXT_SAMPLE_PNG)))
+
+    # --- the GIF: Glitch and Halfcourt in era colors and your colors, Overclock and Firewall, and today's player
+    moves = [("idle", "S", 1), ("run", "SE", 2), ("run", "E", 2), ("run_dribble", "SE", 2), ("run_dribble", "E", 2),
+             ("shoot", "E", 1), ("shoot", "SE", 1), ("idle", "N", 1)]
+    top, head = 30, 22
+    panels = [(sid_of("glitch"), "GLITCH"), (sid_of("glitch") + "_crew", "YOUR COLORS"),
+              (sid_of("halfcourt"), "HALFCOURT"), (sid_of("halfcourt") + "_crew", "YOUR COLORS"),
+              (sid_of("overclock"), "OVERCLOCK"), (sid_of("firewall"), "FIREWALL"), (SAMPLE_REF, "TODAY")]
+    gw = pad + len(panels) * (cw + pad)
+    gh = head + (V.FH + top) * Z + pad + 14
+    frames, durs = [], []
+    for name, dn, loops in moves:
+        ms = V.ANIM[name][3]
+        lift = V.PREVIEW_LIFT.get(name)
+        for _ in range(loops):
+            for k, dur in enumerate(ms):
+                bg = bg_of(gw, gh)
+                d2 = ImageDraw.Draw(bg)
+                d2.rectangle([0, 0, gw, head - 4], fill=(20, 19, 28, 255))
+                AS.label(d2, (6, 3), "%s (%s) %d/%d" % ("jumper" if name == "shoot" else name, dn, k + 1, len(ms)), 13)
+                d2.rectangle([0, gh - 20, gw, gh], fill=(20, 19, 28, 255))
+                for c, (pid, title) in enumerate(panels):
+                    img, rec = fr[pid][(name, dn)][k]
+                    cell = AS.compose_frame(img, rec, lift=lift[k] if lift else 0, ball_spin=k, top=top)
+                    bg.alpha_composite(cell.resize((cw, (V.FH + top) * Z), Image.NEAREST),
+                                       (pad + c * (cw + pad), head))
+                    AS.label(d2, (pad + c * (cw + pad) + 4, gh - 18), title, 11)
+                frames.append(bg)
+                durs.append(max(20, dur))
+    AS.gif_save(frames, durs, NEXT_SAMPLE_GIF)
+    print("wrote %s %d frames %d bytes" % (NEXT_SAMPLE_GIF, len(frames), os.path.getsize(NEXT_SAMPLE_GIF)))
+    for s in probs:
+        print("CHECK", s)
+    print("checks: %d problem(s)" % len(probs))
+    return len(probs)
+
+
 def main(argv):
     if "--legends-sample" in argv:    # P9-04: the owner's look sample only, nothing in assets/
         i = argv.index("--legends-sample")
@@ -1955,6 +2434,8 @@ def main(argv):
             return legends_sample_fathers(argv)
         if i + 1 < len(argv) and argv[i + 1] == "present":    # P11-05: the Present look sample
             return legends_sample_present(argv)
+        if i + 1 < len(argv) and argv[i + 1] == "next":       # P12-05: the New Generation look sample
+            return legends_sample_next(argv)
         return legends_sample(argv)
     only = set(argv[argv.index("--only") + 1].split(",")) if "--only" in argv else None
     jobs = int(argv[argv.index("--jobs") + 1]) if "--jobs" in argv else (os.cpu_count() or 1)

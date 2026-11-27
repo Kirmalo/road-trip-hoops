@@ -185,6 +185,11 @@ Everything in "Tasks by wave" not marked DONE.
 ## Doing
 
 ## Review
+- **P12-05** New Generation era parts, cyber parts and the look sample: `make_players.py` "Phase 12 era parts"
+  (opt-in: `leg_braces`, `chrome_arm`, `visor`, hair `two_tone` / `locs_up`, `cotton_band`, `low_cut`, `tape_fingers`,
+  `wristband`, `freckles`), `pixel3d.py` `FLAT` `glow_lime` / `glow_violet` and `CHROME`, `crews.json` `ERA4_*`;
+  sample `docs/art/legends_next_sample_v1.png` / `.gif` (`make_players.py --legends-sample next`). Renderer checks 0
+  problems, ANIM OK, `assets/` untouched, all 71 older sheets' test frames byte for byte the same. For owner check 1
 
 ## Done
 - **P12-09** Midrange's skin brown on his sheet and card (before the phase; ANIM OK, LEGENDTEST OK)

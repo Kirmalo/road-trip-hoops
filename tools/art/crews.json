@@ -115,7 +115,16 @@
     "ERA3_DEEP_TEAL": ["#5ec4d4", "#16788e", "#0e5064", "#072c3a"],
     "ERA3_CORAL": ["#ffc4b2", "#ff7e68", "#d24c44", "#7c2426"],
     "ERA3_LIGHT": ["#ffffff", "#e8f0ff", "#b8c4e8", "#6c78a0"],
-    "ERA3_FLOOR": ["#f6dcae", "#e4bc84", "#c4925a", "#8c6036"]
+    "ERA3_FLOOR": ["#f6dcae", "#e4bc84", "#c4925a", "#8c6036"],
+    "ERA4_NIGHT": ["#4c4a5c", "#24222e", "#16151d", "#0a090e"],
+    "ERA4_LIME": ["#e8ff9c", "#a6e236", "#6ea420", "#3a6012"],
+    "ERA4_VIOLET": ["#c8aaff", "#7c4ee0", "#5230a6", "#2a1662"],
+    "ERA4_DEEP_VIOLET": ["#8466c8", "#46298c", "#2c195c", "#160b34"],
+    "ERA4_LIGHT": ["#ffffff", "#eef3ea", "#bec8ba", "#747e6c"],
+    "ERA4_HAIR_LIME": ["#d2f070", "#94c42e", "#5e8a1e", "#2e4a10"],
+    "ERA4_PLATINUM": ["#eeead6", "#c8c1a6", "#958e74", "#5a5646"],
+    "ERA4_WOOD": ["#d8a66c", "#a8743e", "#7a4e2a", "#48301c"],
+    "ERA4_COTTON": ["#ffffff", "#f4f0e6", "#cac4b6", "#8a8476"]
   },
   "skins": {
     "deep": ["#a86e4c", "#7e4c32", "#573024", "#381c1e"],

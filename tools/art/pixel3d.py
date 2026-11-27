@@ -122,7 +122,15 @@ FLAT = {
     "tongue": (206, 76, 88),
     "sweat": (170, 220, 255),
     "sweat_hi": (255, 255, 255),
+    # P12-05: the New Generation's cyber glow, two flat tones (unshaded, the same in every light; never a kit tone,
+    # so a recolor or a star jersey never touches them). Static: a palette is fixed per sheet, no pulse.
+    "glow_lime": (206, 255, 92),
+    "glow_violet": (178, 112, 255),
 }
+
+# P12-05: the chrome ramp of the cyber parts (cool steel, a white glint on top). Opt-in: only a part that asks for the
+# "chrome" material (make_players.py "Phase 12 era parts") uses it; it is not a kit palette, so no recolor swaps it.
+CHROME = ["#f6faff", "#a4b0c4", "#626c82", "#2e3444"]
 
 def player_palette(p):
     d = {
