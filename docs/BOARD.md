@@ -185,6 +185,13 @@ Everything in "Tasks by wave" not marked DONE.
 ## Doing
 
 ## Review
+- **P12-02** (gameplay A, on the branch): `docs/legends-namecheck.md` "Chapter 4 (P12-02): first check" and the
+  P12-02 list additions (2024-2026 drafts, young stars and nicknames, dunk contest, Japan, Europe, shoe lines, famous
+  fictional cyborgs and robots and their looks). Step 1: `nba_api` 1.12.0 (Oct 21 2026, 6,426 entries, holds the 2026
+  class). All six pass the hard rule and the data test's rules (Python dry run of `name_hit()`: six pass, the 18
+  shipped still pass, 7 new probes fail); numbers pass. **One fail of our own rule, not applied**: Ezra is 2 letters
+  from Earl (Earl "Mayor" Pruitt, `cities.gd`); owner: keep Ezra, or Leander (12.9) or Emrys. `--legendtest` OK
+  (doc only, nothing else changed)
 
 ## Done
 - **P12-09** Midrange's skin brown on his sheet and card (before the phase; ANIM OK, LEGENDTEST OK)
@@ -198,7 +205,7 @@ Everything in "Tasks by wave" not marked DONE.
 Format: **id** | title | owner | files it may touch | done when | waits for.
 
 ### Wave 1 (can start now)
-- **P12-02** | Name list for the new generation and the check of the six (12.9)
+- **P12-02** | REVIEW | Name list for the new generation and the check of the six (12.9)
   | gameplay-programmer A | `docs/legends-namecheck.md` only
   | The lists gain the 2024-2026 draft classes, today's young stars and their nicknames, dunk contest names, current
   Japanese and European players, shoe and product lines whose names could be a nickname ("Hyper...", "Zoom", ...),

@@ -1,4 +1,4 @@
-# Legends name check (P9-07; Chapter 2: P10-11; Chapter 3: P11-02, final in P11-11)
+# Legends name check (P9-07; Chapter 2: P10-11; Chapter 3: P11-02, final in P11-11; Chapter 4: P12-02)
 
 The hard rule (`docs/legends-plan.md` part 1): every legend is our own character. No legend's full name, nickname
 or "first last" may match a real NBA or ABA player or a famous real basketball nickname, closely or exactly. This
@@ -210,6 +210,161 @@ With the board's proposals plus three more changes this check asks for, the six 
 Achterberg, Bodie "Skylight" **Valcourt**, **Lucien** "Zigzag" Moreau. The owner may keep Castellano, Ozren or the thin
 mustache: each is a judgment call, not a name match (the reasons are in the table above).
 
+## Chapter 4, the New Generation (P12-02): first check
+
+Checked 2026-11-27 by gameplay-programmer A: the six of `docs/legends-plan.md` 12.9 as the owner approved them (VISION
+"Phase 12 roster (after the cyber redo)"), against step 1 below (the `nba_api` 1.12.0 list fetched again from PyPI and
+read as text, never run: "last updated Oct 21 2026", 6,426 entries, 5,198 NBA and 1,228 WNBA; it already holds the
+2024, 2025 and 2026 draft classes, e.g. Cooper Flagg, Kon Knueppel, AJ Dybantsa, Cameron Boozer) and the lists below,
+extended for this era (P12-02 additions: the 2024-2026 draft classes, today's young stars and their nicknames, dunk
+contest names, current Japanese and European players, shoe and product lines, famous fictional cyborgs and robots).
+Every first name was also held against the 65 first names in `cities.gd` and `legends_data.gd` (the Bastien rule:
+none within 2 letters). A dry run of `name_hit()` in Python (the shipped lists plus every P12-02 addition, the six
+with 12.9's look, move and challenge texts) passes all six, and the eighteen shipped legends still pass with the
+longer lists.
+
+### Names (step 1, the lists and the game's own names)
+
+| Name part | Exact match | Close matches looked at | Verdict |
+|---|---|---|---|
+| Tavian (first) | none | Damian (Lillard, Jones), Davion, Javin, Talvin, Taran 2 letters away (first names only); no game first name within 2 | **pass** |
+| "Overclock" (nickname) | none | not a first or last name in the list, no real nickname holds it; a plain computing word, no shoe or product line of note | **pass** |
+| Brightwell (last) | none | no surname within 2 letters | **pass** |
+| Calder (first) | none | Cade (Cunningham), Caleb, Carter, Walker, Walter 2 away (first names only); the Calder Trophy is hockey's rookie award (another sport, a trophy) | **pass** |
+| "Long Shadow" (nickname) | none | "Long" is a real surname (Grant Long, John Long, Naz Mitrou-Long) as one word of a plain two-word phrase, like "Set Shot" or "Deep End"; "shadow" and "longshadow" match nothing; "The Long Shadow" is a book, film and 2023 TV drama title, never a character | **pass** (always LONG SHADOW, never "THE LONG SHADOW") |
+| Ostrander (last) | none | Joe Strawder (a 1960s center) 2 letters away: passes the 1-letter rule; John Ostrander is a comics writer (a person, not a player or a character) | **pass** |
+| Cosimo (first) | none | nothing within 2 letters in the list or the game; Cosimo de' Medici is a famous historical first name only | **pass** |
+| "Glitch" (nickname) | none | a plain word; a TV series and a web platform used it as a title, the racing girl of a famous animated film is called "a glitch" (never her name or look); no player nickname | **pass** |
+| Draycott (last) | none | no surname within 2 letters (an English village's name) | **pass** |
+| Silvan (first) | none | **1 letter from the surname Silva** (Chris Silva; **Tristan da Silva**, an active forward); Alvan (Adams), Ivan 2 away | **pass** (the test checks surnames only; a first name 1 letter from a surname is a caution) |
+| "Updraft" (nickname) | none | a plain word; minor toy-line robots and game items have used it, none famous; no shoe line (Nike's "Uptempo" is 3+ letters away) | **pass** |
+| Ingleby (last) | none | **Joe Ingles** (a 2010s shooting forward) and Tom Ingelsby 2 letters away: pass the 1-letter rule, both now listed | **pass** |
+| Ezra (first) | none in the list | Azura (Stevens), Ezi (Magbegor), Ira, Kira, Kyra, Earl (Boykins, Clark, ...) 2 away; **Earl "Mayor" Pruitt, the Hometown boss in `cities.gd`, is 2 letters away** | **FAILS the Bastien rule** (see below) |
+| "Halfcourt" (nickname) | none | a plain word; no real nickname, no brand; one word, never "half-court" on a plate | **pass** |
+| Tregarth (last) | none | no surname within 2 letters (a Cornish place name) | **pass** |
+| Kasimir (first) | none | nothing within 2 letters in the list or the game; the painter Kazimir Malevich spells it with a z (first name only) | **pass** |
+| "Firewall" (nickname) | none | a plain security word; a 2006 thriller's title (not a character) and a minor action-figure character used it; no shoe line | **pass** (a caution, as 12.9 said) |
+| Oyelaran (last) | none | no surname within 2 letters | **pass** |
+
+None of the six nicknames is a real player's nickname, an NBA or WNBA team name, a first or last name in the step-1
+list, a shoe or product line, or the name of a famous fictional cyborg or robot. The full names ("Tavian Brightwell",
+"Calder Ostrander", "Cosimo Draycott", "Silvan Ingleby", "Ezra Tregarth", "Kasimir Oyelaran") match no one. 1-letter
+near misses: only Silvan / Silva (a first name against a surname, not the test's rule). Surnames within 2 letters:
+Ostrander / Strawder, Ingleby / Ingles, Ingelsby, as 12.9 said; all pass the 1-letter rule.
+
+### The one rule fail: Ezra (not applied; for the owner)
+12.9's rule "no first name within 2 letters of a first name in `cities.gd` or `legends_data.gd`" (the Bastien rule;
+P11 dropped Remy and Emile for being 2 from Ray / Trey and Milo) catches **Ezra**: it is 2 letters from **Earl**
+(Earl "Mayor" Pruitt, the Hometown boss). The lead's first pass missed it. The real risk is small (the two look and
+sound different, it is a clash inside our own game, not with a real player), so it is the owner's call:
+- **Keep Ezra** (the owner approved it; the rule is ours, not the hard rule), or
+- **Leander** (12.9's backup): passes every rule; no game first name within 2; 2 letters from Leandro (Leandro
+  Barbosa, a well-known 2000s guard, and Leandro Bolmaro), a first name only, or
+- **Emrys** (new): the cleanest result of all, nothing within 2 letters in the list or the game; a Welsh name that
+  goes with the Cornish Tregarth (it is also an old name of Merlin in legend, not a player or a brand).
+- (Also clean: Ambrose, only 2 from Ambrosia Anderson, a WNBA first name.)
+
+Nothing in the data or art holds the name yet; the id `lg_halfcourt` follows the nickname and does not change.
+
+### The nicknames against brands, shoe lines and fictional characters
+- **Shoe and product lines** (the list below): Hyper... (Hyperdunk, Hyperdrive, Hyperfuse, Hyperrev), Zoom, Air Max,
+  Air Force, Foamposite, Uptempo, Freak, Kyrie, Why Not, GT Cut, Curry Flow, HOVR, Way of Wade, Boost, Crazy Explosive,
+  Chuck Taylor, All Star, Shaqnosis, Kamikaze, the Pump: none is or holds one of the six. "Hyperdrive" (gone in 12.9)
+  would fail the data test now (a probe below).
+- **Famous fictional cyborgs and robots** (film, TV, games, comics, the list below): no nickname is one of them or
+  holds one. "Overclock", "Glitch", "Updraft" and "Firewall" are common words that minor characters of toy lines,
+  cartoons or games may also use; none is a famous character, and none is used with that character's look.
+- **Today's nicknames and dunk names**: none of the six is or holds one ("Airplane Mode", "Maple Jordan",
+  "Hillbilly Kobe", "J-Dub", "Wonder Boy", "Splash Mountain", the "Honey Dip" and "Eastbay" dunks, ...).
+
+### The look combinations (the board's five real-player sets, in words)
+1. **The very thin seven-footer who shoots step-backs** (one famous center of today): Long Shadow is the only
+   seven-footer, **broad**, a rim-runner with locs, no jumper move, 56. Pass. Never 1; no "alien" in his texts.
+2. **The tall flashy point guard with neck tattoos and a low number** (one famous guard of today, who also wears his
+   hair bleached at times): Glitch, the flashy handler, is **medium height**, no tattoos, 25; his two-tone hair is
+   black with a platinum top, not all blond. Overclock, the point guard, is small, no tattoos, 17. Pass. Keep Glitch
+   medium height and free of tattoos; never 1 or 2.
+3. **The explosive leaper guard in a headband wearing 12** (a famous guard of today): Updraft, the leaper, is a
+   **forward**, mohawk, no headband, 57; the headband is on Halfcourt, a shooter, 39; 12 is Quarterback's. Pass.
+4. **The big, quick bulldozer forward** (a famous forward of today): Firewall is a medium-build defender, finishing 0,
+   buzz cut, 51; Long Shadow is broad but a center with locs. Pass.
+5. **The athletic twin wings** (two famous twins of today): no twins, no two legends alike. Pass.
+
+Other sets looked at for this roster:
+- **Overclock, a quick small point guard in 17 with dyed hair**: one quick European point guard wore 17 for years and
+  sometimes a single bleached streak. Overclock's whole short crop is lime (not a streak, not blond), dark brown skin,
+  no national colors. Pass, with that caution.
+- **Halfcourt, a pale deep-range shooter**: today's most famous deep-range shooter (a WNBA guard: "logo" threes, 22,
+  a ponytail) and a Boston guard known for heaves from half court (11). Halfcourt is clean-shaven with sandy curls, a
+  headband and freckles, 39; never 11 or 22, never "logo" (listed), no ponytail. Pass.
+- **Updraft, a wiry high-flying forward** (one dunk contest forward known as "Airplane Mode"): Updraft's mohawk, taped
+  fingers and 57; "Airplane Mode" is listed. Pass.
+- **Long Shadow, a broad rim-running center with locs**: no real center of today stands out with that set at 56. Pass.
+
+### The cyborg looks (12.9's parts against the famous ones)
+- **Glitch, a chrome forearm** (from the elbow down, one arm, violet seams; the arm swaps sides in the mirrored
+  directions): not the comic soldier's whole silver left arm with a red star, not the game rocker's silver arm with
+  aviators, not the alchemist's metal right arm with a blond braid and red coat, not the fighting-game fighter's two
+  metal arms, not the hero's huge gauntlet fist. Pass, with these kept: forearm and hand only, the hand human-sized
+  (no gauntlet), no star or emblem, no sunglasses, no long or blond hair.
+- **Firewall, a visor** (a thin 1-2 px lime band across the eyes, 1 chrome px at each temple, front only, hair above):
+  not the comic team leader's ruby visor, not the starship engineer's **gold** VISOR (a wide curved band with slats,
+  clipped at the temples, on a brown-skinned man: the closest one, so the band stays thin, flat lime, no slats, no
+  temple bulges or ports, never gold or yellow), not the space-film aide's chrome band round a bald head (Firewall has
+  a buzz cut, nothing round the back), not a gold helmet visor. Pass.
+- **Overclock, leg braces** (a chrome strut and a lime line down each shin, knee to ankle): not the TV "bionic" runner
+  (no visible parts) and not the speedster of a battle-royale game with **full metal lower legs**, a mask and goggles
+  in green (the closest one: so the braces sit on his own legs, skin shows between the struts, no blade feet or metal
+  feet, no mask or goggles, and no "stim" in any text). Pass.
+- No part copies the glowing circuit lines of a famous light-cycle film's suits (the kits stay plain cloth; the glow
+  is on the parts only), and no helmet of a famous robot music duo.
+- The words "cyborg", "bionic", "robo", "terminator", "android" and "iron" are in the list below (one word each, so
+  the test catches them in a name; in a text only the reviewers and the extra check proposed below do).
+
+### Numbers
+17 / 56 / 25 / 57 / 39 / 51: none in `NUMBER_AVOID`, none worn by another legend (18, 54, 9, 46, 19, 12, 27, 16, 28,
+48, 14, 36, 26, 38, 49, 29, 52, 58), not 43 or 47. Pass, with the combinations above:
+- **17** was worn by famous players (two retired Hall of Famers, the "Linsanity" guard) and today by a quick European
+  point guard: Overclock's look keeps clear of that guard (above). Pass.
+- **56** and **57**: no famous wearer. Pass.
+- **25**: worn by a former MVP point guard late in his career and by today's players, none a trick handler with a
+  chrome arm. Pass.
+- **39**: worn by a famous 2010s center late in his career; Halfcourt is a shooter. Pass (P11-02 kept 39 off
+  Stretch only for the fame; it is not a big here).
+- **51**: worn by a famous giant fan favorite (why P11-02 kept it off Stretch, a seven-foot shooter); Firewall is a
+  medium-build forward, not a giant. Pass.
+No new number goes into `NUMBER_AVOID`.
+
+### Kits (for P12-05)
+Lime + violet on near-black is no current NBA or WNBA team's pair. Two near ones: **purple + black + silver** (a
+Western NBA team) and **lime-green + navy** (a WNBA team). So the kit always shows the lime, the dark stays near-black
+(not navy), and the chrome stays on the cyber parts only (never a silver kit trim).
+
+### Cautions for the other Phase 12 tasks
+- Move names stay plain words: "top gear", "run the floor", "hesitation", "combo dribble" (between the legs into
+  behind the back), "putback", "hot hand", "swat". Never a player's name on a move, never a dunk contest dunk's name
+  ("Eastbay", "Honey Dip"), never "logo three", never "heat check" as a celebration, and never the 1990s arcade game's
+  "he's on fire" call (Halfcourt's fire is "ON FIRE", as Set Shot's and Midrange's).
+- No celebration or slogan in any text: the list below plus "not in my house" (a famous finger-wag block line; keep it
+  out of Firewall's texts and story).
+- Never shorten: Long Shadow never "Shadow" alone on a plate or "THE LONG SHADOW"; Halfcourt always one word.
+- The cyber words (above) appear in no name, nickname or text. **Proposal for P12-11** (its file): a one-word check of
+  those six words in every text of a legend, next to `name_hit()` (today only nicknames of 2 words or more are looked
+  for in texts).
+- A part is a tool the legend built or earned (12.9's story hooks), never a cheat; no part gives a stat.
+- **Probes for P12-11's data test** (each must fail; the dry run fails all seven): Tavian Brightwell "HYPERDRIVE" (a
+  shoe line), Silvan Ingleby "AIRPLANE MODE" (a real nickname), Silvan Ingles "UPDRAFT" (a real surname), Kasimir
+  Oyelaran "CYCLOPS" (a fictional cyborg), Cosimo Draycott "GLITCH" with a look holding "winter soldier", Calder
+  Ostrander "LONG SHADOW" with a bio holding "six million dollar man", Ezra Tregarth "HALFCOURT" with a bio holding
+  "not in my house".
+
+### Summary for the owner (first check)
+All six pass the hard rule: no real player's name or nickname, no brand, no famous fictional cyborg, and no look,
+build, number and move that point at one real player or one famous cyborg (the closest ones, the gold visor and the
+metal-legged game speedster, are kept apart by the cautions above). Numbers 17 / 56 / 25 / 57 / 39 / 51 pass. **One
+name breaks our own rule**: Ezra is 2 letters from Earl (the Hometown boss, Earl "Mayor" Pruitt). Not changed: the
+owner keeps **Ezra** or picks **Leander** (12.9's backup) or **Emrys** (cleanest). Everything else stays as approved.
+
 ## How the check was made
 1. **Every NBA player**: the static player list in `nba_api` 1.12.0 (PyPI; its data file says "last updated Oct 21
    2026"), 6,426 entries (every NBA player since 1946, plus some WNBA). Read as text, never run. For each legend:
@@ -221,7 +376,12 @@ mustache: each is a judgment call, not a name match (the reasons are in the tabl
    Chapter 3, P11-02: today's NBA and WNBA stars of about 2015-2026, their nicknames, celebrations and the teams'
    slogans, the same way; the step-1 file itself was fetched again from PyPI and read as text). It is the
    list a fan would think of first; it is not exhaustive. The owner, or anyone with a browser, can add to it: a name
-   added here and in `legends_data.gd` is checked on the next `--legendtest`.
+   added here and in `legends_data.gd` is checked on the next `--legendtest`. For Chapter 4 (P12-02, 2026-11-27) the
+   same way: the 2024-2026 draft classes (from the step-1 file, which holds them), today's young stars and their
+   nicknames, dunk contest names, current Japanese and European players, shoe and product lines, and famous fictional
+   cyborgs and robots; the first names also against the 65 game first names in `cities.gd` and `legends_data.gd`,
+   and a dry run of `name_hit()` in Python with the shipped lists plus the P12-02 additions (six pass, eighteen
+   shipped legends still pass, seven probes fail).
 3. **The data test** (`--legendtest`, `LegendsData.name_check()`): names are lower-cased with letters, digits and
    spaces only, and a leading "the" dropped. A legend fails when his nickname is a listed nickname, his "first
    nickname last" holds a listed nickname as whole words, his "first last" is a listed name, his last name is a
@@ -259,7 +419,32 @@ from akron, playoff p, pg13, pg 13, pandemic p, jimmy buckets, playoff jimmy, hi
 dame dolla, logo lillard, board man, fun guy, stifle tower, french rejection, wemby, mutant, zinger, porzingod, kat,
 bam, luka magic, sga, ant man, iso joe, scary terry, swaggy p, lou will, linsanity, dragon, zanos, hood melo, big
 body, cardiac kemba, point gawd, unibrow, stewie, ace, phee, bayou barbie, chi barbie, paige buckets, sabi; the
-trademark next to a draft nickname: swiss army, swiss army knife, swiss knife
+trademark next to a draft nickname: swiss army, swiss army knife, swiss knife;
+P12-02, the young stars of 2024-2026 and the dunk contest: j dub, jdub, hali, podz, bub, hachi, wonder boy, maple
+jordan, hillbilly kobe, airplane mode, splash mountain, thompson twins, bronny, honey dip, eastbay, eastbay funk dunk
+
+### Shoe and product lines (P12-02; copied into `REAL_NICKNAMES` too)
+hyper, hyperdunk, hyperdrive, hyperfuse, hyperrev, zoom, zoom freak, freak, air max, foamposite, uptempo, air force,
+air force one, kyrie, why not, gt cut, curry flow, hovr, way of wade, shaqnosis, kamikaze, the pump, chuck taylor, all
+star, boost, crazy explosive
+
+("all star" and "why not" are 2 words, so the test also refuses them inside a bio or look: write "an all-time great",
+not "an all-star", in the Chapter 4 texts.)
+
+### Famous fictional cyborgs and robots (P12-02; copied into `REAL_NICKNAMES` too)
+winter soldier, bucky, silverhand, johnny silverhand, edward elric, elric, fullmetal, full metal alchemist, jax
+briggs, cyclops, geordi, la forge, lobot, robocop, robo cop, robo, terminator, t 800, t 1000, cyborg, bionic, bionic
+man, bionic woman, six million dollar man, android, iron, iron man, ironman, war machine, ultron, inspector gadget,
+gadget, motoko, kusanagi, ghost in the shell, adam jensen, deus ex, genji, raiden, sektor, cyrax, deathlok, cable,
+nebula, seven of nine, borg, baymax, wall e, astro boy, mega man, megaman, alita, octane, doomfist, junkrat, kay o,
+master chief, tron, daft punk, vanellope, optimus prime, megatron, starscream
+
+Their looks, for the art and portrait tasks (the parts must not copy one): a whole metal left arm with a red star; a
+silver arm with aviators; a metal right arm with a blond braid; two metal arms; a huge gauntlet fist; a ruby visor; a
+wide gold slatted VISOR clipped at the temples; a chrome band round the back of a bald head; a gold helmet visor; full
+metal lower legs with a mask and goggles; a chrome-plated police suit; a red glowing eye on a metal skull; glowing
+circuit lines on a dark suit. Words that never appear in a Chapter 4 name or text: cyborg, bionic, robo, terminator,
+android, iron.
 
 ### Celebrations and slogans (P11-02; words that must never appear, copied into `REAL_NICKNAMES` too)
 night night, ice in my veins, too small, let him cook, trust the process, board man gets paid, rock the baby, light
@@ -332,7 +517,29 @@ Bird, Candace Parker, Maya Moore, Elena Delle Donne, Brittney Griner, Kelsey Plu
 Aliyah Boston, Jonquel Jones, Alyssa Thomas, Skylar Diggins-Smith, Chelsea Gray, Nneka Ogwumike, Tina Charles, Sylvia
 Fowles, Lindsay Whalen, Kahleah Copper, Jackie Young, Kelsey Mitchell, Rhyne Howard, Cameron Brink, Kamilla Cardoso,
 Courtney Vandersloot, Allie Quigley, DeWanna Bonner, Satou Sabally, Natasha Cloud, Dearica Hamby, Seimone Augustus,
-Lisa Leslie, Sheryl Swoopes, Cynthia Cooper, Tamika Catchings, Lauren Jackson, Becky Hammon, JuJu Watkins. (Suffixes
+Lisa Leslie, Sheryl Swoopes, Cynthia Cooper, Tamika Catchings, Lauren Jackson, Becky Hammon, JuJu Watkins. P12-02: the
+2024 draft class Reed Sheppard, Ron Holland, Donovan Clingan, Rob Dillingham, Zach Edey, Cody Williams, Matas Buzelis,
+Nikola Topic, Devin Carter, Carlton Carrington, Kel'el Ware, Jared McCain, Dalton Knecht, Tristan da Silva, Ja'Kobe
+Walter, Yves Missi, Kyshawn George, Bronny James, Jaylen Wells, Ajay Mitchell, Isaiah Collier, Tidjane Salaun, Kyle
+Filipowski; 2025: VJ Edgecombe, Kon Knueppel, Ace Bailey, Tre Johnson, Jeremiah Fears, Egor Demin, Collin
+Murray-Boyles, Khaman Maluach, Cedric Coward, Noa Essengue, Derik Queen, Carter Bryant, Thomas Sorber, Yang Hansen,
+Joan Beringer, Walter Clayton, Nolan Traore, Kasparas Jakucionis, Will Riley, Drake Powell, Asa Newell, Jase
+Richardson, Ben Saraf, Danny Wolf, Hugo Gonzalez, Liam McNeeley, Rasheer Fleming, Noah Penda; 2026: AJ Dybantsa,
+Darryn Peterson, Cameron Boozer, Caleb Wilson, Nate Ament, Mikel Brown, Kingston Flemings, Jayden Quaintance, Koa Peat,
+Darius Acuff, Chris Cenac, Brayden Burries, Keaton Wagler, Hannes Steinbach, Karim Lopez, Henri Veesaar, Aday Mara,
+Zuby Ejiofor, and the WNBA's Azzi Fudd, Lauren Betts, Olivia Miles, Flau'jae Johnson, Kiki Rice; today's young stars
+and role players: Payton Pritchard, Dyson Daniels, Jaden Ivey, Bennedict Mathurin, Keegan Murray, Walker Kessler,
+Jaime Jaquez, Trey Murphy, Deni Avdija, Keyonte George, Brandin Podziemski, Trayce Jackson-Davis, Gradey Dick, Bilal
+Coulibaly, Cason Wallace, Jarace Walker, Anthony Black, Cam Whitmore, Shaedon Sharpe, Jeremy Sochan, Kevin Huerter,
+Duncan Robinson, Sam Hauser, Grayson Allen, Nic Claxton, Mitchell Robinson, Daniel Gafford, Jordan Clarkson, Bones
+Hyland, Andrew Wiggins, Kate Martin, Rickea Jackson, Dominique Malonga, Sonia Citron, Kiki Iriafen, Aneesah Morrow,
+Hailey Van Lith; the dunk contest: Mac McClung, Derrick Jones, Obi Toppin, Hamidou Diallo, Jaxson Hayes, Jericho Sims,
+Gerald Green, Jeremy Evans, Spud Webb, Cedric Ceballos, Isaiah Rider; Japan: Rui Hachimura, Yuta Watanabe, Yuki
+Kawamura, Yudai Baba, Yuta Tabuse, Rui Machida, Yuki Togashi; Europe: Moritz Wagner, Isaiah Hartenstein, Daniel
+Theis, Goga Bitadze, Sasha Vezenkov, Vasilije Micic, Dario Saric, Sergio Llull, Facundo Campazzo, Edy Tavares, Mike
+James, Nikola Mirotic, Kostas Sloukas, Mathias Lessort, Shane Larkin, Will Clyburn, Kevin Punter, Tornike Shengelia,
+Nigel Hayes-Davis, Nadir Hifi, Sylvain Francisco, Mario Hezonja, Jan Vesely, Nick Calathes; the close matches of the
+Chapter 4 names: Leandro Barbosa, Joe Ingles, Tom Ingelsby, Joe Strawder. (Suffixes
 like "Jr." are left off: the test reads the last word as the surname.)
 
 The full NBA list (step 1) is too long to copy into the game; it was checked once here, and the table above is its
