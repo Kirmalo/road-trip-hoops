@@ -52,7 +52,12 @@
     "P11-14: the six Present legends are crew 'PR' (ids lg_*, original characters, names and numbers approved by the",
     "owner), each 'draft': true (crew_recolor 'PR' and the _crew_j1..3 jerseys). Deep End lists 'extra': ['stepback'] and",
     "Zigzag 'extra': ['eurostep'] (P11-05b, approved); nobody else carries them. Contact sheet: make_players_v2.py",
-    "--legends-strip present."
+    "--legends-strip present.",
+    "P12-14: the six New Generation legends are crew 'NG' (ids lg_*, original characters, names and numbers approved by",
+    "the owner), each 'draft': true (crew_recolor 'NG' and the _crew_j1..3 jerseys), the looks of the approved sample",
+    "(make_players.py NEXT_LOOKS; Phase 12 era parts). Cyber parts only on Overclock, Glitch and Firewall; the hair",
+    "palettes ERA4_HAIR_LIME and ERA4_PLATINUM are not in the crew recolor. Glitch lists 'extra': ['combo'] (P12-05b,",
+    "approved). Contact sheet: make_players_v2.py --legends-strip next."
   ],
   "palettes": {
     "BLUE": ["#78b8ff", "#2f74e0", "#1f479e", "#172a66"],
@@ -162,7 +167,8 @@
     "NYF": {"team": "red", "ring": [236, 52, 64], "_note": "New York final: Concrete Crowns, black and gold"},
     "GR": {"team": "red", "ring": [236, 52, 64], "_note": "Legends Chapter 1: the Grandfathers (P9-09), each in his own era kit"},
     "FA": {"team": "red", "ring": [236, 52, 64], "_note": "Legends Chapter 2: the Fathers (P10-14), each in his own era kit"},
-    "PR": {"team": "red", "ring": [236, 52, 64], "_note": "Legends Chapter 3: the Present (P11-14), each in his own era kit"}
+    "PR": {"team": "red", "ring": [236, 52, 64], "_note": "Legends Chapter 3: the Present (P11-14), each in his own era kit"},
+    "NG": {"team": "red", "ring": [236, 52, 64], "_note": "Legends Chapter 4: the New Generation (P12-14), each in his own era kit"}
   },
   "crew_recolor": {
     "_help": "per city crew: palette name swaps, then '_fields' sets these fields outright (gold trims)",
@@ -186,7 +192,9 @@
            "ERA2_STEEL": "NAVY", "ERA2_TANGERINE": "GOLD", "ERA2_CITRUS": "GOLD", "ERA2_ICE": "WHITE"},
     "PR": {"_note": "P11-14: every era kit color to one of your colors, as in the approved look sample (graphite, coral and deep teal BLUE, ink NAVY, teal GOLD, light WHITE)",
            "ERA3_GRAPHITE": "BLUE", "ERA3_CORAL": "BLUE", "ERA3_DEEP_TEAL": "BLUE", "ERA3_INK": "NAVY",
-           "ERA3_TEAL": "GOLD", "ERA3_LIGHT": "WHITE"}
+           "ERA3_TEAL": "GOLD", "ERA3_LIGHT": "WHITE"},
+    "NG": {"_note": "P12-14: the approved look sample's map (make_players.py NEXT_SAMPLE_CREW): violet and deep violet BLUE, near-black NAVY, lime GOLD, light WHITE; the hair (lime, platinum), wood, cotton and tape tones stay, and the chrome and glow are no kit palette (pixel3d), so every recolor keeps them",
+      "ERA4_VIOLET": "BLUE", "ERA4_DEEP_VIOLET": "BLUE", "ERA4_NIGHT": "NAVY", "ERA4_LIME": "GOLD", "ERA4_LIGHT": "WHITE"}
   },
   "jerseys": {
     "_help": ["P8-09: the 3 alternate jerseys (star rewards jersey_1..3, Cosmetics.ITEMS). Palette only: every sheet that",
@@ -912,6 +920,58 @@
       "top": "tank", "sleeve": null, "tight": null, "modern_shorts": true, "shorts_len": 0.7, "socks": "low", "sock_len": 0.1, "knee_sleeve": "L", "knee_pal": "ERA3_INK",
       "top_pal": "ERA3_LIGHT", "trim_pal": "ERA3_CORAL", "shorts_pal": "ERA3_CORAL", "shorts_trim": "ERA3_LIGHT",
       "sock_pal": "ERA3_LIGHT", "shoe_pal": "ERA3_LIGHT", "shoe_acc": "ERA3_CORAL", "sole_pal": "ERA3_CORAL", "action": ["layup", 5]
+    },
+    {
+      "id": "lg_overclock", "crew": "NG", "phase": 12, "number": 17, "role": "speedster point guard", "name": "Overclock",
+      "draft": true, "desc": "P12-14 legend (original; the approved look sample): speedster guard, cyber: small, umber skin, a lime-dyed crop (ERA4_HAIR_LIME, kept in every recolor), no tattoos; chrome shin braces with a lime light line on both legs (chrome and glow kept in every recolor); near-black tank, lime trim, mid-thigh near-black shorts with lime stripes, low white socks, low-cut shoes",
+      "top": "tank", "sleeve": null, "tight": null, "modern_shorts": true, "socks": "low", "low_cut": true, "sock_pal": "ERA4_LIGHT",
+      "shoe_pal": "ERA4_LIGHT", "shorts_len": 0.7, "sock_len": 0.1, "body": "slim_guard", "body_tweak": {"leg": -0.08, "torso": -0.04},
+      "skin": "umber", "hair": "crop", "hair_pal": "ERA4_HAIR_LIME", "leg_braces": true, "top_pal": "ERA4_NIGHT", "trim_pal": "ERA4_LIME",
+      "shorts_pal": "ERA4_NIGHT", "shorts_trim": "ERA4_LIME", "shoe_acc": "ERA4_LIME", "sole_pal": "ERA4_NIGHT", "action": ["run_dribble", 2]
+    },
+    {
+      "id": "lg_long_shadow", "crew": "NG", "phase": 12, "number": 56, "role": "seven-foot rim runner", "name": "Long Shadow",
+      "draft": true, "desc": "P12-14 legend (original; the approved look sample): rim-running seven-footer, natural (no chrome, no glow): very tall and broad, deep skin, black locs tied up with a wooden bead tie, plain cotton knee pads; near-black tank, lime trim, mid-thigh near-black shorts with lime stripes, low white socks, low-cut shoes",
+      "top": "tank", "sleeve": null, "tight": null, "modern_shorts": true, "socks": "low", "low_cut": true, "sock_pal": "ERA4_LIGHT",
+      "shoe_pal": "ERA4_LIGHT", "shorts_len": 0.7, "sock_len": 0.1, "body": "power_forward", "body_tweak": {"leg": 0.09, "torso": 0.05, "width": 0.06},
+      "skin": "deep", "hair": "locs_up", "hair_pal": "HAIR_BLACK", "bead_pal": "ERA4_WOOD", "kneepads": "both", "pad_pal": "ERA4_COTTON",
+      "top_pal": "ERA4_NIGHT", "trim_pal": "ERA4_LIME", "shorts_pal": "ERA4_NIGHT", "shorts_trim": "ERA4_LIME", "shoe_acc": "ERA4_LIME",
+      "sole_pal": "ERA4_VIOLET", "action": ["dunk_two", 4]
+    },
+    {
+      "id": "lg_glitch", "crew": "NG", "phase": 12, "number": 25, "role": "trick handler", "name": "Glitch",
+      "draft": true, "desc": "P12-14 legend (original; the approved look sample): trick handler, cyber: slim, tan skin, two-tone hair (black sides, a platinum top: ERA4_PLATINUM, kept in every recolor), right forearm and hand chrome from the elbow down with violet seams (kept in every recolor); near-black tank, lime trim, near-black shorts with violet stripes, low white socks, low-cut shoes. Carries the combo extra (P12-05b, approved)",
+      "extra": ["combo"], "top": "tank", "sleeve": null, "tight": null, "modern_shorts": true, "socks": "low", "low_cut": true,
+      "sock_pal": "ERA4_LIGHT", "shoe_pal": "ERA4_LIGHT", "shorts_len": 0.7, "sock_len": 0.1, "body": "lanky_guard", "body_tweak": {"leg": -0.04, "torso": -0.02},
+      "skin": "tan", "hair": "two_tone", "hair_pal": "HAIR_BLACK", "hair2_pal": "ERA4_PLATINUM", "chrome_arm": "R", "top_pal": "ERA4_NIGHT",
+      "trim_pal": "ERA4_LIME", "shorts_pal": "ERA4_NIGHT", "shorts_trim": "ERA4_VIOLET", "shoe_acc": "ERA4_VIOLET", "sole_pal": "ERA4_NIGHT",
+      "action": ["cross", 3]
+    },
+    {
+      "id": "lg_updraft", "crew": "NG", "phase": 12, "number": 57, "role": "highest leaper", "name": "Updraft",
+      "draft": true, "desc": "P12-14 legend (original; the approved look sample): highest leaper, natural (no chrome, no glow): wiry forward, tan skin, a natural black mohawk, taped fingers, bare knees; near-black tank, violet trim, mid-thigh near-black shorts with lime stripes, low white socks, low-cut shoes",
+      "top": "tank", "sleeve": null, "tight": null, "modern_shorts": true, "socks": "low", "low_cut": true, "sock_pal": "ERA4_LIGHT",
+      "shoe_pal": "ERA4_LIGHT", "shorts_len": 0.7, "sock_len": 0.1, "body": "lanky_wing", "body_tweak": {"mass": -0.05},
+      "skin": "tan", "hair": "mohawk", "hair_pal": "HAIR_BLACK", "tape_fingers": true, "tape_pal": "TAPE", "top_pal": "ERA4_NIGHT",
+      "trim_pal": "ERA4_VIOLET", "shorts_pal": "ERA4_NIGHT", "shorts_trim": "ERA4_LIME", "shoe_acc": "ERA4_LIME", "sole_pal": "ERA4_VIOLET",
+      "action": ["dunk_one", 4]
+    },
+    {
+      "id": "lg_halfcourt", "crew": "NG", "phase": 12, "number": 39, "role": "range shooter", "name": "Halfcourt",
+      "draft": true, "desc": "P12-14 legend (original; the approved look sample): range shooter, natural (no chrome, no glow): lean, light skin with freckles, sandy curls under a plain white cotton headband, clean-shaven, one cotton wristband (right); near-black tank, lime trim, mid-thigh near-black shorts with lime stripes, low white socks, low-cut shoes",
+      "top": "tank", "sleeve": null, "tight": null, "modern_shorts": true, "socks": "low", "low_cut": true, "sock_pal": "ERA4_LIGHT",
+      "shoe_pal": "ERA4_LIGHT", "shorts_len": 0.7, "sock_len": 0.1, "body": "lanky_wing", "body_tweak": {"leg": -0.03, "mass": -0.04},
+      "skin": "light", "hair": "curls", "hair_pal": "HAIR_SANDY", "cotton_band": true, "band_pal": "ERA4_COTTON", "freckles": true,
+      "wristband": "R", "wrist_pal": "ERA4_COTTON", "top_pal": "ERA4_NIGHT", "trim_pal": "ERA4_LIME", "shorts_pal": "ERA4_NIGHT",
+      "shorts_trim": "ERA4_LIME", "shoe_acc": "ERA4_LIME", "sole_pal": "ERA4_NIGHT", "action": ["shoot", 6]
+    },
+    {
+      "id": "lg_firewall", "crew": "NG", "phase": 12, "number": 51, "role": "switching shot blocker", "name": "Firewall",
+      "draft": true, "desc": "P12-14 legend (original; the approved look sample): switch defender, cyber: strong medium build, brown skin, a black buzz cut, a thin lime visor with chrome ends at the temples (kept in every recolor); near-black tank, lime trim, near-black shorts with violet stripes, low white socks, low-cut shoes",
+      "top": "tank", "sleeve": null, "tight": null, "modern_shorts": true, "socks": "low", "low_cut": true, "sock_pal": "ERA4_LIGHT",
+      "shoe_pal": "ERA4_LIGHT", "shorts_len": 0.7, "sock_len": 0.1, "body": "power_forward", "body_tweak": {"mass": -0.04},
+      "skin": "brown", "hair": "buzz", "hair_pal": "HAIR_BLACK", "visor": true, "top_pal": "ERA4_NIGHT", "trim_pal": "ERA4_LIME",
+      "shorts_pal": "ERA4_NIGHT", "shorts_trim": "ERA4_VIOLET", "shoe_acc": "ERA4_LIME", "sole_pal": "ERA4_VIOLET", "action": ["block", 3]
     }
   ]
 }

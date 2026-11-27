@@ -361,6 +361,21 @@
   "lg_eyes_closed_crew_j3": {
    "pages": "lg_eyes_closed"
   },
+  "lg_firewall": {
+   "pages": "lg_firewall"
+  },
+  "lg_firewall_crew": {
+   "pages": "lg_firewall"
+  },
+  "lg_firewall_crew_j1": {
+   "pages": "lg_firewall"
+  },
+  "lg_firewall_crew_j2": {
+   "pages": "lg_firewall"
+  },
+  "lg_firewall_crew_j3": {
+   "pages": "lg_firewall"
+  },
   "lg_freight": {
    "pages": "lg_freight"
   },
@@ -391,6 +406,36 @@
   "lg_gate_crew_j3": {
    "pages": "lg_gate"
   },
+  "lg_glitch": {
+   "pages": "lg_glitch"
+  },
+  "lg_glitch_crew": {
+   "pages": "lg_glitch"
+  },
+  "lg_glitch_crew_j1": {
+   "pages": "lg_glitch"
+  },
+  "lg_glitch_crew_j2": {
+   "pages": "lg_glitch"
+  },
+  "lg_glitch_crew_j3": {
+   "pages": "lg_glitch"
+  },
+  "lg_halfcourt": {
+   "pages": "lg_halfcourt"
+  },
+  "lg_halfcourt_crew": {
+   "pages": "lg_halfcourt"
+  },
+  "lg_halfcourt_crew_j1": {
+   "pages": "lg_halfcourt"
+  },
+  "lg_halfcourt_crew_j2": {
+   "pages": "lg_halfcourt"
+  },
+  "lg_halfcourt_crew_j3": {
+   "pages": "lg_halfcourt"
+  },
   "lg_lockbox": {
    "pages": "lg_lockbox"
   },
@@ -406,6 +451,21 @@
   "lg_lockbox_crew_j3": {
    "pages": "lg_lockbox"
   },
+  "lg_long_shadow": {
+   "pages": "lg_long_shadow"
+  },
+  "lg_long_shadow_crew": {
+   "pages": "lg_long_shadow"
+  },
+  "lg_long_shadow_crew_j1": {
+   "pages": "lg_long_shadow"
+  },
+  "lg_long_shadow_crew_j2": {
+   "pages": "lg_long_shadow"
+  },
+  "lg_long_shadow_crew_j3": {
+   "pages": "lg_long_shadow"
+  },
   "lg_midrange": {
    "pages": "lg_midrange"
   },
@@ -420,6 +480,21 @@
   },
   "lg_midrange_crew_j3": {
    "pages": "lg_midrange"
+  },
+  "lg_overclock": {
+   "pages": "lg_overclock"
+  },
+  "lg_overclock_crew": {
+   "pages": "lg_overclock"
+  },
+  "lg_overclock_crew_j1": {
+   "pages": "lg_overclock"
+  },
+  "lg_overclock_crew_j2": {
+   "pages": "lg_overclock"
+  },
+  "lg_overclock_crew_j3": {
+   "pages": "lg_overclock"
   },
   "lg_quarterback": {
    "pages": "lg_quarterback"
@@ -540,6 +615,21 @@
   },
   "lg_toolbox_crew_j3": {
    "pages": "lg_toolbox"
+  },
+  "lg_updraft": {
+   "pages": "lg_updraft"
+  },
+  "lg_updraft_crew": {
+   "pages": "lg_updraft"
+  },
+  "lg_updraft_crew_j1": {
+   "pages": "lg_updraft"
+  },
+  "lg_updraft_crew_j2": {
+   "pages": "lg_updraft"
+  },
+  "lg_updraft_crew_j3": {
+   "pages": "lg_updraft"
   },
   "lg_velvet": {
    "pages": "lg_velvet"
@@ -1065,6 +1155,10 @@
   "lg_eyes_closed_crew_j1": "lg_eyes_closed",
   "lg_eyes_closed_crew_j2": "lg_eyes_closed",
   "lg_eyes_closed_crew_j3": "lg_eyes_closed",
+  "lg_firewall_crew": "lg_firewall",
+  "lg_firewall_crew_j1": "lg_firewall",
+  "lg_firewall_crew_j2": "lg_firewall",
+  "lg_firewall_crew_j3": "lg_firewall",
   "lg_freight_crew": "lg_freight",
   "lg_freight_crew_j1": "lg_freight",
   "lg_freight_crew_j2": "lg_freight",
@@ -1073,14 +1167,30 @@
   "lg_gate_crew_j1": "lg_gate",
   "lg_gate_crew_j2": "lg_gate",
   "lg_gate_crew_j3": "lg_gate",
+  "lg_glitch_crew": "lg_glitch",
+  "lg_glitch_crew_j1": "lg_glitch",
+  "lg_glitch_crew_j2": "lg_glitch",
+  "lg_glitch_crew_j3": "lg_glitch",
+  "lg_halfcourt_crew": "lg_halfcourt",
+  "lg_halfcourt_crew_j1": "lg_halfcourt",
+  "lg_halfcourt_crew_j2": "lg_halfcourt",
+  "lg_halfcourt_crew_j3": "lg_halfcourt",
   "lg_lockbox_crew": "lg_lockbox",
   "lg_lockbox_crew_j1": "lg_lockbox",
   "lg_lockbox_crew_j2": "lg_lockbox",
   "lg_lockbox_crew_j3": "lg_lockbox",
+  "lg_long_shadow_crew": "lg_long_shadow",
+  "lg_long_shadow_crew_j1": "lg_long_shadow",
+  "lg_long_shadow_crew_j2": "lg_long_shadow",
+  "lg_long_shadow_crew_j3": "lg_long_shadow",
   "lg_midrange_crew": "lg_midrange",
   "lg_midrange_crew_j1": "lg_midrange",
   "lg_midrange_crew_j2": "lg_midrange",
   "lg_midrange_crew_j3": "lg_midrange",
+  "lg_overclock_crew": "lg_overclock",
+  "lg_overclock_crew_j1": "lg_overclock",
+  "lg_overclock_crew_j2": "lg_overclock",
+  "lg_overclock_crew_j3": "lg_overclock",
   "lg_quarterback_crew": "lg_quarterback",
   "lg_quarterback_crew_j1": "lg_quarterback",
   "lg_quarterback_crew_j2": "lg_quarterback",
@@ -1113,6 +1223,10 @@
   "lg_toolbox_crew_j1": "lg_toolbox",
   "lg_toolbox_crew_j2": "lg_toolbox",
   "lg_toolbox_crew_j3": "lg_toolbox",
+  "lg_updraft_crew": "lg_updraft",
+  "lg_updraft_crew_j1": "lg_updraft",
+  "lg_updraft_crew_j2": "lg_updraft",
+  "lg_updraft_crew_j3": "lg_updraft",
   "lg_velvet_crew": "lg_velvet",
   "lg_velvet_crew_j1": "lg_velvet",
   "lg_velvet_crew_j2": "lg_velvet",
