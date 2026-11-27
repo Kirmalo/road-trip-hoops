@@ -819,8 +819,8 @@
     },
     {
       "id": "lg_midrange", "crew": "FA", "phase": 10, "number": 28, "role": "isolation scorer", "name": "Midrange",
-      "draft": true, "extra": ["fadeaway"], "desc": "P10-14 legend (original): wiry wing, light brown skin (tan), low fade (buzz), white left leg sleeve; grape tank, white trim, long baggy grape shorts with white side panels, white crew socks. Carries the turnaround fadeaway extra (P10-04b)",
-      "body": "lanky_guard", "body_tweak": {"leg": 0.02}, "skin": "tan", "hair": "buzz", "hair_pal": "HAIR_BLACK",
+      "draft": true, "extra": ["fadeaway"], "desc": "P10-14 legend (original): wiry wing, brown skin (matches his portrait, Phase 11 check-in), low fade (buzz), white left leg sleeve; grape tank, white trim, long baggy grape shorts with white side panels, white crew socks. Carries the turnaround fadeaway extra (P10-04b)",
+      "body": "lanky_guard", "body_tweak": {"leg": 0.02}, "skin": "brown", "hair": "buzz", "hair_pal": "HAIR_BLACK",
       "top": "tank", "top_pal": "ERA2_GRAPE", "trim_pal": "ERA2_ICE", "shorts_pal": "ERA2_GRAPE",
       "shorts_trim": "ERA2_ICE", "shorts_len": 1.14, "baggy": true, "sleeve": null, "tight": "L",
       "tight_pal": "ERA2_ICE", "sock_pal": "ERA2_ICE", "sock_len": 0.26, "socks": "crew", "stripe_pal": "ERA2_GRAPE",
