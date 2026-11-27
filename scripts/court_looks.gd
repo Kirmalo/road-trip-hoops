@@ -38,7 +38,7 @@ extends RefCounted
 # offers ALWAYS_OPEN plus the court of every city whose boss you have beaten (owner Q9, menu.gd quick_courts()).
 # The reward looks (midnight, gold_hall) belong to no city and are not ALWAYS_OPEN, so quick_courts() leaves them out
 # until the star rewards are wired in (Cosmetics.open_court_looks()); --court <look> shows them in a test run.
-# The era looks (era_grand, era_fathers, era_present) are the Legends chapters' courts (legends_data.gd "look"). In
+# The era looks (era_grand, era_fathers, era_present, era_next) are the Legends chapters' courts (legends_data.gd "look"). In
 # Quick Game the COURT list adds each one once its era team is open (P11-34, menu.gd quick_courts(), EraTeams.look_of()),
 # after the city courts and before the reward looks; the twist comes from the chapter row (EraTeams.twist_of_look()),
 # never from the look. Their "music" is the chapter's own track (legends_data.gd "music"); music() plays the
@@ -430,6 +430,36 @@ const LOOKS := {
 		"pole": Color(0.09, 0.10, 0.13),
 		"rim": Color(0.94, 0.42, 0.12),
 		"net": Color(1.00, 1.00, 1.00, 0.85),
+	},
+	# ---- Phase 12 era court (P12-06; tools/art/make_courts.py --era next, --print-looks): the Legends Chapter 4
+	# court, a made-up arena of the future (dark glass floor, lime lines, violet key, violet light rings, chrome rail,
+	# lime edge light). No twist key (the legends match, or the chapter row in Quick Game, brings the era twist), no
+	# reward, not a city: in quick_courts() once the New Generation era team is open. Music: the era's own track,
+	# Escalate (owner, look check 1; until the file lands music() plays the chapter's fallback_music). Name NEON DOME
+	# (first idea, for owner check 2) ----
+	"era_next": {
+		"name": "NEON DOME",
+		"music": "legends_next",
+		"floor_texture": "res://assets/courts/era_next_floor.png",
+		"floor_scale": 2.0,
+		"floor": Color(0.13, 0.12, 0.17),
+		"floor_stripe": Color(0.13, 0.12, 0.17),
+		"stripe_ft": 0.0,
+		"speckle": 0,
+		"line": Color(0.72, 1.00, 0.23, 0.95),
+		"paint": Color(0.42, 0.16, 0.82, 0.62),
+		"logo": Color(0.23, 0.08, 0.47, 0.70),
+		"apron": Color(0.07, 0.07, 0.13),
+		"backdrop": "bleachers",
+		"backdrop_texture": "res://assets/courts/era_next_backdrop.png",
+		"backdrop_scale": 2.0,
+		"wall": Color(0.05, 0.05, 0.09),
+		"wall_dark": Color(0.03, 0.03, 0.06),
+		"backboard": "glass",
+		"board_square": Color(0.72, 1.00, 0.23),
+		"pole": Color(0.27, 0.29, 0.35),
+		"rim": Color(0.94, 0.42, 0.12),
+		"net": Color(0.96, 0.96, 0.98, 0.85),
 	},
 }
 const LegendsData = preload("res://scripts/legends_data.gd")   # the era looks' chapter rows (music fallback, P11-34)

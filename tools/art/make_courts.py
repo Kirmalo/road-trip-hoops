@@ -25,6 +25,8 @@ Outputs (all opaque except the ball):
                                        sizes; see "Phase 10 era court" below
   assets/courts/era_present_*.png     P11-06 Legends Chapter 3 court (a made-up modern arena), same sizes; see
                                        "Phase 11 era court" below
+  assets/courts/era_next_*.png        P12-06 Legends Chapter 4 court (a made-up arena of the future), same sizes;
+                                       see "Phase 12 era court" below
   docs/art/courts_preview_v2.png      the city looks for the owner: the game's own 1280 x 720 screenshot of each, its
                                        whole backdrop and its floor tile 3 x 3 (needs --shots DIR, below)
   docs/art/courts_preview_v1.png      preview: both looks composed in the 3/4 view as the game frames it, plus the
@@ -50,12 +52,17 @@ Usage:  python3 tools/art/make_courts.py                  all textures, the v1 p
         python3 tools/art/make_courts.py --rewards        only the P8-06 reward looks and balls
         python3 tools/art/make_courts.py --rewards-preview DIR   the same, plus docs/art/rewards_preview.png from
                                                           DIR/<look>.png (-- --court midnight / gold_hall --shots)
-        python3 tools/art/make_courts.py --era            only the era looks (era_grand, era_fathers, era_present)
+        python3 tools/art/make_courts.py --era            only the era looks (era_grand, era_fathers, era_present,
+                                                          era_next)
         python3 tools/art/make_courts.py --era fathers    only that chapter's era look (era_fathers; also --era grand,
-                                                          --era present)
+                                                          --era present, --era next)
         python3 tools/art/make_courts.py --era-preview DIR   the same, plus DIR/<look>_tiles.png (backdrop at 3x
                                                           and the floor tile 3 x 3; game check: -- --court era_grand
                                                           --shots; add --era fathers for one look)
+        python3 tools/art/make_courts.py --era next --era-sheet DIR   the same, plus docs/art/era_next_preview.png for
+                                                          the owner, from DIR/era_next.png, DIR/era_next_flat.png
+                                                          (-- --court era_next --shots, add --view flat) and
+                                                          DIR/midnight.png, DIR/era_present.png (hoops_900.png each)
         python3 tools/art/make_courts.py --print-looks    prints the city, reward and era looks' court_looks.gd
                                                           entries (colours for the lines, paint, hoop; CITY_LOOKS,
                                                           REWARD_LOOKS, ERA_LOOKS below) as GDScript
@@ -3038,6 +3045,208 @@ def era_present_backdrop(seed=72):
     return px.image()
 
 
+# ============================================================================= Phase 12 era court (P12-06)
+# Legends, Chapter 4 (the New Generation): look "era_next", a made-up arena of the future. Same conventions as the
+# other era looks (64 x 64 seamless floor tile, 384 x 100 backdrop repeating in x; the game shows rows ~52-100 at
+# 1280 x 720 and the HUD bar covers ~54-68). No team, arena, league, logo, sponsor, letter or digit anywhere. The era
+# colours are the owner's (look check 1): electric lime + violet on near-black, chrome as the third tone.
+# Not MIDNIGHT (an outdoor night blacktop: sky, skyline, fence, magenta key) and not BIG STAGE (light ash wood, a lit
+# bowl, teal ribbon and LED boards): here a dark glass floor in big panels, lime glowing lines and a violet key, a
+# black dome with a lattice, violet light rings hanging on chrome cables, a dark crowd lit only by phone lights, a
+# chrome rail and a lime edge light along the floor.
+#   era_next  (NEON DOME, first idea)  near-black glass panels (16-texel squares, a fine lit seam), a soft violet
+#                            sheen of the rings in the glass, a few cool reflection streaks; a black dome with a faint
+#                            violet lattice and three small far light rings (rows ~47-56), a violet light line along
+#                            the deck edge (row 62), a dark crowd in steep tiers with white and lime phone lights
+#                            (rows 64-85), three big violet light rings hanging in front of it on chrome cables
+#                            (rows ~61-74, just under the HUD band), a chrome rail on posts with smoked glass
+#                            (rows 85-93) and a lime edge light at floor level (rows 95-97)
+
+# --- era_next floor
+GLASS = pal("#24222f", "#201e2b", "#1c1a27", "#181622")           # near-black glass panels (lit .. shade)
+GLASS_SEAM = H("#3a3850")
+GLASS_SHEEN = H("#6a3cc0")                                        # the violet rings in the glass
+GLASS_GLINT = H("#c8d0e8")
+NEXT_PANEL = 16                                                   # texels per glass panel (square)
+
+
+def era_next_floor(seed=81):
+    """Near-black glass in 16-texel square panels (four close tones), a fine lit seam on the top and left edges of
+    each panel and a darker one under it, soft violet sheen blotches (the hanging rings seen in the glass) and two
+    faint cool reflection streaks along x; seamless both ways. Dark and calm so the lime lines and the violet key carry the
+    court and both jerseys pop."""
+    rnd = random.Random(seed)
+    px = Pix(TILE, TILE, GLASS[1], wrap_y=True)
+    n = TILE // NEXT_PANEL
+    for r in range(n):
+        for q in range(n):
+            base = GLASS[rnd.choice((0, 1, 1, 2, 2, 3))]
+            x0, y0 = q * NEXT_PANEL, r * NEXT_PANEL
+            for dy in range(NEXT_PANEL):
+                for dx in range(NEXT_PANEL):
+                    c = base
+                    if dy == 0 or dx == 0:
+                        c = mix(base, GLASS_SEAM, 0.55)
+                    elif dy == 1 or dx == 1:
+                        c = mix(base, (8, 6, 14), 0.35)
+                    px.put(x0 + dx, y0 + dy, c)
+    sheen = periodic_noise(TILE, TILE, 2, rnd, octaves=2)        # soft violet sheen (wraps both ways)
+    for y in range(TILE):
+        for x in range(TILE):
+            t = max(0.0, sheen[y, x] - 0.52) * 0.38
+            if t > 0:
+                px.blend(x, y, GLASS_SHEEN, min(t, 0.10))
+    for k, gy in enumerate((9, 41)):                              # faint long reflection streaks (wrap in x)
+        for x in range(TILE):
+            t = 0.05 + 0.03 * math.sin(2 * math.pi * x / TILE + 2.0 * k)
+            px.blend(x, gy, GLASS_GLINT, t)
+            px.blend(x, gy + 1, GLASS_GLINT, t * 0.5)
+    for _ in range(6):                                            # tiny glints on the glass
+        x, y = rnd.randrange(TILE), rnd.randrange(TILE)
+        if x % NEXT_PANEL > 2 and y % NEXT_PANEL > 2:
+            px.blend(x, y, GLASS_GLINT, 0.35)
+    return px.image()
+
+
+# --- era_next backdrop
+NDOME = pal("#1a1726", "#131120", "#0e0c18", "#08070f")           # the dome (lit .. roof black)
+NSEAT = pal("#22202e", "#1a1824", "#13111b", "#0c0b12")           # dark seats
+LIME = pal("#f0ffc0", "#b8ff3a", "#7ad81e", "#3e7a12")           # the era's lime glow
+VIOLET = pal("#e8c8ff", "#a65cff", "#6a2ad0", "#3a1478")         # the era's violet glow
+CHROME = pal("#f4f6fa", "#c4ccd8", "#848ea0", "#444a58")         # chrome (rails, cables)
+NEXT_SHIRTS = [pal("#5c5a72", "#3a3848", "#26242f", "#16151c"),   # dark tees and hoodies (the crowd sits in the dark)
+               pal("#5c5a72", "#3a3848", "#26242f", "#16151c"),
+               pal("#6a5a8a", "#463a62", "#2e2644", "#1c172c"),   # violet
+               pal("#5a6a3a", "#3c4a26", "#283218", "#18200e"),   # lime, dim
+               pal("#686e7a", "#464a54", "#2e3138", "#1c1e22")]   # grey
+NEXT_TIER_H = 7
+NEXT_CROWD = (64, 85)                                             # the crowd's rows (3 tiers)
+NEXT_RINGS = ((40, 67, 30, 5, 1.0), (168, 68, 32, 5, 1.0), (296, 66, 29, 5, 1.0),   # (cx, cy, rx, ry, brightness)
+              (104, 52, 17, 3, 0.55), (232, 50, 16, 3, 0.55), (360, 53, 17, 3, 0.55))
+
+
+def light_ring(px, cx, cy, rx, ry, k):
+    """A hanging light ring seen from a little below: an ellipse 1-2 texels thick in violet, the near (lower) half
+    brightest, with a soft glow round it and two chrome cables up into the dome. k: brightness (far rings dimmer)."""
+    for cx_off in (-rx * 0.7, rx * 0.7):                          # cables
+        x = int(round(cx + cx_off))
+        for y in range(0, int(cy - ry * math.sqrt(1 - 0.49)) + 1):
+            px.blend(x, y, CHROME[2 if k >= 1.0 else 3], 0.45 * k)
+    for y in range(int(cy - ry * 3), int(cy + ry * 3) + 1):     # glow
+        for x in range(int(cx - rx - 6), int(cx + rx + 7)):
+            d = math.hypot((x - cx) / (rx + 0.01), (y - cy) / (ry + 0.01))
+            g = max(0.0, 1.0 - abs(d - 1.0) * 1.6)
+            if g > 0:
+                px.blend(x, y, VIOLET[2], 0.30 * k * g * g)
+    steps = int(2 * math.pi * rx * 2)
+    for s in range(steps):
+        a = 2 * math.pi * s / steps
+        x, y = cx + rx * math.cos(a), cy + ry * math.sin(a)
+        near = math.sin(a) > 0                                    # the lower half faces us
+        c = VIOLET[0] if near and k >= 1.0 else VIOLET[1]
+        if k < 1.0:
+            c = mix(VIOLET[1], NDOME[2], 0.30)
+        px.put(round(x), round(y), c)
+        if near and k >= 1.0:
+            px.put(round(x), round(y) + 1, VIOLET[1])
+
+
+def era_next_backdrop(seed=82):
+    """Back to front: the black dome with a faint violet lattice and the far light rings, the deck edge (a chrome lip
+    and a violet light line), the dark crowd in steep tiers (phone lights in white and lime), the near violet light
+    rings hanging in front of it on chrome cables, the chrome rail with smoked glass and the lime edge light on the
+    floor. The top-left texel is the dome's colour (the game fills above the strip with it)."""
+    rnd = random.Random(seed)
+    px = bd_canvas(NDOME[3])
+    top0, bot = NEXT_CROWD
+    # the dome (rows 0-61): rows lighten downward, a lattice of horizontal struts and curved ribs (wrap in x)
+    for y in range(0, top0):
+        c = mix(NDOME[3], NDOME[1], y / float(top0))
+        for x in range(BD_W):
+            px.put(x, y, c)
+    for y in (14, 28, 40, 50, 58):
+        for x in range(BD_W):
+            px.blend(x, y, VIOLET[3], 0.22 + y / 220.0)
+    for x0 in range(0, BD_W, 32):
+        for y in range(0, top0 - 2):
+            bend = 10 * math.sin(math.pi * y / 124.0)
+            px.blend(x0 + bend, y, VIOLET[3], 0.32)
+            px.blend(x0 + 16 - bend, y, VIOLET[3], 0.18)
+    for ring in NEXT_RINGS:                                       # the far rings (behind the deck edge)
+        if ring[4] < 1.0:
+            light_ring(px, *ring)
+    # the deck edge (rows 61-63): a chrome lip and a violet light line
+    px.rect(0, top0 - 3, BD_W - 1, top0 - 3, CHROME[3])
+    px.rect(0, top0 - 2, BD_W - 1, top0 - 2, VIOLET[1])
+    px.rect(0, top0 - 1, BD_W - 1, top0 - 1, NSEAT[3])
+    for x in range(BD_W):
+        px.blend(x, top0 - 4, VIOLET[2], 0.30)
+        px.blend(x, top0 - 1, VIOLET[2], 0.40)
+    # the crowd (rows 64-85): steep dark tiers, dim fans, phone lights
+    tiers = (bot - top0 + 1) // NEXT_TIER_H + 1
+    for t in range(tiers):
+        y0 = top0 + t * NEXT_TIER_H
+        y1 = min(y0 + NEXT_TIER_H - 1, bot)
+        if y0 > bot:
+            break
+        px.rect(0, y0, BD_W - 1, y1, NSEAT[2])
+        px.rect(0, y1, BD_W - 1, y1, NSEAT[3])
+        px.rect(0, y0, BD_W - 1, y0, NSEAT[1])
+        x = rnd.randint(0, 3)
+        while x < BD_W:
+            if rnd.random() < 0.90:
+                standing = rnd.random() < 0.12
+                arms = rnd.random() < 0.22
+                hy = y0 + NEXT_TIER_H - 9 - (2 if standing else 0)
+                sub = Pix(7, 14, NSEAT[2])                        # draw the fan, then dim him into the dark
+                person(sub, 1, 3, random.Random(rnd.random()), t, standing, arms_up=arms, shirts=NEXT_SHIRTS)
+                dim = 0.58 - 0.06 * t
+                for sy in range(14):
+                    for sx in range(7):
+                        c = sub.get(sx, sy)
+                        yy = hy - 3 + sy
+                        if c != tuple(NSEAT[2]) and y0 <= yy <= y1:
+                            px.put(x - 1 + sx, yy, mix(c, NSEAT[3], dim))
+                if arms and rnd.random() < 0.6 and hy >= y0:     # a phone light held up
+                    lc = LIME[0] if rnd.random() < 0.35 else H("#ffffff")
+                    lx = x + rnd.choice((0, 4))
+                    px.put(lx, hy, lc)
+                    px.blend(lx, hy - 1, lc, 0.35)
+            x += rnd.choice((5, 6, 6, 7))
+    for _ in range(60):                                           # more phone lights all over the dark bowl
+        px.put(rnd.randrange(BD_W), rnd.randint(top0 + 1, bot - 1), LIME[0] if rnd.random() < 0.3 else H("#ffffff"))
+    for ring in NEXT_RINGS:                                       # the near rings: their light on the crowd, then them
+        if ring[4] >= 1.0:
+            glow(px, ring[0], ring[1] + 6, ring[2] + 8, VIOLET[2], 0.16)
+    for ring in NEXT_RINGS:
+        if ring[4] >= 1.0:
+            light_ring(px, *ring)
+    # the chrome rail (rows 85-93): smoked glass panels between posts, a round chrome tube on top
+    px.rect(0, 88, BD_W - 1, 93, mix(NSEAT[3], VIOLET[3], 0.25))
+    for x in range(BD_W):
+        px.put(x, 88, mix(CHROME[3], NSEAT[3], 0.3))
+        if x % 24 == 10:
+            px.blend(x, 90, CHROME[2], 0.35)                      # a glint on the glass
+    px.rect(0, 85, BD_W - 1, 85, mix(CHROME[3], NSEAT[3], 0.4))
+    px.rect(0, 86, BD_W - 1, 86, CHROME[0])
+    px.rect(0, 87, BD_W - 1, 87, CHROME[2])
+    for x in range(0, BD_W, 24):                                  # posts
+        px.rect(x, 86, x + 1, 93, CHROME[2])
+        px.put(x, 86, CHROME[0])
+        px.rect(x + 1, 87, x + 1, 93, CHROME[3])
+    # the floor-level base and the lime edge light (rows 94-99)
+    px.rect(0, 94, BD_W - 1, BD_H - 1, NDOME[3])
+    px.rect(0, 95, BD_W - 1, 95, LIME[2])
+    px.rect(0, 96, BD_W - 1, 96, LIME[0])
+    px.rect(0, 97, BD_W - 1, 97, LIME[1])
+    for x in range(BD_W):
+        px.blend(x, 94, LIME[2], 0.40)
+        px.blend(x, 93, LIME[2], 0.18)
+        px.blend(x, 98, LIME[3], 0.45)
+        px.blend(x, 99, LIME[3], 0.20)
+    return px.image()
+
+
 # The era looks' court_looks.gd data (like CITY_LOOKS; --print-looks prints them too). Music: an existing track until
 # the era's own (P9-16); no "twist" key (the match brings the era twist).
 ERA_LOOKS = {
@@ -3056,9 +3265,14 @@ ERA_LOOKS = {
                     "logo": ("#20232b", 0.78), "apron": "#20232b", "backdrop": "bleachers", "wall": "#181a21",
                     "wall_dark": "#0e1015", "backboard": "glass", "board_square": "#ffffff",
                     "pole": "#181a21", "rim": "#f06a1e", "net": ("#ffffff", 0.85)},
+    "era_next": {"name": "NEON DOME", "music": "legends_next", "floor": "#201e2b", "floor_stripe": "#201e2b",
+                 "stripe_ft": 0, "speckle": 0, "line": ("#b8ff3a", 0.95), "paint": ("#6a2ad0", 0.62),
+                 "logo": ("#3a1478", 0.70), "apron": "#131120", "backdrop": "bleachers", "wall": "#0e0c18",
+                 "wall_dark": "#08070f", "backboard": "glass", "board_square": "#b8ff3a",
+                 "pole": "#444a58", "rim": "#f06a1e", "net": ("#f4f6fa", 0.85)},
 }
 ERA_MAKERS = {"era_grand": (era_grand_floor, era_grand_backdrop), "era_fathers": (era_fathers_floor, era_fathers_backdrop),
-              "era_present": (era_present_floor, era_present_backdrop)}
+              "era_present": (era_present_floor, era_present_backdrop), "era_next": (era_next_floor, era_next_backdrop)}
 
 
 def era_ids(args):
@@ -3106,6 +3320,56 @@ def write_era(args):
             out = os.path.join(d, lid + "_tiles.png")
             pv.save(out)
             print("wrote", out)
+    if "--era-sheet" in args:
+        i = args.index("--era-sheet")
+        for lid in ids:
+            era_sheet(lid, era, args[i + 1])
+
+
+ERA_SHEET_COMPARE = {"era_next": ("midnight", "era_present")}   # the looks it must not read as (shown under it)
+
+
+def era_sheet(lid, era, shots):
+    """P12-06: docs/art/<look>_preview.png for the owner's look check: the game's angled shot (shots/<look>.png, from
+    -- --court <look> --shots, hoops_900.png), the flat shot (shots/<look>_flat.png, add --view flat), the whole
+    backdrop at 3x, the floor tile 3 x 3 at 2x, and the looks it must not read as (shots/<other>.png) at half size."""
+    def shot(name):
+        path = os.path.join(shots, name + ".png")
+        return Image.open(path).convert("RGB") if os.path.exists(path) else None
+    name = ERA_LOOKS.get(lid, {}).get("name", lid)
+    bd = era[os.path.join(COURTS, lid + "_backdrop.png")]
+    t3 = tile_test(era[os.path.join(COURTS, lid + "_floor.png")], n=3, zoom=2)
+    main_s, flat_s = shot(lid), shot(lid + "_flat")
+    others = [(o, shot(o)) for o in ERA_SHEET_COMPARE.get(lid, ())]
+    bg = (16, 14, 24)
+    H_LBL = 36
+    rows_h = H_LBL + 720 + H_LBL + 360 + H_LBL + BD_H * 3 + 8 + (H_LBL + 360 if others else 0) + 8
+    pv = Image.new("RGB", (1280 if BD_W * 3 <= 1280 else BD_W * 3, rows_h), bg)
+    y = 0
+    label(pv, "%s  (%s, proposed name)  angled view  -- --court %s --shots" % (lid, name, lid), 8, y + 4, scale=2)
+    y += H_LBL
+    if main_s:
+        pv.paste(main_s.resize((1280, 720)), (0, y))
+    y += 720
+    label(pv, "flat view  |  floor tile 3 x 3 at 2x", 8, y + 4, scale=2)
+    y += H_LBL
+    if flat_s:
+        pv.paste(flat_s.resize((640, 360)), (0, y))
+    pv.paste(t3.crop((0, 0, min(t3.size[0], 600), min(t3.size[1], 360))), (660, y))
+    y += 360
+    label(pv, "whole backdrop at 3x (the game shows rows ~52-100; the HUD covers ~54-68)", 8, y + 4, scale=2)
+    y += H_LBL
+    pv.paste(bd.resize((BD_W * 3, BD_H * 3), Image.NEAREST), (0, y))
+    y += BD_H * 3 + 8
+    if others:
+        label(pv, "for comparison: " + "  |  ".join(o.upper() for o, _ in others), 8, y + 4, scale=2)
+        y += H_LBL
+        for k, (o, im) in enumerate(others):
+            if im:
+                pv.paste(im.resize((640, 360)), (k * 640, y))
+    out = os.path.join(ROOT, "docs", "art", lid + "_preview.png")
+    pv.save(out, optimize=True)
+    print("wrote %s %s %d bytes" % (os.path.relpath(out, ROOT), pv.size, os.path.getsize(out)))
 
 
 # ----------------------------------------------------------------------------- ball
@@ -3473,7 +3737,7 @@ def main():
     if "--rewards" in args or "--rewards-preview" in args:
         write_rewards(args)                       # only the P8-06 files (the other textures are left as they are)
         return
-    if "--era" in args or "--era-preview" in args:
+    if "--era" in args or "--era-preview" in args or "--era-sheet" in args:
         write_era(args)                           # only the era looks (the other textures are left as they are)
         return
     shots_dir = None

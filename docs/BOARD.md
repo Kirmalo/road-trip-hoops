@@ -278,13 +278,18 @@ none, static glow). The lead writes the answers into the contract and VISION.
   forearm** (P12-05's part), the violet seams visible through the move; the crossover's timing so the sim is
   unchanged; 0 hand/ball check problems; `format.json` and every sheet unchanged. For owner check 2 | P12-05 merged,
   owner check 1
-- **P12-06** | The New Generation court: a made-up arena of the future
+- **P12-06** | REVIEW | The New Generation court: a made-up arena of the future
   | art-audio-integrator C | `tools/art/make_courts.py` (`--era next`), `assets/courts/era_next_*`,
   `scripts/court_looks.gd` (the `era_next` row)
   | Dark glass floor, lime glowing lines, an edge light, chrome rails, hanging violet light rings, a dark crowd with
   phone lights. No word, digit or logo; it does not read as MIDNIGHT or BIG STAGE. Era colors from owner check 1.
   Checked in angled and flat shots; `--era` rewrites the older era files byte for byte; not in the COURT list. A name
   proposal (first idea NEON DOME) for owner check 2 | P12-05 merged, owner check 1
+  | Result: `era_next` "NEON DOME" (name for owner check 2), music `legends_next` (fallback `newyork` until P12-20);
+  floor 1995 B, backdrop 13500 B; owner sheet `docs/art/era_next_preview.png` (`--era next --era-sheet DIR`: angled,
+  flat, tiles, MIDNIGHT and BIG STAGE beside it); `--era` keeps the older era files byte for byte; `--legendtest` OK,
+  `--titletest` OK; with `--legends-unlock-all --stars 72` the court is listed after BIG STAGE and only the twist
+  checks fail until P12-12's `era_next` twist lands (a scratch stub twist: TITLE TEST DONE)
 - **P12-08** | REVIEW | Era music listening list
   | art-audio-integrator A | `docs/audio_preview/LIST.md` ("Legends: New Generation"),
   `docs/audio_preview/next_*.ogg`
