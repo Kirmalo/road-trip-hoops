@@ -104,6 +104,7 @@ class Canvas:
         yy, xx = np.mgrid[0:self.H, 0:self.W].astype(np.float32)
         self.xx, self.yy = (xx + 0.5) / SS, (yy + 0.5) / SS
         self._dots = {}
+        self.glows = []         # (mask, color) of flat glow parts, repainted after the rim (glow(), reglow())
 
     def X(self, x):
         return (self.ax + (x - self.ax) * self.z) * SS
@@ -260,6 +261,28 @@ class Canvas:
         if ink:
             self.ink(self.band(M, ink, ink_lo, ink_hi))
         return M
+
+    # Phase 12 (P12-15), opt-in: flat glow parts (the New Generation's cyber light). Nothing calls these unless a
+    # portrait asks for a glow part, so every older portrait stays byte for byte the same.
+    def glow(self, M, col):
+        """Paint M in one flat, unshaded glow color and remember it, so reglow() can put it back over the rim light."""
+        self.paint(M, col)
+        self.glows.append((M, col))
+        return M
+
+    def reglow(self):
+        for M, col in self.glows:
+            self.rgb[M & ~self.k] = col
+
+    def tint(self, field, col, keep=None):
+        """Light of color col over the drawing, strength field (0..1 per pixel); ink and glow parts stay."""
+        M = self.a & ~self.k
+        if keep is not None:
+            M &= keep
+        for G, _ in self.glows:
+            M &= ~G
+        f = np.clip(field, 0, 1)[M][:, None]
+        self.rgb[M] = self.rgb[M] * (1 - f) + np.array(col, np.float32) * f
 
     def image(self, out_scale=1):
         rgb = self.rgb * self.a[:, :, None]
