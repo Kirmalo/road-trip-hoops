@@ -48,7 +48,10 @@ const LEGENDS_PATH := "res://scripts/legends.gd"   # --legendtest, --challenge <
 # steal_window_mult in steal_quality() (and defense._update_pokes()), cross_win_mult in player.cross_beat_check(),
 # pass_safe_mult in player.pick_mult(). P11-22 (the Present): pullup_bonus and catch_shot_bonus in _perk_shot_bonus(),
 # assist_shot_bonus (the passer's) and guard_contest_bonus (the shooter's man's) in _perk_mate_bonus(),
-# rebound_reach_mult in _perk_rebound_reach(), layup_block_mult in defense._side_step_mult(). No perk = today's game.
+# rebound_reach_mult in _perk_rebound_reach(), layup_block_mult in defense._side_step_mult(). P12-22 (the New
+# Generation): putback_bonus (in_putback_window()) and early_shot_bonus (in_break_window()) in _perk_shot_bonus(),
+# sprint_drain_mult in player.update_turbo(), break_speed_mult in player._perk_speed_mult(), fake_bite_mult and
+# jumper_block_mult in defense.gd. No perk = today's game.
 # Test flag -- --perk <id>[,<id>,<id>]: BLUE's players get these legends_data PERKS (one id = all 3).
 const PERK_ASSIST_WINDOW := 1.5      # P11-22 extra_pass: a teammate's shot released this soon after his pass (s)
 const PERK_GUARD_FT := 8.0           # P11-22 contest: the man he guards (same slot) shoots worse with him this close
@@ -1306,14 +1309,32 @@ func shot_probability(p, quality: float) -> float:
 func in_break_window(p) -> bool:
 	return p.team == _gain_team and rules.play_time - _gain_t <= BREAK_WINDOW
 
+# P12-22: rules.play_time when a team last got the ball (the shot clock's restart; -100 before the first)
+func gain_time() -> float:
+	return _gain_t
+
+# P12-22: a field goal p takes now is a putback (his team's offensive rebound at most PUTBACK_SECS ago; the
+# putbacks stat's rule, read before release_shot() closes the window)
+func in_putback_window(p) -> bool:
+	return p.team == _putback_team and rules.play_time - _putback_t <= PUTBACK_SECS
+
 # P9-24: the make chance a shooter's mentor perk adds to this shot (0.0 without one; still capped at SHOT_CAP):
 # close_shot_bonus on layups and on jumpers inside player.PERK_CLOSE_FT (not dunks), three_bonus beyond the arc,
 # contested_layup_bonus on a layup with a defender inside CONTEST_NEAR_FT; P10-22: mid_shot_bonus on every jumper inside
 # the arc (close ones too), contested_dunk_bonus on a dunk with a defender inside CONTEST_NEAR_FT. Free throws never
-# get here. A player holds one perk, so at most one of these applies.
+# get here. A player holds one perk, so at most one of these applies. P12-22: putback_bonus on a putback
+# (in_putback_window(): a layup, a dunk or a jumper inside player.PERK_CLOSE_FT, not a kick-out), early_shot_bonus on a shot within BREAK_WINDOW of his team getting the ball (any kind of shot).
 func _perk_shot_bonus(p, d_ft: float, hoop: Vector2, cont: float) -> float:
 	if not ("perk_key" in p) or p.perk_key == "":
 		return 0.0
+	if in_putback_window(p) and (p.rim_kind != "" or d_ft <= p.PERK_CLOSE_FT):
+		var pbb: float = p.perk("putback_bonus", 0.0)   # P12-22 second_chance
+		if pbb != 0.0:
+			return pbb
+	if in_break_window(p):
+		var eb: float = p.perk("early_shot_bonus", 0.0)  # P12-22 early_shot
+		if eb != 0.0:
+			return eb
 	var layup: bool = p.rim_kind == "layup"
 	var jumper: bool = p.rim_kind == ""
 	if layup or (jumper and d_ft <= p.PERK_CLOSE_FT):

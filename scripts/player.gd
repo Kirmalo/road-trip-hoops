@@ -246,6 +246,10 @@ const PERK_CLOSE_FT := 14.0       # close_shot_bonus: a jumper this close to the
 # layup_block_mult)
 const PERK_CATCH_WINDOW := 1.0    # catch_shoot: a jumper started this soon after his catch (s; = POP_CATCH_T)
 var catch_mark := false           # this jumper started within PERK_CATCH_WINDOW of his catch (main._perk_shot_bonus)
+# P12-22 (the New Generation's perks): sprint_drain_mult in update_turbo(), break_speed_mult in _perk_speed_mult()
+# (inside main.in_break_window(), main.BREAK_WINDOW after his team got the ball); main.gd reads putback_bonus and
+# early_shot_bonus, defense.gd fake_bite_mult (his pump fakes) and jumper_block_mult (his blocks on jumpers)
+var _perk_gain_seen := -100.0     # head_start: main.gain_time() of the last ball gain counted
 const PERK_CROSS_RATE_MAX := 0.9  # cross_win_mult: the beat share its second roll is sized on is capped here
 const PERK_PASS_SAVED_TEXT := "saved by the look"   # ball._no_look_log's text for a pick-off only the passer's
                                   # pick_mult stopped (a pass_safe_mult perk counts those, see sig_log)
@@ -642,6 +646,36 @@ func _apply_perk(pk) -> void:
 func perk(key: String, default: float) -> float:
 	return perk_value if perk_key == key and key != "" else default
 
+# P12-22 fresh_legs: x his sprint_drain_mult on the stamina a sprint costs (1.0 without the perk); its frames are
+# counted, each new sprint is a perk_log
+func _perk_drain_mult(new_sprint: bool) -> float:
+	if perk_key == "":
+		return 1.0
+	var m: float = perk("sprint_drain_mult", 1.0)
+	if m != 1.0:
+		game.stat("perk_%s_frames_t%d" % [perk_id, team])
+		if new_sprint:
+			perk_log("sprint at stamina %.2f, drain x%.2f" % [stamina, m])
+	return m
+
+# P12-22 head_start: x his break_speed_mult while his team got the ball at most main.BREAK_WINDOW ago (on the floor and
+# on balance); 1.0 otherwise and for every other perk. Frames counted, each ball gain a perk_log
+func _perk_speed_mult() -> float:
+	var m: float = perk("break_speed_mult", 1.0)
+	if m == 1.0 or not game.has_method("in_break_window") or not game.in_break_window(self):
+		return 1.0
+	if game.ball.state == game.ball.DEAD:
+		return 1.0   # a dead ball (his team's make, a whistle): the break is over
+	if is_airborne() or stumble_t > 0.0 or poke_t > 0.0 or hesit_t > 0.0:
+		return 1.0
+	game.stat("perk_%s_frames_t%d" % [perk_id, team])
+	var g: float = game.gain_time()
+	if g != _perk_gain_seen:
+		_perk_gain_seen = g
+		perk_log("his team has the ball: x%.2f speed %s, %.0f ft from the rim he attacks" % [m,
+				"with the ball" if has_ball() else "off the ball", position.distance_to(game.attack_hoop(team)) / game.FT])
+	return m
+
 # P9-24: his perk changed a play: counts perk_<id>_t<team> (in the stats printout) and, the first time in this game in
 # a test run, prints a PERK line
 func perk_log(what: String) -> void:
@@ -753,6 +787,8 @@ func update(delta: float, is_human: bool, input_vec: Vector2) -> void:
 		desired *= Twists.value("turbo_mult", TURBO_SPEED_MULT) * (TURBO_BALL_MULT if has_ball() else 1.0)
 	if signature != "":
 		desired *= _sig_speed_mult(sprinting, is_human)   # P12-17 top gear, rim run (x1.0 for every other move)
+	if perk_key != "":
+		desired *= _perk_speed_mult()   # P12-22 head_start (x1.0 for every other perk)
 	if steal_break_t > 0.0 and not is_airborne() and stumble_t <= 0.0 and poke_t <= 0.0:
 		desired *= STEAL_BREAK_SPEED_MULT   # P11-17 steal_break: the burst after his steal
 		game.stat("sig_steal_break_frames_t%d" % team)
@@ -1188,6 +1224,7 @@ func update_turbo(delta: float, want: bool, is_human: bool) -> bool:
 		turbo_locked = false
 	turbo = want and (not turbo_locked or coasting) and not shooting and not is_airborne()
 	if turbo:
+		var new_sprint: bool = since_turbo > 0.0   # P12-22 fresh_legs counts each sprint once
 		since_turbo = 0.0
 		if coasting:
 			game.stat("sig_coast_frames_t%d" % team)   # coast to coast: stamina doesn't drain
@@ -1195,7 +1232,7 @@ func update_turbo(delta: float, want: bool, is_human: bool) -> bool:
 			game.stat("fire_turbo_frames")   # on fire: stamina doesn't drain
 		else:
 			stamina = maxf(0.0, stamina - Ratings.stamina_drain(Difficulty.value(team, "stamina_drain", STAMINA_DRAIN),
-					rating("stamina")) * Twists.value("stamina_drain_mult", 1.0) * delta)   # thin air 1.2
+					rating("stamina")) * Twists.value("stamina_drain_mult", 1.0) * _perk_drain_mult(new_sprint) * delta)
 		refill_wait = REFILL_DELAY
 		game.stat("turbo_frames_t%d" % team)
 		if stamina <= 0.0:
