@@ -185,6 +185,13 @@ Everything in "Tasks by wave" not marked DONE.
 ## Doing
 
 ## Review
+- **P12-03** Four built chapters in the Legends logic and tests (gameplay-programmer B): `stand_in_test_data("next")`
+  (ids `lg_zz_next_1..6`), `--legends-test-four` (wins over `-three` / `-two`), `Legends.self_test()`
+  `_check_four_chapters()` (gate 72 / 48, max tokens 84, the walk over four eras; `SHIPPED_GATES` holds `next`, and a
+  build with Chapter 4 built passes too, so P12-11 needs no test change). `--legendtest` OK; `--legends-test --stars 24
+  --target 3` and `--legends-test-three` byte for byte as before; `--legends-test-four` Hard 84/84 and Normal `--stars
+  72` 56/84 end "next is the last chapter", LEGENDS END; `--backtest` OK, `--trip-test` (unlock-all, 48 stars) TRIP END,
+  `--titletest` DONE
 
 ## Done
 - **P12-09** Midrange's skin brown on his sheet and card (before the phase; ANIM OK, LEGENDTEST OK)
