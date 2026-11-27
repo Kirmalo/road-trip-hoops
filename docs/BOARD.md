@@ -241,6 +241,22 @@ Everything in "Tasks by wave" not marked DONE.
   `deep_end`. 24 seeded `--autoplay --twist era_next` games vs 24 without (same seeds): game 8.9 vs 9.0 min, dead balls
   22 vs 34 s, shots 56.8 vs 56.0, FG 57.9% vs 56.0%, all ended, no errors; early shots 30% of shots. `--humantest
   --twist era_next` 21-19, the `--twistshots` banner checked
+- **P12-17** Signature moves (gameplay-programmer A): block "P12-17" at the top of `player.gd`. `top_gear` sprint x1.10
+  (CPU: pushes it up the floor, sprints at a 4 ft opening); `rim_run` x1.12 for 3 s after his team gets the ball (main's
+  shot-clock restart), the CPU sprints him to the rim; `hesitation`: a crossover that does not beat the man in front
+  freezes him 0.3 s, the CPU then drives (0.6 s); his crossover keeps the ball hand (lead call), drawn with the `combo`
+  frames when `Sheets.has_anim()` (`anim_combo`; else the crossover there and back); `putback`: his team's miss off the
+  rim taken within 7 ft goes straight back up (a dunk in his dunk range at any speed, else a tip), and he takes it up to
+  12 sim px higher (ball.gd), the CPU crashes from 14 ft; `hot_hand`: fire after 2 makes (a `make_streak` setter, so
+  main.gd is untouched); `swat` (defense.gd): block chance x1.5 (cap 1.0) and +1 ft reach on jump shots, the CPU goes
+  up at 30% of jumpers (20%). No new input, no extra edge for a cyber part, no random number drawn without the move.
+  Seeded A/B against the base build, 12 pairs byte for byte: `--autoplay` x3, `--twist era_grand` / `era_fathers` /
+  `era_present` / `era_next`, `--humantest`, `--force-fouls`, `--challenge steeple` / `rooftop` / `deep_end`. 21 Chapter 4
+  `--challenge` games (14 Hard, 7 Normal; the six and `fin:next`), per game with that legend on the floor: top gear 66
+  sprints, rim run 22, hesitation 1.4 freezes (3.7 combos, 17 of 33 drawn off-hand), putback 0.25, hot hand 0.5
+  fires, swat 0.8 tries (7 of 7 blocked, 1 only by the swat). As the human (`--humantest --signature <id>`): each
+  fired (`human_top_gear_frames`, `human_rim_runs` 34, `human_hesitations` 3, `human_putbacks` 1, `human_hot_hands`
+  4, `human_swat_tries` 2). `--legendtest` OK, `--anim-test` ANIM OK
 - **P12-20** Era music in the game (art-audio C): `assets/music/legends_next.ogg` = Escalate (congusbongus, CC-BY
   3.0, license re-read on its page), the page's loop file whole (130.55 s, 17 phrases of 7.68 s), de-clipped like
   Bebop (the master's 0.13% clipped samples rebuilt with adeclip), 5 ms wrap blend (wrap step 0.002), mono, -20.8 LUFS
@@ -387,7 +403,7 @@ name (P12-06), the music pick (P12-08).
   legend of each era (the contract's Story row). Each cyber part gets its origin in a line, as a tool he earned or
   built; the naturals' lines tie them to the old courts. No slogan or banned word (`--legendtest` checks the text).
   Lines that name a goal number use the data's numbers | P12-11 merged
-- **P12-17** | Signature moves
+- **P12-17** | REVIEW | Signature moves
   | gameplay-programmer A | `scripts/player.gd`, `scripts/defense.gd`, `scripts/ball.gd`
   | The six moves, constants at the top (block "P12-17"), each only for its signature and at the size in the contract
   (no extra edge for a cyber part); the `combo` frames on Glitch's crossovers when `Sheets.has_anim()` (counts
