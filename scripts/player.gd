@@ -179,7 +179,7 @@ const TOP_GEAR_MULT := 1.10       # his sprint speed x this (TURBO_SPEED_MULT 1.
 const TOP_GEAR_CPU_OPEN_FT := 4.0 # CPU top gear handler: sprints at an open lane with his man this far off (6 ft for
                                   # everyone else), and pushes the ball up the floor on turbo in his backcourt
 const RIM_RUN_TIME := 3.0         # seconds after his team got the ball (main.gd: the shot clock restarted) ...
-const RIM_RUN_SPEED_MULT := 1.12  # ... that he runs at x this
+const RIM_RUN_SPEED_MULT := 1.06  # (P12-23, owner: was 1.12) ... that he runs at x this
 const RIM_RUN_MIN_FT := 8.0       # CPU off the ball in that window: sprints to the rim (alley_spot) from further than this
 const HESITATION_TIME := 0.3      # seconds the man in front of his crossover stands still (when it did not beat him)
 const HESITATION_CPU_CROSS := 0.12  # CPU hesitation man: CPU_CROSS_CHANCE per decision becomes this (he sets it up)

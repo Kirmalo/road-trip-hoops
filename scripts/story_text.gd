@@ -707,10 +707,10 @@ const SCENES := {
 			"text": "Fair. Find me in the Hall and I'll teach your crew to sprint longer before the legs go."},
 	],
 
-	# Long Shadow's challenge won (start down 0-2, come back, to 15)
+	# Long Shadow's challenge won (start down 0-1, come back, to 15)
 	"lg_long_shadow_unlock": [
 		{"who": "lg_long_shadow", "side": "right",
-			"text": "Down two before the tip, and you came back to fifteen. I ran the floor all night and you were still waiting."},
+			"text": "Down one before the tip, and you came back to fifteen. I ran the floor all night and you were still waiting."},
 		{"who": "ud_jojo", "side": "left",
 			"text": "Mr. Ostrander, no chrome on you at all? Not even a little light somewhere?"},
 		{"who": "lg_long_shadow", "side": "right",
@@ -749,10 +749,10 @@ const SCENES := {
 			"text": "Just tape and a mohawk. Find me in the Hall, and your bigs will put more misses back in."},
 	],
 
-	# Halfcourt's challenge won (he starts hot, cools after 2 misses in a row; win to 15)
+	# Halfcourt's challenge won (he starts hot, cools after 3 misses in a row; win to 15)
 	"lg_halfcourt_unlock": [
 		{"who": "lg_halfcourt", "side": "right",
-			"text": "I started hot and you beat me to fifteen anyway. Two misses in a row, and the flame just went out."},
+			"text": "I started hot and you beat me to fifteen anyway. Three misses in a row, and the flame just went out."},
 		{"who": "ud_jojo", "side": "left",
 			"text": "You shot one from the parking lot. I heard a car alarm go off. Then it went in."},
 		{"who": "lg_halfcourt", "side": "right",
@@ -766,13 +766,13 @@ const SCENES := {
 	# Firewall's challenge won (score 5 points yourself on him, and win, to 11)
 	"lg_firewall_unlock": [
 		{"who": "lg_firewall", "side": "right",
-			"text": "Five points on me, and the win. The visor saw every one of them coming. It just couldn't stop them."},
+			"text": "Four points on me, and the win. The visor saw every one of them coming. It just couldn't stop them."},
 		{"who": "ud_deuce", "side": "left",
 			"text": "That visor. You wear it in the van too? To the store? To bed?"},
 		{"who": "lg_firewall", "side": "right",
 			"text": "It was a training visor that shows the ball's flight. I wore it to one practice and never took it off."},
 		{"who": "ud_jojo", "side": "left", "mood": "happy",
-			"text": "Napkin math: if it shows the ball's flight, it should have shown you mine going in. Five times."},
+			"text": "Napkin math: if it shows the ball's flight, it should have shown you mine going in. Four times."},
 		{"who": "lg_firewall", "side": "right", "mood": "happy",
 			"text": "Ha. Find me in the Hall: I'll teach your crew to time a block on a jump shot."},
 	],

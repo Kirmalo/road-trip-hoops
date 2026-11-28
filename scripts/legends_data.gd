@@ -183,7 +183,7 @@ const CHAPTERS := [
 		"finale_scenes": {"before": "legends_next_finale_before", "after": "legends_next_finale_after"},
 		# Q3 a: a step harder than Chapter 3 (72 / 14 / 63). First guesses; P12-23 tunes them (Normal about 45%, Hard
 		# about 30-35%, the finale a bit harder than Chapter 3's)
-		"challenge_avg": 75, "mate_drop": 14, "finale_stage_avg": 66,
+		"challenge_avg": 74, "mate_drop": 14, "finale_stage_avg": 66,
 	},
 ]
 
@@ -506,8 +506,8 @@ const LEGENDS := {
 		"shape": {"speed": 5, "shooting": -10, "finishing": 15, "defense": 10, "stamina": -20},
 		"spec": ["finishing"], "steal_bias": -6, "block_bias": 14,
 		"signature": {"id": "rim_run", "text": "Run the floor: a burst of speed right after his team gets the ball"},
-		"challenge": {"type": "comeback", "target": 15, "start_score": [0, 2], "mates": ["lg_overclock", "lg_firewall"],
-			"line": "START DOWN 0-2: COME BACK AND WIN (TO 15)"},
+		"challenge": {"type": "comeback", "target": 15, "start_score": [0, 1], "mates": ["lg_overclock", "lg_firewall"],
+			"line": "START DOWN 0-1: COME BACK AND WIN (TO 15)"},
 		"perk": "head_start",
 		"colors": ["ERA4_NIGHT", "ERA4_LIME"],
 		"look": "very tall and broad center (not wiry), deep brown skin, locs tied up with a wooden bead tie, bare arms, plain cotton knee pads; natural: no chrome, no glow; near-black tank with lime trim, modern mid-thigh near-black shorts with lime stripes, low socks, low-cut shoes",
@@ -551,7 +551,7 @@ const LEGENDS := {
 		"shape": {"speed": 0, "shooting": 25, "finishing": -10, "defense": -5, "stamina": -10},
 		"spec": ["shooting"], "steal_bias": 2, "block_bias": -8,
 		"signature": {"id": "hot_hand", "text": "Hot hand: he catches fire after 2 makes in a row"},
-		"challenge": {"type": "fire", "target": 15, "cool_misses": 2, "mates": ["lg_long_shadow", "lg_updraft"],
+		"challenge": {"type": "fire", "target": 15, "cool_misses": 3, "mates": ["lg_long_shadow", "lg_updraft"],
 			"line": "HALFCOURT STARTS ON FIRE: WIN THE GAME TO 15"},
 		"perk": "early_shot",
 		"colors": ["ERA4_NIGHT", "ERA4_LIME"],
@@ -566,8 +566,8 @@ const LEGENDS := {
 		"shape": {"speed": 5, "shooting": -10, "finishing": 0, "defense": 20, "stamina": -15},
 		"spec": ["defense"], "steal_bias": 10, "block_bias": 16,
 		"signature": {"id": "swat", "text": "Swat: his blocks on jump shots work more often and reach further"},
-		"challenge": {"type": "score", "target": 11, "min": 5, "mates": ["lg_overclock", "lg_glitch"],
-			"line": "SCORE 5 POINTS YOURSELF ON FIREWALL AND WIN (TO 11)"},
+		"challenge": {"type": "score", "target": 11, "min": 4, "mates": ["lg_overclock", "lg_glitch"],
+			"line": "SCORE 4 POINTS YOURSELF ON FIREWALL AND WIN (TO 11)"},
 		"perk": "closeout",
 		"colors": ["ERA4_NIGHT", "ERA4_LIME"],
 		"look": "strong forward of medium build (not a bulldozer), brown skin, buzz cut (not bald); cyber: a thin flat lime visor across the eyes in a chrome frame that ends at the temples (front only, no slats, nothing round the back of the head); near-black tank with lime trim, near-black shorts with violet stripes, low socks, low-cut shoes",

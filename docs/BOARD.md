@@ -181,7 +181,7 @@ These apply to Chapter 4 unchanged:
 
 ## Todo
 Everything in "Tasks by wave" not marked DONE.
-- **P12-B1** (Low, text fit; found by P12-28) Hall detail: two New Generation mentor perk texts are cut off at 1280 and
+- **P12-B1** FIXED by the lead (hall.gd: the perk line goes through `_fit_font()`, min 14) (Low, text fit; found by P12-28) Hall detail: two New Generation mentor perk texts are cut off at 1280 and
   2400 ("His pump fakes get the defender up 15% more", "... 10% more ofte"). Steps: Hall, tap GLITCH or FIREWALL
   (`--legends-test --stars 24 --target 3 --difficulty hard`, or `--legends-unlock-all`). Shot
   `docs/qa/shots/phase12/p12-b1_perk_clip.png`. Cause: `hall.gd` line 563 draws the perk as one clipped line with no

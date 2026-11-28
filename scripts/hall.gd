@@ -560,8 +560,9 @@ func _detail_open(id: String) -> void:
 	if not perk.is_empty():
 		_text(RT_ONLY_TEXT, Rect2(DETAIL_PAD, perk_y, full_w, 22), DETAIL_HEAD_FONT, DIM_TEXT, false,
 				HORIZONTAL_ALIGNMENT_RIGHT)
-	_text(str(perk.get("text", "none")), Rect2(DETAIL_PAD, perk_y + 22.0, full_w, 30), DETAIL_TEXT_FONT,
-			UI.TEXT_COLOR)
+	var perk_lbl: Label = _text(str(perk.get("text", "none")), Rect2(DETAIL_PAD, perk_y + 22.0, full_w, 30),
+			DETAIL_TEXT_FONT, UI.TEXT_COLOR)
+	_fit_font(perk_lbl, full_w, 14)   # P12-B1: the longest perk texts (Glitch's, Firewall's) shrink instead of clipping
 	var mentor: bool = _mentor_hook(id, MENTOR_RECT)
 	var rr: Rect2 = REPLAY_RECT
 	if mentor:

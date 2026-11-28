@@ -141,6 +141,7 @@ tablet with a joystick and two buttons.
 | Phase 12 portraits (after P12-15) | Owner: approves the twelve portraits `docs/art/legends_next_portraits.png` as is; Overclock's braces shown by their lime glow up the tank (no lower framing) |
 | Phase 12 UI art (after P12-07) | Owner: approves the Chapter 4 timeline panel, pins and card frame as shown; Chapter 4's `ui_color` goes darker, #466e14 (tags, draft row, Quick Game team button readable), the court and kits keep their bright lime |
 | Phase 12 FAST BREAK (after P12-21) | Owner: the middle step: `speed_mult` 1.08 (was 1.05) and `break_mult` 1.20 (was 1.10); `stamina_refill_mult` 1.15 and `dead_ball_mult` 0.6 kept. The effect stays subtle (early shots about +2 points over later ones in 40 games, `docs/qa/phase12-era.md`); not the tester's 1.30 |
+| Phase 12 challenges (after P12-23) | Owner: takes all of the tester's changes: `next` row `challenge_avg` 74 (was 75; `mate_drop` 14 and `finale_stage_avg` 66 kept), Long Shadow comeback from 0-1 (was 0-2) and his rim run `RIM_RUN_SPEED_MULT` 1.06 (was 1.12), Halfcourt `cool_misses` 3 (was 2), Firewall `score` `min` 4 (was 5; about 14% met). Measured together: Normal about 45%, Hard about 33%, the finale 45% / 30% (`docs/qa/phase12-challenges.md`). The story lines follow (0-1, three misses, four points) |
 
 ## Technical constraints
 - Godot 4.3+ (GDScript), GL Compatibility renderer, 1280x720 landscape. See `CLAUDE.md` for code conventions.
