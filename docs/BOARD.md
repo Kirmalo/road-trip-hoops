@@ -181,10 +181,25 @@ These apply to Chapter 4 unchanged:
 
 ## Todo
 Everything in "Tasks by wave" not marked DONE.
+- **P12-B1** (Low, text fit; found by P12-28) Hall detail: two New Generation mentor perk texts are cut off at 1280 and
+  2400 ("His pump fakes get the defender up 15% more", "... 10% more ofte"). Steps: Hall, tap GLITCH or FIREWALL
+  (`--legends-test --stars 24 --target 3 --difficulty hard`, or `--legends-unlock-all`). Shot
+  `docs/qa/shots/phase12/p12-b1_perk_clip.png`. Cause: `hall.gd` line 563 draws the perk as one clipped line with no
+  shrink; `PERKS` `pump_fake` / `closeout` are the longest texts yet. Fix: `_fit_font()` on that label (down to
+  `DETAIL_ARCH_MIN`), or shorter texts ("Pump fakes get his man up 15% more often", "Blocks on jump shots work 10% more
+  often"). Details `docs/qa/phase12-screens.md`
 
 ## Doing
 
 ## Review
+- **P12-28** QA of the screens (qa): `docs/qa/phase12-screens.md`, contact sheet `docs/qa/phase12-screens.png` (46
+  shots), build 44c7ca3. Every Legends screen at 1280 and 2400x1080 with four chapters (timeline locked / open /
+  LEGENDS COMPLETE, Chapter 4 view, Hall with four rows and the full banner, each New Generation detail, mentor picker,
+  draft's four LEGENDS rows in timeline order with #466e14, lineup tags, the `legends_complete` scene line by line), the
+  challenge lines, FAST BREAK banner, NEON DOME angled and flat, Quick Game era buttons and COURT. Moves seen: hesitation
+  + combo / combo_l, swat, hot hand, top gear, rim run; putback only by the log. Cyber parts readable (Overclock's
+  braces weak in his own lime kit, clearer in your colors; flat view draws no sheets). `--legendtest`, `--backtest`
+  (plain and 2400), `--titletest` x2, `--anim-test` OK; 5 autoplay + 2 humantest in the targets. One bug: P12-B1
 - **P12-27** QA of the saves (qa): `docs/qa/phase12-saves.md`, build 47b1456, Phase 11 build d298d22. P12-01's
   fixtures load in Phase 12 as saved (`check_fixtures_v5` CHECK OK, loading writes nothing); Chapter 4's gate right on
   6 stars / tokens pairs (open at 72 stars or 48+ tokens, shut at 48 / 42 and 36 / 42). New Phase 12 files (story G,
@@ -556,7 +571,7 @@ name (P12-06), the music pick (P12-08).
 - **P12-27** | REVIEW | QA: saves | qa-balance-tester | `docs/qa/phase12-saves.md` | P12-01's fixtures load in the Phase 12 build;
   Phase 12 files open in a Phase 11 build without a crash (unknown ids dropped); a NEW TRIP never touches
   `legends.json` | P12-19, P12-18 merged
-- **P12-28** | QA: screens | qa-balance-tester | `docs/qa/phase12-screens.md` and shots | Every Legends screen at
+- **P12-28** | REVIEW | QA: screens | qa-balance-tester | `docs/qa/phase12-screens.md` and shots | Every Legends screen at
   1280x720 and wider with four chapters (timeline, Chapter 4 view, Hall with four rows, draft rows, LEGENDS COMPLETE),
   the six moves and the combo dribble, the cyber parts readable at game size in angled and flat view (and in your
   colors), the court and banner; bugs filed as P12-B<n> | P12-25 merged
