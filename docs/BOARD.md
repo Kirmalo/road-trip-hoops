@@ -192,6 +192,15 @@ Everything in "Tasks by wave" not marked DONE.
 ## Doing
 
 ## Review
+- **P12-36** QA of the era team balance (qa): `docs/qa/phase12-quick-eras.md`, games on `44c7ca3`, the same game for
+  game on `96bb720` (4 seeded A/B, whole logs identical). 1,460 `--autoplay` Hard games, all ended, no errors, 0
+  shot-clock violations, every cell in the bands. NEW GENERATION vs the crews 54.5% on the gym, 58.5% on NEON DOME (200
+  each, SE 3.5); vs the Fathers 60.5%, the Present 55.5% (gym), the Grandfathers 59.0% on OLD GYM and 54.0% on NEON DOME
+  (200 each, both orders). Top gear 119 starts, putback 0.80 (not 0.25), hot hand 0.97 a game; hesitation, swat, rim
+  run and the combo frames are not in the era team (finale three), fired only with `--signature` (4.2 / 1.8 / 35.9).
+  Swat: x1.5 always hits the 1.0 cap on Hard (36 of 36 blocked); proposal `SWAT_BLOCK_MULT` 1.3. The other three eras
+  are the same as Phase 11 game for game (6 seeded games vs `c8e33ef`); 80-game shares GF 40.0 / Fathers 43.8 /
+  Present 53.8%, pooled with Phase 11 50 / 46.5 / 58.5%. No bugs. Proposals only, nothing changed
 - **P12-29** (gameplay C): docs in step with Phase 12, every fact read from the merged code (6faf0bb). `CLAUDE.md`: the
   `next` row (gate 72 / 48, crew THE NEW GENERATION, `ERA4_NIGHT` / `ERA4_LIME`, `ui_color` #466e14, 74 / 14 / 66),
   24 legends and their ids, max tokens 84, the Chapter 4 challenges as tuned (0-1, `cool_misses` 3, `min` 4), the
@@ -605,7 +614,7 @@ name (P12-06), the music pick (P12-08).
   1280x720 and wider with four chapters (timeline, Chapter 4 view, Hall with four rows, draft rows, LEGENDS COMPLETE),
   the six moves and the combo dribble, the cyber parts readable at game size in angled and flat view (and in your
   colors), the court and banner; bugs filed as P12-B<n> | P12-25 merged
-- **P12-36** | QA: era team balance | qa-balance-tester | `docs/qa/phase12-quick-eras.md` | NEW GENERATION vs the crews on
+- **P12-36** | REVIEW | QA: era team balance | qa-balance-tester | `docs/qa/phase12-quick-eras.md` | NEW GENERATION vs the crews on
   Hard and vs each era team (Grandfathers vs New Generation on both era courts), 200+ games a cell; a report for the
   owner, no change without his yes | P12-33 merged
 
