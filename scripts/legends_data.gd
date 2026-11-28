@@ -608,13 +608,14 @@ const PERKS := {
 	"side_step": {"key": "layup_block_mult", "value": 0.80, "text": "Layups 20% harder to block"},
 	# Chapter 4 (Q5 a, the board's contract; data only here, P12-22 hooks them, P12-26 measures them). Every key is
 	# new: none of the 18 earlier perks' and no twist key (break_speed_mult is not FAST BREAK's break_mult). Defaults
-	# 1.0 for _mult, 0.0 for _bonus; sprint_drain_mult is under 1.0 (his sprint tires him less)
-	"fresh_legs": {"key": "sprint_drain_mult", "value": 0.90, "text": "Sprinting tires him 10% less"},
+	# 1.0 for _mult, 0.0 for _bonus; sprint_drain_mult is under 1.0 (his sprint tires him less). Sizes after P12-26
+	# (owner): fresh_legs 0.90 -> 0.93, pump_fake 1.15 -> 1.20, second_chance 0.025 -> 0.06, closeout 1.10 -> 1.15
+	"fresh_legs": {"key": "sprint_drain_mult", "value": 0.93, "text": "Sprinting tires him 7% less"},
 	"head_start": {"key": "break_speed_mult", "value": 1.04, "text": "4% faster right after his team gets the ball"},
-	"pump_fake": {"key": "fake_bite_mult", "value": 1.15, "text": "His pump fakes get the defender up 15% more often"},
-	"second_chance": {"key": "putback_bonus", "value": 0.025, "text": "Putbacks after an offensive rebound +2.5%"},
+	"pump_fake": {"key": "fake_bite_mult", "value": 1.20, "text": "His pump fakes get the defender up 20% more often"},
+	"second_chance": {"key": "putback_bonus", "value": 0.06, "text": "Putbacks after an offensive rebound +6%"},
 	"early_shot": {"key": "early_shot_bonus", "value": 0.010, "text": "Shots soon after getting the ball +1%"},
-	"closeout": {"key": "jumper_block_mult", "value": 1.10, "text": "His blocks on jump shots work 10% more often"},
+	"closeout": {"key": "jumper_block_mult", "value": 1.15, "text": "His blocks on jump shots work 15% more often"},
 }
 
 # ---------------------------------------------------------------------------------------------------- name check
