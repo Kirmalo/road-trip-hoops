@@ -185,6 +185,17 @@ Everything in "Tasks by wave" not marked DONE.
 ## Doing
 
 ## Review
+- **P12-27** QA of the saves (qa): `docs/qa/phase12-saves.md`, build 47b1456, Phase 11 build d298d22. P12-01's
+  fixtures load in Phase 12 as saved (`check_fixtures_v5` CHECK OK, loading writes nothing); Chapter 4's gate right on
+  6 stars / tokens pairs (open at 72 stars or 48+ tokens, shut at 48 / 42 and 36 / 42). New Phase 12 files (story G,
+  `docs/qa/fixtures/*_p12.*` + make / check / probe scripts): Chapter 4 half done with OVERCLOCK -> JOJO, a trip with
+  OVERCLOCK (starter, and YOU) + LONG SHADOW drafted, LEGENDS COMPLETE (84/84). Phase 11 build on them: no crash, no
+  error dialog (Legends, Hall, TRAIN picker JOJO "NO MENTOR", lineup, game, NEW TRIP); 63/63 tokens, Chapter 4 COMING
+  LATER, the New Generation legends dropped from the trip (underdogs start), TRIP END 32 games; its Legends write keeps
+  every Chapter 4 key, so Phase 12 reads them back (LEGENDS COMPLETE kept; only the drafted legends lost, back in the
+  draft). LEGENDS COMPLETE survives save / load, the ending plays once. NEW TRIP keeps legends.json byte for byte (7
+  runs, both builds). `--legendtest` OK, `--triptest-data` / `--load` OK; 5 autoplay + 2 humantest in the targets. No
+  bugs, no P12-Bn
 - **P12-25** Back test and title test for Chapter 4 (gameplay C): `main.gd` BackTest only: `BACKTEST_CHAPTER4` "next" (its view to the timeline and the title, the Hall on `lg_overclock` back to the chapter view and to CREW, the mentor picker, the `lg_overclock` challenge's pause, resume and QUIT to the New Generation view; 72 stars forced unless `--stars 72` / `--tokens 48`), then the LEGENDS COMPLETE Hall banner (every finale counted as won this run only, never saved): its tap opens `legends_complete`, back lands on the Hall with the banner, back to CREW, finales put back. `title.gd` titletest only: the era courts must follow the open era teams in timeline order (`look_of()`), printed as `TITLE TEST era order`. `--backtest` OK 79/79 plain and `--stars 72`; `--titletest` DONE plain (0 eras), `--legends-unlock-all --stars 72` (4 teams, COURT gym > blacktop > era_grand > era_fathers > era_present > era_next > midnight > gold_hall), `--legends-unlock-none` (none); `--legendtest` OK.
 - **P12-21** QA of FAST BREAK (qa): `docs/qa/phase12-era.md`. 200 `--autoplay --twist era_next` vs 200 twist none
   (Kings vs Runners), all ended, no errors, 0 shot-clock violations: game 8.98 vs 9.73 min, shots 58.9 vs 60.7, FG
@@ -542,7 +553,7 @@ name (P12-06), the music pick (P12-08).
   BIG STAGE on COURT with FAST BREAK and its music; `--legendtest` "era teams" OK | P12-11, P12-20 merged
 
 ### Wave 9
-- **P12-27** | QA: saves | qa-balance-tester | `docs/qa/phase12-saves.md` | P12-01's fixtures load in the Phase 12 build;
+- **P12-27** | REVIEW | QA: saves | qa-balance-tester | `docs/qa/phase12-saves.md` | P12-01's fixtures load in the Phase 12 build;
   Phase 12 files open in a Phase 11 build without a crash (unknown ids dropped); a NEW TRIP never touches
   `legends.json` | P12-19, P12-18 merged
 - **P12-28** | QA: screens | qa-balance-tester | `docs/qa/phase12-screens.md` and shots | Every Legends screen at
