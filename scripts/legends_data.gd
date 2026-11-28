@@ -181,8 +181,8 @@ const CHAPTERS := [
 			"label": "NEW GENERATION FINALE"},   # owner R2: also the 4th era team in Quick Game
 		"intro_scene": "legends_next_intro",
 		"finale_scenes": {"before": "legends_next_finale_before", "after": "legends_next_finale_after"},
-		# Q3 a: a step harder than Chapter 3 (72 / 14 / 63). First guesses; P12-23 tunes them (Normal about 45%, Hard
-		# about 30-35%, the finale a bit harder than Chapter 3's)
+		# Q3 a: a step harder than Chapter 3 (72 / 14 / 63). P12-23 and the owner: challenge_avg 75 -> 74 (Normal about 45%, Hard
+		# about 33%; the finale 45% / 30%, docs/qa/phase12-challenges.md)
 		"challenge_avg": 74, "mate_drop": 14, "finale_stage_avg": 66,
 	},
 ]
