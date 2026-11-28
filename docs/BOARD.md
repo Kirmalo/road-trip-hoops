@@ -562,10 +562,18 @@ name (P12-06), the music pick (P12-08).
   | `BACKTEST_CHAPTER4` "next" (its view, the Hall and back, the mentor picker, a challenge's pause, resume and QUIT;
   its gate forced for the run unless `--stars 72` or `--tokens 48`); `--titletest` era checks with four era teams and
   courts; BACKTEST OK, TITLE TEST DONE | P12-18, P12-22 merged
-- **P12-26** | QA: the ramp with New Generation legends and perks
+- **P12-26** | REVIEW | QA: the ramp with New Generation legends and perks
   | qa-balance-tester | `docs/qa/phase12-ramp.md`, `scripts/legends_data.gd` (perk numbers only)
   | `--best-roster` with a New Generation legend and the strongest new perks: Hard RED share against Phase 11's 44%;
   each perk measured at about 2 stat points, resized with the owner's yes | P12-22, P12-23 merged
+  | Result (report only, scripts/ untouched; 754 games, 0 errors): the sim never drafts a New Generation legend
+  (Eyes Closed still wins), so Glitch was forced in a scratch copy. Glitch + boss + 1 with `fresh_legs,-,head_start`:
+  Hard RED **41%** (65/160, SE 4; SF 42% on 60, final 40% on 40); no perk 38% (160); Eyes Closed 40%, Long Shadow 42%
+  (SF + final). Neither the legend nor the perks move the bound measurably. Perks vs "2 stat points": fresh_legs
+  1.3-1.8x, head_start 1.2x, early_shot 0.8x, closeout 0.65x (a block every ~15 games), pump_fake 0.35x on a CPU
+  pupil (~2.5x for a human who fakes), second_chance 0.22x. Proposed (owner): fresh_legs 0.93, closeout 1.15,
+  pump_fake 1.20 and second_chance 0.06 (both at the limits, still under 1x: scope question for the lead), head_start
+  and early_shot kept. No P12-Bn
 - **P12-33** | REVIEW | The 4th era team and its court in Quick Game
   | gameplay-programmer B | `scripts/era_teams.gd` (self test expectations; logic only if the data needs it),
   `scripts/menu.gd` (only if the COURT order needs it)
