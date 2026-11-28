@@ -511,13 +511,18 @@ name (P12-06), the music pick (P12-08).
   Counters `perk_<id>_t0`, plus `_frames_` (fresh_legs, head_start) and `_tries_` (pump_fake, closeout). Seeded A/B
   byte-identical (autoplay, era twists, an older perk, humantest, a Chapter 3 challenge). closeout and pump_fake
   barely fire in autoplay (P12-26 to measure).
-- **P12-23** | QA: Chapter 4 challenges and finale
+- **P12-23** | REVIEW | QA: Chapter 4 challenges and finale
   | qa-balance-tester | `docs/qa/phase12-challenges.md`, `scripts/legends_data.gd` (challenge numbers and rating
   keys only)
   | Per challenge and the finale, Easy / Normal / Hard with the end-of-trip crew (`--expected-roster`,
   `--best-roster`), cells big enough to see Q3 a's bands (Normal about 45%, Hard about 30-35%, the finale a bit harder
   than Chapter 3's 53% / 33%); Firewall the hardest; the cyber legends no harder than the natural ones beyond their
   goal; any story line made stale listed for P12-29 | P12-17, P12-18 merged
+  | Result (report only, scripts/ untouched): 1,854 autoplay games, 0 errors. First guess 75 / 14 / 66: Normal 47.9,
+  Hard 28.3 (240 each, old FAST BREAK); 35.8 / 23.3 (120 each, FAST BREAK 1.08 / 1.20); finale 51.7 / 25 pooled. Long
+  Shadow 35 / 10 (rim run worth ~2 pts a game), Halfcourt 80 / 50, Firewall 8.9%. Proposed: `challenge_avg` 74, Long
+  Shadow `start_score` [0, 1], `RIM_RUN_SPEED_MULT` 1.06, Halfcourt `cool_misses` 3, Firewall `min` 4 (owner): package
+  on the new FAST BREAK N 45.0, H 33.3; finale 66 kept. Stale lines if taken: story_text.gd 713, 755, 769, 775
 - **P12-24** | REVIEW | Trip test: a drafted New Generation legend
   | Result: `LEGEND_DRAFT_CHAPTERS` next -> present -> fathers -> grand, `LEGEND_DRAFTS` 4 (the 4th slot at 48 stars
   drafts a Grandfather); the rest already read the data. `--trip-test --target 3 --legends-unlock-all --stars 48` and
