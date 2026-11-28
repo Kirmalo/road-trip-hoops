@@ -67,8 +67,8 @@ Each city plays a little differently, and the twist is the same for both teams:
 ## Quick Game
 One game to 21 whenever you like. Pick the level, the court and the music, plus your team and your opponent. Each
 city court and each crew you beat on the road trip joins Quick Game for good, and so do the two star courts.
-Unlock an era's three finale legends and that era joins Quick Game too: the Grandfathers, the Fathers or the
-Present as a team, and their era court with its rules.
+Unlock an era's three finale legends and that era joins Quick Game too: the Grandfathers, the Fathers, the Present
+or the New Generation as a team, and their era court with its rules.
 
 ## Legends
 Earn 24 stars and the Legends tour opens: a trip back through the eras of the game. Chapter 1 is the Grandfathers,
@@ -84,7 +84,12 @@ score 6 points yourself on the best defender of the era.
 
 Chapter 3 is the Present (it opens at 48 stars or 30 tokens): six legends of today's game, a step-back shooter, a
 point-forward, a stretch big, a Euro-step slasher and more, in a big modern arena under SPACE THE FLOOR rules: threes
-fall more often, the floor is spread wider and pull-ups off a crossover drop. The hardest challenges yet.
+fall more often, the floor is spread wider and pull-ups off a crossover drop.
+
+Chapter 4 is the New Generation, the last one (it opens at 72 stars or 48 tokens): six legends of the future in a
+neon dome with a glass floor, under FAST BREAK rules: a quicker game, shorter stops and early shots that fall. Three
+of them wear parts they built themselves (glowing leg braces, a chrome hand, a visor), three are all natural. The
+hardest challenges yet. Win the last finale and the tour ends with a closing scene, LEGENDS COMPLETE and a full Hall.
 
 Unlocked legends hang in the Hall of Legends, coach your players with a small perk on the road trip, and one of
 them (from any era) can join your starting three, right next to a boss.

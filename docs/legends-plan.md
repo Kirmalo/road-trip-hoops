@@ -59,7 +59,8 @@ one pin per era). Each chapter has its own court, music, era rules and 6 legends
 | Score on him | You yourself score at least N of your team's points and win (Phase 10) | The lockdown defender: 6 |
 
 The numbers in the examples are the shipped ones (one on one is not built; `scripts/legends_data.gd`; Chapter 1 tuned
-in P9-26, docs/qa/phase9-challenges.md; Chapter 2 in P10-23, docs/qa/phase10-challenges.md).
+in P9-26, docs/qa/phase9-challenges.md; Chapter 2 in P10-23, docs/qa/phase10-challenges.md; Chapter 3 in P11-23,
+docs/qa/phase11-challenges.md; Chapter 4 in P12-23, docs/qa/phase12-challenges.md).
 
 Games are short: to 11 or 15 (finales to 21). With retries a chapter is about 7 games and 45-60 minutes, so **the
 whole tour is about 3-4 hours**, about as long as the Road Trip, and longer for a player who chases 3 tokens
@@ -112,8 +113,24 @@ The finale: Deep End, Toolbox and Skylight to 21, no goal. The era's rules: SPAC
 BIG STAGE; the music: "Techno drive" by Centurion_of_war (CC-BY 4.0).
 
 ### Chapter 4: New Generation
-The first draft below (2026-11-18). Phase 12 reworks it for the hard rule and the overlaps with Chapters 1-3: see
-"Phase 12 plan" at the end of this file.
+As shipped in Phase 12 (owner, VISION "Phase 12 answers Q1-Q8", "Phase 12 roster (after the cyber redo)", "Phase 12
+Halfcourt's first name", the look checks; the first draft's names Hyperdrive, Pogo, Kai, Atlas, Juno, Rocco, Orion,
+Mbeki and Dex were changed (12.1, 12.9); three cyber legends, three all natural (12.9: a part is look only, the edge is
+the move); era kits lime and violet on near-black; challenges as tuned by P12-23 and the owner):
+| Legend | # | Archetype | Look notes | Signature move | Challenge | Shape (spd/sht/fin/def/sta) |
+|---|---|---|---|---|---|---|
+| Tavian "Overclock" Brightwell | 17 | Speedster point guard | Cyber: chrome leg braces with a lime light line; small, short lime-dyed crop | Top gear (`top_gear`: his sprint x1.10) | Race: 11 before his crew gets 10 | +25 / 0 / 0 / -10 / -15 |
+| Calder "Long Shadow" Ostrander | 56 | Seven-foot rim runner | Natural: very tall and broad, locs with a wooden bead tie, cotton knee pads | Run the floor (`rim_run`: x1.06 for 3 s after his team gets the ball, the CPU runs him to the rim) | Comeback from 0-1 (to 15) | +5 / -10 / +15 / +10 / -20 |
+| Cosimo "Glitch" Draycott | 25 | Trick handler | Cyber: chrome right forearm and hand with violet seams; two-tone hair | Hesitation (`hesitation`: his man stands still 0.3 s after his crossover), drawn as his combo dribble (its own animation) | 2 blocks or steals on him and win (to 15) | +15 / +5 / -5 / -5 / -10 |
+| Silvan "Updraft" Ingleby | 57 | Highest leaper | Natural: wiry, black mohawk, taped fingers | Putback (`putback`: his team's miss within 7 ft of the rim goes straight back up, reached higher than anyone) | Hold him under 6 (to 11) | +5 / -15 / +20 / +5 / -15 |
+| Emrys "Halfcourt" Tregarth | 39 | Range shooter | Natural: lean, freckles, sandy curls under a white cotton headband, clean-shaven | Hot hand (`hot_hand`: on fire after 2 makes in a row) | He starts on fire, cools after 3 misses in a row (to 15) | 0 / +25 / -10 / -5 / -10 |
+| Kasimir "Firewall" Oyelaran | 51 | Switching shot blocker | Cyber: a thin lime visor in a chrome frame; medium build, buzz cut | Swat (`swat`: block chance on jumpers x1.5, 1 ft more reach) | Score 4 yourself on him and win (to 11), the hardest | +5 / -10 / 0 / +20 / -15 |
+
+The finale: Overclock, Updraft and Halfcourt to 21, no goal (also the Quick Game era team NEW GENERATION). The era's
+rules: FAST BREAK (part 4); the court: the NEON DOME; the music: "Escalate" by congusbongus (CC-BY 3.0). Winning the
+last finale ends the mode: the `legends_complete` scene once, LEGENDS COMPLETE on the timeline, the full Hall banner.
+
+The first draft (2026-11-18), kept for the record:
 
 | Legend | Archetype | Look notes | Signature move | Shape |
 |---|---|---|---|---|
@@ -140,7 +157,7 @@ today's game, like every hook. Starting values, QA tunes them.
 | `era_grand` "OLD SCHOOL" | `speed_mult` 0.94, `long_shot_mult` 0.88 | `foul_mult` 0.6 (fewer fouls called: rougher defense), `inside_mult` 1.08 (layups, dunks and close shots go in more) |
 | `era_fathers` "ISO BALL" | `arc_mult` 1.05 | `cross_beat_mult` 1.2 (crossovers beat the defender more), `dunk_range_mult` 1.1 (dunks from a little further out) |
 | `era_present` "SPACE THE FLOOR" (as shipped, P11-12; P11-21 and the owner kept the numbers) | `long_shot_mult` 1.08 | `spacing_ft` 2.0 (off-ball players stand 2 ft further from the hoop), `pullup_mult` 1.10 (a jump shot within 1.0 s of a crossover or spin, everyone) |
-| `era_next` "HYPERSPEED" (first draft; Phase 12 proposes "FAST BREAK" with two new keys, see "Phase 12 plan") | `speed_mult` 1.08, `turbo_mult` 1.45, `stamina_refill_mult` 1.2, `shot_clock` 18 | none |
+| `era_next` "FAST BREAK" (as shipped, P12-12; P12-21 and the owner: speed 1.08, break 1.20; the first draft was "HYPERSPEED") | `speed_mult` 1.08, `stamina_refill_mult` 1.15 | `dead_ball_mult` 0.6 (the pauses after a make, an out of bounds or a reaching foul 40% shorter, rules.gd `dead_wait()`), `break_mult` 1.20 (a shot within main.gd `BREAK_WINDOW` 5 s of his team getting the ball, everyone) |
 
 Every new key is one `Twists.value(key, default)` in the sim. None of them reads a team, so the era rules are fair.
 An open idea (part 9 is the place to ask, not this list): an old-school "every basket counts 1" rule.
@@ -160,7 +177,10 @@ REPLAY STORY plays his unlock scene again (portraits, like `story.gd`).
 
 **Mentors.** An unlocked legend can train one of your players: a small permanent perk tied to his skill. Draft list:
 
-(Shipped Chapter 1 values: shot perks +1.5%, the others 5%, owner after P9-30; see `scripts/legends_data.gd` PERKS.)
+(Shipped Chapter 1 values: shot perks +1.5%, the others 5%, owner after P9-30; see `scripts/legends_data.gd` PERKS.
+Chapter 4's six as shipped (P12-22, sizes after P12-26): `fresh_legs` `sprint_drain_mult` 0.93, `head_start`
+`break_speed_mult` 1.04, `pump_fake` `fake_bite_mult` 1.20, `second_chance` `putback_bonus` 0.06, `early_shot`
+`early_shot_bonus` 0.010, `closeout` `jumper_block_mult` 1.15.)
 
 | Legend | Perk (on one of your players) |
 |---|---|
@@ -532,6 +552,11 @@ challenges replayed on Hard) or the stars. (blocks P11-18, P11-09's gate check)
 - d) Start Chapter 4, the New Generation, in the same phase (about twice the art and test time)
 
 ## Phase 12 plan: Chapter 4, the New Generation (lead-producer, 2026-11-27; the owner answered Q1-Q8 the same day)
+
+**Shipped** (Phase 12): the roster of 12.9 as the owner approved it, with the values in part 3 ("Chapter 4"), part 4
+(`era_next`, as in 12.4) and part 5 (the perks); the numbers in 12.5 and the 12.9 table below are the plan's, and
+the shipped ones differ where tuned (`challenge_avg` 74, Long Shadow 0-1 and rim run x1.06, Halfcourt 3 misses, Firewall
+4 points, the perk sizes). Nothing is COMING LATER any more; the mode ends after Chapter 4 (12.6, Q8 a).
 
 **Answered** (VISION "Phase 12 answers Q1-Q8"): Q2 a, Q3 a, Q4 a, Q5 a, Q6 a, Q7 a, Q8 a. **Q1 was not (a)**: the
 owner wants the chapter more futuristic, 3 of the 6 legends with visible cybernetic parts (each tied to his signature

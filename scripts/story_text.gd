@@ -763,7 +763,7 @@ const SCENES := {
 			"text": "Find me in the Hall. I'll teach your shooters to let it go early, right after they get the ball."},
 	],
 
-	# Firewall's challenge won (score 5 points yourself on him, and win, to 11)
+	# Firewall's challenge won (score 4 points yourself on him, and win, to 11)
 	"lg_firewall_unlock": [
 		{"who": "lg_firewall", "side": "right",
 			"text": "Four points on me, and the win. The visor saw every one of them coming. It just couldn't stop them."},

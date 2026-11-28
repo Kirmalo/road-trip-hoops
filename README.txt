@@ -75,16 +75,16 @@ QUICK GAME
   Runners are always there; every crew you beat on a Road Trip joins the list for good (a city's crew when you beat
   its boss, a New York crew when you win its round). Quick Game players are evened out (their stats average 50),
   so any matchup is fair; each crew keeps its own colors. The same crew can't be on both sides.
-  Era teams: THE GRANDFATHERS, THE FATHERS and THE PRESENT join the list once you have unlocked that era's three
-  finale legends in LEGENDS (Steeple, Velvet and Quarterback; Rooftop, Midrange and Freight; Deep End, Toolbox and
-  Skylight). They play as those three, evened out to 50 like every Quick Game team, in their era kits and with their
-  signature moves (mentor perks never play in Quick Game).
+  Era teams: THE GRANDFATHERS, THE FATHERS, THE PRESENT and THE NEW GENERATION join the list once you have unlocked
+  that era's three finale legends in LEGENDS (Steeple, Velvet and Quarterback; Rooftop, Midrange and Freight; Deep
+  End, Toolbox and Skylight; Overclock, Updraft and Halfcourt). They play as those three, evened out to 50 like
+  every Quick Game team, in their era kits and with their signature moves (mentor perks never play in Quick Game).
 - COURT: GYM, COURT: BLACKTOP, ... Tap it to pick the next court (an indoor gym with bleachers, an outdoor
   blacktop, and every city court you have unlocked). A city's court unlocks when you beat that city's boss on a Road
   Trip, and stays unlocked (a new trip doesn't lock it again). Two more courts open with stars: MIDNIGHT (30
   stars) and GOLD HALL (60). Each open era team also brings its era's court with the era's rules and music: the OLD
-  GYM (OLD SCHOOL), the NIGHT PARK (ISO BALL) and the BIG STAGE (SPACE THE FLOOR). A city court brings its city's
-  twist, shown in a line under the buttons; the gym, the blacktop and the star courts have none.
+  GYM (OLD SCHOOL), the NIGHT PARK (ISO BALL), the BIG STAGE (SPACE THE FLOOR) and the NEON DOME (FAST BREAK). A city
+  court brings its city's twist, shown in a line under the buttons; the gym, the blacktop and the star courts have none.
 - MUSIC: ON / MUSIC: OFF switches the music at once.
 The panel comes back with the new teams or court behind it; then tap a level to play. The game remembers all of it.
 
@@ -249,8 +249,8 @@ them for good. Every legend is a made-up character with his own name and looks, 
   EASY gives exactly 24).
 - The era tour: a timeline of four chapters. Chapter 1, THE GRANDFATHERS, opens at 24 stars; Chapter 2, THE
   FATHERS, at 36 stars or 12 legend tokens (whichever comes first; until then its panel is LOCKED with that line);
-  Chapter 3, THE PRESENT, at 48 stars or 30 tokens (you don't need to win the Fathers' finale first). THE NEW
-  GENERATION shows as COMING LATER, with what will open it. Tap an open chapter (or its
+  Chapter 3, THE PRESENT, at 48 stars or 30 tokens (you don't need to win the Fathers' finale first); Chapter 4, THE
+  NEW GENERATION, the last one, at 72 stars or 48 tokens (no Present finale needed). Tap an open chapter (or its
   PLAY button). The first time, a story scene introduces the era. A chapter whose finale you won shows FINALE WON.
   HALL opens the Hall of Legends; BACK goes to the title.
 - The chapter view: the six legends' plaques (a locked one is a silhouette with "?" and his challenge), the finale
@@ -286,14 +286,26 @@ them for good. Every legend is a made-up character with his own name and looks, 
     of the era.
   - Skylight, the rim-running big: block or steal the ball on him 2 times and win (to 15).
   - Zigzag, the slasher: hold him under 6 points and win (to 11).
+  The New Generation (the hardest era; three of them wear parts they built themselves: Overclock's chrome leg
+  braces, Glitch's chrome hand, Firewall's visor; the other three are all natural):
+  - Overclock, the speedster point guard: reach 11 before his crew gets 10.
+  - Long Shadow, the seven-foot rim runner: you start down 0-1; come back and win (to 15).
+  - Glitch, the trick handler: block or steal the ball on him 2 times and win (to 15).
+  - Updraft, the highest leaper: hold him under 6 points and win (to 11).
+  - Halfcourt, the range shooter: he starts on fire and cools down only after 3 misses in a row; win (to 15).
+  - Firewall, the switching shot blocker: you yourself score at least 4 of your team's points and win (to 11). The
+    hardest one of the era.
 - Tokens: a won challenge gives 1 token on EASY, 2 on NORMAL, 3 on HARD or LEGEND. Only your best result for each
   game counts, so play a game again on a higher level for more: 21 tokens in each chapter (6 challenges and the
-  finale, 3 each), 63 in all. Your first win against a legend unlocks him for good: he says a few words, and his plaque goes into the
+  finale, 3 each), 84 in all. Your first win against a legend unlocks him for good: he says a few words, and his plaque goes into the
   Hall of Legends.
 - The finale: once all six of a chapter are beaten, its finale opens: the GRANDFATHERS FINALE (Steeple, Velvet and
-  Quarterback), the FATHERS FINALE (Rooftop, Midrange and Freight) or the PRESENT FINALE (Deep End, Toolbox and
-  Skylight), to 21, with no special goal. A story scene
-  comes before and after it; winning it finishes the chapter.
+  Quarterback), the FATHERS FINALE (Rooftop, Midrange and Freight), the PRESENT FINALE (Deep End, Toolbox and
+  Skylight) or the NEW GENERATION FINALE (Overclock, Updraft and Halfcourt), to 21, with no special goal. A story
+  scene comes before and after it; winning it finishes the chapter.
+- The end: when the last of the four finales is won, a closing scene plays once (a legend of each era hands the old
+  laced ball down to the next). After that the timeline says LEGENDS COMPLETE and the Hall of Legends shows a gold
+  banner, THE HALL IS FULL; tap the banner to watch the closing scene again.
 - OLD SCHOOL rules: every Grandfathers game is played in the OLD GYM with the era's rules, the same for both teams
   (a banner shows them at the tip-off): everyone is 6% slower, shots beyond the arc go in 20% less often, close
   shots, layups and dunks go in 8% more often, and fouls are called a little over half as often (60%).
@@ -305,18 +317,27 @@ them for good. Every legend is a made-up character with his own name and looks, 
   same for both teams: shots beyond the arc go in 8% more often, the players without the ball stand 2 ft wider,
   and a jump shot right after a crossover or spin goes in 10% more often. The Present's music is a fast chiptune
   techno track ("Techno drive" by Centurion_of_war).
+- FAST BREAK rules: every New Generation game is played in the NEON DOME (a made-up arena of the future: a glass
+  floor, lime lines, violet light rings) with the era's rules, the same for both teams: everyone is 8% faster,
+  stamina comes back 15% faster, the pauses after a basket, an out of bounds or a reaching foul are 40% shorter, and
+  a shot within 5 seconds of your team getting the ball goes in 20% more often. The New Generation's music is a fast
+  electro chiptune ("Escalate" by congusbongus).
 - Signature moves: each legend has one small edge only he has. Steeple shoots hook shots close to the rim (hard to
   block), Gate's blocks stay in play (he keeps the ball or tips it to a teammate), Set Shot's long range starts
-  further out, Boxcar dunks from further out, Velvet's finger rolls slip past defenders, and Quarterback throws
-  long outlet passes. Rooftop's cradle dunks slip past part of a contest, Ankles' double crossover beats his man
-  more often (and more defenders fall), Midrange's turnaround fadeaway (its own animation) loses less to a contest,
-  Freight's close shots and dunks are harder to block, Eyes Closed's no-look passes are harder to intercept, and
-  Lockbox's chase-down blocks from behind work more often. Deep End's step-back (its own animation: a hop back
-  before a long jumper right after his crossover) loses half the contest, Toolbox runs the floor without tiring
-  after a defensive rebound, Stretch drifts out to the arc and his catch-and-shoot shots are hard to contest,
-  Switch gets a burst of speed after his steals, Skylight catches lobs from further out, and Zigzag's Euro-step
-  (its own animation: a step one way, then the other) slips past the man in front into a layup that is hard to
-  block.
+  further out, Boxcar dunks from further out, Velvet's finger rolls slip past defenders, and Quarterback throws long
+  outlet passes. Rooftop's cradle dunks (their own animation) slip past part of a contest, Ankles' double crossover
+  beats his man more often (and more defenders fall), Midrange's turnaround fadeaway (its own animation) loses less
+  to a contest, Freight's close shots and dunks are harder to block, Eyes Closed's no-look passes are harder to
+  intercept, and Lockbox's chase-down blocks from behind work more often. Deep End's step-back (its own animation: a
+  hop back before a long jumper right after his crossover) loses half the contest, Toolbox runs the floor without
+  tiring after a defensive rebound, Stretch drifts out to the arc and his catch-and-shoot shots are hard to contest,
+  Switch gets a burst of speed after his steals, Skylight catches lobs from further out, and Zigzag's Euro-step (its
+  own animation: a step one way, then the other) slips past the man in front into a layup that is hard to block.
+  Overclock's sprint is the fastest on the floor, Long Shadow gets a burst of speed for 3 seconds after his team gets
+  the ball (and runs to the rim), Glitch's crossover freezes the man in front for a moment even when it doesn't beat
+  him (drawn as his own combo dribble: between the legs into behind the back), Updraft puts his team's misses near
+  the rim straight back up (he reaches them higher than anyone), Halfcourt catches fire after only 2 makes in a row,
+  and Firewall's blocks on jump shots work more often and reach further.
 - The Hall of Legends: HALL on the tour, or HALL OF LEGENDS on CREW & CREDITS. One row of plaques per era. Tap an
   unlocked legend to see his card, name, archetype, number, tokens, his strengths (the rating shape), his signature
   move and his mentor perk; REPLAY STORY plays his unlock scene again.
@@ -328,14 +349,18 @@ them for good. Every legend is a made-up character with his own name and looks, 
   arc +1.5%; Freight: 5% harder to strip; Eyes Closed: passes 15% harder to intercept; Lockbox: steal timing window
   5% wider; Deep End: jumpers right after his crossover +2.5%; Toolbox: a teammate's shot right after his pass
   +1%; Stretch: jumpers right after a catch +1%; Switch: the man he guards shoots 0.5% worse; Skylight: reaches
-  rebounds 15% further; Zigzag: layups 20% harder to block.
+  rebounds 15% further; Zigzag: layups 20% harder to block; Overclock: sprinting tires him 7% less; Long Shadow:
+  4% faster right after his team gets the ball; Glitch: his pump fakes get the defender up 20% more often; Updraft:
+  putbacks after an offensive rebound +6%; Halfcourt: shots soon after getting the ball +1%; Firewall: his blocks on
+  jump shots work 15% more often.
   Each player has one mentor at most and each legend trains one player at a time. SWITCH moves him to another
   player and STOP TRAINING ends it (both ask first). Mentors coach your regular players only (a drafted legend can't
   be trained). Perks work in Road Trip games only, not in Quick Game or Legends games, and they stay when you start
   a new trip.
 - Drafting a legend: every legend you have unlocked joins the DRAFT list for your open star roster slots (one
-  LEGENDS row per era at the end: THE GRANDFATHERS, THE FATHERS, THE PRESENT). He joins boss-level for the part of
-  the trip you have reached, with his own strengths (no stat above 95). Only one legend can start (from any era), but he may start next to one boss.
+  LEGENDS row per era at the end: THE GRANDFATHERS, THE FATHERS, THE PRESENT, THE NEW GENERATION). He joins
+  boss-level for the part of the trip you have reached, with his own strengths (no stat above 95). Only one legend
+  can start (from any era), but he may start next to one boss.
 - Saving: the Legends progress (tokens, unlocked legends, scenes seen, mentors) is saved by itself, apart from the
   trip; a NEW TRIP keeps it.
 
@@ -468,11 +493,14 @@ scripts/twists.gd (the city twists):
   ("inside_mult": close shots, "foul_mult": fouls called), "era_fathers" the Fathers' ISO BALL rules
   ("cross_beat_mult": crossovers that beat the man, "dunk_range_mult": how far out a dunk starts), "era_present"
   the Present's SPACE THE FLOOR rules ("spacing_ft": how much wider the players without the ball stand,
-  "pullup_mult": jump shots right after a crossover or spin).
+  "pullup_mult": jump shots right after a crossover or spin), "era_next" the New Generation's FAST BREAK rules
+  ("dead_ball_mult": how long the pauses after a basket, an out of bounds or a reaching foul last, "break_mult":
+  shots within 5 seconds of getting the ball, BREAK_WINDOW in scripts/main.gd).
 scripts/legends_data.gd (the Legends mode, all plain data):
-- CHAPTERS: the four eras (THE GRANDFATHERS, THE FATHERS and THE PRESENT are built): name, court, music, era
-  rules, the stars or tokens that open it ("gate"), its six legends and the finale; a chapter may set its own
-  "challenge_avg", "mate_drop" and "finale_stage_avg" (the Fathers: 69, 14 and 56; the Present: 72, 14 and 63).
+- CHAPTERS: the four eras (THE GRANDFATHERS, THE FATHERS, THE PRESENT and THE NEW GENERATION, all built): name,
+  court, music, era rules, the stars or tokens that open it ("gate"), its six legends and the finale; a chapter may
+  set its own "challenge_avg", "mate_drop" and "finale_stage_avg" (the Fathers: 69, 14 and 56; the Present: 72, 14
+  and 63; the New Generation: 74, 14 and 66).
   Its "crew" is also its Quick Game era team (name, style, colors; its finale three play)
 - LEGENDS: one block per legend: names, number, "shape" (his five stats around his level; they add up to 0),
   "signature", "challenge" (the goal and its numbers, and "line", the text the game shows), "perk", "bio"
@@ -659,10 +687,11 @@ The pictures are drawn by scripts, not by hand, so they can be changed and made 
 - python3 tools/art/make_portraits_v2.py   makes the story portraits in assets/portraits (comic style).
 - python3 tools/art/make_map.py       makes the trip map, pins, van and van paints in assets/map.
 - Legends: make_players_v2.py --only lg_steeple,... makes the legend players (the Grandfathers with their
-  hook-shot pages, Midrange with his fadeaway pages, Deep End with his step-back and Zigzag with his Euro-step
-  pages, lg_<id>_x0.png); make_portraits_v2.py --legends (or --legends fathers, --legends present) their portraits;
-  make_courts.py --era the OLD GYM, the NIGHT PARK and the BIG STAGE (--era fathers or --era present: only that
-  one); python3 tools/art/make_legends_ui.py   the tour timeline, chapter pins and Hall frames in assets/legends.
+  hook-shot pages, Midrange with his fadeaway pages, Rooftop with his cradle dunk, Deep End with his step-back,
+  Zigzag with his Euro-step and Glitch with his combo dribble pages, lg_<id>_x0.png); make_portraits_v2.py
+  --legends (or --legends fathers, --legends present, --legends next) their portraits; make_courts.py --era the OLD
+  GYM, the NIGHT PARK, the BIG STAGE and the NEON DOME (--era fathers, --era present or --era next: only that one);
+  python3 tools/art/make_legends_ui.py   the tour timeline, chapter pins and Hall frames in assets/legends.
 - python3 tools/art/make_cosmetics_preview.py   puts every star reward (jerseys, balls, vans, courts) on one
   picture, docs/art/cosmetics_preview.png.
 - python3 tools/art/make_icon.py      makes the app icons in assets/icon and the itch.io cover

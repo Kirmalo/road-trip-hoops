@@ -192,6 +192,23 @@ Everything in "Tasks by wave" not marked DONE.
 ## Doing
 
 ## Review
+- **P12-29** (gameplay C): docs in step with Phase 12, every fact read from the merged code (6faf0bb). `CLAUDE.md`: the
+  `next` row (gate 72 / 48, crew THE NEW GENERATION, `ERA4_NIGHT` / `ERA4_LIME`, `ui_color` #466e14, 74 / 14 / 66),
+  24 legends and their ids, max tokens 84, the Chapter 4 challenges as tuned (0-1, `cool_misses` 3, `min` 4), the
+  P12-17 signatures with their constants (`RIM_RUN_SPEED_MULT` 1.06, combo / combo_l), the P12-22 perk hooks and
+  final sizes (`in_putback_window()`), FAST BREAK (`dead_wait()`, `BREAK_WINDOW`, `in_break_window()`,
+  `on_ball_held()`, `gain_time()`), NEON DOME, `legends_next.ogg`, `new_generation`, the ending (`legends_complete()`,
+  `last_chapter()`, `complete_scene()`, the timeline and Hall banners), P12-B1's perk text fit, the tool flags
+  (`--era next`, `--era-sheet`, `--legends next`, `--legends-strip next`, `--legends-sample next`, `--extra-preview
+  combo`, `--strip-vs`), the tests (`--legends-test-four`, `BACKTEST_CHAPTER4` and the banner steps, `TITLE TEST era
+  order`, `LEGEND_DRAFT_CHAPTERS` next -> present -> fathers -> grand / `LEGEND_DRAFTS` 4, `_check_each_era()`,
+  `CYBER_WORDS`, `--tokens 48`), the ramp line (P11-26 44%, P12-26 41%); every "not built" line replaced.
+  `README.txt`: Chapter 4, its rules, moves, perks, 84 tokens, the ending, the 4th era team and court. `CREDITS.md`: 4
+  New Generation art rows; `CREDITS_LIST` names the New Generation. `docs/legends-plan.md`: the Chapter 4 table and
+  `era_next` as shipped, the shipped perk sizes, a "Shipped" note on the Phase 12 plan. `itch_page.md`: Chapter 4.
+  `story_text.gd`: one stale comment (Firewall's scene said 5 points; the line itself already said four). `--import`
+  OK, `--legendtest` LEGENDTEST OK (24 legends, 4 built, 84 tokens, era teams OK), `--titletest` TITLE TEST DONE plain
+  and with `--legends-unlock-all --stars 72` (7 CC-BY rows, 7 shown; era order OK)
 - **P12-28** QA of the screens (qa): `docs/qa/phase12-screens.md`, contact sheet `docs/qa/phase12-screens.png` (46
   shots), build 44c7ca3. Every Legends screen at 1280 and 2400x1080 with four chapters (timeline locked / open /
   LEGENDS COMPLETE, Chapter 4 view, Hall with four rows and the full banner, each New Generation detail, mentor picker,
@@ -593,7 +610,7 @@ name (P12-06), the music pick (P12-08).
   owner, no change without his yes | P12-33 merged
 
 ### Wave 10
-- **P12-29** | Docs | gameplay-programmer C | `CLAUDE.md`, `README.txt`, `CREDITS.md`, `docs/legends-plan.md` (as
+- **P12-29** | REVIEW | Docs | gameplay-programmer C | `CLAUDE.md`, `README.txt`, `CREDITS.md`, `docs/legends-plan.md` (as
   shipped), `docs/release/itch_page.md`, `scripts/title.gd` (`CREDITS_LIST` only), `scripts/story_text.gd` (stale
   numbers only) | Every fact read from the merged code; `--legendtest`, `--titletest` OK | all build tasks merged
 - **P12-30** | Final Phase 12 QA | qa-balance-tester | `docs/qa/phase12.md` | Every test mode passes; 200 `--autoplay`
