@@ -1,0 +1,113 @@
+{
+	"beaten": [
+		"hometown"
+	],
+	"bracket": {
+		"round": 0
+	},
+	"city": "chicago",
+	"crew_points": 0,
+	"game": 1,
+	"human": "ud_deuce",
+	"level": "normal",
+	"paid": [
+		"hometown:1",
+		"hometown:2",
+		"hometown:3"
+	],
+	"phase": "map",
+	"points": 0,
+	"record": {
+		"losses": 0,
+		"wins": 3
+	},
+	"replay": {
+
+	},
+	"roster": [
+		{
+			"id": "ud_deuce",
+			"pts": 0,
+			"ratings": {
+				"defense": 51,
+				"finishing": 54,
+				"shooting": 62,
+				"speed": 52,
+				"stamina": 53
+			},
+			"via": "start"
+		},
+		{
+			"id": "ud_jojo",
+			"pts": 0,
+			"ratings": {
+				"defense": 53,
+				"finishing": 52,
+				"shooting": 53,
+				"speed": 62,
+				"stamina": 54
+			},
+			"via": "start"
+		},
+		{
+			"id": "ud_tank",
+			"pts": 0,
+			"ratings": {
+				"defense": 58,
+				"finishing": 62,
+				"shooting": 38,
+				"speed": 42,
+				"stamina": 48
+			},
+			"via": "start"
+		},
+		{
+			"id": "lg_overclock",
+			"pts": 0,
+			"ratings": {
+				"defense": 53,
+				"finishing": 60,
+				"shooting": 60,
+				"speed": 85,
+				"stamina": 54
+			},
+			"via": "draft"
+		},
+		{
+			"id": "lg_long_shadow",
+			"pts": 0,
+			"ratings": {
+				"defense": 70,
+				"finishing": 75,
+				"shooting": 50,
+				"speed": 65,
+				"stamina": 40
+			},
+			"via": "draft"
+		},
+		{
+			"id": "ht_g1",
+			"pts": 0,
+			"ratings": {
+				"defense": 44,
+				"finishing": 44,
+				"shooting": 56,
+				"speed": 56,
+				"stamina": 44
+			},
+			"via": "recruit"
+		}
+	],
+	"seen": [
+		"rule:per_starter",
+		"hometown_arrive",
+		"hometown_won"
+	],
+	"serial": 205,
+	"starters": [
+		"ud_deuce",
+		"lg_overclock",
+		"ud_jojo"
+	],
+	"version": 2
+}

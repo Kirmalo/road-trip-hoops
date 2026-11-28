@@ -1,0 +1,110 @@
+extends SceneTree
+# P12-27 probe (docs/qa/fixtures/probe_p12.gd.txt; rename to .gd) (both builds): puts LEG / TRIP / SET (absolute files) in as user://legends.json, trip.json, settings.cfg
+# (no user args: the owner's names), loads them as the game does and prints what this build sees.
+# WRITE=1: then Legends.save() and Trip.save() once, and copies the written files to OUT.
+# NEWTRIP=1: then Trip.new_trip("normal") (the title's NEW TRIP) and compares legends.json byte for byte.
+
+const Trip = preload("res://scripts/trip.gd")
+const Save = preload("res://scripts/save.gd")
+const Difficulty = preload("res://scripts/difficulty.gd")
+const Stars = preload("res://scripts/stars.gd")
+const Cosmetics = preload("res://scripts/cosmetics.gd")
+const Legends = preload("res://scripts/legends.gd")
+const LegendsSave = preload("res://scripts/legends_save.gd")
+const LegendsData = preload("res://scripts/legends_data.gd")
+
+func _bytes(p: String) -> PackedByteArray:
+	if not FileAccess.file_exists(p):
+		return PackedByteArray()
+	var f: FileAccess = FileAccess.open(p, FileAccess.READ)
+	var b: PackedByteArray = f.get_buffer(f.get_length())
+	f.close()
+	return b
+
+func _put(src: String, dst: String) -> void:
+	if src == "":
+		if FileAccess.file_exists(dst):
+			DirAccess.remove_absolute(dst)
+		return
+	var w: FileAccess = FileAccess.open(dst, FileAccess.WRITE)
+	w.store_buffer(_bytes(src))
+	w.close()
+
+func _has(s: GDScript, m: String) -> bool:
+	for d in s.get_script_method_list():
+		if str((d as Dictionary).get("name", "")) == m:
+			return true
+	return false
+
+func _perk(id: String) -> String:
+	return str(Trip.roster_player(id).get("perk", {}).get("id", ""))
+
+func _initialize() -> void:
+	var leg: String = OS.get_environment("LEG")
+	var trip: String = OS.get_environment("TRIP")
+	var st: String = OS.get_environment("SET")
+	var outd: String = OS.get_environment("OUT")
+	_put(leg, LegendsSave.path())
+	_put(trip, Save.path())
+	_put(st, Difficulty.SAVE_PATH)
+	var b_leg: PackedByteArray = _bytes(LegendsSave.path())
+	var b_trip: PackedByteArray = _bytes(Save.path())
+	var b_set: PackedByteArray = _bytes(Difficulty.SAVE_PATH)
+	Cosmetics._reset_cache()
+	Difficulty.load_saved()
+	Legends.load_state(true)
+	var chs: Array = LegendsData.chapter_ids()
+	var per: Array = []
+	for ch in chs:
+		per.append("%s %s built %s open %s tokens %d/%d done %s finale_open %s" % [ch, LegendsData.chapter(str(ch)).get("name", ""),
+				LegendsData.is_built(str(ch)), Legends.chapter_open(str(ch)), Legends.chapter_tokens(str(ch)),
+				Legends.chapter_max_tokens(str(ch)), Legends.chapter_done(str(ch)), Legends.finale_open(str(ch))])
+	var complete: String = "n/a (no legends_complete in this build)"
+	var ls: GDScript = load("res://scripts/legends.gd")
+	if _has(ls, "legends_complete"):
+		complete = str(ls.call("legends_complete"))
+	print("PROBE build chapters %s | stars %d | tokens %d (real %d) / max %d | unlocked %d %s | finales %s | complete %s" % [
+			str(chs), Stars.total(), Legends.tokens_total(), Legends.real_tokens_total(), LegendsData.max_tokens(),
+			Legends.unlocked_ids().size(), str(Legends.unlocked_ids()), str(Legends.finales), complete])
+	for line in per:
+		print("PROBE   chapter " + str(line))
+	print("PROBE   raw state: tokens keys %d unlocked %d seen %d finales %s mentors %s" % [Legends.tokens.size(),
+			Legends.unlocked.size(), Legends.seen.size(), str(Legends.finales), str(Legends.mentors)])
+	print("PROBE   perks_for: Deuce '%s' MAYOR '%s' NICO '%s' JOJO '%s' | mentor_of JOJO '%s'" % [
+			str(Legends.perks_for("ud_deuce").get("id", "")), str(Legends.perks_for("ht_boss").get("id", "")),
+			str(Legends.perks_for("chi_g1").get("id", "")), str(Legends.perks_for("ud_jojo").get("id", "")),
+			Legends.mentor_of("ud_jojo")])
+	var m: Dictionary = Legends.match_for_challenge("lg_overclock", "normal")
+	print("PROBE   match lg_overclock: %s" % ("{}" if m.is_empty() else Legends.match_line(m)))
+	if trip != "":
+		var loaded: bool = Trip.continue_trip()
+		var rows: Array = []
+		for row in Trip.legends_rows():
+			var ids: Array = []
+			for p in (row as Dictionary).get("players", []):
+				ids.append(str((p as Dictionary).get("id", "")))
+			rows.append([str((row as Dictionary).get("chapter", "")), ids])
+		print("PROBE   trip loaded %s -> %s | city %s game %d phase %s | roster %d %s | drafted %s | starters %s you %s | ok '%s' | open %d | repair %s" % [
+				loaded, Trip.resume_screen(), Trip.city, Trip.game, Trip.phase, Trip.roster_ids().size(),
+				str(Trip.roster_ids()), str(Trip.drafted_ids()), str(Trip.starters), Trip.human,
+				Trip.starters_ok(Trip.starters), Trip.open_slots(), str(Trip.boss_repair)])
+		print("PROBE   trip perks: Deuce '%s' JOJO '%s' overclock '%s' | legend rows %s" % [_perk("ud_deuce"), _perk("ud_jojo"),
+				str(Trip.roster_player("lg_overclock").get("signature", "")), str(rows)])
+	print("PROBE   files after loading unchanged: legends %s trip %s settings %s" % [_bytes(LegendsSave.path()) == b_leg,
+			_bytes(Save.path()) == b_trip, _bytes(Difficulty.SAVE_PATH) == b_set])
+	if OS.get_environment("NEWTRIP") == "1":
+		var before: PackedByteArray = _bytes(LegendsSave.path())
+		Trip.new_trip("normal")
+		print("PROBE   NEW TRIP: legends.json same bytes %s | roster %s open %d | legend rows %d" % [
+				_bytes(LegendsSave.path()) == before, str(Trip.roster_ids()), Trip.open_slots(), Trip.legends_rows().size()])
+	if OS.get_environment("WRITE") == "1":
+		print("PROBE   WRITE legends %s trip %s" % [Legends.save(), Trip.save() if trip != "" else false])
+		DirAccess.make_dir_recursive_absolute(outd)
+		for pair in [[LegendsSave.path(), "legends.json"], [Save.path(), "trip.json"]]:
+			var bb: PackedByteArray = _bytes(str(pair[0]))
+			if not bb.is_empty():
+				var w: FileAccess = FileAccess.open(outd.path_join(str(pair[1])), FileAccess.WRITE)
+				w.store_buffer(bb)
+				w.close()
+	print("PROBE DONE")
+	quit(0)

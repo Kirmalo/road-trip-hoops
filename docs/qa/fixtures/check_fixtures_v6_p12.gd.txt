@@ -1,0 +1,119 @@
+extends SceneTree
+# P12-27 checks in the Phase 12 build, owner's file names (no user args). FX = the Phase 12 files, FIX = docs/qa/fixtures.
+# 1. Chapter 4's gate over the fixtures (stars / tokens combinations).
+# 2. Each Phase 12 file loads as saved (to_dict == file minus version / serial); the trips too.
+# 3. LEGENDS COMPLETE survives save -> load (Legends.save(), a fresh load_state, the same state, complete true), twice.
+# 4. NEW TRIP (Trip.new_trip, the title's call) on every legends file: legends.json byte for byte.
+
+const Trip = preload("res://scripts/trip.gd")
+const Save = preload("res://scripts/save.gd")
+const Difficulty = preload("res://scripts/difficulty.gd")
+const Stars = preload("res://scripts/stars.gd")
+const Cosmetics = preload("res://scripts/cosmetics.gd")
+const Legends = preload("res://scripts/legends.gd")
+const LegendsSave = preload("res://scripts/legends_save.gd")
+const LegendsData = preload("res://scripts/legends_data.gd")
+
+var ok := true
+var fx := ""
+var fix := ""
+
+func _bytes(p: String) -> PackedByteArray:
+	if not FileAccess.file_exists(p):
+		return PackedByteArray()
+	var f: FileAccess = FileAccess.open(p, FileAccess.READ)
+	var b: PackedByteArray = f.get_buffer(f.get_length())
+	f.close()
+	return b
+
+func _put(src: String, dst: String) -> void:
+	var w: FileAccess = FileAccess.open(dst, FileAccess.WRITE)
+	w.store_buffer(_bytes(src))
+	w.close()
+
+func _want(c: bool, what: String) -> void:
+	print("P12CHECK   %s %s" % ["ok  " if c else "FAIL", what])
+	if not c:
+		ok = false
+
+func _file_dict(p: String) -> Dictionary:
+	var d = JSON.parse_string(_bytes(p).get_string_from_utf8())
+	var out: Dictionary = (d as Dictionary).duplicate(true) if d is Dictionary else {}
+	out.erase("version")
+	out.erase("serial")
+	return out
+
+func _same(a, b) -> bool:
+	return JSON.stringify(a, "", true) == JSON.stringify(b, "", true)
+
+func _load(settings: String, legends: String) -> void:
+	_put(settings, Difficulty.SAVE_PATH)
+	_put(legends, LegendsSave.path())
+	Cosmetics._reset_cache()
+	Difficulty.load_saved()
+	Legends.load_state(true)
+
+func _gate(settings: String, legends: String, want_open: bool) -> void:
+	_load(settings, legends)
+	print("P12CHECK gate %s + %s: stars %d tokens %d | next built %s gate '%s' open %s | present open %s" % [
+			settings.get_file(), legends.get_file(), Stars.total(), Legends.tokens_total(), LegendsData.is_built("next"),
+			Legends.gate_text("next"), Legends.chapter_open("next"), Legends.chapter_open("present")])
+	_want(Legends.chapter_open("next") == want_open, "Chapter 4 open %s" % want_open)
+	_want(Legends.gate_text("next") == "72 STARS OR 48 TOKENS", "gate text")
+
+func _initialize() -> void:
+	fx = OS.get_environment("FX")
+	fix = OS.get_environment("FIX")
+	Save.erase()
+	LegendsSave.erase()
+	# 1. the gate
+	_gate(fix.path_join("settings_v2_72_present.cfg"), fix.path_join("legends_v1_ch3_mid.json"), true)
+	_gate(fix.path_join("settings_v2_72_present.cfg"), fix.path_join("legends_v1_ch2_done.json"), true)   # by stars
+	_gate(fix.path_join("settings_v2_48.cfg"), fix.path_join("legends_v1_ch3_mid.json"), true)            # 49 tokens
+	_gate(fix.path_join("settings_v2_48.cfg"), fix.path_join("legends_v1_ch2_done.json"), false)          # 48 / 42
+	_gate(fix.path_join("settings_v2_48.cfg"), fix.path_join("legends_v1_ch3_done.json"), true)           # 63 tokens
+	_gate(fix.path_join("settings_v2_36.cfg"), fix.path_join("legends_v1_ch2_done.json"), false)
+	# 2. the Phase 12 files load as saved
+	var set12: String = fx.path_join("settings_v2_72_next_p12.cfg")
+	for name in ["legends_v1_ch4_mid_p12.json", "legends_v1_ch4_done_p12.json"]:
+		_load(set12, fx.path_join(name))
+		_want(_same(Legends.to_dict(), _file_dict(fx.path_join(name))), name + " loads as saved")
+		_want(_bytes(LegendsSave.path()) == _bytes(fx.path_join(name)), name + " loading writes nothing")
+	for name in ["trip_v2_next_p12.json", "trip_v2_next_you_p12.json"]:
+		_put(fx.path_join(name), Save.path())
+		var loaded: bool = Trip.continue_trip()
+		_want(loaded and _same(Trip.to_dict(), _file_dict(fx.path_join(name))), name + " loads as saved")
+		_want(Trip.roster_ids().has("lg_overclock") and Trip.roster_ids().has("lg_long_shadow"), name + " both NG legends on the roster")
+		_want(_bytes(Save.path()) == _bytes(fx.path_join(name)), name + " loading writes nothing")
+	# 3. LEGENDS COMPLETE through save / load
+	_load(set12, fx.path_join("legends_v1_ch4_done_p12.json"))
+	var want: Dictionary = Legends.to_dict()
+	_want(Legends.legends_complete(), "done file: LEGENDS COMPLETE")
+	for i in 2:
+		_want(Legends.save(), "save %d" % (i + 1))
+		Legends.tokens = {}
+		Legends.finales = []
+		Legends.load_state(true)
+		print("P12CHECK complete after save/load %d: %s | finales %s tokens %d/%d seen complete %s" % [i + 1,
+				Legends.legends_complete(), str(Legends.finales), Legends.real_tokens_total(), LegendsData.max_tokens(),
+				Legends.has_seen("legends_complete")])
+		_want(Legends.legends_complete() and _same(Legends.to_dict(), want), "complete and same state after round %d" % (i + 1))
+	var after_ending: Dictionary = Legends.after_result()   # nothing recorded: no second ending
+	print("P12CHECK complete_scene '%s' mark_seen again %s" % [Legends.complete_scene(), Legends.mark_seen("legends_complete")])
+	# 4. NEW TRIP keeps legends.json
+	var legs: Array = [fix.path_join("legends_v1_ch3_mid.json"), fix.path_join("legends_v1_ch3_done.json"),
+			fx.path_join("legends_v1_ch4_mid_p12.json"), fx.path_join("legends_v1_ch4_done_p12.json")]
+	for lp in legs:
+		_load(set12, str(lp))
+		_put(fix.path_join("trip_v2_present.json"), Save.path())
+		Trip.continue_trip()
+		var before: PackedByteArray = _bytes(LegendsSave.path())
+		Trip.new_trip("normal")
+		Trip.draft("lg_overclock")
+		Trip.set_starters(["ud_deuce", "ud_jojo", "ud_tank"], "ud_deuce")
+		_want(_bytes(LegendsSave.path()) == before, "NEW TRIP (+ draft, lineup) keeps %s byte for byte" % str(lp).get_file())
+	Save.erase()
+	LegendsSave.erase()
+	DirAccess.remove_absolute(Difficulty.SAVE_PATH)
+	print("P12CHECK %s" % ("OK" if ok else "FAILED"))
+	quit(0 if ok else 1)
